@@ -255,6 +255,76 @@ class CompilerTests(unittest.TestCase):
         check_test_data(
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
 
+    def test_colocated_filter_with_differently_named_column_and_tag(self):
+        test_data = test_input_data.colocated_filter_with_differently_named_column_and_tag()
+
+        expected_match = '''
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        '''
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
+    def test_colocated_filter_and_tag_sharing_name_with_other_column(self):
+        test_data = test_input_data.colocated_filter_and_tag_sharing_name_with_other_column()
+
+        expected_match = '''
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        '''
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        '''
+        expected_sql = NotImplementedError
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        '''
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+
     def test_colocated_out_of_order_filter_and_tag(self):
         test_data = test_input_data.colocated_out_of_order_filter_and_tag()
 
@@ -908,11 +978,31 @@ class CompilerTests(unittest.TestCase):
             )
         '''
         expected_gremlin = NotImplementedError
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+        expected_postgresql = '''
+            SELECT
+                "Species_1".name AS species_name
+            FROM schema_1."Species" AS "Species_1"
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_1"
+            ON "Species_1".uuid = "Animal_1".species
+            JOIN (
+                SELECT
+                    "Species_2".uuid AS uuid,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Species" AS "Species_2"
+                JOIN schema_1."Species" AS "Species_3"
+                ON "Species_2".uuid = "Species_3".eats
+                GROUP BY "Species_2".uuid
+              ) AS folded_subquery_1
+            ON "Species_1".uuid = folded_subquery_1.uuid
+            WHERE
+                ("Animal_1".name = %(animal_name)s OR "Animal_1".species IS NULL) AND
+                folded_subquery_1.fold_output__x_count >= %(predators)s
+        '''
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_between_filter_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
@@ -3685,6 +3775,86 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
                         expected_cypher)
 
+    def test_is_not_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_not_null_op_filter_missing_value_argument()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((net_worth IS NOT null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth != null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NOT NULL
+        '''
+
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS NOT null)
+            RETURN Animal___1.name AS `name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
+    def test_is_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_null_op_filter_missing_value_argument()
+
+        expected_match = '''
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((net_worth IS null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        '''
+
+        expected_gremlin = '''
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth == null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        '''
+
+        expected_sql = '''
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NULL
+        '''
+
+        expected_cypher = '''
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS null)
+            RETURN Animal___1.name AS `name`
+        '''
+
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
+                        expected_cypher)
+
     def test_simple_union(self):
         test_data = test_input_data.simple_union()
 
@@ -4149,7 +4319,7 @@ class CompilerTests(unittest.TestCase):
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list
             FROM
                 schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name
@@ -4176,7 +4346,7 @@ class CompilerTests(unittest.TestCase):
               folded_subquery_1.fold_output_name AS child_names_list
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_2].uuid AS uuid,
                   coalesce((
@@ -4206,16 +4376,18 @@ class CompilerTests(unittest.TestCase):
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
                         expected_cypher, expected_postgresql)
 
-    def test_fold_on_foreign_key(self):
-        test_data = test_input_data.fold_on_foreign_key()
+    def test_fold_on_many_to_one_edge(self):
+        test_data = test_input_data.fold_on_many_to_one_edge()
 
+        # Even though out_Animal_LivesIn is a many to one edge, primary key should
+        # be the join predicate for the folded subquery.
         expected_postgresql = '''
             SELECT
                 "Animal_1".name AS animal_name,
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS homes_list
             FROM
                 schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Location_1".name) AS fold_output_name
@@ -4226,14 +4398,13 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
         '''
-
         expected_mssql = '''
             SELECT
               [Animal_1].name AS animal_name,
               folded_subquery_1.fold_output_name AS homes_list
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_2].uuid AS uuid,
                   coalesce((
@@ -4277,7 +4448,7 @@ class CompilerTests(unittest.TestCase):
               ) AS child_names_list
             FROM
                 schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name,
@@ -4296,7 +4467,7 @@ class CompilerTests(unittest.TestCase):
               folded_subquery_1.fold_output_name AS child_names_list
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_2].uuid AS uuid,
                   coalesce((
@@ -4359,7 +4530,7 @@ class CompilerTests(unittest.TestCase):
                 AS sibling_and_self_names_list
             FROM
               schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
                     array_agg("Animal_3".name) AS fold_output_name
@@ -4370,7 +4541,7 @@ class CompilerTests(unittest.TestCase):
                   "Animal_2".uuid
             ) AS folded_subquery_1 ON "Animal_1".uuid = folded_subquery_1.uuid
             JOIN schema_1."Animal" AS "Animal_4" ON "Animal_1".parent = "Animal_4".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Animal_5".uuid AS uuid,
                     array_agg("Animal_6".name) AS fold_output_name
@@ -4388,7 +4559,7 @@ class CompilerTests(unittest.TestCase):
               folded_subquery_2.fold_output_name AS sibling_and_self_names_list
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_2].uuid AS uuid,
                   coalesce((
@@ -4414,7 +4585,7 @@ class CompilerTests(unittest.TestCase):
                   db_1.schema_1.[Animal] AS [Animal_2]
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
               JOIN db_1.schema_1.[Animal] AS [Animal_4] ON [Animal_1].parent = [Animal_4].uuid
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_5].uuid AS uuid,
                   coalesce((
@@ -4494,7 +4665,7 @@ class CompilerTests(unittest.TestCase):
               schema_1."Animal" AS "Animal_1"
             JOIN schema_1."Animal" AS "Animal_2"
             ON "Animal_1".parent = "Animal_2".uuid
-            LEFT OUTER JOIN(
+            JOIN(
                 SELECT
                     "Animal_3".uuid AS uuid,
                     array_agg("Animal_4".name) AS fold_output_name
@@ -4528,7 +4699,7 @@ class CompilerTests(unittest.TestCase):
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
               JOIN db_1.schema_1.[Animal] AS [Animal_2] ON [Animal_1].parent = [Animal_2].uuid
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_3].uuid AS uuid,
                   coalesce((
@@ -4566,7 +4737,7 @@ class CompilerTests(unittest.TestCase):
               folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_2].uuid AS uuid,
                   coalesce(
@@ -4592,7 +4763,27 @@ class CompilerTests(unittest.TestCase):
                   JOIN db_1.schema_1.[Location] AS [Location_1] ON [Animal_2].lives_in = [Location_1].uuid
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
-        expected_postgresql = SKIP_TEST
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(
+                    folded_subquery_1.fold_output_name,
+                    ARRAY [] :: VARCHAR []
+                ) AS neighbor_and_self_names_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN(
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Location" AS "Location_1" 
+                ON "Animal_2".lives_in = "Location_1".uuid
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Location_1".uuid = "Animal_3".lives_in
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
 
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
@@ -4611,7 +4802,7 @@ class CompilerTests(unittest.TestCase):
               db_1.schema_1.[Animal] AS [Animal_1]
               JOIN db_1.schema_1.[Location] AS [Location_1]
               ON [Animal_1].lives_in = [Location_1].uuid
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Location_2].uuid AS uuid,
                   coalesce((
@@ -4645,7 +4836,7 @@ class CompilerTests(unittest.TestCase):
             FROM schema_1."Animal" AS "Animal_1"
             JOIN schema_1."Location" AS "Location_1"
             ON "Animal_1".lives_in = "Location_1".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                   "Location_2".uuid AS uuid,
                   array_agg("Animal_2".name) AS fold_output_name
@@ -4674,7 +4865,7 @@ class CompilerTests(unittest.TestCase):
             FROM schema_1."Animal" AS "Animal_1"
             JOIN schema_1."Location" AS "Location_1"
             ON "Animal_1".lives_in = "Location_1".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     "Location_2".uuid AS uuid,
                     array_agg("Animal_2".name) AS fold_output_name
@@ -4693,7 +4884,7 @@ class CompilerTests(unittest.TestCase):
               db_1.schema_1.[Animal] AS [Animal_1]
               JOIN db_1.schema_1.[Location] AS [Location_1]
               ON [Animal_1].lives_in = [Location_1].uuid
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Location_2].uuid AS uuid,
                   coalesce((
@@ -4770,7 +4961,7 @@ class CompilerTests(unittest.TestCase):
               folded_subquery_1.fold_output_name AS sibling_and_self_names_list
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN (
+              JOIN (
                 SELECT
                   [Animal_2].uuid AS uuid,
                   coalesce(
@@ -4796,6 +4987,25 @@ class CompilerTests(unittest.TestCase):
                   JOIN db_1.schema_1.[Animal] AS [Animal_4] ON [Animal_2].parent = [Animal_4].uuid
               ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(
+                    folded_subquery_1.fold_output_name,
+                    ARRAY [] :: VARCHAR []
+                ) AS sibling_and_self_names_list FROMschema_1."Animal" AS "Animal_1"
+            JOIN(
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM
+                    schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_4" ON "Animal_2".parent = "Animal_4".uuid
+                JOIN schema_1."Animal" AS "Animal_3" ON "Animal_4".uuid = "Animal_3".parent
+                GROUP BY
+                  "Animal_2".uuid
+            ) AS folded_subquery_1 ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -4815,7 +5025,7 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
-                        expected_cypher)
+                        expected_cypher, expected_postgresql)
 
     def test_fold_and_deep_traverse(self):
         test_data = test_input_data.fold_and_deep_traverse()
@@ -4864,7 +5074,7 @@ class CompilerTests(unittest.TestCase):
                 [Animal_1].name AS animal_name,
                 folded_subquery_1.fold_output_name AS sibling_and_self_species_list
             FROM db_1.schema_1.[Animal] AS [Animal_1]
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     [Animal_2].uuid AS uuid,
                     coalesce(
@@ -4893,6 +5103,29 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
         '''
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(
+                    folded_subquery_1.fold_output_name,
+                    ARRAY [] :: VARCHAR []
+                ) AS sibling_and_self_species_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN(
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Species_1".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".parent = "Animal_3".uuid
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                JOIN schema_1."Species" AS "Species_1"
+                ON "Animal_4".species = "Species_1".uuid
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -4918,7 +5151,7 @@ class CompilerTests(unittest.TestCase):
         '''
 
         check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+                        expected_cypher, expected_postgresql)
 
     def test_traverse_and_fold_and_traverse(self):
         test_data = test_input_data.traverse_and_fold_and_traverse()
@@ -4974,7 +5207,7 @@ class CompilerTests(unittest.TestCase):
             FROM db_1.schema_1.[Animal] AS [Animal_1]
             JOIN db_1.schema_1.[Animal] AS [Animal_2]
             ON [Animal_1].parent = [Animal_2].uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     [Animal_3].uuid AS uuid,
                     coalesce(
@@ -5000,6 +5233,8 @@ class CompilerTests(unittest.TestCase):
                 ON [Animal_3].uuid = [Animal_4].parent
             ) AS folded_subquery_1 
             ON [Animal_2].uuid = folded_subquery_1.uuid
+        '''
+        expected_postgresql = '''
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -5960,12 +6195,30 @@ class CompilerTests(unittest.TestCase):
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
         '''
         expected_gremlin = NotImplementedError
+        expected_mssql = SKIP_TEST
+        expected_postgresql = '''
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name,
+                folded_subquery_1.fold_output__x_count AS number_of_children
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+              ) AS folded_subquery_1
+              ON "Animal_1".uuid = folded_subquery_1.uuid
+              '''
 
-        expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_count_with_runtime_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
@@ -5988,11 +6241,31 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
 
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = '''
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE folded_subquery_1.fold_output__x_count >= %(min_children)s
+        '''
+
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_count_with_tagged_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
@@ -6018,11 +6291,32 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
 
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = '''
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Species" AS "Species_1"
+            ON "Animal_1".species = "Species_1".uuid
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE "Species_1".limbs <= folded_subquery_1.fold_output__x_count
+        '''
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_count_and_other_filters_in_fold_scope(self):
         test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
@@ -6077,11 +6371,40 @@ class CompilerTests(unittest.TestCase):
         '''
         expected_gremlin = NotImplementedError
 
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            JOIN (
+                SELECT
+                    "Animal_4".uuid AS uuid,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_4"
+                JOIN schema_1."Entity" AS "Entity_1"
+                ON "Animal_4".related_entity = "Entity_1".uuid
+                GROUP BY "Animal_4".uuid
+            ) AS folded_subquery_2
+            ON "Animal_1".uuid = folded_subquery_2.uuid
+            WHERE
+                folded_subquery_1.fold_output__x_count >= %(min_children)s AND
+                folded_subquery_2.fold_output__x_count >= %(min_related)s
+        '''
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_on_count_with_nested_filter(self):
         test_data = test_input_data.filter_on_count_with_nested_filter()
@@ -7665,7 +7988,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN
                 schema_1."Animal" AS "Animal_2"
             ON "Animal_1".parent = "Animal_2".uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                   "Animal_3".uuid AS uuid,
                   array_agg("Animal_4".name) AS fold_output_name
@@ -7702,7 +8025,7 @@ class CompilerTests(unittest.TestCase):
               db_1.schema_1.[Animal] AS [Animal_1]
               LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
               ON [Animal_1].parent = [Animal_2].uuid
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_3].uuid AS uuid,
                   coalesce((
@@ -7790,7 +8113,7 @@ class CompilerTests(unittest.TestCase):
               coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
               "Animal_2".name AS parent_name
             FROM schema_1."Animal" AS "Animal_1"
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                   "Animal_3".uuid AS uuid,
                   array_agg("Animal_4".name) AS fold_output_name
@@ -7828,7 +8151,7 @@ class CompilerTests(unittest.TestCase):
               [Animal_2].nameASparent_name
             FROM
               db_1.schema_1.[Animal] AS [Animal_1]
-              LEFT OUTER JOIN(
+              JOIN(
                 SELECT
                   [Animal_3].uuid AS uuid,
                   coalesce((
@@ -7936,7 +8259,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = '''
+        expected_mssql = '''
             SELECT
                 [Animal_1].name AS animal_name,
                 folded_subquery_1.fold_output_name AS grandchild_names_list,
@@ -7946,7 +8269,7 @@ class CompilerTests(unittest.TestCase):
             ON [Animal_1].parent = [Animal_3].uuid
             LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
             ON [Animal_3].parent = [Animal_2].uuid
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     [Animal_4].uuid AS uuid,
                     coalesce((
@@ -7974,6 +8297,33 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON [Animal_1].uuid = folded_subquery_1.uuid
             WHERE [Animal_2].uuid IS NOT NULL OR [Animal_3].uuid ISNULL
+        '''
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(
+                    folded_subquery_1.fold_output_name,
+                    ARRAY [] :: VARCHAR []
+                ) AS grandchild_names_list,
+                "Animal_2".name AS grandparent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_3"
+            ON "Animal_1".parent = "Animal_3".uuid
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_2"
+            ON "Animal_3".parent = "Animal_2".uuid
+                JOIN(
+                    SELECT
+                        "Animal_4".uuid AS uuid,
+                        array_agg("Animal_5".name) AS fold_output_name
+                    FROM schema_1."Animal" AS "Animal_4"
+                    JOIN schema_1."Animal" AS "Animal_6" ON "Animal_4".uuid = "Animal_6".parent
+                    JOIN schema_1."Animal" AS "Animal_5" ON "Animal_6".uuid = "Animal_5".parent
+                    GROUP BY
+                        "Animal_4".uuid
+            ) AS folded_subquery_1 ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE
+              "Animal_2".uuid IS NOT NULL
+              OR "Animal_3".uuid IS NULL
         '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -8004,8 +8354,8 @@ class CompilerTests(unittest.TestCase):
                 END) AS `grandparent_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_fold_traversal_and_optional_traversal(self):
         test_data = test_input_data.fold_traversal_and_optional_traversal()
@@ -8078,13 +8428,13 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         '''
-        expected_sql = '''
+        expected_mssql = '''
             SELECT
                 [Animal_1].name AS animal_name,
                 folded_subquery_1.fold_output_name AS grandchild_names_list,
                 [Animal_2].name AS grandparent_name
             FROM db_1.schema_1.[Animal] AS [Animal_1]
-            LEFT OUTER JOIN (
+            JOIN (
                 SELECT
                     [Animal_3].uuid AS uuid,
                     coalesce((
@@ -8117,6 +8467,33 @@ class CompilerTests(unittest.TestCase):
             ON [Animal_6].parent = [Animal_2].uuid
             WHERE [Animal_2].uuid IS NOT NULL OR [Animal_6].uuid ISNULL
         '''
+        expected_postgresql = '''
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(
+                    folded_subquery_1.fold_output_name,
+                    ARRAY [] :: VARCHAR []
+                ) AS grandchild_names_list,
+                "Animal_2".name AS grandparent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN(
+                SELECT
+                    "Animal_3".uuid AS uuid,
+                    array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_5" ON "Animal_3".uuid = "Animal_5".parent
+                JOIN schema_1."Animal" AS "Animal_4" ON "Animal_5".uuid = "Animal_4".parent
+                GROUP BY
+                  "Animal_3".uuid
+              ) AS folded_subquery_1 ON "Animal_1".uuid = folded_subquery_1.uuid
+              LEFT OUTER JOIN schema_1."Animal" AS "Animal_6"
+              ON "Animal_1".parent = "Animal_6".uuid
+              LEFT OUTER JOIN schema_1."Animal" AS "Animal_2"
+              ON "Animal_6".parent = "Animal_2".uuid
+            WHERE
+              "Animal_2".uuid IS NOT NULL
+              OR "Animal_6".uuid IS NULL
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -8147,8 +8524,8 @@ class CompilerTests(unittest.TestCase):
                 END) AS `grandparent_name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_between_lowering(self):
         test_data = test_input_data.between_lowering()
