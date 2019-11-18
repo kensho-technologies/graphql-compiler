@@ -17,7 +17,7 @@ users to define **macros** -- type-safe rules for programmatic query rewriting
 that transform user-provided queries on the *desired* data model into
 queries on the *actual* data model in the underlying data systems.
 
-When macros are defined, the compiler loads them into a `macro registry <Macro registry>`_ -- a
+When macros are defined, the compiler loads them into a :ref:`macro registry <macro_registry>` -- a
 data structure that tracks all currently available macros, the resulting GraphQL schema
 (accounting for macros), and any additional metadata needed by the compiler.
 The compiler then leverages this registry to expand queries that rely on macros,
@@ -39,9 +39,11 @@ though there are some key differences:
   seamlessly with all databases and even on schemas stitched together from multiple databases.
   In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
-Currently, the compiler supports one type of macro: `macro edges <Macro edges>`_, which allow
+Currently, the compiler supports one type of macro: :ref:`macro edges <macro_edges>`, which allow
 the creation of "virtual" edges computed from existing ones.
 More types of macros are coming in the future.
+
+.. _macro_registry:
 
 Macro registry
 --------------
@@ -81,6 +83,7 @@ The :code:`get_schema_for_macro_definition()` function is able to transform a qu
 into one that is suitable for defining macros. Getting such a schema may be useful, for example,
 when setting up a GraphQL editor (such as GraphiQL) to create and edit macros.
 
+.. _macro_edges:
 
 Macro edges
 -----------

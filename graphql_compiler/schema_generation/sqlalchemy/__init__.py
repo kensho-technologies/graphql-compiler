@@ -5,9 +5,8 @@ from .edge_descriptors import get_join_descriptors_from_edge_descriptors
 from .schema_graph_builder import get_sqlalchemy_schema_graph
 
 
-def get_sqlalchemy_schema_info_from_specified_metadata(
-    vertex_name_to_table, direct_edges,
-    dialect, class_to_field_type_overrides=None
+def get_sqlalchemy_schema_info(
+    vertex_name_to_table, direct_edges, dialect, class_to_field_type_overrides=None
 ):
     """Return a SQLAlchemySchemaInfo from the metadata.
 
