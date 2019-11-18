@@ -315,7 +315,7 @@ class SQLFoldObject(object):
         ).select_from(
             subquery_from_clause
         )
-        # Factor our GROUP BY because MSSQL won't use it
+        # Factor out GROUP BY because MSSQL won't use it
         return select_statement.group_by(
             *self.group_by
         )
@@ -397,8 +397,7 @@ class SQLFoldObject(object):
 
         # for now we only handle folds containing one traversal (i.e. join)
         if len(self._traversal_descriptors) > 1:
-            raise NotImplementedError(u'Folds containing multiple traversals are not '
-                                      u'implemented {}.'.format(self))
+            raise NotImplementedError(u'Folds containing multiple traversals are not implemented.')
 
         # join together all vertices traversed
         subquery_from_clause = self._construct_fold_joins()
@@ -533,8 +532,7 @@ class CompilationState(object):
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
         if self._current_fold is not None:
-            raise NotImplementedError('Traversals inside a fold are not implemented '
-                                      'yet {}.'.format(self))
+            raise NotImplementedError('Traversals inside a fold are not implemented yet.')
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
