@@ -5,8 +5,8 @@ from collections import namedtuple
 import six
 import sqlalchemy
 from sqlalchemy import select
-from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
-from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.dialects.mssql.base import MSDialect
+from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import expression
 from sqlalchemy.sql.compiler import _CompileLabel
@@ -384,12 +384,12 @@ class SQLFoldObject(object):
         # Start the join clause with the from_table of the first traversal descriptor,
         # which is the vertex immediately preceding the fold
         join_clause = self._traversal_descriptors[0].from_table
-        if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
+        if isinstance(self._sqlalchemy_compiler, MSDialect):
             # For MSSQL the logic of the final join predicate (from the vertex preceding the output
             # to the output vertex) occurs in the WHERE clause of the SELECT ... FOR XML PATH('')
             # so we don't iterate all n joins for MSSQL, just the first n-1.
             terminating_index = len(self._traversal_descriptors) - 1
-        elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
+        elif isinstance(self._sqlalchemy_compiler, PGDialect):
             terminating_index = len(self._traversal_descriptors)
         else:
             raise NotImplementedError(
@@ -425,10 +425,10 @@ class SQLFoldObject(object):
             subquery_from_clause
         )
 
-        if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
+        if isinstance(self._sqlalchemy_compiler, MSDialect):
             # mssql doesn't rely on a group by
             return select_statement
-        elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
+        elif isinstance(self._sqlalchemy_compiler, PGDialect):
             return select_statement.group_by(
                 *self.group_by
             )
@@ -510,7 +510,7 @@ class SQLFoldObject(object):
                             fold_output.field)
                         # add array aggregated output column to self._outputs
                         # add aggregated output column to self._outputs
-                        if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
+                        if isinstance(self._sqlalchemy_compiler, MSDialect):
                             # MSSQL uses XML PATH aggregation
                             self._outputs.append(
                                 self._get_mssql_xml_path_column(
@@ -520,7 +520,7 @@ class SQLFoldObject(object):
                                     self._traversal_descriptors[-1]
                                 )
                             )
-                        elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
+                        elif isinstance(self._sqlalchemy_compiler, PGDialect):
                             # PostgreSQL uses ARRAY_AGG
                             self._outputs.append(
                                 self._get_array_agg_column(intermediate_fold_output_name,
