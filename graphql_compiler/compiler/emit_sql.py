@@ -839,32 +839,16 @@ class CompilationState(object):
         self._aliases[subquery_alias_key] = fold_subquery
         self._from_clause = from_cls
 
-        # Ensure references to the outer vertex table after the Unfold refer to a totally new
-        # copy of the outer vertex table. Otherwise references would select columns from the
-        # copy of that table found inside the fold subquery.
-        if isinstance(self._current_location, FoldScopeLocation):
-            outer_location = (self._current_location.base_location.query_path, None)
-        else:
-            outer_location = (self._current_location.at_vertex().query_path, None)
-
-        self._aliases[outer_location] = outer_vertex
 
         # clear the fold from the compilation state
         self._current_fold = None
         self._fold_vertex_location = None
         self._current_alias = outer_vertex
+        self._current_location = self._current_location.base_location
 
     def mark_location(self, is_last_fold_block):
         """Execute a MarkLocation Block."""
         if is_last_fold_block:
-            # collect edge information to join the fold subquery to the main selectable
-            edge_direction, edge_name = self._current_location.fold_path[0]
-            full_edge_name = '{}_{}'.format(edge_direction, edge_name)
-            # only works if fold scope location is the immediate child of self._current_classname
-            join_descriptor = self._sql_schema_info.join_descriptors[
-                self._current_classname
-            ][full_edge_name]
-
             self._current_fold.visit_output_vertex(self._current_alias,
                                                    self._current_location,
                                                    self._all_folded_outputs)
@@ -915,7 +899,7 @@ def emit_code_from_ir(sql_schema_info, ir):
             pass
         elif isinstance(block, blocks.MarkLocation):
             state.mark_location(
-                state._current_fold is not None and isinstance(ir.ir_blocks[index + 1], blocks.Backtrack))
+                state._current_fold is not None and (isinstance(ir.ir_blocks[index + 1], blocks.Backtrack) or isinstance(ir.ir_blocks[index + 1], blocks.Unfold)))
         elif isinstance(block, blocks.Backtrack):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
