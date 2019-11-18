@@ -385,27 +385,28 @@ class SQLFoldObject(object):
         # which is the vertex immediately preceding the fold
         join_clause = self._traversal_descriptors[0].from_table
         if isinstance(self._sqlalchemy_compiler, MSDialect_pyodbc):
-            # The logic of the final join predicate (from the vertex preceding the output to
-            # the output vertex) occurs in the WHERE clause of the SELECT ... FOR XML PATH('')
+            # For MSSQL the logic of the final join predicate (from the vertex preceding the output
+            # to the output vertex) occurs in the WHERE clause of the SELECT ... FOR XML PATH('')
             # so we don't iterate all n joins for MSSQL, just the first n-1.
-            terminating_idx = len(self._traversal_descriptors) - 1
+            terminating_index = len(self._traversal_descriptors) - 1
         elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
-            terminating_idx = len(self._traversal_descriptors)
+            terminating_index = len(self._traversal_descriptors)
         else:
             raise NotImplementedError(
                 u'Fold only supported for MSSQL and '
                 u'PostgreSQL, dialect was set to {}'.format(self._sqlalchemy_compiler.name)
             )
 
+        traversal_descriptors = self._traversal_descriptors[:terminating_index]
         # Starting at the first from_table, join traversed vertices in order until the output
         # vertex (PostgreSQL) is reached, or until the last vertex preceding the output
         # vertex (MSSQL) is reached
-        for i in range(0, terminating_idx):
+        for travel_descriptor in traversal_descriptors:
             # joins from earlier in the chain of traversals are at the beginning of the list
             # b/c joins are appended in the order they are traversed
-            from_table = self._traversal_descriptors[i].from_table
-            to_table = self._traversal_descriptors[i].to_table
-            join_descriptor = self._traversal_descriptors[i].join_descriptor
+            from_table = travel_descriptor.from_table
+            to_table = travel_descriptor.to_table
+            join_descriptor = travel_descriptor.join_descriptor
             join_clause = sqlalchemy.join(
                 join_clause,
                 to_table,
@@ -514,7 +515,7 @@ class SQLFoldObject(object):
                                 self._get_mssql_xml_path_column(
                                     intermediate_fold_output_name,
                                     fold_output.field,
-                                    self._traversal_descriptors[-1]  # output is last vertex traversed
+                                    self._traversal_descriptors[-1]  # output's last vertex traversed
                                 )
                             )
                         elif isinstance(self._sqlalchemy_compiler, PGDialect_psycopg2):
@@ -829,7 +830,9 @@ class CompilationState(object):
         ][full_edge_name]
 
         # 3. initialize fold object
-        self._current_fold = SQLFoldObject(self.sqlalchemy_compiler, outer_alias, outer_vertex_primary_key)
+        self._current_fold = SQLFoldObject(self.sqlalchemy_compiler,
+                                           outer_alias,
+                                           outer_vertex_primary_key)
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
