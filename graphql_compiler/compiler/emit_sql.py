@@ -500,7 +500,8 @@ class SQLFoldObject(object):
 
     def _get_fold_output_column_clause(self, fold_output_field):
         """Get the SQLAlchemy column expression corresponding to the fold output field."""
-        error = None
+        error_message = (u'Reached end of function without returning a value, '
+                         u'this code should be unreachable.')
         if fold_output_field == COUNT_META_FIELD_NAME:
             return sqlalchemy.func.coalesce(
                 sqlalchemy.func.count(),
@@ -527,17 +528,11 @@ class SQLFoldObject(object):
                     fold_output_field
                 )
             else:
-                error = NotImplementedError(
-                    u'Fold only supported for MSSQL and PostgreSQL, '
-                    u'dialect was set to {}'.format(self._dialect.name)
-                )
+                error_message = (u'Fold only supported for MSSQL and PostgreSQL, '
+                                 u'dialect set to {}').format(self._dialect.name)
 
         # We should have either triggered a not implemented branch, or returned earlier
-        if error is not None:
-            raise error
-        else:
-            raise AssertionError(u'Reached end of function without returning a value, '
-                                 u'this code should be unreachable.')
+        raise AssertionError(error_message)
 
     def _get_fold_outputs(self, fold_scope_location, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
