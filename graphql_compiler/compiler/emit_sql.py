@@ -500,8 +500,9 @@ class SQLFoldObject(object):
 
     def _get_fold_output_column_clause(self, fold_output_field):
         """Get the SQLAlchemy column expression corresponding to the fold output field."""
+        error = None
         if fold_output_field == COUNT_META_FIELD_NAME:
-            column_clause = sqlalchemy.func.coalesce(
+            return sqlalchemy.func.coalesce(
                 sqlalchemy.func.count(),
                 sqlalchemy.literal_column('0')
             ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
@@ -513,7 +514,7 @@ class SQLFoldObject(object):
             # add aggregated output column to self._outputs
             if isinstance(self._dialect, MSDialect):
                 # MSSQL uses XML PATH aggregation
-                column_clause = self._get_mssql_xml_path_column(
+                return self._get_mssql_xml_path_column(
                     intermediate_fold_output_name,
                     fold_output_field,
                     # output is last vertex traversed
@@ -521,17 +522,22 @@ class SQLFoldObject(object):
                 )
             elif isinstance(self._dialect, PGDialect):
                 # PostgreSQL uses ARRAY_AGG
-                column_clause = self._get_array_agg_column(
+                return self._get_array_agg_column(
                     intermediate_fold_output_name,
                     fold_output_field
                 )
             else:
-                raise NotImplementedError(
+                error = NotImplementedError(
                     u'Fold only supported for MSSQL and PostgreSQL, '
                     u'dialect was set to {}'.format(self._dialect.name)
                 )
 
-        return column_clause
+        # We should have either triggered a not implemented branch, or returned earlier
+        if error is not None:
+            raise error
+        else:
+            raise AssertionError(u'Reached end of function without returning a value, '
+                                 u'this code should be unreachable.')
 
     def _get_fold_outputs(self, fold_scope_location, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
