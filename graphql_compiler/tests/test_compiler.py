@@ -7956,7 +7956,7 @@ class CompilerTests(unittest.TestCase):
                         FROM
                             db_1.schema_1.[Animal] AS [Animal_4]
                         WHERE
-                            Animal_3].uuid = [Animal_4].parent FOR XML PATH('')),
+                            [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')),
                     '') AS fold_output_name
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_3]
