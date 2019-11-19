@@ -3161,6 +3161,38 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_traverse_different_types_after_fold(self):
+        test_data = test_input_data.traverse_different_types_after_fold()
+
+        base_location = helpers.Location(('Animal',))
+        fold_location = base_location.navigate_to_fold('out_Animal_LivesIn')
+        innermost_fold_location = fold_location.navigate_to_subpath('in_Animal_LivesIn')
+
+        expected_blocks = [
+            blocks.QueryRoot({'Animal'}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(fold_location),
+            blocks.MarkLocation(fold_location),
+            blocks.Traverse('in', 'Animal_LivesIn'),
+            blocks.MarkLocation(innermost_fold_location),
+            blocks.Backtrack(fold_location),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult({
+                'animal_name': expressions.OutputContextField(
+                    base_location.navigate_to_field('name'), GraphQLString),
+                'neighbor_and_self_names_list': expressions.FoldedContextField(
+                    innermost_fold_location.navigate_to_field('name'), GraphQLList(GraphQLString)),
+            }),
+        ]
+        expected_location_types = {
+            base_location: 'Animal',
+            innermost_fold_location: 'Animal',
+            fold_location: 'Location',
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_fold_on_many_to_one_edge(self):
         test_data = test_input_data.fold_on_many_to_one_edge()
 

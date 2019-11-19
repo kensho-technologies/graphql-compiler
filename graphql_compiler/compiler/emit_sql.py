@@ -18,6 +18,7 @@ from ..schema import COUNT_META_FIELD_NAME
 from .expressions import FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
+
 # Some reserved column names used in emitted SQL queries
 CTE_DEPTH_NAME = '__cte_depth'
 CTE_KEY_NAME = '__cte_key'
@@ -751,11 +752,13 @@ class CompilationState(object):
             # during unfold.
             self._fold_vertex_location = self._current_location
 
-
         else:
             # If we aren't in a fold, the traversals causes a join to the parent location.
             # join_to_parent_location appends traversals to the outermost join clause.
-            self._join_to_parent_location(previous_alias, edge.from_column, edge.to_column, optional)
+            self._join_to_parent_location(previous_alias,
+                                          edge.from_column,
+                                          edge.to_column,
+                                          optional)
 
     def recurse(self, vertex_field, depth):
         """Execute a Recurse Block."""
@@ -882,9 +885,10 @@ class CompilationState(object):
     def unfold(self):
         """Complete the execution of a Fold Block."""
         outer_location = (self._fold_vertex_location.base_location.query_path, None)
+        outer_alias = self._aliases[outer_location]
         fold_subquery, from_cls, outer_vertex = self._current_fold.end_fold(self._alias_generator,
                                                                             self._from_clause,
-                                                                            self._aliases[outer_location])
+                                                                            outer_alias)
 
         # generate a key for self._aliases that maps to the fold subquery's alias
         subquery_alias_key = (self._fold_vertex_location.base_location.query_path,
@@ -947,6 +951,7 @@ class CompilationState(object):
         """Get the SQLAlchemyCompiler determining the dialect the query compiles to."""
         return self._current_fold is not None
 
+
 def emit_code_from_ir(sql_schema_info, ir):
     """Return a SQLAlchemy Query from a passed SqlQueryTree.
 
@@ -965,10 +970,9 @@ def emit_code_from_ir(sql_schema_info, ir):
             # If we are in a fold and the next block either backtracks
             # or unfolds, then we have traversed to the deepest point
             # of the fold and need to set the output columns
-            if state.is_in_fold() and (
-                isinstance(ir.ir_blocks[index + 1], blocks.Backtrack)
-                or isinstance(ir.ir_blocks[index + 1], blocks.Unfold)
-            ):
+            backtracks_next = isinstance(ir.ir_blocks[index + 1], blocks.Backtrack)
+            unfolds_next = isinstance(ir.ir_blocks[index + 1], blocks.Unfold)
+            if state.is_in_fold() and (unfolds_next or backtracks_next):
                 is_last_fold_block = True
             else:
                 is_last_fold_block = False
