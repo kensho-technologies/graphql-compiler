@@ -728,8 +728,7 @@ class CompilationState(object):
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
         if self._current_fold is not None:
-            raise NotImplementedError('Traversals inside a fold are not implemented '
-                                      'yet {}.'.format(self))
+            raise NotImplementedError('Traversals inside a fold are not implemented yet.')
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
@@ -846,7 +845,7 @@ class CompilationState(object):
         ][full_edge_name]
 
         # 3. initialize fold object
-        self._current_fold = SQLFoldObject(self.sqlalchemy_compiler,
+        self._current_fold = SQLFoldObject(self.dialect,
                                            outer_alias,
                                            outer_vertex_primary_key)
 
@@ -913,7 +912,7 @@ class CompilationState(object):
         return self._sql_schema_info
 
     @property
-    def sqlalchemy_compiler(self):
+    def dialect(self):
         """Get the SQLAlchemyCompiler determining the dialect the query compiles to."""
         return self._dialect
 
