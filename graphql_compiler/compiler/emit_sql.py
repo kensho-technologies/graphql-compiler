@@ -494,14 +494,13 @@ class SQLFoldObject(object):
         # use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery
         edge, from_alias, to_alias = last_traversal
 
-        return _get_xml_path_clause(self.output_vertex_alias.c[fold_output_field],
-                                    (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
-                                    ).label(intermediate_fold_output_name)
+        return _get_xml_path_clause(
+            self.output_vertex_alias.c[fold_output_field],
+            (from_alias.c[edge.from_column] == to_alias.c[edge.to_column])
+        ).label(intermediate_fold_output_name)
 
     def _get_fold_output_column_clause(self, fold_output_field):
         """Get the SQLAlchemy column expression corresponding to the fold output field."""
-        error_message = (u'Reached end of function without returning a value, '
-                         u'this code should be unreachable.')
         if fold_output_field == COUNT_META_FIELD_NAME:
             return sqlalchemy.func.coalesce(
                 sqlalchemy.func.count(),
@@ -528,11 +527,12 @@ class SQLFoldObject(object):
                     fold_output_field
                 )
             else:
-                error_message = (u'Fold only supported for MSSQL and PostgreSQL, '
-                                 u'dialect set to {}').format(self._dialect.name)
+                raise NotImplementedError(u'Fold only supported for MSSQL and PostgreSQL, '
+                                          u'dialect set to {}'.format(self._dialect.name))
 
-        # We should have either triggered a not implemented branch, or returned earlier
-        raise AssertionError(error_message)
+        # We should have either triggered a not implemented error, or returned earlier
+        raise AssertionError(u'Reached end of function without returning a value, '
+                             u'this code should be unreachable.')
 
     def _get_fold_outputs(self, fold_scope_location, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
