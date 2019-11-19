@@ -636,7 +636,7 @@ class CompilationState(object):
         self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
 
         # indicates the target dialect
-        self._dialect = self.sql_schema_info.dialect.name
+        self._sqlalchemy_compiler = self.sql_schema_info.dialect
 
         # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
         # corresponding table _Aliases. some_location is either self._current_location
