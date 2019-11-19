@@ -874,9 +874,10 @@ class CompilationState(object):
 
     def unfold(self):
         """Complete the execution of a Fold Block."""
+        outer_location = (self._fold_vertex_location.base_location.query_path, None)
         fold_subquery, from_cls, outer_vertex = self._current_fold.end_fold(self._alias_generator,
                                                                             self._from_clause,
-                                                                            self._aliases[(self._fold_vertex_location.base_location.query_path, None)])
+                                                                            self._aliases[outer_location])
 
         # generate a key for self._aliases that maps to the fold subquery's alias
         subquery_alias_key = (self._fold_vertex_location.base_location.query_path,
@@ -890,7 +891,6 @@ class CompilationState(object):
         self._aliases[subquery_alias_key] = fold_subquery
         self._from_clause = from_cls
 
-
         # clear the fold from the compilation state
         self._current_fold = None
         self._fold_vertex_location = None
@@ -900,12 +900,10 @@ class CompilationState(object):
     def mark_location(self, is_last_fold_block):
         """Execute a MarkLocation Block."""
         if is_last_fold_block:
+            # Pull out the output columns on the last block inside the fold.
             self._current_fold.visit_output_vertex(self._current_alias,
                                                    self._current_location,
                                                    self._all_folded_fields)
-
-        # If the current location is the beginning of a fold, the current alias
-        # will eventually be replaced by the resulting fold subquery during Unfold.
         self._aliases[
             (self._current_location.base_location.query_path,
              self._current_location.fold_path)
