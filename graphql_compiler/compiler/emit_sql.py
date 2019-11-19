@@ -904,11 +904,16 @@ class CompilationState(object):
             self._current_fold.visit_output_vertex(self._current_alias,
                                                    self._current_location,
                                                    self._all_folded_fields)
-        self._aliases[
-            (self._current_location.base_location.query_path,
-             self._current_location.fold_path)
-            if self._current_fold is not None else (self._current_location.query_path, None)
-        ] = self._current_alias
+        if self._current_fold is not None:
+            # If we are in a fold then location is uniquely determined by both base location
+            # (where the fold begins) and the fold path (the traversals in the fold)
+            location_tuple = (self._current_location.base_location.query_path,
+                              self._current_location.fold_path)
+        else:
+            location_tuple = (self._current_location.query_path, None)
+
+        # store mapping from current location tuple to current alias
+        self._aliases[location_tuple] = self._current_alias
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
@@ -931,6 +936,10 @@ class CompilationState(object):
         """Get the SQLAlchemyCompiler determining the dialect the query compiles to."""
         return self._dialect
 
+    def is_in_fold(self):
+        """Get the SQLAlchemyCompiler determining the dialect the query compiles to."""
+        return self._current_fold is not None
+
 
 def emit_code_from_ir(sql_schema_info, ir):
     """Return a SQLAlchemy Query from a passed SqlQueryTree.
@@ -947,8 +956,18 @@ def emit_code_from_ir(sql_schema_info, ir):
         if isinstance(block, blocks.QueryRoot):
             pass
         elif isinstance(block, blocks.MarkLocation):
-            state.mark_location(
-                state._current_fold is not None and (isinstance(ir.ir_blocks[index + 1], blocks.Backtrack) or isinstance(ir.ir_blocks[index + 1], blocks.Unfold)))
+            # If we are in a fold and the next block either backtracks
+            # or unfolds, then we have traversed to the deepest point
+            # of the fold and need to set the output columns
+            if state.is_in_fold() and (
+                isinstance(ir.ir_blocks[index + 1], blocks.Backtrack)
+                or isinstance(ir.ir_blocks[index + 1], blocks.Unfold)
+            ):
+                is_last_fold_block = True
+            else:
+                is_last_fold_block = False
+
+            state.mark_location(is_last_fold_block)
         elif isinstance(block, blocks.Backtrack):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
