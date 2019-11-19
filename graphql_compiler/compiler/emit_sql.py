@@ -185,8 +185,8 @@ def get_xml_path_clause(output_column, where):
     '^d' -> '|', '^e' -> '^', '^n' -> '~', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
     '&#xHEX;' -> '\xHEX'. For example, any string containing the
     "ack acknowledge ctrl-f character", represented by hexadecimal 0x6, will be converted to
-    the HTML sequence "&#x6;" This conversion can be undone with chr(int("6", 16)) to convert
-    the sequence above to the character '\x06'. Any sequence matching
+    a string containing the HTML sequence "&#x6;" This conversion can be undone with chr(int("6", 16))
+    to convert the sequence above to the character '\x06'. Any sequence matching
     &#x([A-Za-z0-9]+); can be converted to the proper unicode character representation likewise.
     The remaining XML post processing can be done with
     https://docs.python.org/3/library/html.html#html.unescape
