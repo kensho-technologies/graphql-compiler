@@ -308,7 +308,6 @@ class SQLFoldObject(object):
         # initially None because output table is unknown until call to visit_output_vertex
         self._output_vertex_alias = None
 
-        self._outer_vertex_table = outer_vertex_table
         # table for vertex immediately outside fold
         self._outer_vertex_alias = outer_vertex_table
         if len(primary_key.columns) > 1:
@@ -648,14 +647,6 @@ class CompilationState(object):
         self._outputs = []  # sqlalchemy Columns labelled correctly for output
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
 
-        self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
-        self._fold_vertex_location = None  # location in the IR tree where the fold starts
-
-        self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
-
-        # indicates the sqlalchemy compiler determining the query's dialect
-        self._sqlalchemy_compiler = self.sql_schema_info.dialect
-
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
         self._current_location = new_location
@@ -727,7 +718,7 @@ class CompilationState(object):
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
-        # TODO: should current location be fold_vertex_location???
+
         # traversal from previous alias to current alias needs to be added to the relevant join
         if self._current_fold is not None:
             self._fold_vertex_location = self._current_location
@@ -864,7 +855,7 @@ class CompilationState(object):
 
         # generate a key for self._aliases that maps to the fold subquery's alias
         subquery_alias_key = (self._fold_vertex_location.base_location.query_path,
-                              self._fold_vertex_location.fold_path)  # might need to update fold_vertex_location to the location of the actual output vertex
+                              self._fold_vertex_location.fold_path)
 
         # Replace the table first placed in the dict during the MarkLocation
         # following the start of the fold scope. It needs to be replaced because while
@@ -892,7 +883,7 @@ class CompilationState(object):
         # will eventually be replaced by the resulting fold subquery during Unfold.
         self._aliases[
             (self._current_location.base_location.query_path,
-             self._current_location.fold_path)  # should this be  current location or fold scope location ??? really dinks you dink
+             self._current_location.fold_path)
             if self._current_fold is not None else (self._current_location.query_path, None)
         ] = self._current_alias
 
