@@ -162,7 +162,7 @@ def compile_xmlpath(element, compiler, **kw):
 
 
 def get_xml_path_clause(output_column, where):
-    """Produce an MSSQL-style XML PATH-based aggregation subquery.
+    r"""Produce an MSSQL-style XML PATH-based aggregation subquery.
 
     XML PATH clause aggregates the values of the output_column from the output vertex
     properly encoded to ensure that we can reconstruct a list of the original values
@@ -175,14 +175,19 @@ def get_xml_path_clause(output_column, where):
     All occurrences of '^', '~', and '|' in the original string values are
     replaced with '^e' (escape), '^n' (null), and '^d' (delimiter), resp.
 
-    Undoing the encoding above as well as the XML reference entity encoding performed
-    by the XML PATH statement is deferred to post-processing when the list is retrieved
+    Undoing the encoding above, as well as the XML reference entity encoding performed
+    by the XML PATH statement, is deferred to post-processing when the list is retrieved
     from the string representation produced by the subquery.
 
     Post-processing must split on '|', convert '~' to None, and undo both the encoding above
     and the XML reference entity encoding auto performed by XML PATH. In particular, undo
     '^d' -> '|', '^e' -> '^', '^n' -> '~', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
-    '&0xHEX;' -> u'0xHEX'. XML post processing can be done with
+    '&#xHEX;' -> '\xHEX'. For example, any string containing the
+    "ack acknowledge ctrl-f character", represented by hexadecimal 0x6, will be converted to
+    a string containing the HTML sequence "&#x6;" This conversion can be undone with chr(int("6", 16))
+    to convert the sequence above to the character '\x06'. Any sequence matching
+    &#x([A-Za-z0-9]+); can be converted to the proper unicode character representation likewise.
+    The remaining XML post processing can be done with
     https://docs.python.org/3/library/html.html#html.unescape
 
     Joining from the preceding vertex to the correct output vertex
@@ -197,19 +202,21 @@ def get_xml_path_clause(output_column, where):
     Returns:
         A SQLAlchemy Selectable corresponding to the XML PATH subquery
     """
+    delimiter = expression.literal_column("'|'")
+    null = expression.literal_column("'~'")
     encoded_column = func.REPLACE(  # replace all occurrences of '^' in the original with '^e'
-        output_column, expression.literal_column('\'^\''), expression.literal_column('\'^e\'')
+        output_column, expression.literal_column("'^'"), expression.literal_column("'^e'")
     )
     encoded_column = func.REPLACE(  # replace all occurrences of '~' in the original with '^n'
-        encoded_column, expression.literal_column('\'~\''), expression.literal_column('\'^n\'')
+        encoded_column, null, expression.literal_column("'^n'")
     )
     encoded_column = func.REPLACE(  # replace all occurrences of '|' in the original with '^d'
-        encoded_column, expression.literal_column('\'|\''), expression.literal_column('\'^d\'')
+        encoded_column, delimiter, expression.literal_column("'^d'")
     )
 
     # delimit elements in the array using '|'and mark nulls with `~`
-    xml_column = (expression.literal_column('\'|\'') + func.COALESCE(  # denote null values with '~'
-        encoded_column, expression.literal_column('\'~\'')
+    xml_column = (delimiter + func.COALESCE(  # denote null values with '~'
+        encoded_column, null
     ))  # allow unambiguously distinguishing (nullable) array elements using scheme above
 
     # use constructor: you can't directly construct an XMLPathBinaryExpression from plain text
@@ -217,7 +224,7 @@ def get_xml_path_clause(output_column, where):
 
     return func.COALESCE(  # coalesce to represent empty arrays as ''
         select([xml_column]).where(where).suffix_with("FOR XML PATH ('')").as_scalar(),
-        expression.literal_column('\'\'')
+        expression.literal_column("''")
     )
 
 
@@ -297,8 +304,8 @@ class SQLFoldObject(object):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
-            sqlalchemy_compiler: SQLAlchemy compiler object passed in from the schema, indicating
-            the target dialect of SQL
+            sqlalchemy_compiler: SQLAlchemy compiler object passed in from the schema, representing
+                                the dialect we are compiling to.
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             primary_key: PrimaryKeyConstraint, primary_key of the vertex immediately outside the
                         fold. Used to set the group by as well as join the fold subquery to the
@@ -461,10 +468,10 @@ class SQLFoldObject(object):
         FOR XML PATH ('')
 
         - ENCODE is shorthand for a function composition which replaces '~' (null),
-        '|' (list delimiter), '^' (escape) with '^n', '^d', '^e'.
+        '|' (list delimiter), '^' (escape) with '^n', '^d', '^e', resp.
 
         - VertexPrecedingOutput is the vertex immediately preceding the output vertex in the
-        chain of traversals beginning at the vertex immediately outside the fold.
+        chain of traversals, beginning at the vertex immediately outside the fold.
         VertexPrecedingOutput is the `from_table` of the last traversal descriptor tuple
         added to the fold's `traversal_descriptors` list.
 
@@ -472,13 +479,14 @@ class SQLFoldObject(object):
         direction of the edge connecting VertexPrecedingOutput to OutputVertex.
 
         Args:
-            intermediate_fold_output_name: String label to give to the resulting XML PATH
-            subquery built
-            fold_output_field: String name of the column requested from the output vertex.
+            intermediate_fold_output_name: string label to give to the resulting XML PATH
+                                            subquery built
+            fold_output_field: string name of the column requested from the output vertex.
             last_traversal: SQLFoldTraversalDescriptor describing tables/WHERE predicate
-            used in subquery.
+                            used in subquery.
 
-        Returns: Selectable for XML PATH aggregation subquery
+        Returns:
+            Selectable for XML PATH aggregation subquery
         """
         # use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery
         edge, from_alias, to_alias = last_traversal
@@ -496,13 +504,10 @@ class SQLFoldObject(object):
                         fold_scope_location.base_location, fold_scope_location.fold_path):
 
                     if fold_output.field == COUNT_META_FIELD_NAME:
-                        self._outputs.append(
-                            sqlalchemy.func.coalesce(
-                                sqlalchemy.func.count(),
-                                sqlalchemy.literal_column('0')
-                            ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
-                        )
-
+                        column_clause = sqlalchemy.func.coalesce(
+                            sqlalchemy.func.count(),
+                            sqlalchemy.literal_column('0')
+                        ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
                     else:
                         # force column to have explicit label as opposed to anon_label
                         intermediate_fold_output_name = FOLD_OUTPUT_FORMAT_STRING.format(
@@ -511,25 +516,25 @@ class SQLFoldObject(object):
                         # add aggregated output column to self._outputs
                         if isinstance(self._sqlalchemy_compiler, MSDialect):
                             # MSSQL uses XML PATH aggregation
-                            self._outputs.append(
-                                self._get_mssql_xml_path_column(
-                                    intermediate_fold_output_name,
-                                    fold_output.field,
-                                    # output is last vertex traversed
-                                    self._traversal_descriptors[-1]
-                                )
+                            column_clause = self._get_mssql_xml_path_column(
+                                intermediate_fold_output_name,
+                                fold_output.field,
+                                # output is last vertex traversed
+                                self._traversal_descriptors[-1]
                             )
                         elif isinstance(self._sqlalchemy_compiler, PGDialect):
                             # PostgreSQL uses ARRAY_AGG
-                            self._outputs.append(
-                                self._get_array_agg_column(intermediate_fold_output_name,
-                                                           fold_output.field)
+                            column_clause = self._get_array_agg_column(
+                                intermediate_fold_output_name,
+                                fold_output.field
                             )
                         else:
                             raise NotImplementedError(
                                 u'Fold only supported for MSSQL and PostgreSQL, '
                                 u'dialect was set to {}'.format(self._sqlalchemy_compiler.name)
                             )
+                    # append resulting column to outputs
+                    self._outputs.append(column_clause)
 
         # use to join unique identifier for the fold's outer vertex to the final table
         self._outputs.append(self.outer_vertex_alias.c[self._outer_vertex_primary_key])
