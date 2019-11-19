@@ -3161,8 +3161,13 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+<<<<<<< HEAD
     def test_traverse_different_types_after_fold(self):
         test_data = test_input_data.traverse_different_types_after_fold()
+=======
+    def test_fold_after_traverse_different_types(self):
+        test_data = test_input_data.fold_after_traverse_different_types()
+>>>>>>> mssql_fold
 
         base_location = helpers.Location(('Animal',))
         parent_fold = base_location.navigate_to_fold('out_Animal_LivesIn')
