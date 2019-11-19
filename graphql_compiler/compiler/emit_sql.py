@@ -941,7 +941,6 @@ class CompilationState(object):
         """Get the SQLAlchemyCompiler determining the dialect the query compiles to."""
         return self._current_fold is not None
 
-
 def emit_code_from_ir(sql_schema_info, ir):
     """Return a SQLAlchemy Query from a passed SqlQueryTree.
 
