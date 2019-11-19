@@ -3161,43 +3161,6 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
-<<<<<<< HEAD
-    def test_traverse_different_types_after_fold(self):
-        test_data = test_input_data.traverse_different_types_after_fold()
-=======
-    def test_fold_after_traverse_different_types(self):
-        test_data = test_input_data.fold_after_traverse_different_types()
->>>>>>> mssql_fold
-
-        base_location = helpers.Location(('Animal',))
-        parent_fold = base_location.navigate_to_fold('out_Animal_LivesIn')
-        first_traversed_fold = parent_fold.navigate_to_subpath('in_Animal_LivesIn')
-
-        expected_blocks = [
-            blocks.QueryRoot({'Animal'}),
-            blocks.MarkLocation(base_location),
-            blocks.Fold(parent_fold),
-            blocks.MarkLocation(parent_fold),
-            blocks.Traverse('in', 'Animal_LivesIn'),
-            blocks.MarkLocation(first_traversed_fold),
-            blocks.Backtrack(parent_fold),
-            blocks.Unfold(),
-            blocks.GlobalOperationsStart(),
-            blocks.ConstructResult({
-                'animal_name': expressions.OutputContextField(
-                    base_location.navigate_to_field('name'), GraphQLString),
-                'neighbor_and_self_names_list': expressions.FoldedContextField(
-                    first_traversed_fold.navigate_to_field('name'), GraphQLList(GraphQLString)),
-            }),
-        ]
-        expected_location_types = {
-            base_location: 'Animal',
-            parent_fold: 'Location',
-            first_traversed_fold: 'Animal',
-        }
-
-        check_test_data(self, test_data, expected_blocks, expected_location_types)
-
     def test_fold_on_many_to_one_edge(self):
         test_data = test_input_data.fold_on_many_to_one_edge()
 
