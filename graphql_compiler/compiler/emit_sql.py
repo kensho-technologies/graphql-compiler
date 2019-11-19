@@ -639,14 +639,8 @@ class CompilationState(object):
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
-
         self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
         self._fold_vertex_location = None  # location in the IR tree where the fold starts
-
-        self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
-
-        # indicates the sqlalchemy compiler determining the query's dialect
-        self._dialect = self.sql_schema_info.dialect
 
         # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
         # corresponding table _Aliases. some_location is either self._current_location
@@ -661,6 +655,11 @@ class CompilationState(object):
         self._from_clause = self._current_alias  # the main sqlalchemy Selectable
         self._outputs = []  # sqlalchemy Columns labelled correctly for output
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
+
+        self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
+
+        # indicates the sqlalchemy compiler determining the query's dialect
+        self._dialect = self.sql_schema_info.dialect
 
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
@@ -736,22 +735,26 @@ class CompilationState(object):
 
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
-
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
-        # traversal from previous alias to current alias needs to be added to the relevant join
+        # Traversal from previous alias to current alias needs to be added to the relevant join
         if self._current_fold is not None:
-            # this line ensures that we store the fold subquery in self._aliases w/ the proper key
-            # during unfold
-            self._fold_vertex_location = self._current_location
+            # If we are in a fold then traversals add another join to the subquery
 
             # visit_traversed_vertex appends traversals to the join clause inside the fold subquery
             self._current_fold.visit_traversed_vertex(edge, previous_alias, self._current_alias)
+
+            # This line ensures that we store the fold subquery in self._aliases w/ the proper key
+            # during unfold.
+            self._fold_vertex_location = self._current_location
+
+
         else:
-            # join_to_parent_location appends traversals to the outermost join clause
+            # If we aren't in a fold, the traversals causes a join to the parent location.
+            # join_to_parent_location appends traversals to the outermost join clause.
             self._join_to_parent_location(previous_alias, edge.from_column, edge.to_column, optional)
 
     def recurse(self, vertex_field, depth):
@@ -870,6 +873,9 @@ class CompilationState(object):
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
+
+        # 5. update the current location and the current alias to ensure subsequent
+        # joins are done properly
         self._current_location = self._fold_vertex_location
         self._current_alias = fold_vertex_alias
 
