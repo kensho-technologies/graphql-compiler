@@ -176,14 +176,14 @@ def get_xml_path_clause(output_column, where):
     All occurrences of '^', '~', and '|' in the original string values are
     replaced with '^e' (escape), '^n' (null), and '^d' (delimiter), resp.
 
-    Undoing the encoding above as well as the XML reference entity encoding performed
-    by the XML PATH statement is deferred to post-processing when the list is retrieved
+    Undoing the encoding above, as well as the XML reference entity encoding performed
+    by the XML PATH statement, is deferred to post-processing when the list is retrieved
     from the string representation produced by the subquery.
 
     Post-processing must split on '|', convert '~' to None, and undo both the encoding above
     and the XML reference entity encoding auto performed by XML PATH. In particular, undo
     '^d' -> '|', '^e' -> '^', '^n' -> '~', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
-    '&0xHEX;' -> u'0xHEX'. For example, any string containing the
+    '&#xHEX;' -> '\xHEX'. For example, any string containing the
     "ack acknowledge ctrl-f character", represented by hexadecimal 0x6, will be converted to
     the HTML sequence "&#x6;" This conversion can be undone with chr(int("6", 16)) to convert
     the sequence above to the character '\x06'. Any sequence matching
@@ -469,10 +469,10 @@ class SQLFoldObject(object):
         FOR XML PATH ('')
 
         - ENCODE is shorthand for a function composition which replaces '~' (null),
-        '|' (list delimiter), '^' (escape) with '^n', '^d', '^e'.
+        '|' (list delimiter), '^' (escape) with '^n', '^d', '^e', resp.
 
         - VertexPrecedingOutput is the vertex immediately preceding the output vertex in the
-        chain of traversals beginning at the vertex immediately outside the fold.
+        chain of traversals, beginning at the vertex immediately outside the fold.
         VertexPrecedingOutput is the `from_table` of the last traversal descriptor tuple
         added to the fold's `traversal_descriptors` list.
 
