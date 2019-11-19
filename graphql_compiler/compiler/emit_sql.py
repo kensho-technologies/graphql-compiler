@@ -898,7 +898,7 @@ class CompilationState(object):
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
         self._outputs.append(field.to_sql(
-            self.sqlalchemy_compiler, self._aliases, self._current_alias
+            self.dialect, self._aliases, self._current_alias
         ).label(output_name))
 
     def get_query(self):
