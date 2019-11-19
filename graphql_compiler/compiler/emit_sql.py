@@ -664,13 +664,20 @@ class CompilationState(object):
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
         self._current_location = new_location
-        location_tuple = (
-            self._current_location.query_path,
-            None
-        ) if self._current_fold is None else (
-            self._current_location.base_location.query_path,
-            self._current_location.fold_path
-        )
+
+        if self._current_fold is None:
+            location_tuple = (
+                self._current_location.query_path,
+                None
+            )
+        else:
+            # If we are in a fold then location is uniquely determined by both base location
+            # (where the fold begins) and the fold path (the traversals in the fold)
+            location_tuple = (
+                self._current_location.base_location.query_path,
+                self._current_location.fold_path
+            )
+
         if location_tuple in self._aliases:
             self._current_alias = self._aliases[location_tuple]
         else:
@@ -728,6 +735,7 @@ class CompilationState(object):
 
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
+
         # Follow the edge
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
@@ -735,7 +743,10 @@ class CompilationState(object):
 
         # traversal from previous alias to current alias needs to be added to the relevant join
         if self._current_fold is not None:
+            # this line ensures that we store the fold subquery in self._aliases w/ the proper key
+            # during unfold
             self._fold_vertex_location = self._current_location
+
             # visit_traversed_vertex appends traversals to the join clause inside the fold subquery
             self._current_fold.visit_traversed_vertex(edge, previous_alias, self._current_alias)
         else:
