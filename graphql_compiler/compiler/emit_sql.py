@@ -558,6 +558,9 @@ class SQLFoldObject(object):
                             fold_scope_location,
                             all_folded_outputs):
         """Update output columns when visiting the vertex containing output directives."""
+        if output_alias is None:
+            raise AssertionError(u'Output alias must be non-null. '
+                                 u'Invalid state encountered during fold {}.'.format(self))
         if self._ended:
             raise AssertionError(u'Cannot visit output vertices after end_fold has been called. '
                                  u'Invalid state encountered during fold {}'.format(self))
