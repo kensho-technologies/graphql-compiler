@@ -908,16 +908,28 @@ class CompilationState(object):
         self._current_alias = outer_vertex
         self._current_location = self._current_location.base_location
 
-    def mark_location(self, is_last_fold_block):
+    def mark_location(self, next_ir_block):
         """Execute a MarkLocation Block."""
-        if is_last_fold_block:
-            # Pull out the output columns on the last block inside the fold.
+        # If we are in a fold and the next block either backtracks or unfolds, then we have
+        # traversed to the deepest vertex of the fold and need to call visit_output_vertex on
+        # the current vertex.
+        backtracks_next = isinstance(next_ir_block, blocks.Backtrack)
+        unfolds_next = isinstance(next_ir_block, blocks.Unfold)
+        if self.is_in_fold() and (unfolds_next or backtracks_next):
+            is_deepest_fold_vertex = True
+        else:
+            is_deepest_fold_vertex = False
+
+        # Visit output vertex if the current location is the deepest vertex in the fold
+        if is_deepest_fold_vertex:
+            # If we are at the deepest vertex in the fold, then the current location is the output
+            # vertex of the fold and we must visit it now to select its output columns.
             self._current_fold.visit_output_vertex(self._current_alias,
                                                    self._current_location,
                                                    self._all_folded_fields)
         if self._current_fold is not None:
             # If we are in a fold then location is uniquely determined by both base location
-            # (where the fold begins) and the fold path (the traversals in the fold)
+            # (where the fold begins) and the fold path (the traversals in the fold).
             location_tuple = (self._current_location.base_location.query_path,
                               self._current_location.fold_path)
         else:
@@ -967,17 +979,9 @@ def emit_code_from_ir(sql_schema_info, ir):
         if isinstance(block, blocks.QueryRoot):
             pass
         elif isinstance(block, blocks.MarkLocation):
-            # If we are in a fold and the next block either backtracks
-            # or unfolds, then we have traversed to the deepest point
-            # of the fold and need to set the output columns
-            backtracks_next = isinstance(ir.ir_blocks[index + 1], blocks.Backtrack)
-            unfolds_next = isinstance(ir.ir_blocks[index + 1], blocks.Unfold)
-            if state.is_in_fold() and (unfolds_next or backtracks_next):
-                is_last_fold_block = True
-            else:
-                is_last_fold_block = False
-
-            state.mark_location(is_last_fold_block)
+            # Type of next_ir_block will determine whether we are at the end of a fold
+            next_ir_block = ir.ir_blocks[index + 1]
+            state.mark_location(next_ir_block)
         elif isinstance(block, blocks.Backtrack):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
