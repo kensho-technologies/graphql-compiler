@@ -7,7 +7,6 @@ verify_ssl = true
 # The Cython dependency of pymssql is not correctly resolved on all systems
 # so it is explicitly included here.
 cython = "==0.29.2"
-
 # Test requirements that are not otherwise necessary when using the package.
 mysqlclient = "==1.3.14"
 neo4j = ">=1.7.4,<2"
@@ -16,7 +15,6 @@ pymssql = "==2.1.4"
 pyorient = "==1.5.5"
 redis = ">=3.2.1,<4"
 redisgraph = ">=1.7,<1.9"
-
 # Linters and other development tools
 bandit = ">=1.5.1,<2"
 coveralls = ">=1.5.1,<2"
@@ -39,6 +37,7 @@ graphql-core = ">=2.1,<3"
 pytz = ">=2017.2"
 six = ">=1.10.0"
 sqlalchemy = ">=1.3.0,<2"
+diff-cover = "*"
 
 [requires]
 python_version = "3.6"

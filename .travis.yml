@@ -25,15 +25,18 @@ matrix:
   - name: "Python 2.7 unit tests"
     python: "2.7"
     script:
-      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
+      - pipenv run py.test --cov=graphql_compiler --cov-report=xml graphql_compiler/tests
+      - pipenv run diff-cover coverage.xml --fail-under=80
   - name: "Python 3.6 unit tests"
     python: "3.6"
     script:
-      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
+      - pipenv run py.test --cov=graphql_compiler --cov-report=xml graphql_compiler/tests
+      - pipenv run diff-cover coverage.xml --fail-under=80
   - name: "Python 3.7 unit tests"
     python: "3.7"
     script:
-      - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
+      - pipenv run py.test --cov=graphql_compiler --cov-report=xml graphql_compiler/tests
+      - pipenv run diff-cover coverage.xml --fail-under=80
 after_success:
   - docker-compose down
   - coveralls
