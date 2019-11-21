@@ -53,7 +53,7 @@ def convert_int_to_field_value(schema_info, vertex_class, property_field, int_va
     if is_int_field_type(schema_info, vertex_class, property_field):
         return int_value
     if is_datetime_field_type(schema_info, vertex_class, property_field):
-        return datetime.datetime.fromtimestamp(int_value)
+        return datetime.datetime.utcfromtimestamp(int_value)
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         if not MIN_UUID_INT <= int_value <= MAX_UUID_INT:
             raise AssertionError(u'Integer value {} could not be converted to UUID, as it'

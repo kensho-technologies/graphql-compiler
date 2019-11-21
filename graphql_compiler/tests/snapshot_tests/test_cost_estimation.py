@@ -16,6 +16,7 @@ from ...cost_estimation.statistics import LocalStatistics
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
+from ...cost_estimation.int_value_conversion import convert_int_to_field_value, convert_field_value_to_int
 
 
 def _make_schema_info_and_estimate_cardinality(schema_graph, statistics, graphql_input, args):
@@ -1432,3 +1433,37 @@ class IntegerIntervalTests(unittest.TestCase):
         expected_intersection = None
 
         self.assertEqual(expected_intersection, received_intersection)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_int_value_conversion_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics(dict(), field_quantiles={
+            ('Event', 'event_date'): [
+                datetime(2019, 3, 1),
+                datetime(2019, 6, 1),
+                datetime(2019, 8, 1),
+                datetime(2019, 9, 1),
+            ],
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        datetime_values = [
+            datetime(2000, 1, 1),
+            datetime(3000, 1, 1),
+            datetime(1000, 1, 1),
+            datetime(1, 1, 1),
+        ]
+        for datetime_value in datetime_values:
+            int_value = convert_field_value_to_int(schema_info, 'Event', 'event_date', datetime_value)
+            recovered_datetime = convert_int_to_field_value(
+                schema_info, 'Event', 'event_date', int_value)
+            self.assertAlmostEqual(0, (datetime_value - recovered_datetime).total_seconds())
