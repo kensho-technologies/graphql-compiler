@@ -313,7 +313,7 @@ class SQLFoldObject(object):
                         rest of the query. Composite keys unsupported.
         """
         # table containing output columns
-        # initially None because output table is unknown until call to visit_vertex
+        # initially None because output table is unknown until final call to visit_vertex
         self._output_vertex_alias = None
 
         # table for vertex immediately outside fold
@@ -552,7 +552,7 @@ class SQLFoldObject(object):
                      output_alias,
                      fold_scope_location,
                      all_folded_outputs):
-        """Visits vertex and select output columns if this vertex contains output directives."""
+        """Visits vertex and selects output columns if this vertex contains output directives."""
         if output_alias is None:
             raise AssertionError(u'Output alias must be non-null. '
                                  u'Invalid state encountered during fold {}.'.format(self))
@@ -563,7 +563,7 @@ class SQLFoldObject(object):
             raise AssertionError(u'Cannot visit multiple output vertices in one fold. '
                                  u'Invalid state encountered during fold {}'.format(self))
         if fold_scope_location.at_vertex() in all_folded_outputs:
-            # If this fold scope location is in the outputs dict then it contained an output directive
+            # If this fold scope location is in the outputs dict then it contains an output directive.
             self._output_vertex_alias = output_alias
             self._outputs = self._get_fold_outputs(fold_scope_location,
                                                all_folded_outputs)
@@ -640,8 +640,10 @@ class CompilationState(object):
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
+
+
         self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
-        self._fold_vertex_location = None  # location in the IR tree where the fold starts
+        self._fold_vertex_location = None  # most recent location visited within the fold scope
 
         # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
         # corresponding table _Aliases. some_location is either self._current_location
@@ -666,17 +668,17 @@ class CompilationState(object):
         """Move to a different location in the query, updating the _alias."""
         self._current_location = new_location
 
-        if self._current_fold is None:
-            location_tuple = (
-                self._current_location.query_path,
-                None
-            )
-        else:
+        if self._current_fold is not None:
             # If we are in a fold then location is uniquely determined by both base location
             # (where the fold begins) and the fold path (the traversals in the fold)
             location_tuple = (
                 self._current_location.base_location.query_path,
                 self._current_location.fold_path
+            )
+        else:
+            location_tuple = (
+                self._current_location.query_path,
+                None
             )
 
         if location_tuple in self._aliases:
@@ -908,7 +910,7 @@ class CompilationState(object):
         self._current_alias = outer_vertex
         self._current_location = self._current_location.base_location
 
-    def mark_location(self, next_ir_block):
+    def mark_location(self):
         """Execute a MarkLocation Block."""
         if self._current_fold is not None:
             # If we are in a fold, then we visit the current vertex
@@ -963,13 +965,11 @@ def emit_code_from_ir(sql_schema_info, ir):
         SQLAlchemy Query
     """
     state = CompilationState(sql_schema_info, ir)
-    for index, block in enumerate(_traverse_and_validate_blocks(ir)):
+    for block in _traverse_and_validate_blocks(ir):
         if isinstance(block, blocks.QueryRoot):
             pass
         elif isinstance(block, blocks.MarkLocation):
-            # Type of next_ir_block will determine whether we are at the end of a fold
-            next_ir_block = ir.ir_blocks[index + 1]
-            state.mark_location(next_ir_block)
+            state.mark_location()
         elif isinstance(block, blocks.Backtrack):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
