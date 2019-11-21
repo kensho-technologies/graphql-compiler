@@ -598,6 +598,13 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
             schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
         ),
     }
+    animal_alias = tables['Animal']
+    tables['Animal'] = sqlalchemy.select(animal_alias.c).select_from(animal_alias).where(
+        sqlalchemy.or_(
+            animal_alias.c.description != '',
+            animal_alias.c.lives_in == 'USA',
+        )
+    )
 
     # Compute the subclass sets, including union types
     subclasses = compute_subclass_sets(schema, type_equivalence_hints=type_equivalence_hints)
@@ -693,7 +700,8 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
     else:
         raise AssertionError(u'Unrecognized dialect {}'.format(dialect))
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors)
+        schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors,
+        validate=False)
 
 
 def generate_schema_graph(orientdb_client):
