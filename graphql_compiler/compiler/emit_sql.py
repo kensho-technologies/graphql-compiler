@@ -113,8 +113,7 @@ def _find_folded_fields(ir):
     # Find outputs used for each fold path.
     for _, output_info in ir.query_metadata_table.outputs:
         if isinstance(output_info.location, FoldScopeLocation):
-            fold_path = output_info.location.fold_path
-            folded_fields.setdefault(fold_path, set()).add(output_info.location)
+            folded_fields.setdefault(output_info.location.at_vertex(), set()).add(output_info.location)
 
     # Add _x_count, if used as a filter.
     global_operation_start = False
@@ -128,8 +127,7 @@ def _find_folded_fields(ir):
                 if (isinstance(subexpression, FoldedContextField) and
                         subexpression.fold_scope_location.field == COUNT_META_FIELD_NAME):
                     fold_scope_location = subexpression.fold_scope_location
-                    fold_path = fold_scope_location.fold_path
-                    folded_fields.setdefault(fold_path, set()).add(fold_scope_location)
+                    folded_fields.setdefault(fold_scope_location.at_vertex(), set()).add(fold_scope_location)
 
     return folded_fields
 
@@ -261,8 +259,8 @@ class SQLFoldObject(object):
     # outer vertex (the one outside the fold), 2.) at least one traversal, 3.) visiting the output
     # vertex to collect the output columns, 4.) ending the fold by producing the resulting subquery.
     #
-    # This life cycle is completed via calls to __init__, visit_traversed_vertex,
-    # visit_output_vertex, and end_fold.
+    # This life cycle is completed via calls to __init__, visit_traversed_edge,
+    # visit_vertex, and end_fold.
     #
     # The SELECT clause for the fold subquery contains OuterVertex.SOME_COLUMN, a unique
     # identifier (the primary key) for the OuterVertex determined by the edge descriptor
@@ -277,7 +275,7 @@ class SQLFoldObject(object):
     # The GROUP BY clause is produced during initialization.
     #
     # The FROM and JOIN clauses are constructed during end_fold using info from the
-    # visit_traversed_vertex function.
+    # visit_traversed_edge function.
     #
     # The full subquery will look as follows for PostgreSQL:
     #
@@ -315,7 +313,7 @@ class SQLFoldObject(object):
                         rest of the query. Composite keys unsupported.
         """
         # table containing output columns
-        # initially None because output table is unknown until call to visit_output_vertex
+        # initially None because output table is unknown until call to visit_vertex
         self._output_vertex_alias = None
 
         # table for vertex immediately outside fold
@@ -537,15 +535,12 @@ class SQLFoldObject(object):
     def _get_fold_outputs(self, fold_scope_location, all_folded_outputs):
         """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
         # find outputs for this fold in all_folded_outputs and add to self._outputs
-        if fold_scope_location.fold_path in all_folded_outputs:
-            for fold_output in all_folded_outputs[fold_scope_location.fold_path]:
-                # distinguish folds with the same fold path but different query paths
-                if (fold_output.base_location, fold_output.fold_path) == (
-                        fold_scope_location.base_location, fold_scope_location.fold_path):
-                    # get sqlalchemy column for fold_output
-                    column_clause = self._get_fold_output_column_clause(fold_output.field)
-                    # append resulting column to outputs
-                    self._outputs.append(column_clause)
+        if fold_scope_location.at_vertex() in all_folded_outputs:
+            for fold_output in all_folded_outputs[fold_scope_location.at_vertex()]:
+                # get sqlalchemy column for fold_output
+                column_clause = self._get_fold_output_column_clause(fold_output.field)
+                # append resulting column to outputs
+                self._outputs.append(column_clause)
 
         # use to join unique identifier for the fold's outer vertex to the final table
         self._outputs.append(self.outer_vertex_alias.c[self._outer_vertex_primary_key])
@@ -553,11 +548,11 @@ class SQLFoldObject(object):
         # sort to make select order deterministic
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
-    def visit_output_vertex(self,
-                            output_alias,
-                            fold_scope_location,
-                            all_folded_outputs):
-        """Update output columns when visiting the vertex containing output directives."""
+    def visit_vertex(self,
+                     output_alias,
+                     fold_scope_location,
+                     all_folded_outputs):
+        """Visits vertex and select output columns if this vertex contains output directives."""
         if output_alias is None:
             raise AssertionError(u'Output alias must be non-null. '
                                  u'Invalid state encountered during fold {}.'.format(self))
@@ -567,11 +562,13 @@ class SQLFoldObject(object):
         if self._output_vertex_alias is not None:
             raise AssertionError(u'Cannot visit multiple output vertices in one fold. '
                                  u'Invalid state encountered during fold {}'.format(self))
-        self._output_vertex_alias = output_alias
-        self._outputs = self._get_fold_outputs(fold_scope_location,
+        if fold_scope_location.at_vertex() in all_folded_outputs:
+            # If this fold scope location is in the outputs dict then it contained an output directive
+            self._output_vertex_alias = output_alias
+            self._outputs = self._get_fold_outputs(fold_scope_location,
                                                all_folded_outputs)
 
-    def visit_traversed_vertex(self, join_descriptor, from_table, to_table):
+    def visit_traversed_edge(self, join_descriptor, from_table, to_table):
         """Add a new traversal descriptor for every vertex traversed in the fold."""
         if self._ended:
             raise AssertionError(u'Cannot visit traversed vertices after end_fold has been called.'
@@ -748,8 +745,8 @@ class CompilationState(object):
         if self._current_fold is not None:
             # If we are in a fold then traversals add another join to the subquery
 
-            # visit_traversed_vertex appends traversals to the join clause inside the fold subquery
-            self._current_fold.visit_traversed_vertex(edge, previous_alias, self._current_alias)
+            # visit_traversed_edge appends traversals to the join clause inside the fold subquery
+            self._current_fold.visit_traversed_edge(edge, previous_alias, self._current_alias)
 
             # This line ensures that we store the fold subquery in self._aliases w/ the proper key
             # during unfold.
@@ -878,7 +875,7 @@ class CompilationState(object):
                                            outer_vertex_primary_key)
 
         # 4. add join information for this traversal to the fold object
-        self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
+        self._current_fold.visit_traversed_edge(join_descriptor, outer_alias, fold_vertex_alias)
 
         # 5. update the current location and the current alias to ensure subsequent
         # joins are done properly
@@ -913,23 +910,11 @@ class CompilationState(object):
 
     def mark_location(self, next_ir_block):
         """Execute a MarkLocation Block."""
-        # If we are in a fold and the next block either backtracks or unfolds, then we have
-        # traversed to the deepest vertex of the fold and need to call visit_output_vertex on
-        # the current vertex.
-        backtracks_next = isinstance(next_ir_block, blocks.Backtrack)
-        unfolds_next = isinstance(next_ir_block, blocks.Unfold)
-        if self.is_in_fold() and (unfolds_next or backtracks_next):
-            is_deepest_fold_vertex = True
-        else:
-            is_deepest_fold_vertex = False
-
-        # Visit output vertex if the current location is the deepest vertex in the fold
-        if is_deepest_fold_vertex:
-            # If we are at the deepest vertex in the fold, then the current location is the output
-            # vertex of the fold and we must visit it now to select its output columns.
-            self._current_fold.visit_output_vertex(self._current_alias,
-                                                   self._current_location,
-                                                   self._all_folded_fields)
+        if self._current_fold is not None:
+            # If we are in a fold, then we visit the current vertex
+            self._current_fold.visit_vertex(self._current_alias,
+                                            self._current_location,
+                                            self._all_folded_fields)
         if self._current_fold is not None:
             # If we are in a fold then location is uniquely determined by both base location
             # (where the fold begins) and the fold path (the traversals in the fold).
