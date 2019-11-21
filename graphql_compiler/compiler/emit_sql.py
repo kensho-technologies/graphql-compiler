@@ -113,7 +113,9 @@ def _find_folded_fields(ir):
     # Find outputs used for each fold path.
     for _, output_info in ir.query_metadata_table.outputs:
         if isinstance(output_info.location, FoldScopeLocation):
-            folded_fields.setdefault(output_info.location.at_vertex(), set()).add(output_info.location)
+            folded_fields.setdefault(
+                output_info.location.at_vertex(), set()
+            ).add(output_info.location)
 
     # Add _x_count, if used as a filter.
     global_operation_start = False
@@ -127,7 +129,9 @@ def _find_folded_fields(ir):
                 if (isinstance(subexpression, FoldedContextField) and
                         subexpression.fold_scope_location.field == COUNT_META_FIELD_NAME):
                     fold_scope_location = subexpression.fold_scope_location
-                    folded_fields.setdefault(fold_scope_location.at_vertex(), set()).add(fold_scope_location)
+                    folded_fields.setdefault(
+                        fold_scope_location.at_vertex(), set()
+                    ).add(fold_scope_location)
 
     return folded_fields
 
@@ -563,10 +567,9 @@ class SQLFoldObject(object):
             raise AssertionError(u'Cannot visit multiple output vertices in one fold. '
                                  u'Invalid state encountered during fold {}'.format(self))
         if fold_scope_location.at_vertex() in all_folded_outputs:
-            # If this fold scope location is in the outputs dict then it contains an output directive.
+            # If this fold scope is in the output dict then it contains an output directive.
             self._output_vertex_alias = output_alias
-            self._outputs = self._get_fold_outputs(fold_scope_location,
-                                               all_folded_outputs)
+            self._outputs = self._get_fold_outputs(fold_scope_location, all_folded_outputs)
 
     def visit_traversed_edge(self, join_descriptor, from_table, to_table):
         """Add a new traversal descriptor for every vertex traversed in the fold."""
@@ -640,7 +643,6 @@ class CompilationState(object):
         # Current query location state. Only mutable by calling _relocate.
         self._current_location = None  # the current location in the query. None means global.
         self._current_alias = None  # a sqlalchemy table Alias at the current location
-
 
         self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
         self._fold_vertex_location = None  # most recent location visited within the fold scope
