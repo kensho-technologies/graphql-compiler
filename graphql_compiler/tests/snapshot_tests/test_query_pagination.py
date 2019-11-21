@@ -9,6 +9,7 @@ from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     PaginationPlan, VertexPartition, try_get_pagination_plan
 )
+from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
@@ -49,6 +50,39 @@ class QueryPaginationTests(unittest.TestCase):
             VertexPartition(('Animal',), number_of_pages)
         ])
         self.assertEqual(expected_plan, pagination_plan)
+
+    def test_parameter_value_generation(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {'Animal': 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        query = '''{
+            Animal {
+                name @output(out_name: "animal_name")
+            }
+        }'''
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartition(['Animal'], 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition)
+
+        expected_parameters = [
+            '40000000-0000-0000-0000-000000000000',
+            '80000000-0000-0000-0000-000000000000',
+            'c0000000-0000-0000-0000-000000000000',
+        ]
+        self.assertEqual(expected_parameters, list(generated_parameters))
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')

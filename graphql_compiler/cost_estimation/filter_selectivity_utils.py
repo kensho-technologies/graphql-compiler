@@ -441,10 +441,10 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
             else:
                 # Get value interval
                 lower_bound, upper_bound = None, None
-                if interval.lower_bound:
+                if interval.lower_bound is not None:
                     lower_bound = convert_int_to_field_value(
                         schema_info, location_name, field_name, interval.lower_bound)
-                if interval.upper_bound:
+                if interval.upper_bound is not None:
                     upper_bound = convert_int_to_field_value(
                         schema_info, location_name, field_name, interval.upper_bound)
                 value_interval = _create_integer_interval(lower_bound, upper_bound)
