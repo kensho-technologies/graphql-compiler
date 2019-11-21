@@ -4,12 +4,12 @@ from __future__ import division
 import bisect
 from collections import namedtuple
 import sys
-from uuid import UUID
 
 import six
 
 from ..compiler.helpers import get_parameter_name
-from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
+from .helpers import is_int_field_type, is_uuid4_type
+from .int_value_conversion import field_supports_range_reasoning, convert_int_to_field_value, convert_field_value_to_int
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -66,11 +66,6 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
         if filter_fields_frozenset == unique_index.fields:
             return True
     return False
-
-
-def _convert_uuid_string_to_int(uuid_string):
-    """Return the integer representation of a UUID string."""
-    return UUID(uuid_string).int
 
 
 def _create_integer_interval(lower_bound, upper_bound):
@@ -415,22 +410,15 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         interval = _create_integer_interval(None, None)
 
         # Process inequality filters
-        is_uuid4_field = is_uuid4_type(schema_info, location_name, field_name)
-        is_int_field = is_int_field_type(schema_info, location_name, field_name)
-        is_inequality_filter_estimation_supported = is_uuid4_field or is_int_field
-        if is_inequality_filter_estimation_supported:
+        if field_supports_range_reasoning(schema_info, location_name, field_name):
             for filter_info in filters_on_field:
                 if filter_info.op_name in INEQUALITY_OPERATORS:
                     parameter_values = [
-                        parameters[get_parameter_name(filter_argument)]
+                        convert_field_value_to_int(
+                            schema_info, location_name, field_name,
+                            parameters[get_parameter_name(filter_argument)])
                         for filter_argument in filter_info.args
                     ]
-
-                    # Map uuid4 values to their corresponding integer values
-                    if is_uuid4_field:
-                        parameter_values = [
-                            _convert_uuid_string_to_int(value) for value in parameter_values
-                        ]
 
                     filter_interval = _get_query_interval_of_integer_inequality_filter(
                         parameter_values, filter_info.op_name)
@@ -438,7 +426,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
 
             if interval is None:
                 selectivity_at_field = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
-            elif is_uuid4_field:
+            elif is_uuid4_type(schema_info, location_name, field_name):
                 # uuid4 fields are uniformly distributed, so we simply divide the fraction of
                 # the domain queried with the size of the domain.
                 domain_interval = _create_integer_interval(MIN_UUID_INT, MAX_UUID_INT)
@@ -450,19 +438,26 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
                 selectivity_at_field = _combine_filter_selectivities(
                     [selectivity_at_field, selectivity])
-            elif is_int_field:
-                # int fields are not uniformly distributed but we have quantile information.
+            else:
+                # Get value interval
+                lower_bound, upper_bound = None, None
+                if interval.lower_bound:
+                    lower_bound = convert_int_to_field_value(
+                        schema_info, location_name, field_name, interval.lower_bound)
+                if interval.upper_bound:
+                    upper_bound = convert_int_to_field_value(
+                        schema_info, location_name, field_name, interval.upper_bound)
+                value_interval = _create_integer_interval(lower_bound, upper_bound)
+
+                # Compute selectivity
                 quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
                 if quantiles is not None:
                     selectivity = Selectivity(
                         kind=FRACTIONAL_SELECTIVITY,
                         value=_get_selectivity_fraction_of_interval(
-                            interval, quantiles))
+                            value_interval, quantiles))
                     selectivity_at_field = _combine_filter_selectivities(
                         [selectivity_at_field, selectivity])
-            else:
-                raise AssertionError(u'Field {}.{} is not uuid4 or int. Inequality filters are '
-                                     u'not supported'.format(location_name, field_name))
 
         # Process in_collection filters
         for filter_info in filters_on_field:
