@@ -5,6 +5,12 @@ import datetime
 from .helpers import is_int_field_type, is_uuid4_type, is_datetime_field_type
 
 
+# UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
+# (represented as a natural number) is 0, and the maximal value is 2^128-1.
+MIN_UUID_INT = 0
+MAX_UUID_INT = 2**128 - 1
+
+
 # This module is a utility for reasoning about intervals when computing filter selectivities,
 # and generating parameters for pagination. Since integers are the easiest type to deal with
 # in this context, when we encounter a different type we represent it as an int, do all the

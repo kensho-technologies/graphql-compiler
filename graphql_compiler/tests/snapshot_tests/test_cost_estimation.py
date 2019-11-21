@@ -1202,7 +1202,6 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
         statistics = LocalStatistics(dict(), field_quantiles={
             ('Species', 'limbs'): [3, 6, 7, 9, 11, 55, 80],
-
         })
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1340,6 +1339,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_info, filter_info_list, params, 'Event', 32.0)
         expected_counts = 32.0 * (1.5 / 3.0)
         self.assertAlmostEqual(expected_counts, result_counts)
+
+        # XXX try old dates
 
 
 # pylint: enable=no-member

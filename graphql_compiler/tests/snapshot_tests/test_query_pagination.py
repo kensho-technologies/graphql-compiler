@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import unittest
+import datetime
 
 import pytest
 
@@ -51,7 +52,77 @@ class QueryPaginationTests(unittest.TestCase):
         ])
         self.assertEqual(expected_plan, pagination_plan)
 
-    def test_parameter_value_generation(self):
+    def test_parameter_value_generation_int(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys['Species'] = 'limbs'  # Force pagination on int field
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {'Species': 1000}
+        statistics = LocalStatistics(class_counts, field_quantiles={
+            ('Species', 'limbs'): [i for i in range(101)],
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        query = '''{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }'''
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartition(['Species'], 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition)
+
+        expected_parameters = [26, 51, 76]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    def test_parameter_value_generation_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys['Event'] = 'event_date'  # Force pagination on datetime field
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {'Event': 1000}
+        statistics = LocalStatistics(class_counts, field_quantiles={
+            ('Event', 'event_date'): [
+                datetime.datetime(2000 + i, 1, 1) for i in range(101)
+            ],
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        query = '''{
+            Event {
+                name @output(out_name: "event_name")
+            }
+        }'''
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartition(['Event'], 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition)
+
+        expected_parameters = [
+            datetime.datetime(2026, 1, 1, 0, 0),
+            datetime.datetime(2051, 1, 1, 0, 0),
+            datetime.datetime(2076, 1, 1, 0, 0),
+        ]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    def test_parameter_value_generation_uuid(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}

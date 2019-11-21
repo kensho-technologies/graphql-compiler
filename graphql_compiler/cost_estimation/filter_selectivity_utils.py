@@ -9,7 +9,7 @@ import six
 
 from ..compiler.helpers import get_parameter_name
 from .helpers import is_int_field_type, is_uuid4_type
-from .int_value_conversion import field_supports_range_reasoning, convert_int_to_field_value, convert_field_value_to_int
+from .int_value_conversion import field_supports_range_reasoning, convert_int_to_field_value, convert_field_value_to_int, MIN_UUID_INT, MAX_UUID_INT
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -31,11 +31,6 @@ ABSOLUTE_SELECTIVITY = 'absolute'
 FRACTIONAL_SELECTIVITY = 'fractional'
 
 INEQUALITY_OPERATORS = frozenset(['<', '<=', '>', '>=', 'between'])
-
-# UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
-# (represented as a natural number) is 0, and the maximal value is 2^128-1.
-MIN_UUID_INT = 0
-MAX_UUID_INT = 2**128 - 1
 
 
 def _is_absolute(selectivity):
