@@ -3,11 +3,13 @@ import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest
-from sqlalchemy import Column, MetaData, PrimaryKeyConstraint, Table
+from sqlalchemy import (
+    Column, ForeignKey, ForeignKeyConstraint, MetaData, PrimaryKeyConstraint, Table
+)
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Binary, Integer, LargeBinary, String
 
-from ... import get_sqlalchemy_schema_info_from_specified_metadata
+from ... import get_sqlalchemy_schema_info
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
 from ...schema_generation.schema_graph import IndexDefinition
 from ...schema_generation.sqlalchemy import (
@@ -15,7 +17,7 @@ from ...schema_generation.sqlalchemy import (
     get_join_descriptors_from_edge_descriptors
 )
 from ...schema_generation.sqlalchemy.edge_descriptors import (
-    DirectEdgeDescriptor, DirectJoinDescriptor
+    DirectEdgeDescriptor, DirectJoinDescriptor, generate_direct_edge_descriptors_from_foreign_keys
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
 from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
@@ -23,28 +25,26 @@ from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_
 
 def _get_test_vertex_name_to_table():
     """Return a dict mapping the name of each VertexType to the underlying SQLAlchemy Table."""
-    metadata1 = MetaData()
+    metadata = MetaData()
     table1 = Table(
         'Table1',
-        metadata1,
+        metadata,
         Column('column_with_supported_type', String(), primary_key=True),
         Column('column_with_non_supported_type', LargeBinary()),
         Column('column_with_mssql_type', TINYINT()),
-        Column('source_column', Integer()),
-        Column('unique_column', Integer(), unique=True)
+        Column('source_column', Integer(), ForeignKey('Table2.destination_column')),
+        Column('unique_column', Integer(), unique=True),
     )
 
-    # We use a different metadata object to test there is no dependency on the metadata object.
-    metadata2 = MetaData()
     table2 = Table(
         'Table2',
-        metadata2,
+        metadata,
         Column('destination_column', Integer(), primary_key=True),
     )
 
     table3 = Table(
         'Table3',
-        metadata2,
+        metadata,
         Column('primary_key_column1', Integer()),
         Column('primary_key_column2', Integer()),
 
@@ -53,7 +53,7 @@ def _get_test_vertex_name_to_table():
 
     table4 = Table(
         'Table4',
-        metadata2,
+        metadata,
         Column('primary_key_column_with_unsupported_type', Binary()),
 
         PrimaryKeyConstraint('primary_key_column_with_unsupported_type'),
@@ -186,6 +186,80 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         )
 
 
+@pytest.mark.filterwarnings('ignore: Ignored .* edges implied by composite foreign keys.*')
+class SQLAlchemyForeignKeyEdgeGenerationTests(unittest.TestCase):
+    def test_edge_generation_from_foreign_keys(self):
+        metadata = MetaData()
+
+        table1 = Table(
+            'Table1',
+            metadata,
+            Column('primary_key_column', Integer(), primary_key=True),
+            Column('foreign_key_column', Integer(), ForeignKey('Table2.primary_key_column')),
+        )
+
+        table2 = Table(
+            'Table2',
+            metadata,
+            Column('primary_key_column', Integer, primary_key=True)
+        )
+
+        vertex_name_to_table = {
+            'TableWithForeignKey': table1,
+            'TableWithReferencedPrimaryKey': table2,
+        }
+
+        direct_edge_descriptors = generate_direct_edge_descriptors_from_foreign_keys(
+            vertex_name_to_table
+        )
+
+        self.assertEqual(
+            direct_edge_descriptors,
+            {
+                DirectEdgeDescriptor(
+                    from_vertex='TableWithForeignKey',
+                    from_column='foreign_key_column',
+                    to_vertex='TableWithReferencedPrimaryKey',
+                    to_column='primary_key_column'
+                ),
+            }
+        )
+
+    def test_warning_for_ignored_foreign_keys(self):
+        metadata = MetaData()
+
+        table1 = Table(
+            'Table1',
+            metadata,
+            Column('primary_key_column', Integer(), primary_key=True),
+            Column('foreign_key_column1', Integer()),
+            Column('foreign_key_column2', Integer()),
+
+            ForeignKeyConstraint(
+                ('foreign_key_column1', 'foreign_key_column2'),
+                ('Table2.primary_key_column1', 'Table2.primary_key_column2'))
+        )
+
+        table2 = Table(
+            'Table2',
+            metadata,
+            Column('primary_key_column1', Integer, primary_key=True),
+            Column('primary_key_column2', Integer, primary_key=True),
+        )
+
+        vertex_name_to_table = {
+            'TableWithForeignKey': table1,
+            'TableWithReferencedPrimaryKey': table2,
+        }
+
+        with pytest.warns(Warning):
+            direct_edge_descriptors = generate_direct_edge_descriptors_from_foreign_keys(
+                vertex_name_to_table
+            )
+
+        self.assertEqual(direct_edge_descriptors, set())
+
+
 class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
     def setUp(self):
         self.vertex_name_to_table = _get_test_vertex_name_to_table()
@@ -200,8 +274,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_vertex(self):
         direct_edges = {
@@ -213,8 +286,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_source_column(self):
         direct_edges = {
@@ -226,8 +298,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_column(self):
         direct_edges = {
@@ -239,8 +310,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
-                self.vertex_name_to_table, direct_edges, dialect())
+            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_missing_primary_key(self):
         table_without_primary_key = Table(
@@ -252,5 +322,4 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             table_without_primary_key.name: table_without_primary_key
         }
         with self.assertRaises(MissingPrimaryKeyError):
-            get_sqlalchemy_schema_info_from_specified_metadata(
-                faulty_vertex_name_to_table, {}, dialect())
+            get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())

@@ -301,3 +301,14 @@ class QueryFormattingTests(unittest.TestCase):
             # Long string
             self.assertEqual(50000000000000000000000000000000000000000, deserialize_json_argument(
                 'amount', GraphQLInt, '50000000000000000000000000000000000000000'))
+
+    def test_invalid_directive_comparison(self):
+        # This test will fail if the directive types in deserialize_json_argument are compared by
+        # their python object reference instead of by their names.
+        #
+        # Note that parsed_graphql_datetime_type has a different python object reference than
+        # GraphQLDateTime, but refers conceptually to the same GraphQL type.
+        parsed_graphql_datetime_type = get_schema().get_type('DateTime')
+        value = deserialize_json_argument(
+            'birth_time', parsed_graphql_datetime_type, '2014-02-05T03:20:55Z')
+        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)

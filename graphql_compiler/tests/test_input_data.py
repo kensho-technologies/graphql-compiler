@@ -100,6 +100,50 @@ def colocated_filter_and_tag():  # noqa: D103
         type_equivalence_hints=None)
 
 
+def colocated_filter_with_differently_named_column_and_tag():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            out_Entity_Related {
+                name @output(out_name: "related_name")
+                     @tag(tag_name: "tagged_name")
+                alias @filter(op_name: "contains", value: ["%tagged_name"])
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'related_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def colocated_filter_and_tag_sharing_name_with_other_column():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            out_Entity_Related {
+                name @output(out_name: "related_name")
+                     @tag(tag_name: "parent")
+                alias @filter(op_name: "contains", value: ["%parent"])
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'related_name': OutputMetadata(type=GraphQLString, optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def colocated_out_of_order_filter_and_tag():  # noqa: D103
     graphql_input = '''{
         Animal {
@@ -1565,6 +1609,25 @@ def has_edge_degree_op_filter_with_fold():  # noqa: D103
         type_equivalence_hints=None)
 
 
+def is_null_op_filter_missing_value_argument():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            net_worth @filter(op_name: "is_null")
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False)
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
 def is_null_op_filter():  # noqa: D103
     graphql_input = '''{
         Animal {
@@ -1572,11 +1635,9 @@ def is_null_op_filter():  # noqa: D103
             net_worth @filter(op_name: "is_null", value: [])
         }
     }'''
-
     expected_output_metadata = {
         'name': OutputMetadata(type=GraphQLString, optional=False)
     }
-
     expected_input_metadata = {}
 
     return CommonTestData(
@@ -1593,11 +1654,28 @@ def is_not_null_op_filter():  # noqa: D103
             net_worth @filter(op_name: "is_not_null", value: [])
         }
     }'''
-
     expected_output_metadata = {
         'name': OutputMetadata(type=GraphQLString, optional=False)
     }
+    expected_input_metadata = {}
 
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def is_not_null_op_filter_missing_value_argument():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "name")
+            net_worth @filter(op_name: "is_not_null")
+        }
+    }'''
+    expected_output_metadata = {
+        'name': OutputMetadata(type=GraphQLString, optional=False)
+    }
     expected_input_metadata = {}
 
     return CommonTestData(
@@ -1619,6 +1697,28 @@ def fold_on_output_variable():  # noqa: D103
     expected_output_metadata = {
         'animal_name': OutputMetadata(type=GraphQLString, optional=False),
         'child_names_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+    }
+    expected_input_metadata = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None)
+
+
+def fold_on_many_to_one_edge():  # noqa: D103
+    graphql_input = '''{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_LivesIn @fold {
+                name @output(out_name: "homes_list")
+            }
+        }
+    }'''
+    expected_output_metadata = {
+        'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+        'homes_list': OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
     expected_input_metadata = {}
 
