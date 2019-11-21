@@ -22,36 +22,18 @@ __package_name__ = 'graphql-compiler'
 __version__ = '1.11.0'
 
 def some_python_lines_without_coverage():
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-    another_line = 1
-
+    """asdadsas"""
+    # asdasd
+    uncovered_lines = 'as'
+    raise OSError('asdasdasssssssssssssssssssssssssssss'
+                         ''
+                         ''
+                         ''
+                         ''
+                         ''
+                         ''
+                         ''
+                         '')
 
 
 
