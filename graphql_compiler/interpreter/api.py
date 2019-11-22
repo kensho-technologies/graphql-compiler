@@ -30,7 +30,7 @@ def interpret_ir(
 
     start_class = get_only_element_from_collection(first_block.start_class)
 
-    current_data_contexts = (
+    current_data_contexts: Iterable[DataContext[Any]] = (
         DataContext.make_empty_context_from_token(token)
         for token in adapter.get_tokens_of_type(start_class)
     )
