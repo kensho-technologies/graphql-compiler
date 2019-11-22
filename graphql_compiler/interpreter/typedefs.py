@@ -22,12 +22,12 @@ class DataContext(Generic[DataToken]):
         current_token: Optional[DataToken],
         token_at_location: Dict[Location, Optional[DataToken]],
         expression_stack: ImmutableStack,
-    ):
+    ) -> None:
         self.current_token = current_token
         self.token_at_location = token_at_location
         self.expression_stack = expression_stack
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'DataContext(current={}, locations={}, stack={})'.format(
             self.current_token, pformat(self.token_at_location), pformat(self.expression_stack))
 
@@ -46,6 +46,9 @@ class DataContext(Generic[DataToken]):
 
     def pop_value_from_stack(self) -> Any:
         value, remaining_stack = self.expression_stack.pop()
+        if remaining_stack is None:
+            raise AssertionError('We always start the stack with a "None" element pushed on, but '
+                                 'that element somehow got popped off. This is a bug.')
         self.expression_stack = remaining_stack
         return value
 
@@ -62,7 +65,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     def get_tokens_of_type(
         self,
         type_name: str,
-        **hints
+        **hints: Dict[str, Any],
     ) -> Iterable[DataToken]:
         pass
 
@@ -71,7 +74,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         self,
         data_contexts: Iterable[DataContext],
         field_name: str,
-        **hints
+        **hints: Dict[str, Any],
     ) -> Iterable[Tuple[DataContext, Any]]:
         pass
 
@@ -81,7 +84,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         data_contexts: Iterable[DataContext],
         direction: str,
         edge_name: str,
-        **hints
+        **hints: Dict[str, Any],
     ) -> Iterable[Tuple[DataContext, Iterable[DataToken]]]:
         # If using a generator instead of a list for the Iterable[DataToken] part,
         # be careful -- generators are not closures! Make sure any state you pull into
@@ -95,6 +98,6 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         self,
         data_contexts: Iterable[DataContext],
         type_name: str,
-        **hints
+        **hints: Dict[str, Any],
     ) -> Iterable[Tuple[DataContext, bool]]:
         pass
