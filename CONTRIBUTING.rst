@@ -49,7 +49,7 @@ On Ubuntu follow `these instructions (including those marked optional
 <https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017#ubuntu>`__.
 
 Additionally, for Ubuntu you might have to install development header files for the specific
-version of python that you are running the tests from. By, for instance, running:
+version of python that you are running the tests from. You can do so by, for instance, running:
 
 .. code:: bash
 
