@@ -258,19 +258,24 @@ def init_sql_integration_test_backends():
             engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 text('CREATE DATABASE db_2;'))
 
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+                text('USE db_1;'))
             # create the test schemas in db_1
-            db_1_engine = create_engine(base_connection_string + u'/db_1')
-            db_1_engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 CreateSchema('schema_1'))
-            db_1_engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 CreateSchema('schema_2'))
 
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+                text('USE db_2;'))
             # create the test schemas in db_2
-            db_2_engine = create_engine(base_connection_string + u'/db_2')
-            db_2_engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 CreateSchema('schema_1'))
-            db_2_engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(
                 CreateSchema('schema_2'))
+
+            engine.execution_options(isolation_level='AUTOCOMMIT').execute(
+                text('USE master;'))
 
         sql_test_backend = SqlTestBackend(engine, base_connection_string)
         sql_test_backends[backend_name] = sql_test_backend
