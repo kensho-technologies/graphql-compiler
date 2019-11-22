@@ -45,7 +45,6 @@ For MSSQL, you can install the required ODBC driver on OSX with:
     brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
     brew install msodbcsql17 mssql-tools
 
-
 On Ubuntu follow `these instructions (including those marked optional
 <https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017#ubuntu>`__.
 
