@@ -40,8 +40,6 @@ MSSQL ODBC Driver
 
 For MSSQL, you can install the required ODBC driver on OSX with:
 
-On OS X run:
-
 .. code:: bash
 
     brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
