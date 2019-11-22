@@ -63,7 +63,6 @@ SQL_BACKEND_TO_CONNECTION_STRING = {
     #     u'sqlite:///:memory:',
 }
 
-
 SqlTestBackend = namedtuple('SqlTestBackend', (
     'engine',
     'base_connection_string',
