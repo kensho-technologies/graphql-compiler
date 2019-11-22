@@ -86,7 +86,6 @@ update the guide to make future development easier.
 A test method or class can be marked as slow to be skipped in this
 fashion by decorating with the :code:`@pytest.mark.slow` flag.
 
-
 Code of Conduct
 ---------------
 
