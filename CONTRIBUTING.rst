@@ -11,10 +11,16 @@ assumes that they are available on the system as :code:`python2` and
 :code:`python3`, respectively. If you do not already have them installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 
-Integration tests are run against multiple SQL databases, some of which
-require dialect specific installations to be available in the
-development environment. Currently this affects MySQL. A compatible
-driver can be installed on OSX with:
+Database Driver Installations
+-----------------------------
+
+Integration tests are run against multiple databases, some of which
+require that you install specific drivers.
+
+MySQL driver
+~~~~~~~~~~~~
+
+For MySQL a compatible driver can be installed on OSX with:
 
 .. code:: bash
 
@@ -29,8 +35,35 @@ or on Ubuntu with:
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
 
-Once the dev environment is prepared, from the root of the repository,
-run:
+MSSQL ODBC Driver
+~~~~~~~~~~~~~~~~~
+
+For MSSQL, you can install the required ODBC driver on OSX with:
+
+On OS X run:
+
+.. code:: bash
+
+    brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+    brew install msodbcsql17 mssql-tools
+
+
+On Ubuntu follow `these instructions (including those marked optional
+<https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017#ubuntu>`__.
+
+Additionally, for Ubuntu you might have to install development header files for the specific
+version of python that you are running the tests from. By, for instance, running:
+
+.. code:: bash
+
+    sudo apt-get install python-dev3.7    # install python header and static files
+
+In case of any issues installing the ODBC driver, please see `the official docs <https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.
+
+Running tests
+-------------
+
+Once the dev environment is prepared, you can run the tests, from the root repository, with:
 
 ::
 
@@ -55,6 +88,7 @@ update the guide to make future development easier.
 
 A test method or class can be marked as slow to be skipped in this
 fashion by decorating with the :code:`@pytest.mark.slow` flag.
+
 
 Code of Conduct
 ---------------
