@@ -21,21 +21,6 @@ from .schema_generation.sqlalchemy import get_sqlalchemy_schema_info  # noqa
 __package_name__ = 'graphql-compiler'
 __version__ = '1.11.0'
 
-def some_python_lines_without_coverage():
-    """asdadsas"""
-    # asdasd
-    uncovered_lines = 'as'
-    raise OSError('asdasdasssssssssssssssssssssssssssss'
-                         ''
-                         ''
-                         ''
-                         ''
-                         ''
-                         ''
-                         ''
-                         '')
-
-
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):
     """Compile the GraphQL input using the schema into a MATCH query and associated metadata.
