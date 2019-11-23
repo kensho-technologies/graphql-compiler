@@ -9,9 +9,6 @@ apt:
     - python-mysqldb
 install:
   # ODBC driver installation instructions see: https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-ver15
-  - sudo su
-  - curl https://packages.microsoft.com/config/ubuntu/16.04/prod.list > /etc/apt/sources.list.d/mssql-release.list
-  - exit
   - sudo apt-get update
   - sudo ACCEPT_EULA=Y apt-get install msodbcsql17
   - sudo ACCEPT_EULA=Y apt-get install mssql-tools
