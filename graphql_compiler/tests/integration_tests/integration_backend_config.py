@@ -6,7 +6,7 @@ from .. import test_backend
 
 
 # pylint: disable=no-name-in-module
-if sys.version[0] == 2:
+if int(sys.version[0]) == 2:
     from urllib import quote_plus
 else:
     from urllib.parse import quote_plus
