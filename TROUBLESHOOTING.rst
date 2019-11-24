@@ -146,5 +146,5 @@ can be resolved on Ubuntu by running:
 
 .. bash::
 
-    # Please modify to match the version of python you use for development.
+    # Please modify command to match the version of python you use for development.
     sudo apt-get install python3.6-dev
