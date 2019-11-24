@@ -5,12 +5,12 @@ import sys
 from .. import test_backend
 
 
-# TODO: Remove this if statement once we move to python3.
+# pylint: disable=no-name-in-module
 if sys.version[0] == 2:
     from urllib import quote_plus
 else:
     from urllib.parse import quote_plus
-
+# pylint: enable=no-name-in-module
 
 
 DEFAULT_ROOT_PASSWORD = u'root'  # nosec
@@ -44,11 +44,11 @@ REDISGRAPH_BACKENDS = {
     test_backend.REDISGRAPH,
 }
 
-pyodbc_parameter_string = 'DRIVER={driver};SERVER={server};UID={uid};PWD={pwd}'.format(
+pyodbc_parameter_string = 'DRIVER={driver};SERVER={server};UID={uid};PWD={pwd}'.format(  # nosec
     driver='{ODBC Driver 17 for SQL SERVER}',
     server='127.0.0.1',  # Do not change to 'localhost'. You won't be able to connect with the db.
     uid='SA',  # System Administrator.
-    pwd='Root-secure1',  # nosec
+    pwd='Root-secure1',
 )
 
 # delimeters must be URL escaped
