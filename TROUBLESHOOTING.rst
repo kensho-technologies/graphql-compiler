@@ -135,7 +135,7 @@ because that only installs the interface to MySQL.
 Issues with pyodbc
 ------------------
 
-.. TODO: Add link to ODBC driver installation instructions when moving this to Read The Docs.
+.. TODO: Add link to ODBC driver installation instructions once we move to Read The Docs.
 
 If you have any issues installing :Code:`pydobc` when running :code:`pipenv install`, then you
 should please sure you've installed the ODBC driver.
