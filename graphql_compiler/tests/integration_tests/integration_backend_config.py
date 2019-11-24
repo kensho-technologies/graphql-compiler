@@ -1,8 +1,16 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
-import urllib
+import sys
 
 from .. import test_backend
+
+
+# TODO: Remove this if statement once we move to python3.
+if sys.version[0] == 2:
+    from urllib import quote_plus
+else:
+    from urllib.parse import quote_plus
+
 
 
 DEFAULT_ROOT_PASSWORD = u'root'  # nosec
@@ -40,11 +48,11 @@ pyodbc_parameter_string = 'DRIVER={driver};SERVER={server};UID={uid};PWD={pwd}'.
     driver='{ODBC Driver 17 for SQL SERVER}',
     server='127.0.0.1',  # Do not change to 'localhost'. You won't be able to connect with the db.
     uid='SA',  # System Administrator.
-    pwd='Root-secure1',  # Specified in the docker-compose.yml file.
+    pwd='Root-secure1',  # nosec
 )
 
 # delimeters must be URL escaped
-escaped_pyodbc_parameter_string = urllib.parse.quote_plus(pyodbc_parameter_string)
+escaped_pyodbc_parameter_string = quote_plus(pyodbc_parameter_string)
 
 SQL_BACKEND_TO_CONNECTION_STRING = {
     # HACK(bojanserafimov): Entries are commented-out because MSSQL is the only one whose scheme

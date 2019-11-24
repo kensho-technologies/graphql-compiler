@@ -32,9 +32,6 @@ or on Ubuntu with:
 
    apt-get install python-mysqldb
 
-For more details on other systems please refer to `MySQL dialect
-information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
-
 MSSQL ODBC Driver
 ~~~~~~~~~~~~~~~~~
 
@@ -45,17 +42,18 @@ For MSSQL, you can install the required ODBC driver on OSX with:
     brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
     brew install msodbcsql17 mssql-tools
 
-On Ubuntu follow `these instructions (including those marked optional
-<https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017#ubuntu>`__.
-
-Additionally, for Ubuntu you might have to install development header files for the specific
-version of python that you are running the tests from. You can do so by, for instance, running:
+Or Ubuntu with:
 
 .. code:: bash
 
-    sudo apt-get install python-dev3.7    # install python header and static files
+    sudo bash -c "curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -"
+    sudo bash -c "curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -r -s)/prod.list > /etc/apt/sources.list.d/mssql-release.list"
+    sudo apt-get update
+    sudo ACCEPT_EULA=Y apt-get install msodbcsql17
+    sudo apt-get install unixodbc-dev
 
-In case of any issues installing the ODBC driver, please see `the official docs <https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.
+To see the installation instructions for other operating systems, please follow this `link
+<https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.;
 
 Running tests
 -------------
