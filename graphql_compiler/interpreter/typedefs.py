@@ -2,7 +2,7 @@ from abc import ABCMeta, abstractmethod
 from pprint import pformat
 from typing import Any, Dict, Generic, Iterable, Optional, Tuple, TypeVar
 
-from ..compiler.utils import Location
+from ..compiler.helpers import Location
 from .immutable_stack import ImmutableStack, make_empty_stack
 
 
@@ -72,20 +72,20 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     @abstractmethod
     def project_property(
         self,
-        data_contexts: Iterable[DataContext],
+        data_contexts: Iterable[DataContext[DataToken]],
         field_name: str,
         **hints: Dict[str, Any],
-    ) -> Iterable[Tuple[DataContext, Any]]:
+    ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
         pass
 
     @abstractmethod
     def project_neighbors(
         self,
-        data_contexts: Iterable[DataContext],
+        data_contexts: Iterable[DataContext[DataToken]],
         direction: str,
         edge_name: str,
         **hints: Dict[str, Any],
-    ) -> Iterable[Tuple[DataContext, Iterable[DataToken]]]:
+    ) -> Iterable[Tuple[DataContext[DataToken], Iterable[DataToken]]]:
         # If using a generator instead of a list for the Iterable[DataToken] part,
         # be careful -- generators are not closures! Make sure any state you pull into
         # the generator from the outside does not change, or that bug will be hard to find.
@@ -96,8 +96,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     @abstractmethod
     def can_coerce_to_type(
         self,
-        data_contexts: Iterable[DataContext],
+        data_contexts: Iterable[DataContext[DataToken]],
         type_name: str,
         **hints: Dict[str, Any],
-    ) -> Iterable[Tuple[DataContext, bool]]:
+    ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
         pass

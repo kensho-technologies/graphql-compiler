@@ -2,7 +2,7 @@ from typing import Any, Dict, Iterable
 
 from ..compiler.blocks import ConstructResult, QueryRoot
 from ..compiler.compiler_frontend import IrAndMetadata
-from ..compiler.utils import get_only_element_from_collection
+from ..compiler.helpers import get_only_element_from_collection
 from .block_ops import generate_construct_result_outputs, generate_block_outputs
 from .debugging import print_tap
 from .typedefs import DataContext, DataToken, InterpreterAdapter
