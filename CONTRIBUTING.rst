@@ -53,7 +53,7 @@ Or Ubuntu with:
     sudo apt-get install unixodbc-dev
 
 To see the installation instructions for other operating systems, please follow this `link
-<https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.;
+<https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.
 
 Running tests
 -------------

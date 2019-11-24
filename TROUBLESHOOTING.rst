@@ -135,10 +135,10 @@ because that only installs the interface to MySQL.
 Issues with pyodbc
 ------------------
 
-.. TODO: Add link to ODBC driver installation instructions when moving this to Read The Docs.
+.. TODO: Add link to ODBC driver installation instructions once we move to Read The Docs.
 
-If you have any issues installing :Code:`pydobc` when running :code:`pipenv install`, then you
-should please sure you've installed the ODBC driver.
+If you have any issues installing :Code:`pydobc` when running :code:`pipenv install`, then it might
+mean that you have failed to correctly install the ODBC driver.
 
 Another reason that your `pyodbc` installation might fail is because your python installation
 did not include the required header files. This issue has only affected Ubuntu users so far and
@@ -146,5 +146,5 @@ can be resolved on Ubuntu by running:
 
 .. bash::
 
-    # Please modify to match the version of python you use for development.
+    # Please modify command to match the version of python you use for development.
     sudo apt-get install python3.6-dev
