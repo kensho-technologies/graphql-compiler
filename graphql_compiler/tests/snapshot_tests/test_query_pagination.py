@@ -13,7 +13,7 @@ from ...query_pagination.pagination_planning import (
 from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ..test_helpers import generate_schema_graph
+from ..test_helpers import compare_graphql, generate_schema_graph
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -154,6 +154,44 @@ class QueryPaginationTests(unittest.TestCase):
             'c0000000-0000-0000-0000-000000000000',
         ]
         self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_no_pagination(self):
+        """Ensure pagination is not done when not needed."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        original_query = '''{
+            Animal {
+                name @output(out_name: "animal")
+            }
+        }'''
+        parameters = {}
+
+        count_data = {
+            'Animal': 4,
+        }
+
+        statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        first, remainder = paginate_query(schema_info, original_query, parameters, 10)
+
+        # No pagination necessary
+        expected_query_list = (
+            QueryStringWithParameters(original_query, parameters),
+            None,
+        )
+        compare_graphql(self, original_query, first.query_string)
+        self.assertEqual(parameters, first.parameters)
+        self.assertIsNone(remainder)
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
