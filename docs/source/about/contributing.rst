@@ -45,7 +45,7 @@ teardown. These can be optionally skipped during development by running:
 
 .. code:: bash
 
-   py.test -m 'now-slow'
+   py.test -m 'no-slow'
 
 If you run into any issues, please consult the :ref:`troubleshooting guide <troubleshooting>`.
 If you encounter and resolve an issue that is not already part of the
