@@ -317,17 +317,14 @@ class QueryPaginationTests(unittest.TestCase):
             },
         )
         expected_remainder_query = QueryStringWithParameters(
-            # XXX dedup filters
             '''{
                 Animal {
                     uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
-                         @filter(op_name: ">=", value: ["$__paged_param_1"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_param_0': '40000000-0000-0000-0000-000000000000',
-                '__paged_param_1': '80000000-0000-0000-0000-000000000000',
+                '__paged_param_0': '80000000-0000-0000-0000-000000000000',
             },
         )
 
