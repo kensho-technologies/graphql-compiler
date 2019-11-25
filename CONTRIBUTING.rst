@@ -17,7 +17,7 @@ Database Driver Installations
 Integration tests are run against multiple databases, some of which
 require that you install specific drivers.
 
-MySQL driver
+MySQL Driver
 ~~~~~~~~~~~~
 
 For MySQL a compatible driver can be installed on OSX with:
@@ -35,8 +35,8 @@ or on Ubuntu with:
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
 
-MSSQL ODBC Driver
-~~~~~~~~~~~~~~~~~
+Microsoft SQL Server ODBC Driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 For MSSQL, you can install the required ODBC driver on OSX with:
 

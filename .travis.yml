@@ -8,7 +8,7 @@ before_install:
   - bash -c "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -"
   - sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
   - sudo apt-get update
-  # Install the ODBC driver for MSSQL, and the MySQL Python bindings requirements.
+  # Install the ODBC driver for MSSQL, and the MySQL driver.
   - sudo apt-get install unixodbc-dev python-mysqldb
   # Install MSSQL Server 2017
   - sudo ACCEPT_EULA=Y apt-get install msodbcsql17
