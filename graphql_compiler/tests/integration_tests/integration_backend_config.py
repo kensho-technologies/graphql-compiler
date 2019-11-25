@@ -2,15 +2,9 @@
 from collections import namedtuple
 import sys
 
+from six.moves.urllib.parse import quote_plus
+
 from .. import test_backend
-
-
-# pylint: disable=no-name-in-module
-if int(sys.version[0]) == 2:
-    from urllib import quote_plus
-else:
-    from urllib.parse import quote_plus
-# pylint: enable=no-name-in-module
 
 
 DEFAULT_ROOT_PASSWORD = u'root'  # nosec
