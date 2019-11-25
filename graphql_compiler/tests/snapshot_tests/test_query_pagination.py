@@ -193,9 +193,8 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(parameters, first.parameters)
         self.assertIsNone(remainder)
 
-    # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures('snapshot_orientdb_client')
-    def test_basic_pagination(self):
+    def test_pagination_end_to_end_basic(self):
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -221,37 +220,34 @@ class QueryPaginationTests(unittest.TestCase):
             pagination_keys=pagination_keys,
             uuid4_fields=uuid4_fields)
 
-        # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
-        # Once query pagination is fully implemented, the result of this call should be equal to
-        # expected_query_list.
-        # pylint: disable=unused-variable
-        with self.assertRaises(NotImplementedError):
-            paginated_queries = paginate_query(                     # noqa: unused-variable
-                schema_info, test_data, parameters, 1
-            )
-
-        expected_query_list = (                                     # noqa: unused-variable
-            QueryStringWithParameters(
-                '''{
-                    Animal {
-                        uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
-                        name @output(out_name: "animal")
-                    }
-                }''',
-                {
-                    '_paged_upper_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
-                },
-            ),
-            QueryStringWithParameters(
-                '''{
-                    Animal {
-                        uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
-                        name @output(out_name: "animal")
-                    }
-                }''',
-                {
-                    '_paged_lower_param_on_Animal_uuid': '40000000-0000-0000-0000-000000000000',
-                },
-            ),
+        first, remainder = paginate_query(
+            schema_info, test_data, parameters, 1
         )
-        # pylint: enable=unused-variable
+
+        expected_page_query = QueryStringWithParameters(
+            '''{
+                Animal {
+                    uuid @filter(op_name: "<", value: ["$__paged_param"])
+                    name @output(out_name: "animal")
+                }
+            }''',
+            {
+                '__paged_param': '40000000-0000-0000-0000-000000000000',
+            },
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            '''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param"])
+                    name @output(out_name: "animal")
+                }
+            }''',
+            {
+                '__paged_param': '40000000-0000-0000-0000-000000000000',
+            },
+        )
+
+        compare_graphql(self, expected_page_query.query_string, first.query_string)
+        self.assertEqual(expected_page_query.parameters, first.parameters)
+        compare_graphql(self, expected_remainder_query.query_string, remainder.query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder.parameters)

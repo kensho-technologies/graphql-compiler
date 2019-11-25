@@ -67,7 +67,3 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
         )
     else:
         raise AssertionError()
-
-
-def generate_parameters_for_parameterized_query(schema_info, query, parameters):
-    raise NotImplementedError()
