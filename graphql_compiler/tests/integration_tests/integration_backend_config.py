@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
-import sys
 
 from six.moves.urllib.parse import quote_plus
 
