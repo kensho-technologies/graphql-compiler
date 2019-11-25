@@ -60,9 +60,7 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
     new_parameters.update({
         param_name: first_param
     })
-
-    # TODO check if __paged param is taken
-    next_page_ast_with_parameters = ASTWithParameters(page_query, new_parameters)
-    remainder_ast_with_parameters = ASTWithParameters(remainder_query, new_parameters)
-
-    return next_page_ast_with_parameters, remainder_ast_with_parameters
+    return (
+        ASTWithParameters(page_query, new_parameters),
+        ASTWithParameters(remainder_query, new_parameters),
+    )

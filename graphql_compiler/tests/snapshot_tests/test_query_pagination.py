@@ -340,5 +340,4 @@ class QueryPaginationTests(unittest.TestCase):
         # Check that the second page is estimated to fit into a page
         second_page_cardinality_estimate = estimate_query_result_cardinality(
             schema_info, second.query_string, second.parameters)
-        # self.assertAlmostEqual(1, second_page_cardinality_estimate)
-        # XXX need to fix param names first
+        self.assertAlmostEqual(1, second_page_cardinality_estimate)
