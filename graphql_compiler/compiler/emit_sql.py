@@ -254,13 +254,15 @@ class SQLFoldObject(object):
 
     # A SQLFoldObject consists of information related to the SELECT clause of the fold subquery,
     # the GROUP BY clause, the WHERE clause (if applying filters) and the FROM clause which contains
-    #  one JOIN per vertex traversed in the fold, including the traversal from the vertex outside
+    # one JOIN per vertex traversed in the fold, including the traversal from the vertex outside
     # the fold to the folded vertex itself.
     #
-    # The life cycle for the SQLFoldObject is 1.) initializing it with the information for the
-    # outer vertex (the one outside the fold), 2.) at least one traversal, 3.) visiting the output
-    # vertex to collect the output columns, 4.) optionally adding a filter condition, 5.) ending
-    # the fold by producing the resulting subquery.
+    # The life cycle for the SQLFoldObject is:
+    #   1. initializing it with the information for the outer vertex (the one outside the fold)
+    #   2. at least one traversal
+    #   3. visiting the output vertex to collect the output columns
+    #   4. optionally adding a filter condition
+    #   5. ending the fold by producing the resulting subquery
     #
     # This life cycle is completed via calls to __init__, visit_traversed_vertex,
     # visit_output_vertex, add_filter, and end_fold.
@@ -831,11 +833,14 @@ class CompilationState(object):
 
     def filter(self, predicate):
         """Execute a Filter Block."""
-        # If there is an active fold, add the filter to the current fold.
+        # If there is an active fold, add the filter to the current fold. Note that this is only for
+        # regular fields i.e. non-_x_count fields. Filtering on _x_count will use the COUNT(*)
+        # output from the folded subquery and apply the filter in the global WHERE clause.
         if self._current_fold is not None:
             self._current_fold.add_filter(predicate, self._aliases)
 
-        # Otherwise, add the filter to the compilation state.
+        # Otherwise, add the filter to the compilation state. Note that this is for filters outside
+        # a fold scope and _x_count filters within a fold scope.
         else:
             sql_expression = predicate.to_sql(self._dialect,
                                               self._aliases,
