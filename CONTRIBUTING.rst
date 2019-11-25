@@ -11,10 +11,16 @@ assumes that they are available on the system as :code:`python2` and
 :code:`python3`, respectively. If you do not already have them installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 
-Integration tests are run against multiple SQL databases, some of which
-require dialect specific installations to be available in the
-development environment. Currently this affects MySQL. A compatible
-driver can be installed on OSX with:
+Database Driver Installations
+-----------------------------
+
+Integration tests are run against multiple databases, some of which
+require that you install specific drivers.
+
+MySQL Driver
+~~~~~~~~~~~~
+
+For MySQL a compatible driver can be installed on OSX with:
 
 .. code:: bash
 
@@ -29,8 +35,33 @@ or on Ubuntu with:
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
 
-Once the dev environment is prepared, from the root of the repository,
-run:
+Microsoft SQL Server ODBC Driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For MSSQL, you can install the required ODBC driver on OSX with:
+
+.. code:: bash
+
+    brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+    brew install msodbcsql17 mssql-tools
+
+Or Ubuntu with:
+
+.. code:: bash
+
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+    sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
+    sudo apt-get update
+    sudo ACCEPT_EULA=Y apt-get install msodbcsql17
+    sudo apt-get install unixodbc-dev
+
+To see the installation instructions for other operating systems, please follow this `link
+<https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.
+
+Running tests
+-------------
+
+Once the dev environment is prepared, you can run the tests, from the root repository, with:
 
 ::
 
