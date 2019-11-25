@@ -71,7 +71,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page,
     return new_ast, param_name
 
 
-def generate_parameterized_queries(schema_info, query_ast, parameters, query_path):
+def generate_parameterized_queries(schema_info, query_ast, parameters, vertex_partition):
     """Generate two parameterized queries that can be used to paginate over a given query.
 
     In order to paginate arbitrary GraphQL queries, additional filters may need to be added to be
@@ -88,12 +88,11 @@ def generate_parameterized_queries(schema_info, query_ast, parameters, query_pat
         ParameterizedPaginationQueries namedtuple
     """
     query_type = get_only_query_definition(query_ast, GraphQLError)
-    pagination_field = 'uuid'  # XXX not
 
     next_page_type, next_page_param_name = _add_pagination_filters(
-        query_type, query_path, pagination_field, True, parameters)
+        query_type, vertex_partition.query_path, vertex_partition.pagination_field, True, parameters)
     remainder_type, remainder_param_name = _add_pagination_filters(
-        query_type, query_path, pagination_field, False, parameters)
+        query_type, vertex_partition.query_path, vertex_partition.pagination_field, False, parameters)
 
     next_page_ast = Document(
         definitions=[next_page_type]
