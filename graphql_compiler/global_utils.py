@@ -15,3 +15,13 @@ def merge_non_overlapping_dicts(merge_target, new_data):
         result[key] = value
 
     return result
+
+
+def find_new_name(desired_name, taken_names, try_original=False):
+    if try_original and desired_name not in taken_names:
+        return desired_name
+
+    index = 0
+    while '{}_{}'.format(desired_name, index) in taken_names:
+        index += 1
+    return '{}_{}'.format(desired_name, index)

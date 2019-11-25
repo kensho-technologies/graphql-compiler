@@ -53,13 +53,16 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
         schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0])
     first_param = next(parameter_generator)
 
-    page_query, remainder_query = generate_parameterized_queries(
-        schema_info, query_ast, pagination_plan.vertex_partitions[0].query_path)
+    param_name, page_query, remainder_query = generate_parameterized_queries(
+        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0].query_path)
+
+    new_parameters = dict(parameters)
+    new_parameters.update({
+        param_name: first_param
+    })
 
     # TODO check if __paged param is taken
-    next_page_ast_with_parameters = ASTWithParameters(
-        page_query, {'__paged_param': first_param})
-    remainder_ast_with_parameters = ASTWithParameters(
-        remainder_query, {'__paged_param': first_param})
+    next_page_ast_with_parameters = ASTWithParameters(page_query, new_parameters)
+    remainder_ast_with_parameters = ASTWithParameters(remainder_query, new_parameters)
 
     return next_page_ast_with_parameters, remainder_ast_with_parameters

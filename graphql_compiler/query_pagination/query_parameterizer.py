@@ -2,6 +2,7 @@
 from collections import namedtuple
 from copy import copy
 
+from ..global_utils import find_new_name
 from ..ast_manipulation import get_only_query_definition, get_ast_field_name
 from ..exceptions import GraphQLError
 
@@ -11,7 +12,7 @@ from graphql.language.ast import (
 )
 
 
-def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page):
+def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page, param_name):
     if not isinstance(query_ast, (Field, InlineFragment, OperationDefinition)):
         raise AssertionError(
             u'Input AST is of type "{}", which should not be a selection.'
@@ -31,7 +32,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page)
                 new_selection_ast.directives.append(
                     Directive(Name('filter'), arguments=[
                         Argument(Name('op_name'), StringValue('<' if lower_page else '>=')),
-                        Argument(Name('value'), ListValue([StringValue('$__paged_param')])),
+                        Argument(Name('value'), ListValue([StringValue('$' + param_name)])),
                     ])
                 )
             new_selections.append(new_selection_ast)
@@ -39,7 +40,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page)
             new_selections.insert(0, Field(Name(pagination_field), directives=[
                 Directive(Name('filter'), arguments=[
                     Argument(Name('op_name'), StringValue('<' if lower_page else '>=')),
-                    Argument(Name('value'), ListValue([StringValue('$__paged_param')])),
+                    Argument(Name('value'), ListValue([StringValue('$' + param_name)])),
                 ])
             ]))
     else:
@@ -54,7 +55,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page)
             if field_name == query_path[0]:
                 found_field = True
                 new_selection_ast = _add_pagination_filters(
-                    selection_ast, query_path[1:], pagination_field, lower_page)
+                    selection_ast, query_path[1:], pagination_field, lower_page, param_name)
             new_selections.append(new_selection_ast)
 
         if not found_field:
@@ -65,7 +66,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page)
     return new_ast
 
 
-def generate_parameterized_queries(schema_info, query_ast, query_path):
+def generate_parameterized_queries(schema_info, query_ast, parameters, query_path):
     """Generate two parameterized queries that can be used to paginate over a given query.
 
     In order to paginate arbitrary GraphQL queries, additional filters may need to be added to be
@@ -83,8 +84,10 @@ def generate_parameterized_queries(schema_info, query_ast, query_path):
     """
     query_type = get_only_query_definition(query_ast, GraphQLError)
     pagination_field = 'uuid'  # XXX not
-    next_page_type = _add_pagination_filters(query_type, query_path, pagination_field, True)
-    remainder_type = _add_pagination_filters(query_type, query_path, pagination_field, False)
+
+    param_name = find_new_name('__paged_param', parameters.keys())
+    next_page_type = _add_pagination_filters(query_type, query_path, pagination_field, True, param_name)
+    remainder_type = _add_pagination_filters(query_type, query_path, pagination_field, False, param_name)
 
     next_page_ast = Document(
         definitions=[next_page_type]
@@ -93,4 +96,4 @@ def generate_parameterized_queries(schema_info, query_ast, query_path):
         definitions=[remainder_type]
     )
 
-    return next_page_ast, remainder_ast
+    return param_name, next_page_ast, remainder_ast

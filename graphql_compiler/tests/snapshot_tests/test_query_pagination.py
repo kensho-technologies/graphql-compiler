@@ -268,23 +268,23 @@ class QueryPaginationTests(unittest.TestCase):
         expected_page_query = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: "<", value: ["$__paged_param"])
+                    uuid @filter(op_name: "<", value: ["$__paged_param_0"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_param': '40000000-0000-0000-0000-000000000000',
+                '__paged_param_0': '40000000-0000-0000-0000-000000000000',
             },
         )
         expected_remainder_query = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_param"])
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_param': '40000000-0000-0000-0000-000000000000',
+                '__paged_param_0': '40000000-0000-0000-0000-000000000000',
             },
         )
 
@@ -306,27 +306,28 @@ class QueryPaginationTests(unittest.TestCase):
         expected_second_query = QueryStringWithParameters(
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_param"])
-                         @filter(op_name: "<", value: ["$__paged_param"])
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
+                         @filter(op_name: "<", value: ["$__paged_param_1"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_param': '40000000-0000-0000-0000-000000000000',
-                '__paged_param': '80000000-0000-0000-0000-000000000000',
+                '__paged_param_0': '40000000-0000-0000-0000-000000000000',
+                '__paged_param_1': '80000000-0000-0000-0000-000000000000',
             },
         )
         expected_remainder_query = QueryStringWithParameters(
             # XXX dedup filters
             '''{
                 Animal {
-                    uuid @filter(op_name: ">=", value: ["$__paged_param"])
-                         @filter(op_name: ">=", value: ["$__paged_param"])
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
+                         @filter(op_name: ">=", value: ["$__paged_param_1"])
                     name @output(out_name: "animal")
                 }
             }''',
             {
-                '__paged_param': '80000000-0000-0000-0000-000000000000',
+                '__paged_param_0': '40000000-0000-0000-0000-000000000000',
+                '__paged_param_1': '80000000-0000-0000-0000-000000000000',
             },
         )
 
