@@ -32,6 +32,9 @@ or on Ubuntu with:
 
    apt-get install python-mysqldb
 
+For more details on other systems please refer to `MySQL dialect
+information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
+
 MSSQL ODBC Driver
 ~~~~~~~~~~~~~~~~~
 
