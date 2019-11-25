@@ -49,8 +49,8 @@ Or Ubuntu with:
 
 .. code:: bash
 
-    sudo bash -c "curl https://packages.microsoft.com/keys/microsoft.asc | apt-key add -"
-    sudo bash -c "curl https://packages.microsoft.com/config/ubuntu/$(lsb_release -r -s)/prod.list > /etc/apt/sources.list.d/mssql-release.list"
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+    sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
     sudo apt-get update
     sudo ACCEPT_EULA=Y apt-get install msodbcsql17
     sudo apt-get install unixodbc-dev
