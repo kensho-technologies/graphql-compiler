@@ -375,6 +375,24 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
     return float(interval_size) / domain_interval_size
 
 
+def get_integer_interval_for_filters_on_field(
+        schema_info, filters_on_field, location_name, field_name, parameters):
+    interval = _create_integer_interval(None, None)
+    for filter_info in filters_on_field:
+        if filter_info.op_name in INEQUALITY_OPERATORS:
+            parameter_values = [
+                convert_field_value_to_int(
+                    schema_info, location_name, field_name,
+                    parameters[get_parameter_name(filter_argument)])
+                for filter_argument in filter_info.args
+            ]
+
+            filter_interval = _get_query_interval_of_integer_inequality_filter(
+                parameter_values, filter_info.op_name)
+            interval = _get_intersection_of_intervals(interval, filter_interval)
+    return interval
+
+
 def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
     """Get the combined selectivity of all filters at the vertex.
 
@@ -406,18 +424,8 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
 
         # Process inequality filters
         if field_supports_range_reasoning(schema_info, location_name, field_name):
-            for filter_info in filters_on_field:
-                if filter_info.op_name in INEQUALITY_OPERATORS:
-                    parameter_values = [
-                        convert_field_value_to_int(
-                            schema_info, location_name, field_name,
-                            parameters[get_parameter_name(filter_argument)])
-                        for filter_argument in filter_info.args
-                    ]
-
-                    filter_interval = _get_query_interval_of_integer_inequality_filter(
-                        parameter_values, filter_info.op_name)
-                    interval = _get_intersection_of_intervals(interval, filter_interval)
+            interval = get_integer_interval_for_filters_on_field(
+                schema_info, filters_on_field, location_name, field_name, parameters)
 
             if interval is None:
                 selectivity_at_field = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)

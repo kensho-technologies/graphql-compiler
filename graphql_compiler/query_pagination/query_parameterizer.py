@@ -26,7 +26,14 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page)
             field_name = get_ast_field_name(selection_ast)
             if field_name == pagination_field:
                 found_field = True
-                raise NotImplementedError(u'At field')
+                new_selection_ast = copy(selection_ast)
+                new_selection_ast.directives = copy(selection_ast.directives)
+                new_selection_ast.directives.append(
+                    Directive(Name('filter'), arguments=[
+                        Argument(Name('op_name'), StringValue('<' if lower_page else '>=')),
+                        Argument(Name('value'), ListValue([StringValue('$__paged_param')])),
+                    ])
+                )
             new_selections.append(new_selection_ast)
         if not found_field:
             new_selections.insert(0, Field(Name(pagination_field), directives=[

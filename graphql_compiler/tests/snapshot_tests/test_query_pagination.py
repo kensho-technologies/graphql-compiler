@@ -24,6 +24,7 @@ from ..test_helpers import compare_graphql, generate_schema_graph
 class QueryPaginationTests(unittest.TestCase):
     """Test the query pagination module."""
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_pagination_planning_basic(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -53,6 +54,7 @@ class QueryPaginationTests(unittest.TestCase):
         ])
         self.assertEqual(expected_plan, pagination_plan)
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_parameter_value_generation_int(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -85,6 +87,43 @@ class QueryPaginationTests(unittest.TestCase):
         expected_parameters = [26, 51, 76]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_parameter_value_generation_with_existing_filters(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys['Species'] = 'limbs'  # Force pagination on int field
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {'Species': 1000}
+        statistics = LocalStatistics(class_counts, field_quantiles={
+            ('Species', 'limbs'): [i for i in range(101)],
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        query = '''{
+            Species {
+                limbs @filter(op_name: "<", value: ["$num_limbs"])
+                name @output(out_name: "species_name")
+            }
+        }'''
+        args = {
+            'num_limbs': 50
+        }
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartition(['Species'], 'limbs', 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition)
+
+        expected_parameters = [14, 26, 38]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_parameter_value_generation_datetime(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -123,6 +162,7 @@ class QueryPaginationTests(unittest.TestCase):
         ]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_parameter_value_generation_uuid(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -248,11 +288,56 @@ class QueryPaginationTests(unittest.TestCase):
             },
         )
 
+        # Check that the correct queries are generated
         compare_graphql(self, expected_page_query.query_string, first.query_string)
         self.assertEqual(expected_page_query.parameters, first.parameters)
         compare_graphql(self, expected_remainder_query.query_string, remainder.query_string)
         self.assertEqual(expected_remainder_query.parameters, remainder.parameters)
 
+        # Check that the first page is estimated to fit into a page
         first_page_cardinality_estimate = estimate_query_result_cardinality(
             schema_info, first.query_string, first.parameters)
         self.assertAlmostEqual(1, first_page_cardinality_estimate)
+
+        # Get the second page
+        second, remainder = paginate_query(
+            schema_info, remainder.query_string, remainder.parameters, 1)
+
+        expected_second_query = QueryStringWithParameters(
+            '''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param"])
+                         @filter(op_name: "<", value: ["$__paged_param"])
+                    name @output(out_name: "animal")
+                }
+            }''',
+            {
+                '__paged_param': '40000000-0000-0000-0000-000000000000',
+                '__paged_param': '55555555-5555-5400-0000-000000000000',  # XXX why?
+            },
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            # XXX dedup filters
+            '''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param"])
+                         @filter(op_name: ">=", value: ["$__paged_param"])
+                    name @output(out_name: "animal")
+                }
+            }''',
+            {
+                '__paged_param': '55555555-5555-5400-0000-000000000000',  # XXX why?
+            },
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_second_query.query_string, second.query_string)
+        self.assertEqual(expected_second_query.parameters, second.parameters)
+        compare_graphql(self, expected_remainder_query.query_string, remainder.query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder.parameters)
+
+        # Check that the second page is estimated to fit into a page
+        second_page_cardinality_estimate = estimate_query_result_cardinality(
+            schema_info, second.query_string, second.parameters)
+        # self.assertAlmostEqual(1, second_page_cardinality_estimate)
+        # XXX need to fix param names first

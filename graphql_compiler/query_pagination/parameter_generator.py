@@ -1,7 +1,13 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import itertools
+import bisect
 
+from graphql.language.printer import print_ast
+
+from ..compiler.compiler_frontend import graphql_to_ir
+from ..compiler.helpers import Location
 from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
+from ..cost_estimation.filter_selectivity_utils import get_integer_interval_for_filters_on_field
 from ..cost_estimation.int_value_conversion import convert_field_value_to_int, convert_int_to_field_value, MIN_UUID_INT, MAX_UUID_INT, field_supports_range_reasoning
 
 
@@ -30,11 +36,33 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
     if vertex_partition.number_of_splits < 2:
         raise AssertionError('Invalid number of splits {}'.format(vertex_partition))
 
+    # Find the FilterInfos on the pagination field
+    graphql_query_string = print_ast(query_ast)
+    query_metadata = graphql_to_ir(
+        schema_info.schema,
+        graphql_query_string,
+        type_equivalence_hints=schema_info.type_equivalence_hints
+    ).query_metadata_table
+    filter_infos = query_metadata.get_filter_infos(Location(tuple(vertex_partition.query_path)))
+    filters_on_field = [
+        filter_info
+        for filter_info in filter_infos
+        if filter_info.fields == (pagination_field,)
+    ]
+
     # See what are the min and max values currently imposed by existing filters.
-    # TODO(bojanserafimov): Assuming no existing filters for now.
+    integer_interval = get_integer_interval_for_filters_on_field(
+        schema_info, filters_on_field, vertex_type.name, pagination_field, parameters)
+    min_int = integer_interval.lower_bound
+    max_int = integer_interval.upper_bound
     min_value = None
     max_value = None
+    if min_int is not None:
+        min_value = convert_int_to_field_value(schema_info, vertex_type.name, pagination_field, min_int)
+    if max_int is not None:
+        max_value = convert_int_to_field_value(schema_info, vertex_type.name, pagination_field, max_int)
 
+    # Compute parameters
     if is_uuid4_type(schema_info, vertex_type.name, pagination_field):
         min_int, max_int = MIN_UUID_INT, MAX_UUID_INT
         if min_value is not None:
@@ -61,9 +89,22 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
         # of the first quantile. That's why we drop the minimum and
         # maximum observed values from the quantile list.
         proper_quantiles = quantiles[1:-1]
+
+        # Discard quantiles below min_value and above max_value
+        min_quantile = 0
+        max_quantile = len(proper_quantiles)
+        if min_value is not None:
+            min_quantile = bisect.bisect_left(proper_quantiles, min_value)
+        if max_value is not None:
+            max_quantile = bisect.bisect_left(proper_quantiles, max_value)
+        relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
+
         return (
             proper_quantiles[index]
-            for index in _sum_partition(len(proper_quantiles) + 1, vertex_partition.number_of_splits)
+            for index in _sum_partition(
+                len(relevant_quantiles) + 1,
+                vertex_partition.number_of_splits
+            )
         )
     else:
         raise AssertionError()
