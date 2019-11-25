@@ -10,6 +10,7 @@ from ..exceptions import GraphQLError
 VertexPartition = namedtuple(
     'VertexPartition', (
         'query_path',  # Tuple[field name : str] leading to the vertex to be split
+        'pagination_field',  # String, field to use for pagination
         'number_of_splits',  # The number of subdivisions intended for this vertex
     )
 )
@@ -25,9 +26,12 @@ PaginationPlan = namedtuple(
 
 # TODO(bojanserafimov): Make this function return a best effort pagination plan
 #                       when a good one is not found instead of returning None.
-def try_get_pagination_plan(schema_info, query_ast, number_of_pages):
+def try_get_pagination_plan(schema_info, query_ast, number_of_pages, hints=None):
     """Make a PaginationPlan for the given query and number of desired pages if possible."""
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
+
+    if hints is not None:
+        raise NotImplementedError()
 
     # Select the root node as the only vertex to paginate on.
     # TODO(bojanserafimov): Make a better pagination plan. Selecting the root is not
@@ -52,4 +56,6 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages):
     else:
         return None
 
-    return PaginationPlan([VertexPartition((pagination_node.name.value,), number_of_pages)])
+    return PaginationPlan([
+        VertexPartition((pagination_node.name.value,), pagination_field, number_of_pages)
+    ])

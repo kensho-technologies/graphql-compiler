@@ -5,6 +5,7 @@ import datetime
 import pytest
 
 from ...ast_manipulation import safe_parse_graphql
+from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
@@ -48,7 +49,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan = try_get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan([
-            VertexPartition(('Animal',), number_of_pages)
+            VertexPartition(('Animal',), 'uuid', number_of_pages)
         ])
         self.assertEqual(expected_plan, pagination_plan)
 
@@ -77,7 +78,7 @@ class QueryPaginationTests(unittest.TestCase):
         }'''
         args = {}
         query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartition(['Species'], 4)
+        vertex_partition = VertexPartition(['Species'], 'limbs', 4)
         generated_parameters = generate_parameters_for_vertex_partition(
             schema_info, query_ast, args, vertex_partition)
 
@@ -111,7 +112,7 @@ class QueryPaginationTests(unittest.TestCase):
         }'''
         args = {}
         query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartition(['Event'], 4)
+        vertex_partition = VertexPartition(['Event'], 'event_date', 4)
         generated_parameters = generate_parameters_for_vertex_partition(
             schema_info, query_ast, args, vertex_partition)
 
@@ -144,7 +145,7 @@ class QueryPaginationTests(unittest.TestCase):
         }'''
         args = {}
         query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartition(['Animal'], 4)
+        vertex_partition = VertexPartition(['Animal'], 'uuid', 4)
         generated_parameters = generate_parameters_for_vertex_partition(
             schema_info, query_ast, args, vertex_partition)
 
@@ -251,3 +252,7 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_page_query.parameters, first.parameters)
         compare_graphql(self, expected_remainder_query.query_string, remainder.query_string)
         self.assertEqual(expected_remainder_query.parameters, remainder.parameters)
+
+        first_page_cardinality_estimate = estimate_query_result_cardinality(
+            schema_info, first.query_string, first.parameters)
+        self.assertAlmostEqual(1, first_page_cardinality_estimate)

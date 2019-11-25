@@ -26,7 +26,7 @@ def _sum_partition(number, num_splits):
 def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters, vertex_partition):
     """Return a generator"""
     vertex_type = _get_query_path_endpoint_type(schema_info.schema, vertex_partition.query_path)
-    pagination_field = schema_info.pagination_keys[vertex_type.name]
+    pagination_field = vertex_partition.pagination_field
     if vertex_partition.number_of_splits < 2:
         raise AssertionError('Invalid number of splits {}'.format(vertex_partition))
 
