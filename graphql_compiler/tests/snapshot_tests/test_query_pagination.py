@@ -313,7 +313,7 @@ class QueryPaginationTests(unittest.TestCase):
             }''',
             {
                 '__paged_param': '40000000-0000-0000-0000-000000000000',
-                '__paged_param': '55555555-5555-5400-0000-000000000000',  # XXX why?
+                '__paged_param': '80000000-0000-0000-0000-000000000000',
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -326,7 +326,7 @@ class QueryPaginationTests(unittest.TestCase):
                 }
             }''',
             {
-                '__paged_param': '55555555-5555-5400-0000-000000000000',  # XXX why?
+                '__paged_param': '80000000-0000-0000-0000-000000000000',
             },
         )
 
