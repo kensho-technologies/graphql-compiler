@@ -6,7 +6,7 @@ Thank you for taking the time to contribute to this project!
 To get started, make sure that you have :code:`pipenv`, :code:`docker` and
 :code:`docker-compose` installed on your computer. Additionally, since this
 is a package that supports both Python 2 and Python 3, please make sure
-you have Python 2.7.15+ and Python 3.6+ installed locally. This project
+you have Python 2.7.15+ and Python 3.7+ installed locally. This project
 assumes that they are available on the system as :code:`python2` and
 :code:`python3`, respectively. If you do not already have them installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
