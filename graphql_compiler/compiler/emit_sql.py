@@ -294,6 +294,7 @@ class SQLFoldObject(object):
     #          ...
     # INNER JOIN OutputVertex <- INNER JOINs compiled during end_fold
     # ON ...
+    # WHERE ... <- only for filters, which can be added with add_filter
     # GROUP BY OuterVertex.SOME_COLUMN
     #
     # and as follows for MSSQL:
