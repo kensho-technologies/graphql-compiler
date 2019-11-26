@@ -3,6 +3,7 @@ from collections import namedtuple
 
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
 from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
+from ..cost_estimation.int_value_conversion import field_supports_range_reasoning
 from ..exceptions import GraphQLError
 
 
@@ -47,13 +48,13 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages, hints=None)
 
     if is_uuid4_type(schema_info, pagination_node.name.value, pagination_field):
         pass
-    elif is_int_field_type(schema_info, pagination_node.name.value, pagination_field):
+    elif field_supports_range_reasoning(schema_info, pagination_node.name.value, pagination_field):
         quantiles = schema_info.statistics.get_field_quantiles(
             pagination_node.name.value, pagination_field)
         # We make sure there's more than enough quantiles because we don't interpolate.
         if quantiles is None or len(quantiles) < 10 * number_of_pages:
             return None
-    else:  # XXX enable datetime
+    else:
         return None
 
     return PaginationPlan([
