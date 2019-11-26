@@ -3,9 +3,9 @@ from collections import namedtuple
 
 from graphql.language.printer import print_ast
 
-from graphql_compiler.ast_manipulation import safe_parse_graphql
-from graphql_compiler.cost_estimation.cardinality_estimator import estimate_number_of_pages
-from graphql_compiler.query_pagination.query_splitter import (
+from ..ast_manipulation import safe_parse_graphql
+from ..cost_estimation.cardinality_estimator import estimate_number_of_pages
+from ..query_pagination.query_splitter import (
     ASTWithParameters, split_into_page_query_and_remainder_query
 )
 

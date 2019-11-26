@@ -4,7 +4,7 @@ from collections import namedtuple
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
 from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
 from ..cost_estimation.int_value_conversion import field_supports_range_reasoning
-from ..exceptions import GraphQLError
+from ..exceptions import GraphQLPaginationError, GraphQLError
 
 
 # The intent to split the query at a certain vertex into a certain number of pages.
@@ -44,7 +44,9 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages, hints=None)
 
     pagination_field = schema_info.pagination_keys.get(pagination_node.name.value)
     if pagination_field is None:
-        return None
+        raise PaginationError(u'Cannot paginate because no pagination field is specified '
+                              u'on the query root. The pagination planner is not good '
+                              u'enough to consider other vertices.')
 
     if is_uuid4_type(schema_info, pagination_node.name.value, pagination_field):
         pass
@@ -52,10 +54,18 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages, hints=None)
         quantiles = schema_info.statistics.get_field_quantiles(
             pagination_node.name.value, pagination_field)
         # We make sure there's more than enough quantiles because we don't interpolate.
-        if quantiles is None or len(quantiles) < 10 * number_of_pages:
-            return None
+        if quantiles is None:
+            raise GraphQLPaginationError(u'Cannot paginate because no quantiles exist for {}.{}'
+                                         .format(pagination_node.name.value, pagination_field))
+        if len(quantiles) < 10 * number_of_pages:
+            raise GraphQLPaginationError(u'Cannot paginate because there are not enought quantiles '
+                                         u'for {}.{}. Found {}, but {} are needed to paginate {} pages'
+                                         .format(pagination_node.name.value, pagination_field,
+                                                 len(quantiles), 10 * number_of_pages, number_of_pages))
     else:
-        return None
+        raise GraphQLPaginationError(u'Cannot paginate because pagination on the type of {}.{} '
+                                     u'is not supported'.format(pagination_node.name.value,
+                                                                pagination_field))
 
     return PaginationPlan([
         VertexPartition((pagination_node.name.value,), pagination_field, number_of_pages)

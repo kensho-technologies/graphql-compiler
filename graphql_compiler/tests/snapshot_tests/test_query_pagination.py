@@ -4,6 +4,7 @@ import datetime
 
 import pytest
 
+from ...exceptions import GraphQLPaginationError
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.statistics import LocalStatistics
@@ -397,3 +398,35 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_page_query.parameters, first.parameters)
         compare_graphql(self, expected_remainder_query.query_string, remainder.query_string)
         self.assertEqual(expected_remainder_query.parameters, remainder.parameters)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_pagination_planning_error(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys['Event'] = 'event_date'  # Force pagination on datetime field
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {'Event': 1000}
+        statistics = LocalStatistics(class_counts, field_quantiles={
+            ('Event', 'event_date'): [
+                datetime.datetime(2000 + i, 1, 1) for i in range(101)
+            ],
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        query = '''{
+            Event {
+                name @output(out_name: "event_name")
+            }
+        }'''
+        args = {}
+
+        with self.assertRaises(GraphQLPaginationError):
+            paginate_query(schema_info, query, args, 1)
+
