@@ -23,7 +23,7 @@ before_script:
 matrix:
   include:
   - name: "Lint and static analysis"
-    python: "3.7"
+    python: "3.6"
     script:
       - pipenv run ./scripts/copyright_line_check.sh
       - pipenv run ./scripts/lint.sh
