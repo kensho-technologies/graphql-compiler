@@ -4,10 +4,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-# The Cython dependency of pymssql is not correctly resolved on all systems
-# so it is explicitly included here.
-cython = "==0.29.2"
-
 # Test requirements that are not otherwise necessary when using the package.
 mysqlclient = "==1.3.14"
 neo4j = ">=1.7.4,<2"
