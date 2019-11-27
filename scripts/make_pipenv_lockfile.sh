@@ -11,22 +11,16 @@ shopt -s globstar nullglob
 # Make sure the current working directory for this script is the root directory.
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
-# Make sure that the system has both a Python 2 and a Python 3 available.
+# Make sure that the system has Python 3 available as "python".
 # Since we've set -e above, if "grep" doesn't find anything, the script will break.
-python2 --version 2>&1 | grep 'Python 2'  # N.B.: Python 2 prints version info to stderr.
-python3 --version | grep 'Python 3'
+python --version | grep 'Python 3'
 
-# Delete the existing lockfiles.
-echo 'Deleting old lockfiles...'
-rm Pipfile.lock Pipfile.py2.lock || true  # Don't error if the lockfiles weren't there to start.
-
-echo 'Creating Python 2 lockfile...'
-pipenv --rm || true  # Don't error if there is no virtualenv yet.
-pipenv lock --python="$(which python2)" --dev
-mv Pipfile.lock Pipfile.py2.lock
+# Delete the existing lockfile.
+echo 'Deleting old lockfile...'
+rm Pipfile.lock || true  # Don't error if the lockfile wasn't there to start.
 
 echo 'Creating Python 3 lockfile...'
 pipenv --rm
-pipenv lock --python="$(which python3)" --dev
+pipenv lock --python="$(which python)" --dev
 
 echo 'All done!'
