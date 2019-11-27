@@ -57,7 +57,7 @@ def convert_int_to_field_value(schema_info, vertex_class, property_field, int_va
         return datetime.datetime.utcfromtimestamp(int_value)
     if is_date_field_type(schema_info, vertex_class, property_field):
         # TODO(bojanserafimov): this is not tested
-        return datetime.date(datetime.datetime.utcfromtimestamp(int_value))
+        return datetime.date.fromordinal(int_value)
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         if not MIN_UUID_INT <= int_value <= MAX_UUID_INT:
             raise AssertionError(u'Integer value {} could not be converted to UUID, as it'
@@ -82,8 +82,7 @@ def convert_field_value_to_int(schema_info, vertex_class, property_field, value)
     if is_datetime_field_type(schema_info, vertex_class, property_field):
         return int((value - datetime.datetime(1970, 1, 1)).total_seconds())
     if is_date_field_type(schema_info, vertex_class, property_field):
-        value = datetime.datetime(value)
-        return int((value - datetime.datetime(1970, 1, 1)).total_seconds())
+        return value.toordinal()
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         return UUID(value).int
     elif field_supports_range_reasoning(schema_info, vertex_class, property_field):
