@@ -44,5 +44,5 @@ matrix:
     script:
       - pipenv run py.test --cov=graphql_compiler graphql_compiler/tests
 after_success:
+  - codecov
   - docker-compose down
-  - coveralls
