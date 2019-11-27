@@ -63,9 +63,10 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages, hints=None)
                                          .format(pagination_node.name.value, pagination_field,
                                                  len(quantiles), 10 * number_of_pages, number_of_pages))
     else:
-        raise GraphQLPaginationError(u'Cannot paginate because pagination on the type of {}.{} '
-                                     u'is not supported'.format(pagination_node.name.value,
-                                                                pagination_field))
+        type_name = schema_info.schema.get_type(
+            pagination_node.name.value).fields[pagination_field].type.name
+        raise GraphQLPaginationError(u'Cannot paginate on {}.{} because pagination on {} is not supported '
+                                     .format(pagination_node.name.value, pagination_field, type_name))
 
     return PaginationPlan([
         VertexPartition((pagination_node.name.value,), pagination_field, number_of_pages)
