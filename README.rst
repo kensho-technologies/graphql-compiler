@@ -2,7 +2,7 @@ graphql-compiler
 ================
 
 |Build Status| |Coverage Status| |License| |PyPI Python| |PyPI Version|
-|PyPI Status| |PyPI Wheel|
+|PyPI Status| |PyPI Wheel| |Code Style|
 
 Turn complex GraphQL queries into optimized database queries.
 
@@ -2712,3 +2712,6 @@ determined by the timestamp of the most recent commit in the repository.
    :target: https://pypi.python.org/pypi/graphql-compiler
 .. |PyPI Wheel| image:: https://img.shields.io/pypi/wheel/graphql-compiler.svg
    :target: https://pypi.python.org/pypi/graphql-compiler
+.. |Code Style| image:: https://img.shields.io/badge/code%20style-black-000000.svg
+   :target: https://github.com/psf/black
+   :alt: Code style: black
