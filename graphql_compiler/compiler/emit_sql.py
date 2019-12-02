@@ -272,16 +272,19 @@ class SQLFoldObject(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
     # A SQLFoldObject consists of information related to the SELECT clause of the fold subquery,
-    # the GROUP BY clause, and the FROM clause which contains one JOIN per vertex traversed in
-    # the fold, including the traversal from the vertex outside the fold to the folded vertex
-    # itself.
+    # the GROUP BY clause, the WHERE clause (if applying filters) and the FROM clause which contains
+    # one JOIN per vertex traversed in the fold, including the traversal from the vertex outside
+    # the fold to the folded vertex itself.
     #
-    # The life cycle for the SQLFoldObject is 1.) initializing it with the information for the
-    # outer vertex (the one outside the fold), 2.) at least one traversal, 3.) visiting the output
-    # vertex to collect the output columns, 4.) ending the fold by producing the resulting subquery.
+    # The life cycle for the SQLFoldObject is:
+    #   1. initializing it with the information for the outer vertex (the one outside the fold)
+    #   2. at least one traversal
+    #   3. visiting the output vertex to collect the output columns
+    #   4. optionally adding a filter condition
+    #   5. ending the fold by producing the resulting subquery
     #
     # This life cycle is completed via calls to __init__, visit_traversed_vertex,
-    # visit_output_vertex, and end_fold.
+    # visit_output_vertex, add_filter, and end_fold.
     #
     # The SELECT clause for the fold subquery contains OuterVertex.SOME_COLUMN, a unique
     # identifier (the primary key) for the OuterVertex determined by the edge descriptor
@@ -294,6 +297,9 @@ class SQLFoldObject(object):
     # SELECT will also contain a COUNT(*) if _x_count is referred to by the query.
     #
     # The GROUP BY clause is produced during initialization.
+    #
+    # If a filter occurs on any vertex field inside the fold, a WHERE clause will also be produced.
+    # TODO: implement filters for MSSQL
     #
     # The FROM and JOIN clauses are constructed during end_fold using info from the
     # visit_traversed_vertex function.
@@ -309,6 +315,7 @@ class SQLFoldObject(object):
     #          ...
     # INNER JOIN OutputVertex <- INNER JOINs compiled during end_fold
     # ON ...
+    # WHERE ... <- only for filters, which can be added with add_filter
     # GROUP BY OuterVertex.SOME_COLUMN
     #
     # and as follows for MSSQL:
@@ -330,8 +337,8 @@ class SQLFoldObject(object):
                                 the dialect we are compiling to.
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             primary_key: PrimaryKeyConstraint, primary_key of the vertex immediately outside the
-                        fold. Used to set the group by as well as join the fold subquery to the
-                        rest of the query. Composite keys unsupported.
+                         fold. Used to set the group by as well as join the fold subquery to the
+                         rest of the query. Composite keys unsupported.
         """
         # table containing output columns
         # initially None because output table is unknown until call to visit_output_vertex
@@ -360,6 +367,7 @@ class SQLFoldObject(object):
         # starting with the join from the vertex immediately outside the fold to the folded vertex:
         self._traversal_descriptors = []
         self._outputs = []  # output columns for fold
+        self._filters = []  # sqlalchemy Expressions to be used in the where clause
 
         # SQLAlchemy compiler object determining which dialect to target
         self._dialect = dialect
@@ -388,6 +396,11 @@ class SQLFoldObject(object):
     def group_by(self):
         """Get the columns to group by for the fold subquery."""
         return self._group_by
+
+    @property
+    def filters(self):
+        """Get the list of SQL expressions to be used in the WHERE clause."""
+        return self._filters
 
     @property
     def output_vertex_alias(self):
@@ -452,6 +465,9 @@ class SQLFoldObject(object):
         ).select_from(
             subquery_from_clause
         )
+
+        if self.filters:
+            select_statement = select_statement.where(sqlalchemy.and_(*self.filters))
 
         if isinstance(self._dialect, MSDialect):
             # mssql doesn't rely on a group by
@@ -595,6 +611,19 @@ class SQLFoldObject(object):
         self._traversal_descriptors.append(SQLFoldTraversalDescriptor(join_descriptor,
                                                                       from_table,
                                                                       to_table))
+
+    def add_filter(self, predicate, aliases):
+        """Add a new filter to the SQLFoldObject."""
+        if self._ended:
+            raise AssertionError(u'Cannot add a filter after end_fold has been called. Invalid '
+                                 u'state encountered during fold {}'.format(self))
+        if isinstance(self._dialect, MSDialect):
+            raise NotImplementedError(u'Filtering on fields is not implemented for MSSQL yet.')
+        # Filters are applied to output vertices, thus current_alias=self.output_vertex_alias.
+        sql_expression = predicate.to_sql(self._dialect,
+                                          aliases,
+                                          self.output_vertex_alias)
+        self._filters.append(sql_expression)
 
     def end_fold(self, alias_generator, from_clause, outer_from_table):
         """Produce the final subquery and join it onto the rest of the query."""
@@ -823,16 +852,22 @@ class CompilationState(object):
 
     def filter(self, predicate):
         """Execute a Filter Block."""
+        # If there is an active fold, add the filter to the current fold. Note that this is only for
+        # regular fields i.e. non-_x_count fields. Filtering on _x_count will use the COUNT(*)
+        # output from the folded subquery and apply the filter in the global WHERE clause.
         if self._current_fold is not None:
-            raise NotImplementedError('Non-_x_count filters inside a fold are not implemented yet.')
+            self._current_fold.add_filter(predicate, self._aliases)
 
-        sql_expression = predicate.to_sql(self._dialect,
-                                          self._aliases,
-                                          self._current_alias)
-        if self._is_in_optional_scope():
-            sql_expression = sqlalchemy.or_(sql_expression,
-                                            self._came_from[self._current_alias].is_(None))
-        self._filters.append(sql_expression)
+        # Otherwise, add the filter to the compilation state. Note that this is for filters outside
+        # a fold scope and _x_count filters within a fold scope.
+        else:
+            sql_expression = predicate.to_sql(self._dialect,
+                                              self._aliases,
+                                              self._current_alias)
+            if self._is_in_optional_scope():
+                sql_expression = sqlalchemy.or_(sql_expression,
+                                                self._came_from[self._current_alias].is_(None))
+            self._filters.append(sql_expression)
 
     def fold(self, fold_scope_location):
         """Begin execution of a Fold Block."""

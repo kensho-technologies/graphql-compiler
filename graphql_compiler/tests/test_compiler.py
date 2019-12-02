@@ -5645,7 +5645,27 @@ class CompilerTests(unittest.TestCase):
                 name: m.Animal___1.name
             ])}
         '''
-        expected_sql = NotImplementedError
+        expected_mssql = NotImplementedError
+        expected_postgresql = '''
+            SELECT
+                coalesce(folded_subquery_1.fold_output_description, ARRAY[]::VARCHAR[])
+                    AS child_descriptions,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_list,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    array_agg("Animal_3".description) AS fold_output_description
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                WHERE "Animal_3".name = %(desired)s
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        '''
         expected_cypher = '''
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -5663,8 +5683,8 @@ class CompilerTests(unittest.TestCase):
               Animal___1.name AS `name`
         '''
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(self, test_data, expected_match, expected_gremlin, expected_mssql,
+                        expected_cypher, expected_postgresql)
 
     def test_filter_on_fold_scope(self):
         test_data = test_input_data.filter_on_fold_scope()

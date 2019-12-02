@@ -2700,8 +2700,8 @@ determined by the timestamp of the most recent commit in the repository.
 
 .. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=master
    :target: https://travis-ci.org/kensho-technologies/graphql-compiler
-.. |Coverage Status| image:: https://coveralls.io/repos/github/kensho-technologies/graphql-compiler/badge.svg?branch=master
-   :target: https://coveralls.io/github/kensho-technologies/graphql-compiler?branch=master
+.. |Coverage Status| image:: https://codecov.io/gh/kensho-technologies/graphql-compiler/branch/master/graph/badge.svg
+   :target: https://codecov.io/gh/kensho-technologies/graphql-compiler
 .. |License| image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
    :target: https://opensource.org/licenses/Apache-2.0
 .. |PyPI Python| image:: https://img.shields.io/pypi/pyversions/graphql-compiler.svg

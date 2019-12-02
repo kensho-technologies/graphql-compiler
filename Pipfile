@@ -4,14 +4,10 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-# The Cython dependency of pymssql is not correctly resolved on all systems
-# so it is explicitly included here.
-cython = "==0.29.2"
-
 # Test requirements that are not otherwise necessary when using the package.
 mysqlclient = "==1.3.14"
 neo4j = ">=1.7.4,<2"
-psycopg2 = "==2.7.5"
+psycopg2-binary = "==2.8.4"
 pyodbc = "==4.0.27"
 pyorient = "==1.5.5"
 redis = ">=3.2.1,<4"
@@ -19,7 +15,7 @@ redisgraph = ">=1.7,<1.9"
 
 # Linters and other development tools
 bandit = ">=1.5.1,<2"
-coveralls = ">=1.5.1,<2"
+codecov = ">=2.0.15,<3"
 flake8 = ">=3.6.0,<4"
 flake8-print = ">=3.1.0,<4"
 flake8-quotes = ">=1.0.0,<2"
