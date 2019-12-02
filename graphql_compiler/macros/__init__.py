@@ -3,8 +3,13 @@ from collections import namedtuple
 
 from graphql import parse
 from graphql.language.ast import (
-    Directive, FieldDefinition, InterfaceTypeDefinition, ListType, Name, NamedType,
-    ObjectTypeDefinition
+    Directive,
+    FieldDefinition,
+    InterfaceTypeDefinition,
+    ListType,
+    Name,
+    NamedType,
+    ObjectTypeDefinition,
 )
 from graphql.language.printer import print_ast
 from graphql.utils.build_ast_schema import build_ast_schema
@@ -19,15 +24,16 @@ from .macro_edge import make_macro_edge_descriptor
 from .macro_edge.directives import MacroEdgeDirective, get_schema_for_macro_edge_definitions
 from .macro_expansion import expand_macros_in_query_ast
 from .validation import (
-    check_macro_edge_for_definition_conflicts, check_macro_edge_for_reversal_definition_conflicts
+    check_macro_edge_for_definition_conflicts,
+    check_macro_edge_for_reversal_definition_conflicts,
 )
 
 
 MacroRegistry = namedtuple(
-    'MacroRegistry', (
+    "MacroRegistry",
+    (
         # GraphQLSchema, created using the GraphQL library
-        'schema_without_macros',
-
+        "schema_without_macros",
         # Optional dict of GraphQL interface or type -> GraphQL union.
         # Used as a workaround for GraphQL's lack of support for
         # inheritance across "types" (i.e. non-interfaces), as well as a
@@ -43,35 +49,30 @@ MacroRegistry = namedtuple(
         # Be very careful with this option, as bad input here will
         # lead to incorrect output queries being generated.
         # *****
-        'type_equivalence_hints',
-
+        "type_equivalence_hints",
         # Dict[str, Set[str]] mapping class names to the set of its subclass names.
         # A class in this context means the name of a GraphQLObjectType,
         # GraphQLUnionType or GraphQLInterface.
-        'subclass_sets',
-
+        "subclass_sets",
         # #################
         # Macro edge info #
         # #################
         # List[MacroEdgeDescriptor] containing all defined macro edges
-        'macro_edges',
-
+        "macro_edges",
         # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
         # class name -> (macro edge name -> MacroEdgeDescriptor)
         # If a given macro edge is defined on a class X which has subclasses A and B,
         # then this dict will contain entries for that macro edge for all of [X, A, B].
-        'macro_edges_at_class',
-
+        "macro_edges_at_class",
         # Dict[str, Dict[str, MacroEdgeDescriptor]] mapping:
         # class name -> (macro edge name -> MacroEdgeDescriptor)
         # If a given macro edge has class X as a target, which has subclasses A and B,
         # then this dict will contain entries for that macro edge for all of [X, A, B].
-        'macro_edges_to_class',
-
+        "macro_edges_to_class",
         # ########################################################################
         # Any other macro types we may add in the future belong under this line. #
         # ########################################################################
-    )
+    ),
 )
 
 
@@ -86,7 +87,8 @@ def create_macro_registry(schema, type_equivalence_hints=None, subclass_sets=Non
         subclass_sets=subclass_sets,
         macro_edges=list(),
         macro_edges_at_class=dict(),
-        macro_edges_to_class=dict())
+        macro_edges_to_class=dict(),
+    )
 
 
 def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
@@ -118,9 +120,12 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
     # we simply need to check the macro edge descriptor against other artifacts in the macro system
     # that might also cause conflicts.
     macro_descriptor = make_macro_edge_descriptor(
-        macro_registry.schema_without_macros, macro_registry.subclass_sets,
-        macro_edge_graphql, macro_edge_args,
-        type_equivalence_hints=macro_registry.type_equivalence_hints)
+        macro_registry.schema_without_macros,
+        macro_registry.subclass_sets,
+        macro_edge_graphql,
+        macro_edge_args,
+        type_equivalence_hints=macro_registry.type_equivalence_hints,
+    )
 
     # Ensure there's no conflict with macro edges defined on subclasses and superclasses.
     check_macro_edge_for_definition_conflicts(macro_registry, macro_descriptor)
@@ -130,12 +135,14 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
     check_macro_edge_for_reversal_definition_conflicts(macro_registry, macro_descriptor)
 
     for subclass_name in macro_registry.subclass_sets[macro_descriptor.base_class_name]:
-        macro_registry.macro_edges_at_class.setdefault(
-            subclass_name, dict())[macro_descriptor.macro_edge_name] = macro_descriptor
+        macro_registry.macro_edges_at_class.setdefault(subclass_name, dict())[
+            macro_descriptor.macro_edge_name
+        ] = macro_descriptor
 
     for subclass_name in macro_registry.subclass_sets[macro_descriptor.target_class_name]:
-        macro_registry.macro_edges_to_class.setdefault(
-            subclass_name, dict())[macro_descriptor.macro_edge_name] = macro_descriptor
+        macro_registry.macro_edges_to_class.setdefault(subclass_name, dict())[
+            macro_descriptor.macro_edge_name
+        ] = macro_descriptor
 
     macro_registry.macro_edges.append(macro_descriptor)
 
@@ -181,8 +188,11 @@ def get_schema_with_macros(macro_registry):
             list_type_at_target = ListType(NamedType(Name(macro_edge_descriptor.target_class_name)))
             arguments = []
             directives = [Directive(Name(MacroEdgeDirective.name))]
-            definitions_by_name[class_name].fields.append(FieldDefinition(
-                Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
+            definitions_by_name[class_name].fields.append(
+                FieldDefinition(
+                    Name(macro_edge_name), arguments, list_type_at_target, directives=directives
+                )
+            )
 
     return build_ast_schema(schema_ast)
 
@@ -227,8 +237,11 @@ def perform_macro_expansion(macro_registry, schema_with_macros, graphql_with_mac
     query_ast = safe_parse_graphql(graphql_with_macro)
     validation_errors = validate_schema_and_query_ast(schema_with_macros, query_ast)
     if validation_errors:
-        raise GraphQLValidationError(u'The provided GraphQL input does not validate: {} {}'
-                                     .format(graphql_with_macro, validation_errors))
+        raise GraphQLValidationError(
+            u"The provided GraphQL input does not validate: {} {}".format(
+                graphql_with_macro, validation_errors
+            )
+        )
 
     new_query_ast, new_args = expand_macros_in_query_ast(macro_registry, query_ast, graphql_args)
     new_graphql_string = print_ast(new_query_ast)

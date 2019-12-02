@@ -8,19 +8,16 @@ from ..exceptions import GraphQLError
 
 # The intent to split the query at a certain vertex into a certain number of pages.
 VertexPartition = namedtuple(
-    'VertexPartition', (
-        'query_path',  # Tuple[field name : str] leading to the vertex to be split
-        'number_of_splits',  # The number of subdivisions intended for this vertex
-    )
+    "VertexPartition",
+    (
+        "query_path",  # Tuple[field name : str] leading to the vertex to be split
+        "number_of_splits",  # The number of subdivisions intended for this vertex
+    ),
 )
 
 
 # The intent to split the query with a combination of VertexPartitions
-PaginationPlan = namedtuple(
-    'PaginationPlan', (
-        'vertex_partitions',  # List[VertexPartition]
-    )
-)
+PaginationPlan = namedtuple("PaginationPlan", ("vertex_partitions",))  # List[VertexPartition]
 
 
 # TODO(bojanserafimov): Make this function return a best effort pagination plan
@@ -45,7 +42,8 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages):
         pass
     elif is_int_field_type(schema_info, pagination_node.name.value, pagination_field):
         quantiles = schema_info.pagination_keys.statistics.get_field_quantiles(
-            pagination_node, pagination_field)
+            pagination_node, pagination_field
+        )
         # We make sure there's more than enough quantiles because we don't interpolate.
         if quantiles is None or len(quantiles) < 10 * number_of_pages:
             return None

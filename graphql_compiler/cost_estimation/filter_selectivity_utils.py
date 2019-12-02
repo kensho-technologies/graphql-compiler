@@ -13,29 +13,35 @@ from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
-Selectivity = namedtuple('Selectivity', (
-    'kind',     # string, the kind of selectivity, either absolute or fractional
-    'value',    # float, either the maximum number of absolute results that pass the filter or the
-                # fraction of results that pass the filter
-))
+Selectivity = namedtuple(
+    "Selectivity",
+    (
+        "kind",  # string, the kind of selectivity, either absolute or fractional
+        "value",  # float, either the maximum number of absolute results that pass the filter or the
+        # fraction of results that pass the filter
+    ),
+)
 
 # IntegerInterval is used to denote a continuous non-empty interval of integers.
-IntegerInterval = namedtuple('IntegerInterval', (
-    'lower_bound',    # int or None, inclusive lower bound of integers in the interval.
-                      # Intervals that do not have a lower bound denote this by using None.
-    'upper_bound',    # int or None, inclusive upper bound of integers in the interval.
-                      # Intervals that do not have an upper bound denote this by using None.
-))
+IntegerInterval = namedtuple(
+    "IntegerInterval",
+    (
+        "lower_bound",  # int or None, inclusive lower bound of integers in the interval.
+        # Intervals that do not have a lower bound denote this by using None.
+        "upper_bound",  # int or None, inclusive upper bound of integers in the interval.
+        # Intervals that do not have an upper bound denote this by using None.
+    ),
+)
 
-ABSOLUTE_SELECTIVITY = 'absolute'
-FRACTIONAL_SELECTIVITY = 'fractional'
+ABSOLUTE_SELECTIVITY = "absolute"
+FRACTIONAL_SELECTIVITY = "fractional"
 
-INEQUALITY_OPERATORS = frozenset(['<', '<=', '>', '>=', 'between'])
+INEQUALITY_OPERATORS = frozenset(["<", "<=", ">", ">=", "between"])
 
 # UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
 # (represented as a natural number) is 0, and the maximal value is 2^128-1.
 MIN_UUID_INT = 0
-MAX_UUID_INT = 2**128 - 1
+MAX_UUID_INT = 2 ** 128 - 1
 
 
 def _is_absolute(selectivity):
@@ -169,9 +175,7 @@ def _get_intersection_of_intervals(interval_a, interval_b):
     return intersection
 
 
-def _get_query_interval_of_binary_integer_inequality_filter(
-    parameter_values, filter_operator
-):
+def _get_query_interval_of_binary_integer_inequality_filter(parameter_values, filter_operator):
     """Return IntegerInterval or None of values passing through a binary integer inequality filter.
 
     Args:
@@ -186,33 +190,33 @@ def _get_query_interval_of_binary_integer_inequality_filter(
         ValueError if the number of parameter values is not exactly one.
     """
     if len(parameter_values) != 1:
-        raise ValueError(u'Binary inequality filter should have '
-                         u'exactly one parameter value: {} {}'
-                         .format(parameter_values, filter_operator))
+        raise ValueError(
+            u"Binary inequality filter should have "
+            u"exactly one parameter value: {} {}".format(parameter_values, filter_operator)
+        )
 
     lower_bound, upper_bound = None, None
 
     parameter_value = parameter_values[0]
-    if filter_operator == '>':
+    if filter_operator == ">":
         lower_bound = parameter_value + 1
-    elif filter_operator == '>=':
+    elif filter_operator == ">=":
         lower_bound = parameter_value
-    elif filter_operator == '<':
+    elif filter_operator == "<":
         upper_bound = parameter_value - 1
-    elif filter_operator == '<=':
+    elif filter_operator == "<=":
         upper_bound = parameter_value
     else:
-        raise AssertionError(u'Cost estimator found unsupported '
-                             u'binary integer inequality operator {}.'
-                             .format(filter_operator))
+        raise AssertionError(
+            u"Cost estimator found unsupported "
+            u"binary integer inequality operator {}.".format(filter_operator)
+        )
 
     query_interval = _create_integer_interval(lower_bound, upper_bound)
     return query_interval
 
 
-def _get_query_interval_of_ternary_integer_inequality_filter(
-    parameter_values, filter_operator
-):
+def _get_query_interval_of_ternary_integer_inequality_filter(parameter_values, filter_operator):
     """Return IntegerInterval or None of values passing through a ternary integer inequality filter.
 
     Args:
@@ -227,19 +231,21 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
         ValueError if the number of parameter values is not exactly two.
     """
     if len(parameter_values) != 2:
-        raise ValueError(u'Ternary inequality filter should have '
-                         u'exactly two parameter values: {} {}'
-                         .format(parameter_values, filter_operator))
+        raise ValueError(
+            u"Ternary inequality filter should have "
+            u"exactly two parameter values: {} {}".format(parameter_values, filter_operator)
+        )
 
     lower_bound, upper_bound = None, None
 
-    if filter_operator == 'between':
+    if filter_operator == "between":
         lower_bound = parameter_values[0]
         upper_bound = parameter_values[1]
     else:
-        raise AssertionError(u'Cost estimator found unsupported '
-                             u'ternary integer inequality operator {}.'
-                             .format(filter_operator))
+        raise AssertionError(
+            u"Cost estimator found unsupported "
+            u"ternary integer inequality operator {}.".format(filter_operator)
+        )
 
     query_interval = _create_integer_interval(lower_bound, upper_bound)
     return query_interval
@@ -265,9 +271,12 @@ def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_op
             parameter_values, filter_operator
         )
     else:
-        raise AssertionError(u'Cost estimator found filter operator {} with parameter values {}. '
-                             u'Currently, an operator must have either one or two parameter values.'
-                             .format(filter_operator, parameter_values))
+        raise AssertionError(
+            u"Cost estimator found filter operator {} with parameter values {}. "
+            u"Currently, an operator must have either one or two parameter values.".format(
+                filter_operator, parameter_values
+            )
+        )
 
     return query_interval
 
@@ -297,15 +306,16 @@ def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_
 
     for field_name in filter_fields:
         statistics_result = schema_info.statistics.get_distinct_field_values_count(
-            location_name, field_name)
+            location_name, field_name
+        )
 
         if statistics_result is not None:
             # Assumption: all distinct field values are distributed evenly among vertex instances,
             # so each distinct value occurs
             # (# of current location vertex instances) / (# of distinct field values) times.
-            all_selectivities.append(Selectivity(
-                kind=FRACTIONAL_SELECTIVITY, value=1.0 / statistics_result
-            ))
+            all_selectivities.append(
+                Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / statistics_result)
+            )
 
     result_selectivity = _combine_filter_selectivities(all_selectivities)
     return result_selectivity
@@ -359,7 +369,7 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
         float, the fraction of the values contained in the interval.
     """
     if len(quantiles) < 2:
-        raise AssertionError(u'Need at least 2 quantiles: {}'.format(len(quantiles)))
+        raise AssertionError(u"Need at least 2 quantiles: {}".format(len(quantiles)))
     # Since we can't be sure the minimum observed value is the
     # actual minimum value, we treat values less than it as part
     # of the first quantile. That's why we drop the minimum and
@@ -402,7 +412,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
     single_field_filters = {}
     for filter_info in filter_infos:
         if len(filter_info.fields) == 0:
-            raise AssertionError(u'Got filter on 0 fields {} {}'.format(filter_info, location_name))
+            raise AssertionError(u"Got filter on 0 fields {} {}".format(filter_info, location_name))
         elif len(filter_info.fields) == 1:
             single_field_filters.setdefault(filter_info.fields[0], []).append(filter_info)
         else:
@@ -433,7 +443,8 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                         ]
 
                     filter_interval = _get_query_interval_of_integer_inequality_filter(
-                        parameter_values, filter_info.op_name)
+                        parameter_values, filter_info.op_name
+                    )
                     interval = _get_intersection_of_intervals(interval, filter_interval)
 
             if interval is None:
@@ -447,60 +458,69 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 interval_size = interval.upper_bound - interval.lower_bound + 1
                 fraction_of_domain_queried = float(interval_size) / domain_interval_size
                 selectivity = Selectivity(
-                    kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried)
+                    kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried
+                )
                 selectivity_at_field = _combine_filter_selectivities(
-                    [selectivity_at_field, selectivity])
+                    [selectivity_at_field, selectivity]
+                )
             elif is_int_field:
                 # int fields are not uniformly distributed but we have quantile information.
                 quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
                 if quantiles is not None:
                     selectivity = Selectivity(
                         kind=FRACTIONAL_SELECTIVITY,
-                        value=_get_selectivity_fraction_of_interval(
-                            interval, quantiles))
+                        value=_get_selectivity_fraction_of_interval(interval, quantiles),
+                    )
                     selectivity_at_field = _combine_filter_selectivities(
-                        [selectivity_at_field, selectivity])
+                        [selectivity_at_field, selectivity]
+                    )
             else:
-                raise AssertionError(u'Field {}.{} is not uuid4 or int. Inequality filters are '
-                                     u'not supported'.format(location_name, field_name))
+                raise AssertionError(
+                    u"Field {}.{} is not uuid4 or int. Inequality filters are "
+                    u"not supported".format(location_name, field_name)
+                )
 
         # Process in_collection filters
         for filter_info in filters_on_field:
-            if filter_info.op_name == 'in_collection':
+            if filter_info.op_name == "in_collection":
                 # TODO(bojanserafimov): Check if the filter values are in the interval selected
                 #                       by the inequality filters.
                 collection = parameters[get_parameter_name(filter_info.args[0])]
                 selectivity_per_entry_in_collection = _estimate_filter_selectivity_of_equality(
-                    schema_info, location_name, filter_info.fields)
+                    schema_info, location_name, filter_info.fields
+                )
 
                 # Assumption: the selectivity is proportional to the number of entries in
                 # the collection. This will not hold in case of duplicates.
                 if _is_absolute(selectivity_per_entry_in_collection):
                     selectivity = Selectivity(
                         kind=ABSOLUTE_SELECTIVITY,
-                        value=float(len(collection)) * selectivity_per_entry_in_collection.value
+                        value=float(len(collection)) * selectivity_per_entry_in_collection.value,
                     )
                 elif _is_fractional(selectivity_per_entry_in_collection):
                     selectivity = Selectivity(
                         kind=FRACTIONAL_SELECTIVITY,
                         value=min(
-                            float(len(collection)) * selectivity_per_entry_in_collection.value,
-                            1.0)
+                            float(len(collection)) * selectivity_per_entry_in_collection.value, 1.0
+                        )
                         # The estimate may be above 1.0 in case of duplicates in the collection
                         # so we make sure the value is <= 1.0
                     )
                 selectivity_at_field = _combine_filter_selectivities(
-                    [selectivity_at_field, selectivity])
+                    [selectivity_at_field, selectivity]
+                )
 
         # Process equality filters
         for filter_info in filters_on_field:
-            if filter_info.op_name == '=':
+            if filter_info.op_name == "=":
                 # TODO(bojanserafimov): Check if the filter value is in the interval selected
                 #                       by the inequality filters.
                 selectivity = _estimate_filter_selectivity_of_equality(
-                    schema_info, location_name, filter_info.fields)
+                    schema_info, location_name, filter_info.fields
+                )
                 selectivity_at_field = _combine_filter_selectivities(
-                    [selectivity_at_field, selectivity])
+                    [selectivity_at_field, selectivity]
+                )
 
         selectivities.append(selectivity_at_field)
 
@@ -523,7 +543,8 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
         float, counts updated for filter selectivities.
     """
     combined_selectivity = get_selectivity_of_filters_at_vertex(
-        schema_info, filter_infos, parameters, location_name)
+        schema_info, filter_infos, parameters, location_name
+    )
     adjusted_counts = counts
     if _is_absolute(combined_selectivity):
         adjusted_counts = combined_selectivity.value

@@ -12,8 +12,9 @@ from .compiler_frontend import graphql_to_ir
 # - language: string, specifying the language to which the query was compiled
 # - output_metadata: dict, output name -> OutputMetadata namedtuple object
 # - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
-CompilationResult = namedtuple('CompilationResult',
-                               ('query', 'language', 'output_metadata', 'input_metadata'))
+CompilationResult = namedtuple(
+    "CompilationResult", ("query", "language", "output_metadata", "input_metadata")
+)
 
 MATCH_LANGUAGE = backend.match_backend.language
 GREMLIN_LANGUAGE = backend.gremlin_backend.language
@@ -133,8 +134,10 @@ def _compile_graphql_generic(target_backend, schema_info, graphql_string):
         a CompilationResult object
     """
     ir_and_metadata = graphql_to_ir(
-        schema_info.schema, graphql_string,
-        type_equivalence_hints=schema_info.type_equivalence_hints)
+        schema_info.schema,
+        graphql_string,
+        type_equivalence_hints=schema_info.type_equivalence_hints,
+    )
 
     lowered_ir_blocks = target_backend.lower_func(schema_info, ir_and_metadata)
     query = target_backend.emit_func(schema_info, lowered_ir_blocks)
@@ -142,4 +145,5 @@ def _compile_graphql_generic(target_backend, schema_info, graphql_string):
         query=query,
         language=target_backend.language,
         output_metadata=ir_and_metadata.output_metadata,
-        input_metadata=ir_and_metadata.input_metadata)
+        input_metadata=ir_and_metadata.input_metadata,
+    )

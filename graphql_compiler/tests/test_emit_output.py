@@ -5,13 +5,24 @@ from graphql import GraphQLString
 
 from ..compiler import emit_cypher, emit_gremlin, emit_match
 from ..compiler.blocks import (
-    Backtrack, CoerceType, ConstructResult, Filter, GlobalOperationsStart, MarkLocation, QueryRoot,
-    Traverse
+    Backtrack,
+    CoerceType,
+    ConstructResult,
+    Filter,
+    GlobalOperationsStart,
+    MarkLocation,
+    QueryRoot,
+    Traverse,
 )
 from ..compiler.cypher_query import convert_to_cypher_query
 from ..compiler.expressions import (
-    BinaryComposition, ContextField, LocalField, NullLiteral, OutputContextField,
-    TernaryConditional, Variable
+    BinaryComposition,
+    ContextField,
+    LocalField,
+    NullLiteral,
+    OutputContextField,
+    TernaryConditional,
+    Variable,
 )
 from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common.common import OutputContextVertex
@@ -20,7 +31,11 @@ from ..compiler.match_query import convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
 from ..schema import GraphQLDateTime
 from .test_helpers import (
-    compare_cypher, compare_gremlin, compare_match, get_common_schema_info, get_schema
+    compare_cypher,
+    compare_gremlin,
+    compare_match,
+    get_common_schema_info,
+    get_schema,
 )
 
 
@@ -37,19 +52,19 @@ class EmitMatchTests(unittest.TestCase):
         #         name @output(out_name: "animal_name")
         #     }
         # }'''
-        base_location = Location(('Animal',))
-        base_name_location = base_location.navigate_to_field('name')
+        base_location = Location(("Animal",))
+        base_name_location = base_location.navigate_to_field("name")
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
-            ConstructResult({'animal_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({"animal_name": OutputContextField(base_name_location, GraphQLString)}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
-        expected_match = '''
+        expected_match = """
             SELECT Animal___1.name AS `animal_name` FROM (
                 MATCH {{
                     class: Animal,
@@ -57,7 +72,7 @@ class EmitMatchTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
         received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
@@ -73,30 +88,33 @@ class EmitMatchTests(unittest.TestCase):
         #         }
         #     }
         # }'''
-        base_location = Location(('Animal',))
-        base_name_location = base_location.navigate_to_field('name')
-        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
+        base_location = Location(("Animal",))
+        base_name_location = base_location.navigate_to_field("name")
+        child_location = base_location.navigate_to_subpath("out_Animal_BornAt")
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
-            Traverse('out', 'Animal_BornAt'),
-            Filter(BinaryComposition(
-                u'=',
-                LocalField(u'name', GraphQLString),
-                ContextField(base_name_location, GraphQLString))),
+            Traverse("out", "Animal_BornAt"),
+            Filter(
+                BinaryComposition(
+                    u"=",
+                    LocalField(u"name", GraphQLString),
+                    ContextField(base_name_location, GraphQLString),
+                )
+            ),
             MarkLocation(child_location),
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
-            ConstructResult({
-                'animal_name': OutputContextField(base_name_location, GraphQLString),
-            }),
+            ConstructResult(
+                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+            ),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
-        expected_match = '''
+        expected_match = """
             SELECT Animal___1.name AS `animal_name` FROM (
                 MATCH {{
                     class: Animal,
@@ -110,7 +128,7 @@ class EmitMatchTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
         received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
@@ -123,32 +141,34 @@ class EmitMatchTests(unittest.TestCase):
         #         event_date @filter(op_name: "between", value: ["$start", "$end"])
         #     }
         # }'''
-        base_location = Location(('BirthEvent',))
-        base_name_location = base_location.navigate_to_field('name')
+        base_location = Location(("BirthEvent",))
+        base_name_location = base_location.navigate_to_field("name")
 
         ir_blocks = [
-            QueryRoot({'BirthEvent'}),
+            QueryRoot({"BirthEvent"}),
             Filter(
                 BinaryComposition(
-                    u'&&',
-                    BinaryComposition(u'>=',
-                                      LocalField('event_date', GraphQLDateTime),
-                                      Variable('$start', GraphQLDateTime)),
-                    BinaryComposition(u'<=',
-                                      LocalField('event_date', GraphQLDateTime),
-                                      Variable('$end', GraphQLDateTime))
+                    u"&&",
+                    BinaryComposition(
+                        u">=",
+                        LocalField("event_date", GraphQLDateTime),
+                        Variable("$start", GraphQLDateTime),
+                    ),
+                    BinaryComposition(
+                        u"<=",
+                        LocalField("event_date", GraphQLDateTime),
+                        Variable("$end", GraphQLDateTime),
+                    ),
                 )
             ),
             MarkLocation(base_location),
             GlobalOperationsStart(),
-            ConstructResult({
-                'name': OutputContextField(base_name_location, GraphQLString)
-            }),
+            ConstructResult({"name": OutputContextField(base_name_location, GraphQLString)}),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
-        expected_match = '''
+        expected_match = """
             SELECT BirthEvent___1.name AS `name` FROM (
                 MATCH {{
                     class: BirthEvent,
@@ -160,7 +180,7 @@ class EmitMatchTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
         received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
@@ -172,21 +192,21 @@ class EmitMatchTests(unittest.TestCase):
         #         event_date @output(out_name: "event_date")
         #     }
         # }'''
-        base_location = Location(('BirthEvent',))
-        base_event_date_location = base_location.navigate_to_field('event_date')
+        base_location = Location(("BirthEvent",))
+        base_event_date_location = base_location.navigate_to_field("event_date")
 
         ir_blocks = [
-            QueryRoot({'BirthEvent'}),
+            QueryRoot({"BirthEvent"}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
             ConstructResult(
-                {'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)}
+                {"event_date": OutputContextField(base_event_date_location, GraphQLDateTime)}
             ),
         ]
         match_query = convert_to_match_query(ir_blocks)
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
-        expected_match = '''
+        expected_match = """
             SELECT BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `event_date` FROM (
                 MATCH {{
                     class: BirthEvent,
@@ -194,7 +214,7 @@ class EmitMatchTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
         received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
@@ -213,25 +233,25 @@ class EmitGremlinTests(unittest.TestCase):
         #         name @output(out_name: "animal_name")
         #     }
         # }'''
-        base_location = Location(('Animal',))
-        base_name_location = base_location.navigate_to_field('name')
+        base_location = Location(("Animal",))
+        base_name_location = base_location.navigate_to_field("name")
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
-            ConstructResult({
-                'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            ConstructResult(
+                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+            ),
         ]
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
 
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
@@ -247,27 +267,30 @@ class EmitGremlinTests(unittest.TestCase):
         #         }
         #     }
         # }'''
-        base_location = Location(('Animal',))
-        base_name_location = base_location.navigate_to_field('name')
-        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
+        base_location = Location(("Animal",))
+        base_name_location = base_location.navigate_to_field("name")
+        child_location = base_location.navigate_to_subpath("out_Animal_BornAt")
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
-            Traverse('out', 'Animal_BornAt'),
-            Filter(BinaryComposition(
-                u'=',
-                LocalField(u'name', GraphQLString),
-                ContextField(base_location.navigate_to_field(u'name'), GraphQLString))),
+            Traverse("out", "Animal_BornAt"),
+            Filter(
+                BinaryComposition(
+                    u"=",
+                    LocalField(u"name", GraphQLString),
+                    ContextField(base_location.navigate_to_field(u"name"), GraphQLString),
+                )
+            ),
             MarkLocation(child_location),
             Backtrack(base_location),
             GlobalOperationsStart(),
-            ConstructResult({
-                'animal_name': OutputContextField(base_name_location, GraphQLString),
-            })
+            ConstructResult(
+                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+            ),
         ]
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_BornAt')
@@ -277,7 +300,7 @@ class EmitGremlinTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
 
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
@@ -291,34 +314,38 @@ class EmitGremlinTests(unittest.TestCase):
         #         }
         #     }
         # }'''
-        base_location = Location(('Animal',))
+        base_location = Location(("Animal",))
         revisited_base_location = base_location.revisit()
-        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
-        child_name_location = child_location.navigate_to_field('name')
+        child_location = base_location.navigate_to_subpath("out_Animal_BornAt")
+        child_name_location = child_location.navigate_to_field("name")
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
-            Traverse('out', 'Animal_BornAt', optional=True),
+            Traverse("out", "Animal_BornAt", optional=True),
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
             MarkLocation(revisited_base_location),
             GlobalOperationsStart(),
-            ConstructResult({
-                'bornat_name': TernaryConditional(
-                    BinaryComposition(
-                        u'!=',
-                        # HACK(predrag): The type given to OutputContextVertex here is wrong,
-                        # but it shouldn't cause any trouble since it has absolutely nothing to do
-                        # with the code being tested.
-                        OutputContextVertex(child_location, GraphQLString),
-                        NullLiteral),
-                    OutputContextField(child_name_location, GraphQLString),
-                    NullLiteral)
-            })
+            ConstructResult(
+                {
+                    "bornat_name": TernaryConditional(
+                        BinaryComposition(
+                            u"!=",
+                            # HACK(predrag): The type given to OutputContextVertex here is wrong,
+                            # but it shouldn't cause any trouble since it has absolutely nothing to do
+                            # with the code being tested.
+                            OutputContextVertex(child_location, GraphQLString),
+                            NullLiteral,
+                        ),
+                        OutputContextField(child_name_location, GraphQLString),
+                        NullLiteral,
+                    )
+                }
+            ),
         ]
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .ifThenElse{it.out_Animal_BornAt == null}{null}{it.out('Animal_BornAt')}
@@ -329,7 +356,7 @@ class EmitGremlinTests(unittest.TestCase):
                 bornat_name: ((m.Animal__out_Animal_BornAt___1 != null) ?
                 m.Animal__out_Animal_BornAt___1.name : null)
             ])}
-        '''
+        """
 
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
@@ -342,30 +369,32 @@ class EmitGremlinTests(unittest.TestCase):
         #         event_date @filter(op_name: "between", value: ["$start", "$end"])
         #     }
         # }'''
-        base_location = Location(('BirthEvent',))
-        base_name_location = base_location.navigate_to_field('name')
+        base_location = Location(("BirthEvent",))
+        base_name_location = base_location.navigate_to_field("name")
 
         ir_blocks = [
-            QueryRoot({'BirthEvent'}),
+            QueryRoot({"BirthEvent"}),
             MarkLocation(base_location),
             Filter(
                 BinaryComposition(
-                    u'&&',
-                    BinaryComposition(u'>=',
-                                      LocalField('event_date', GraphQLDateTime),
-                                      Variable('$start', GraphQLDateTime)),
-                    BinaryComposition(u'<=',
-                                      LocalField('event_date', GraphQLDateTime),
-                                      Variable('$end', GraphQLDateTime))
+                    u"&&",
+                    BinaryComposition(
+                        u">=",
+                        LocalField("event_date", GraphQLDateTime),
+                        Variable("$start", GraphQLDateTime),
+                    ),
+                    BinaryComposition(
+                        u"<=",
+                        LocalField("event_date", GraphQLDateTime),
+                        Variable("$end", GraphQLDateTime),
+                    ),
                 )
             ),
             GlobalOperationsStart(),
-            ConstructResult({
-                'name': OutputContextField(base_name_location, GraphQLString)
-            }),
+            ConstructResult({"name": OutputContextField(base_name_location, GraphQLString)}),
         ]
 
-        expected_gremlin = '''
+        expected_gremlin = """
              g.V('@class', 'BirthEvent')
             .as('BirthEvent___1')
             .filter{it, m -> ((it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $start)) &&
@@ -373,7 +402,7 @@ class EmitGremlinTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.BirthEvent___1.name
             ])}
-        '''
+        """
 
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
@@ -385,25 +414,25 @@ class EmitGremlinTests(unittest.TestCase):
         #         event_date @output(out_name: "event_date")
         #     }
         # }'''
-        base_location = Location(('BirthEvent',))
-        base_event_date_location = base_location.navigate_to_field('event_date')
+        base_location = Location(("BirthEvent",))
+        base_event_date_location = base_location.navigate_to_field("event_date")
 
         ir_blocks = [
-            QueryRoot({'BirthEvent'}),
+            QueryRoot({"BirthEvent"}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
-            ConstructResult({
-                'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)
-            })
+            ConstructResult(
+                {"event_date": OutputContextField(base_event_date_location, GraphQLDateTime)}
+            ),
         ]
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'BirthEvent')
             .as('BirthEvent___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 event_date: m.BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
             ])}
-        '''
+        """
 
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
@@ -431,8 +460,8 @@ class EmitCypherTests(unittest.TestCase):
         #         name @output(out_name: "animal_name")
         #     }
         # }'''
-        base_location = Location(('Animal',))
-        base_name_location = base_location.navigate_to_field('name')
+        base_location = Location(("Animal",))
+        base_name_location = base_location.navigate_to_field("name")
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
@@ -444,10 +473,10 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
             GlobalOperationsStart(),  # necessary for Cypher. Filter/output blocks come after this.
-            ConstructResult({'animal_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({"animal_name": OutputContextField(base_name_location, GraphQLString)}),
         ]
         query_metadata_table = QueryMetadataTable(
             root_location=base_location, root_location_info=base_location_info
@@ -456,10 +485,10 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             RETURN Animal___1.name AS `animal_name`
-        '''
+        """
 
         compare_cypher(self, expected_cypher, received_cypher)
 
@@ -474,8 +503,8 @@ class EmitCypherTests(unittest.TestCase):
         #         }
         #     }
         # }'''
-        base_location = Location(('Animal',))
-        base_name_location = base_location.navigate_to_field('name')
+        base_location = Location(("Animal",))
+        base_name_location = base_location.navigate_to_field("name")
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
@@ -486,8 +515,8 @@ class EmitCypherTests(unittest.TestCase):
             is_within_fold=False,
         )
 
-        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
-        child_name_location = child_location.navigate_to_field('name')
+        child_location = base_location.navigate_to_subpath("out_Animal_BornAt")
+        child_name_location = child_location.navigate_to_field("name")
         child_location_info = LocationInfo(
             parent_location=base_location,
             type=schema.get_type(child_name_location.field),
@@ -498,26 +527,26 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
-            Traverse('out', 'Animal_BornAt'),
+            Traverse("out", "Animal_BornAt"),
             CoerceType(
-                {'BornAt'}
+                {"BornAt"}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             Filter(
                 BinaryComposition(
-                    u'=',
+                    u"=",
                     # see compiler.ir_lowering_cypher's replace_local_fields_with_context_fields
                     # method LocalField(u"name", GraphQLString) gets replaced with the
                     # child_location field "name"
-                    ContextField(child_location.navigate_to_field(u'name'), GraphQLString),
-                    ContextField(base_location.navigate_to_field(u'name'), GraphQLString),
+                    ContextField(child_location.navigate_to_field(u"name"), GraphQLString),
+                    ContextField(base_location.navigate_to_field(u"name"), GraphQLString),
                 )
             ),
             MarkLocation(child_location),
             Backtrack(base_location),
             GlobalOperationsStart(),
-            ConstructResult({'animal_name': OutputContextField(base_name_location, GraphQLString)}),
+            ConstructResult({"animal_name": OutputContextField(base_name_location, GraphQLString)}),
         ]
         query_metadata_table = QueryMetadataTable(
             root_location=base_location, root_location_info=base_location_info
@@ -527,13 +556,13 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
               WHERE (Animal__out_Animal_BornAt___1.name = Animal___1.name)
             RETURN
               Animal___1.name AS `animal_name`
-        '''
+        """
         compare_cypher(self, expected_cypher, received_cypher)
 
     def test_output_inside_optional_traversal(self):
@@ -545,8 +574,8 @@ class EmitCypherTests(unittest.TestCase):
         #         }
         #     }
         # }'''
-        base_location = Location(('Animal',))
-        base_name_location = base_location.navigate_to_field('name')
+        base_location = Location(("Animal",))
+        base_name_location = base_location.navigate_to_field("name")
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
@@ -557,8 +586,8 @@ class EmitCypherTests(unittest.TestCase):
             is_within_fold=False,
         )
 
-        child_location = base_location.navigate_to_subpath('out_Animal_BornAt')
-        child_name_location = child_location.navigate_to_field('name')
+        child_location = base_location.navigate_to_subpath("out_Animal_BornAt")
+        child_name_location = child_location.navigate_to_field("name")
         child_location_info = LocationInfo(
             parent_location=base_location,
             type=child_name_location.field,
@@ -569,11 +598,11 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'Animal'}),
+            QueryRoot({"Animal"}),
             MarkLocation(base_location),
-            Traverse('out', 'Animal_BornAt', optional=True),
+            Traverse("out", "Animal_BornAt", optional=True),
             CoerceType(
-                {'BornAt'}
+                {"BornAt"}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
@@ -582,9 +611,9 @@ class EmitCypherTests(unittest.TestCase):
             GlobalOperationsStart(),
             ConstructResult(
                 {
-                    'bornat_name': TernaryConditional(
+                    "bornat_name": TernaryConditional(
                         BinaryComposition(
-                            u'!=',
+                            u"!=",
                             # HACK(predrag): The type given to OutputContextVertex here is wrong,
                             # but it shouldn't cause any trouble since it has absolutely nothing to
                             # do with the code being tested.
@@ -605,13 +634,13 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
-        expected_cypher = '''
+        expected_cypher = """
               MATCH (Animal___1:Animal)
               OPTIONAL MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
               RETURN
                   (CASE WHEN (Animal__out_Animal_BornAt___1 IS NOT null)
                   THEN Animal__out_Animal_BornAt___1.name ELSE null END) AS `bornat_name`
-          '''
+          """
 
         compare_cypher(self, expected_cypher, received_cypher)
 
@@ -622,8 +651,8 @@ class EmitCypherTests(unittest.TestCase):
         #         event_date @output(out_name: "event_date")
         #     }
         # }'''
-        base_location = Location(('BirthEvent',))
-        base_event_date_location = base_location.navigate_to_field('event_date')
+        base_location = Location(("BirthEvent",))
+        base_event_date_location = base_location.navigate_to_field("event_date")
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
@@ -635,11 +664,11 @@ class EmitCypherTests(unittest.TestCase):
         )
 
         ir_blocks = [
-            QueryRoot({'BirthEvent'}),
+            QueryRoot({"BirthEvent"}),
             MarkLocation(base_location),
             GlobalOperationsStart(),
             ConstructResult(
-                {'event_date': OutputContextField(base_event_date_location, GraphQLDateTime)}
+                {"event_date": OutputContextField(base_event_date_location, GraphQLDateTime)}
             ),
         ]
         query_metadata_table = QueryMetadataTable(
@@ -649,10 +678,10 @@ class EmitCypherTests(unittest.TestCase):
         cypher_query = convert_to_cypher_query(ir_blocks, query_metadata_table)
         received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
-        expected_cypher = '''
+        expected_cypher = """
               MATCH (BirthEvent___1:BirthEvent)
               RETURN
               BirthEvent___1.event_date AS `event_date`
-          '''
+          """
 
         compare_cypher(self, expected_cypher, received_cypher)

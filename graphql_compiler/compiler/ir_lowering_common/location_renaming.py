@@ -45,6 +45,7 @@ def translate_potential_location(location_translations, potential_location):
 
 def make_location_rewriter_visitor_fn(location_translations):
     """Return a visitor function that is able to replace locations with equivalent locations."""
+
     def visitor_fn(expression):
         """Expression visitor function used to rewrite expressions with updated Location data."""
         # All CompilerEntity objects store their exact constructor input args/kwargs.

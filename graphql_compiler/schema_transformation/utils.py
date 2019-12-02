@@ -57,7 +57,7 @@ class InvalidCrossSchemaEdgeError(SchemaTransformError):
     """
 
 
-_alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + '_'))
+_alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
 
 
 def check_schema_identifier_is_valid(identifier):
@@ -72,8 +72,8 @@ def check_schema_identifier_is_valid(identifier):
     """
     if not isinstance(identifier, str):
         raise ValueError(u'Schema identifier "{}" is not a string.'.format(identifier))
-    if identifier == '':
-        raise ValueError(u'Schema identifier must be a nonempty string.')
+    if identifier == "":
+        raise ValueError(u"Schema identifier must be a nonempty string.")
     illegal_characters = frozenset(identifier) - _alphanumeric_and_underscore
     if illegal_characters:
         raise ValueError(
@@ -97,9 +97,11 @@ def check_type_name_is_valid(name):
         raise InvalidTypeNameError(u'Name "{}" is not a string.'.format(name))
     if not COMPILED_NAME_PATTERN.match(name):
         raise InvalidTypeNameError(u'"{}" is not a valid GraphQL name.'.format(name))
-    if name.startswith('__'):
-        raise InvalidTypeNameError(u'"{}" starts with two underscores, which is reserved for '
-                                   u'GraphQL internal use and is not allowed.'.format(name))
+    if name.startswith("__"):
+        raise InvalidTypeNameError(
+            u'"{}" starts with two underscores, which is reserved for '
+            u"GraphQL internal use and is not allowed.".format(name)
+        )
 
 
 def get_query_type_name(schema):
@@ -172,9 +174,7 @@ def try_get_inline_fragment(selections):
     if selections is None:
         return None
     inline_fragments_in_selection = [
-        selection
-        for selection in selections
-        if isinstance(selection, InlineFragment)
+        selection for selection in selections if isinstance(selection, InlineFragment)
     ]
     if len(inline_fragments_in_selection) == 0:
         return None
@@ -184,12 +184,12 @@ def try_get_inline_fragment(selections):
         else:
             raise GraphQLValidationError(
                 u'Input selections "{}" contains both InlineFragments and Fields, which may not '
-                u'coexist in one selection.'.format(selections)
+                u"coexist in one selection.".format(selections)
             )
     else:
         raise GraphQLValidationError(
             u'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
-            u''.format(selections)
+            u"".format(selections)
         )
 
 
@@ -204,18 +204,20 @@ def get_copy_of_node_with_new_name(node, new_name):
         Node, with new_name as its name and otherwise identical to the input node
     """
     node_type = type(node).__name__
-    allowed_types = frozenset((
-        'EnumTypeDefinition',
-        'Field',
-        'FieldDefinition',
-        'InterfaceTypeDefinition',
-        'NamedType',
-        'ObjectTypeDefinition',
-        'UnionTypeDefinition',
-    ))
+    allowed_types = frozenset(
+        (
+            "EnumTypeDefinition",
+            "Field",
+            "FieldDefinition",
+            "InterfaceTypeDefinition",
+            "NamedType",
+            "ObjectTypeDefinition",
+            "UnionTypeDefinition",
+        )
+    )
     if node_type not in allowed_types:
         raise AssertionError(
-            u'Input node {} of type {} is not allowed, only {} are allowed.'.format(
+            u"Input node {} of type {} is not allowed, only {} are allowed.".format(
                 node, node_type, allowed_types
             )
         )
@@ -231,29 +233,35 @@ class CheckValidTypesAndNamesVisitor(Visitor):
     invalid names, raise InvalidTypeNameError.
     """
 
-    disallowed_types = frozenset({  # types not supported in renaming or merging
-        'InputObjectTypeDefinition',
-        'TypeExtensionDefinition',
-    })
-    unexpected_types = frozenset({  # types not expected to be found in schema definition
-        'Field',
-        'FragmentDefinition',
-        'FragmentSpread',
-        'InlineFragment',
-        'ObjectField',
-        'ObjectValue',
-        'OperationDefinition',
-        'SelectionSet',
-        'Variable',
-        'VariableDefinition',
-    })
-    check_name_validity_types = frozenset({  # nodes whose name need to be checked
-        'EnumTypeDefinition',
-        'InterfaceTypeDefinition',
-        'ObjectTypeDefinition',
-        'ScalarTypeDefinition',
-        'UnionTypeDefinition',
-    })
+    disallowed_types = frozenset(
+        {  # types not supported in renaming or merging
+            "InputObjectTypeDefinition",
+            "TypeExtensionDefinition",
+        }
+    )
+    unexpected_types = frozenset(
+        {  # types not expected to be found in schema definition
+            "Field",
+            "FragmentDefinition",
+            "FragmentSpread",
+            "InlineFragment",
+            "ObjectField",
+            "ObjectValue",
+            "OperationDefinition",
+            "SelectionSet",
+            "Variable",
+            "VariableDefinition",
+        }
+    )
+    check_name_validity_types = frozenset(
+        {  # nodes whose name need to be checked
+            "EnumTypeDefinition",
+            "InterfaceTypeDefinition",
+            "ObjectTypeDefinition",
+            "ScalarTypeDefinition",
+            "UnionTypeDefinition",
+        }
+    )
 
     def enter(self, node, key, parent, path, ancestors):
         """Raise error if node is of a invalid type or has an invalid name.
@@ -265,13 +273,9 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         """
         node_type = type(node).__name__
         if node_type in self.disallowed_types:
-            raise SchemaStructureError(
-                u'Node type "{}" not allowed.'.format(node_type)
-            )
+            raise SchemaStructureError(u'Node type "{}" not allowed.'.format(node_type))
         elif node_type in self.unexpected_types:
-            raise SchemaStructureError(
-                u'Node type "{}" unexpected in schema AST'.format(node_type)
-            )
+            raise SchemaStructureError(u'Node type "{}" unexpected in schema AST'.format(node_type))
         elif node_type in self.check_name_validity_types:
             check_type_name_is_valid(node.name.value)
 
@@ -339,15 +343,15 @@ def check_ast_schema_is_valid(ast):
     try:
         schema = build_ast_schema(ast)
     except Exception as e:  # Can't be more specific -- see graphql/utils/build_ast_schema.py
-        raise SchemaStructureError(u'Input is not a valid schema. Message: {}'.format(e))
+        raise SchemaStructureError(u"Input is not a valid schema. Message: {}".format(e))
 
     if schema.get_mutation_type() is not None:
         raise SchemaStructureError(
-            u'Renaming schemas that contain mutations is currently not supported.'
+            u"Renaming schemas that contain mutations is currently not supported."
         )
     if schema.get_subscription_type() is not None:
         raise SchemaStructureError(
-            u'Renaming schemas that contain subscriptions is currently not supported.'
+            u"Renaming schemas that contain subscriptions is currently not supported."
         )
 
     visit(ast, CheckValidTypesAndNamesVisitor())
@@ -368,17 +372,15 @@ def is_property_field_ast(field):
     """
     if isinstance(field, Field):
         if (
-            field.selection_set is None or
-            field.selection_set.selections is None or
-            field.selection_set.selections == []
+            field.selection_set is None
+            or field.selection_set.selections is None
+            or field.selection_set.selections == []
         ):
             return True
         else:
             return False
     else:
-        raise AssertionError(
-            u'Input selection "{}" is not a Field.'.format(field)
-        )
+        raise AssertionError(u'Input selection "{}" is not a Field.'.format(field))
 
 
 class CheckQueryIsValidToSplitVisitor(Visitor):
@@ -391,18 +393,16 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
 
     # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
     # also ok, but temporarily not allowed
-    supported_directives = frozenset((
-        FilterDirective.name,
-        OutputDirective.name,
-        OptionalDirective.name,
-    ))
+    supported_directives = frozenset(
+        (FilterDirective.name, OutputDirective.name, OptionalDirective.name,)
+    )
 
     def enter_Directive(self, node, *args):
         """Check that the directive is supported."""
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
                 u'Directive "{}" is not yet supported, only "{}" are currently '
-                u'supported.'.format(node.name.value, self.supported_directives)
+                u"supported.".format(node.name.value, self.supported_directives)
             )
 
     def enter_SelectionSet(self, node, *args):
@@ -415,27 +415,24 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
             node: SelectionSet
         """
         selections = node.selections
-        if (
-            len(selections) == 1 and
-            isinstance(selections[0], InlineFragment)
-        ):
+        if len(selections) == 1 and isinstance(selections[0], InlineFragment):
             return
         else:
             seen_vertex_field = False  # Whether we're seen a vertex field
             for field in selections:
                 if isinstance(field, InlineFragment):
                     raise GraphQLValidationError(
-                        u'Inline fragments must be the only selection in scope. However, in '
-                        u'selections {}, an InlineFragment coexists with other selections.'.format(
+                        u"Inline fragments must be the only selection in scope. However, in "
+                        u"selections {}, an InlineFragment coexists with other selections.".format(
                             selections
                         )
                     )
                 if is_property_field_ast(field):
                     if seen_vertex_field:
                         raise GraphQLValidationError(
-                            u'In the selections {}, the property field {} occurs after a vertex '
-                            u'field or a type coercion statement, which is not allowed, as all '
-                            u'property fields must appear before all vertex fields.'.format(
+                            u"In the selections {}, the property field {} occurs after a vertex "
+                            u"field or a type coercion statement, which is not allowed, as all "
+                            u"property fields must appear before all vertex fields.".format(
                                 node.selections, field
                             )
                         )
@@ -463,7 +460,7 @@ def check_query_is_valid_to_split(schema, query_ast):
     built_in_validation_errors = validate(schema, query_ast)
     if len(built_in_validation_errors) > 0:
         raise GraphQLValidationError(
-            u'AST does not validate: {}'.format(built_in_validation_errors)
+            u"AST does not validate: {}".format(built_in_validation_errors)
         )
     # Check no bad directives and fields are in order
     visitor = CheckQueryIsValidToSplitVisitor()

@@ -21,23 +21,24 @@ from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
 from ..schema.schema_info import CommonSchemaInfo, DirectJoinDescriptor, make_sqlalchemy_schema_info
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
-    ORIENTDB_INDEX_RECORDS_QUERY, ORIENTDB_SCHEMA_RECORDS_QUERY
+    ORIENTDB_INDEX_RECORDS_QUERY,
+    ORIENTDB_SCHEMA_RECORDS_QUERY,
 )
 from ..schema_generation.utils import amend_custom_scalar_types
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
-WHITESPACE_PATTERN = re.compile(u'[\t\n ]*', flags=re.UNICODE)
+WHITESPACE_PATTERN = re.compile(u"[\t\n ]*", flags=re.UNICODE)
 
 # flag to indicate a test component should be skipped
-SKIP_TEST = 'SKIP'
+SKIP_TEST = "SKIP"
 
 # Text representation of a GraphQL schema generated from OrientDB.
 # This schema isn't meant to be a paragon of good schema design.
 # Instead, it aims to capture as many real-world edge cases as possible,
 # without requiring a massive number of types and interfaces.
-SCHEMA_TEXT = '''
+SCHEMA_TEXT = """
     schema {
         query: RootSchemaQuery
     }
@@ -204,10 +205,11 @@ SCHEMA_TEXT = '''
         _x_count: Int
         uuid: ID
     }
-'''
+"""
 
 VALID_MACROS_TEXT = [
-    ('''\
+    (
+        """\
     {
         Entity @macro_edge_definition(name: "out_Entity_AlmostRelated") {
             out_Entity_Related {
@@ -217,8 +219,11 @@ VALID_MACROS_TEXT = [
             }
         }
     }
-    ''', {}),
-    ('''\
+    """,
+        {},
+    ),
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_GrandparentOf") {
             out_Animal_ParentOf {
@@ -227,8 +232,11 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {}),
-    ('''\
+    }""",
+        {},
+    ),
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_GrandchildrenCalledNate") {
             out_Animal_ParentOf {
@@ -238,10 +246,11 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {
-        'wanted': 'Nate',
-    }),
-    ('''\
+    }""",
+        {"wanted": "Nate",},
+    ),
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_RichSiblings") {
             in_Animal_ParentOf {
@@ -251,8 +260,11 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {}),
-    ('''\
+    }""",
+        {},
+    ),
+    (
+        """\
     {
         Location @macro_edge_definition(name: "out_Location_Orphans") {
             in_Animal_LivesIn @macro_edge_target {
@@ -262,11 +274,12 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {
-        'num_parents': 0,
-    }),
+    }""",
+        {"num_parents": 0,},
+    ),
     # Testing that @optional that doesn't include @macro_edge_target is okay.
-    ('''\
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_MaybeYoungerSiblings") {
             out_Animal_BornAt @optional {
@@ -280,8 +293,11 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {}),
-    ('''\
+    }""",
+        {},
+    ),
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings") {
             net_worth @tag(tag_name: "net_worth")
@@ -297,9 +313,12 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {}),
+    }""",
+        {},
+    ),
     # The same as out_AnimalRichYoungerSiblings, but with a filter after the target.
-    ('''\
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_RichYoungerSiblings_2") {
             net_worth @tag(tag_name: "net_worth")
@@ -315,8 +334,11 @@ VALID_MACROS_TEXT = [
                 event_date @filter(op_name: ">", value: ["%birthday"])
             }
         }
-    }''', {}),
-    ('''\
+    }""",
+        {},
+    ),
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_RelatedFood") {
             in_Entity_Related {
@@ -325,8 +347,11 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {}),
-    ('''\
+    }""",
+        {},
+    ),
+    (
+        """\
     {
         Animal @macro_edge_definition(name: "out_Animal_RelatedEntity") {
             in_Entity_Related {
@@ -335,42 +360,43 @@ VALID_MACROS_TEXT = [
                 }
             }
         }
-    }''', {}),
+    }""",
+        {},
+    ),
 ]
 
 
 # A class holding all necessary backend-specific testing utilities.
-BackendTester = namedtuple('BackendTester', (
-    # Backend to be tested
-    'backend'
-
-    # Returns whether two emitted queries are the same, up to differences in syntax/whitespace
-    'compare_queries',
-
-    # An instance of backend.SchemaInfoClass consistend with the standard testing schema.
-    'schema_info',
-
-    # Given a SchemaInfo and a connection pool to a database, install the given schema into
-    # the database, erasing content if necessary.
-    'setup_schema'
-
-    # Given a SchemaInfo, a dict representation of data fitting the schema, and a connection pool
-    # to a database with the same schema, install the given data into the database, erasing any
-    # existing data.
-    'setup_data'
-))
+BackendTester = namedtuple(
+    "BackendTester",
+    (
+        # Backend to be tested
+        "backend"
+        # Returns whether two emitted queries are the same, up to differences in syntax/whitespace
+        "compare_queries",
+        # An instance of backend.SchemaInfoClass consistend with the standard testing schema.
+        "schema_info",
+        # Given a SchemaInfo and a connection pool to a database, install the given schema into
+        # the database, erasing content if necessary.
+        "setup_schema"
+        # Given a SchemaInfo, a dict representation of data fitting the schema, and a connection pool
+        # to a database with the same schema, install the given data into the database, erasing any
+        # existing data.
+        "setup_data",
+    ),
+)
 
 
 def transform(emitted_output):
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
-    return WHITESPACE_PATTERN.sub(u'', emitted_output)
+    return WHITESPACE_PATTERN.sub(u"", emitted_output)
 
 
 def _get_mismatch_message(expected_blocks, received_blocks):
     """Create a well-formated error message indicating that two lists of blocks are mismatched."""
     pretty_expected = pformat(expected_blocks)
     pretty_received = pformat(received_blocks)
-    return u'{}\n\n!=\n\n{}'.format(pretty_expected, pretty_received)
+    return u"{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
 
 
 def compare_ir_blocks(test_case, expected_blocks, received_blocks):
@@ -378,50 +404,49 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
     mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
 
     if len(expected_blocks) != len(received_blocks):
-        test_case.fail(u'Not the same number of blocks:\n\n'
-                       u'{}'.format(mismatch_message))
+        test_case.fail(u"Not the same number of blocks:\n\n" u"{}".format(mismatch_message))
 
     for i in six.moves.xrange(len(expected_blocks)):
         expected = expected_blocks[i]
         received = received_blocks[i]
-        test_case.assertEqual(expected, received,
-                              msg=u'Blocks at position {} were different: {} vs {}\n\n'
-                                  u'{}'.format(i, expected, received, mismatch_message))
+        test_case.assertEqual(
+            expected,
+            received,
+            msg=u"Blocks at position {} were different: {} vs {}\n\n"
+            u"{}".format(i, expected, received, mismatch_message),
+        )
 
 
 def compare_graphql(test_case, expected, received):
     """Compare the expected and received GraphQL code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
-        pretty_print_graphql(expected),
-        pretty_print_graphql(received))
+    msg = "\n{}\n\n!=\n\n{}".format(pretty_print_graphql(expected), pretty_print_graphql(received))
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_match(test_case, expected, received, parameterized=True):
     """Compare the expected and received MATCH code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
+    msg = "\n{}\n\n!=\n\n{}".format(
         pretty_print_match(expected, parameterized=parameterized),
-        pretty_print_match(received, parameterized=parameterized))
+        pretty_print_match(received, parameterized=parameterized),
+    )
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_sql(test_case, expected, received):
     """Compare the expected and received SQL query, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
+    msg = "\n{}\n\n!=\n\n{}".format(expected, received)
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_gremlin(test_case, expected, received):
     """Compare the expected and received Gremlin code, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(
-        pretty_print_gremlin(expected),
-        pretty_print_gremlin(received))
+    msg = "\n{}\n\n!=\n\n{}".format(pretty_print_gremlin(expected), pretty_print_gremlin(received))
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
 def compare_cypher(test_case, expected, received):
     """Compare the expected and received Cypher query, ignoring whitespace."""
-    msg = '\n{}\n\n!=\n\n{}'.format(expected, received)
+    msg = "\n{}\n\n!=\n\n{}".format(expected, received)
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
@@ -435,8 +460,10 @@ def compare_input_metadata(test_case, expected, received):
         expected_value = expected[key]
         received_value = received[key]
 
-        test_case.assertTrue(expected_value.is_same_type(received_value),
-                             msg=u'{} != {}'.format(str(expected_value), str(received_value)))
+        test_case.assertTrue(
+            expected_value.is_same_type(received_value),
+            msg=u"{} != {}".format(str(expected_value), str(received_value)),
+        )
 
 
 def compare_ignoring_whitespace(test_case, expected, received, msg):
@@ -458,8 +485,8 @@ def get_type_equivalence_hints():
     return {
         schema.get_type(key): schema.get_type(value)
         for key, value in [
-            ('Event', 'Union__BirthEvent__Event__FeedingEvent'),
-            ('FoodOrSpecies', 'Union__Food__FoodOrSpecies__Species'),
+            ("Event", "Union__BirthEvent__Event__FeedingEvent"),
+            ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),
         ]
     }
 
@@ -476,7 +503,7 @@ def _get_schema_without_list_valued_property_fields():
     types_with_fields = (GraphQLInterfaceType, GraphQLObjectType)
     for type_name, graphql_type in six.iteritems(schema.get_type_map()):
         if isinstance(graphql_type, types_with_fields):
-            if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):
+            if type_name != "RootSchemaQuery" and not type_name.startswith("__"):
                 fields_to_pop = []
                 for field_name, field_type in six.iteritems(graphql_type.fields):
                     if not is_vertex_field_name(field_name):
@@ -488,7 +515,7 @@ def _get_schema_without_list_valued_property_fields():
     return schema
 
 
-def get_sqlalchemy_schema_info(dialect='mssql'):
+def get_sqlalchemy_schema_info(dialect="mssql"):
     """Get a SQLAlchemySchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
@@ -499,103 +526,103 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
     uuid_type = sqlalchemy.String(36)
 
     tables = {
-        'Animal': sqlalchemy.Table(
-            'Animal',
+        "Animal": sqlalchemy.Table(
+            "Animal",
             sqlalchemy_metadata,
-            sqlalchemy.Column('birthday', sqlalchemy.DateTime, nullable=False),
-            sqlalchemy.Column('color', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('parent', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('related_entity', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('net_worth', sqlalchemy.Integer, nullable=True),
-            sqlalchemy.Column('fed_at', uuid_type, nullable=True),
-            sqlalchemy.Column('born_at', uuid_type, nullable=True),
-            sqlalchemy.Column('lives_in', uuid_type, nullable=True),
-            sqlalchemy.Column('important_event', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('species', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("birthday", sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column("color", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("parent", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("related_entity", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("net_worth", sqlalchemy.Integer, nullable=True),
+            sqlalchemy.Column("fed_at", uuid_type, nullable=True),
+            sqlalchemy.Column("born_at", uuid_type, nullable=True),
+            sqlalchemy.Column("lives_in", uuid_type, nullable=True),
+            sqlalchemy.Column("important_event", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("species", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            schema=("db_1." if dialect == "mssql" else "") + "schema_1",
         ),
-        'BirthEvent': sqlalchemy.Table(
-            'BirthEvent',
+        "BirthEvent": sqlalchemy.Table(
+            "BirthEvent",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
-            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column("related_event", uuid_type, primary_key=False),
+            schema=("db_1." if dialect == "mssql" else "") + "schema_1",
         ),
-        'Entity': sqlalchemy.Table(
-            'Entity',
+        "Entity": sqlalchemy.Table(
+            "Entity",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('related_entity', uuid_type, nullable=True),
-            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("related_entity", uuid_type, nullable=True),
+            schema=("db_1." if dialect == "mssql" else "") + "schema_1",
         ),
-        'Event': sqlalchemy.Table(
-            'Event',
+        "Event": sqlalchemy.Table(
+            "Event",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
-            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column("related_event", uuid_type, primary_key=False),
+            schema=("db_2." if dialect == "mssql" else "") + "schema_1",
         ),
-        'FeedingEvent': sqlalchemy.Table(
-            'FeedingEvent',
+        "FeedingEvent": sqlalchemy.Table(
+            "FeedingEvent",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('event_date', sqlalchemy.DateTime, nullable=False),
-            sqlalchemy.Column('related_event', uuid_type, primary_key=False),
-            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column("related_event", uuid_type, primary_key=False),
+            schema=("db_2." if dialect == "mssql" else "") + "schema_1",
         ),
-        'Food': sqlalchemy.Table(
-            'Food',
+        "Food": sqlalchemy.Table(
+            "Food",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_2'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            schema=("db_2." if dialect == "mssql" else "") + "schema_2",
         ),
-        'FoodOrSpecies': sqlalchemy.Table(
-            'FoodOrSpecies',
+        "FoodOrSpecies": sqlalchemy.Table(
+            "FoodOrSpecies",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema=('db_2.' if dialect == 'mssql' else '') + 'schema_2'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            schema=("db_2." if dialect == "mssql" else "") + "schema_2",
         ),
-        'Location': sqlalchemy.Table(
-            'Location',
+        "Location": sqlalchemy.Table(
+            "Location",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            schema=("db_1." if dialect == "mssql" else "") + "schema_1",
         ),
-        'Species': sqlalchemy.Table(
-            'Species',
+        "Species": sqlalchemy.Table(
+            "Species",
             sqlalchemy_metadata,
-            sqlalchemy.Column('description', sqlalchemy.String(40), nullable=True),
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            sqlalchemy.Column('name', sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column('eats', uuid_type, nullable=True),
-            sqlalchemy.Column('limbs', sqlalchemy.Integer, nullable=True),
-            sqlalchemy.Column('related_entity', uuid_type, nullable=True),
-            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("eats", uuid_type, nullable=True),
+            sqlalchemy.Column("limbs", sqlalchemy.Integer, nullable=True),
+            sqlalchemy.Column("related_entity", uuid_type, nullable=True),
+            schema=("db_1." if dialect == "mssql" else "") + "schema_1",
         ),
-        'UniquelyIdentifiable': sqlalchemy.Table(
-            'UniquelyIdentifiable',
+        "UniquelyIdentifiable": sqlalchemy.Table(
+            "UniquelyIdentifiable",
             sqlalchemy_metadata,
-            sqlalchemy.Column('uuid', uuid_type, primary_key=True),
-            schema=('db_1.' if dialect == 'mssql' else '') + 'schema_1'
+            sqlalchemy.Column("uuid", uuid_type, primary_key=True),
+            schema=("db_1." if dialect == "mssql" else "") + "schema_1",
         ),
     }
 
@@ -611,74 +638,85 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
     #                       these edges.
     edges = [
         {
-            'name': 'Animal_ParentOf',
-            'from_table': 'Animal',
-            'to_table': 'Animal',
-            'from_column': 'uuid',
-            'to_column': 'parent',
-        }, {
-            'name': 'Animal_OfSpecies',
-            'from_table': 'Animal',
-            'to_table': 'Species',
-            'from_column': 'species',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Animal_FedAt',
-            'from_table': 'Animal',
-            'to_table': 'FeedingEvent',
-            'from_column': 'fed_at',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Animal_BornAt',
-            'from_table': 'Animal',
-            'to_table': 'BirthEvent',
-            'from_column': 'born_at',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Animal_LivesIn',
-            'from_table': 'Animal',
-            'to_table': 'Location',
-            'from_column': 'lives_in',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Animal_ImportantEvent',
-            'from_table': 'Animal',
-            'to_table': 'Union__BirthEvent__Event__FeedingEvent',
-            'from_column': 'important_event',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Species_Eats',
-            'from_table': 'Species',
-            'to_table': 'Union__Food__FoodOrSpecies__Species',
-            'from_column': 'eats',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Entity_Related',
-            'from_table': 'Entity',
-            'to_table': 'Entity',
-            'from_column': 'related_entity',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Event_RelatedEvent',
-            'from_table': 'Union__BirthEvent__Event__FeedingEvent',
-            'to_table': 'Union__BirthEvent__Event__FeedingEvent',
-            'from_column': 'related_event',
-            'to_column': 'uuid',
-        }, {
-            'name': 'Entity_Alias',
-            'from_table': 'Entity',
-            'to_table': 'Alias',
-            'from_column': 'uuid',
-            'to_column': 'alias_for',
-        }
+            "name": "Animal_ParentOf",
+            "from_table": "Animal",
+            "to_table": "Animal",
+            "from_column": "uuid",
+            "to_column": "parent",
+        },
+        {
+            "name": "Animal_OfSpecies",
+            "from_table": "Animal",
+            "to_table": "Species",
+            "from_column": "species",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Animal_FedAt",
+            "from_table": "Animal",
+            "to_table": "FeedingEvent",
+            "from_column": "fed_at",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Animal_BornAt",
+            "from_table": "Animal",
+            "to_table": "BirthEvent",
+            "from_column": "born_at",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Animal_LivesIn",
+            "from_table": "Animal",
+            "to_table": "Location",
+            "from_column": "lives_in",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Animal_ImportantEvent",
+            "from_table": "Animal",
+            "to_table": "Union__BirthEvent__Event__FeedingEvent",
+            "from_column": "important_event",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Species_Eats",
+            "from_table": "Species",
+            "to_table": "Union__Food__FoodOrSpecies__Species",
+            "from_column": "eats",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Entity_Related",
+            "from_table": "Entity",
+            "to_table": "Entity",
+            "from_column": "related_entity",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Event_RelatedEvent",
+            "from_table": "Union__BirthEvent__Event__FeedingEvent",
+            "to_table": "Union__BirthEvent__Event__FeedingEvent",
+            "from_column": "related_event",
+            "to_column": "uuid",
+        },
+        {
+            "name": "Entity_Alias",
+            "from_table": "Entity",
+            "to_table": "Alias",
+            "from_column": "uuid",
+            "to_column": "alias_for",
+        },
     ]
 
     join_descriptors = {}
     for edge in edges:
-        join_descriptors.setdefault(edge['from_table'], {})['out_{}'.format(edge['name'])] = (
-            DirectJoinDescriptor(edge['from_column'], edge['to_column']))
-        join_descriptors.setdefault(edge['to_table'], {})['in_{}'.format(edge['name'])] = (
-            DirectJoinDescriptor(edge['to_column'], edge['from_column']))
+        join_descriptors.setdefault(edge["from_table"], {})[
+            "out_{}".format(edge["name"])
+        ] = DirectJoinDescriptor(edge["from_column"], edge["to_column"])
+        join_descriptors.setdefault(edge["to_table"], {})[
+            "in_{}".format(edge["name"])
+        ] = DirectJoinDescriptor(edge["to_column"], edge["from_column"])
 
     # Inherit join_descriptors from superclasses
     # TODO(bojanserafimov): Properties can be inferred too, instead of being explicitly inherited.
@@ -686,14 +724,15 @@ def get_sqlalchemy_schema_info(dialect='mssql'):
         for subclass in subclass_set:
             for edge_name, join_info in six.iteritems(join_descriptors.get(class_name, {})):
                 join_descriptors.setdefault(subclass, {})[edge_name] = join_info
-    if dialect == 'postgresql':
+    if dialect == "postgresql":
         sqlalchemy_compiler_dialect = postgresql.dialect()
-    elif dialect == 'mssql':
+    elif dialect == "mssql":
         sqlalchemy_compiler_dialect = mssql.dialect()
     else:
-        raise AssertionError(u'Unrecognized dialect {}'.format(dialect))
+        raise AssertionError(u"Unrecognized dialect {}".format(dialect))
     return make_sqlalchemy_schema_info(
-        schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors)
+        schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors
+    )
 
 
 def generate_schema_graph(orientdb_client):
@@ -709,8 +748,9 @@ def generate_schema(orientdb_client, class_to_field_type_overrides=None, hidden_
     """Generate schema and type equivalence dict from a pyorient client."""
     schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
-    return get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides,
-                                                        hidden_classes)
+    return get_graphql_schema_from_orientdb_schema_data(
+        schema_data, class_to_field_type_overrides, hidden_classes
+    )
 
 
 def construct_location_types(location_types_as_strings):
@@ -727,7 +767,7 @@ def get_empty_test_macro_registry():
     """Return a MacroRegistry with appropriate type_equivalence_hints and subclass_set."""
     schema = get_schema()
     type_equivalence_hints = {
-        schema.get_type('Event'): schema.get_type('Union__BirthEvent__Event__FeedingEvent'),
+        schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),
     }
     subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
     macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)

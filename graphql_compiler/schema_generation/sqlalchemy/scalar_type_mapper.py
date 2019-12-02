@@ -55,19 +55,21 @@ GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE = {
 }
 
 # We do not currently plan to add a mapping for JSON and Binary objects.
-UNSUPPORTED_GENERIC_SQL_TYPES = frozenset({
-    sqltypes.ARRAY,
-    sqltypes.Binary,
-    sqltypes.BINARY,
-    sqltypes.BLOB,
-    sqltypes.Interval,
-    sqltypes.JSON,
-    sqltypes.LargeBinary,
-    sqltypes.PickleType,
-    sqltypes.Time,
-    sqltypes.TIME,
-    sqltypes.VARBINARY,
-})
+UNSUPPORTED_GENERIC_SQL_TYPES = frozenset(
+    {
+        sqltypes.ARRAY,
+        sqltypes.Binary,
+        sqltypes.BINARY,
+        sqltypes.BLOB,
+        sqltypes.Interval,
+        sqltypes.JSON,
+        sqltypes.LargeBinary,
+        sqltypes.PickleType,
+        sqltypes.Time,
+        sqltypes.TIME,
+        sqltypes.VARBINARY,
+    }
+)
 
 MSSQL_CLASS_TO_GRAPHQL_TYPE = {
     mssqltypes.BIT: GraphQLBoolean,
@@ -79,23 +81,25 @@ MSSQL_CLASS_TO_GRAPHQL_TYPE = {
     mssqltypes.UNIQUEIDENTIFIER: GraphQLID,
 }
 
-UNSUPPORTED_MSSQL_TYPES = frozenset({
-    mssqltypes.DATETIMEOFFSET,
-    mssqltypes.IMAGE,
-    mssqltypes.MONEY,
-    mssqltypes.ROWVERSION,
-    mssqltypes.SQL_VARIANT,
-    mssqltypes.SMALLMONEY,
-    mssqltypes.TIME,
-    # The mssqltypes.TIMESTAMP class inherits from SQL._Binary class, which is not supported.
-    # TIMESTAMP docstring:
-    #     Note this is completely different than the SQL Standard
-    #     TIMESTAMP type, which is not supported by SQL Server.  It
-    #     is a read-only datatype that does not support INSERT of values.
-    mssqltypes.TIMESTAMP,
-    mssqltypes.VARBINARY,
-    mssqltypes.XML,
-})
+UNSUPPORTED_MSSQL_TYPES = frozenset(
+    {
+        mssqltypes.DATETIMEOFFSET,
+        mssqltypes.IMAGE,
+        mssqltypes.MONEY,
+        mssqltypes.ROWVERSION,
+        mssqltypes.SQL_VARIANT,
+        mssqltypes.SMALLMONEY,
+        mssqltypes.TIME,
+        # The mssqltypes.TIMESTAMP class inherits from SQL._Binary class, which is not supported.
+        # TIMESTAMP docstring:
+        #     Note this is completely different than the SQL Standard
+        #     TIMESTAMP type, which is not supported by SQL Server.  It
+        #     is a read-only datatype that does not support INSERT of values.
+        mssqltypes.TIMESTAMP,
+        mssqltypes.VARBINARY,
+        mssqltypes.XML,
+    }
+)
 
 
 POSTGRES_CLASS_TO_GRAPHQL_TYPES = {
@@ -105,31 +109,33 @@ POSTGRES_CLASS_TO_GRAPHQL_TYPES = {
     postgrestypes.ENUM: GraphQLString,
 }
 
-UNSUPPORTED_POSTGRES_TYPES = frozenset({
-    # We shouldn't map the Postgresql bit type to the GraphQLBoolean type. The Postgresql bit type
-    # is used to represent a bit string of variable length.
-    # https://www.postgresql.org/docs/8.1/datatype-bit.html
-    postgrestypes.BIT,
-    postgrestypes.TIME,
-    postgrestypes.INET,
-    postgrestypes.CIDR,
-    postgrestypes.MACADDR,
-    postgrestypes.MONEY,
-    postgrestypes.OID,
-    postgrestypes.REGCLASS,
-    postgrestypes.BYTEA,
-    postgrestypes.INTERVAL,
-    postgrestypes.ARRAY,
-    postgrestypes.INT4RANGE,
-    postgrestypes.INT8RANGE,
-    postgrestypes.NUMRANGE,
-    postgrestypes.DATERANGE,
-    postgrestypes.TSVECTOR,
-    postgrestypes.TSTZRANGE,
-    postgrestypes.TSTZRANGE,
-    postgrestypes.JSON,
-    postgrestypes.JSONB,
-})
+UNSUPPORTED_POSTGRES_TYPES = frozenset(
+    {
+        # We shouldn't map the Postgresql bit type to the GraphQLBoolean type. The Postgresql bit type
+        # is used to represent a bit string of variable length.
+        # https://www.postgresql.org/docs/8.1/datatype-bit.html
+        postgrestypes.BIT,
+        postgrestypes.TIME,
+        postgrestypes.INET,
+        postgrestypes.CIDR,
+        postgrestypes.MACADDR,
+        postgrestypes.MONEY,
+        postgrestypes.OID,
+        postgrestypes.REGCLASS,
+        postgrestypes.BYTEA,
+        postgrestypes.INTERVAL,
+        postgrestypes.ARRAY,
+        postgrestypes.INT4RANGE,
+        postgrestypes.INT8RANGE,
+        postgrestypes.NUMRANGE,
+        postgrestypes.DATERANGE,
+        postgrestypes.TSVECTOR,
+        postgrestypes.TSTZRANGE,
+        postgrestypes.TSTZRANGE,
+        postgrestypes.JSON,
+        postgrestypes.JSONB,
+    }
+)
 
 # TODO: Show unsupported types for mysql.
 MYSQL_CLASS_TO_GRAPHQL_TYPE = {
@@ -164,7 +170,7 @@ SQL_CLASS_TO_GRAPHQL_TYPE = reduce(
         POSTGRES_CLASS_TO_GRAPHQL_TYPES,
         MYSQL_CLASS_TO_GRAPHQL_TYPE,
     ),
-    {}
+    {},
 )
 
 
@@ -174,6 +180,9 @@ def try_get_graphql_scalar_type(column_name, column_type):
     if maybe_graphql_type is None:
         # Trying to get the string representation of the SQLAlchemy JSON and ARRAY types
         # will lead to an error. We therefore use repr instead.
-        warnings.warn(u'Ignoring column "{}" with unsupported SQL datatype: {}'
-                      .format(column_name, type(column_type).__name__))
+        warnings.warn(
+            u'Ignoring column "{}" with unsupported SQL datatype: {}'.format(
+                column_name, type(column_type).__name__
+            )
+        )
     return maybe_graphql_type
