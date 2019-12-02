@@ -111,8 +111,8 @@ POSTGRES_CLASS_TO_GRAPHQL_TYPES = {
 
 UNSUPPORTED_POSTGRES_TYPES = frozenset(
     {
-        # We shouldn't map the Postgresql bit type to the GraphQLBoolean type. The Postgresql bit type
-        # is used to represent a bit string of variable length.
+        # We shouldn't map the Postgresql bit type to the GraphQLBoolean type.
+        # The Postgresql bit type is used to represent a bit string of variable length.
         # https://www.postgresql.org/docs/8.1/datatype-bit.html
         postgrestypes.BIT,
         postgrestypes.TIME,

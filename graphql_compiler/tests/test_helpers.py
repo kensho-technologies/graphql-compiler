@@ -379,9 +379,9 @@ BackendTester = namedtuple(
         # Given a SchemaInfo and a connection pool to a database, install the given schema into
         # the database, erasing content if necessary.
         "setup_schema"
-        # Given a SchemaInfo, a dict representation of data fitting the schema, and a connection pool
-        # to a database with the same schema, install the given data into the database, erasing any
-        # existing data.
+        # Given a SchemaInfo, a dict representation of data fitting the schema,
+        # and a connection pool to a database with the same schema,
+        # install the given data into the database, erasing any existing data.
         "setup_data",
     ),
 )

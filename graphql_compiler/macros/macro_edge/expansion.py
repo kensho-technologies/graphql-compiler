@@ -93,7 +93,8 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
                 raise GraphQLCompilationError(
                     u"Attempting to use a type coercion to coerce a value of type {field_type} "
                     u"(from field named {field_name}) to incompatible type {coercion_type}, which "
-                    u"is not a subtype of {field_type}. Only coercions to a subtype are allowed.".format(
+                    u"is not a subtype of {field_type}. Only coercions "
+                    u"to a subtype are allowed.".format(
                         field_type=target_class_name,
                         coercion_type=coercion_class,
                         field_name=get_ast_field_name(selection_ast),

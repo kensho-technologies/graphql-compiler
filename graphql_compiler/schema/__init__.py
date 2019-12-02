@@ -86,7 +86,9 @@ OutputDirective = GraphQLDirective(
                 "out_name",
                 GraphQLArgument(
                     type=GraphQLNonNull(GraphQLString),
-                    description="What to designate the output field generated from this property field.",
+                    description=(
+                        "What to designate the output field generated from this property field."
+                    ),
                 ),
             ),
         ]
@@ -191,8 +193,10 @@ RecurseDirective = GraphQLDirective(
                 "depth",
                 GraphQLArgument(
                     type=GraphQLNonNull(GraphQLInt),
-                    description="Recurse up to this many times on this edge. A depth of 1 produces "
-                    "the current vertex and its immediate neighbors along the given edge.",
+                    description=(
+                        "Recurse up to this many times on this edge. A depth of 1 produces "
+                        "the current vertex and its immediate neighbors along the given edge."
+                    ),
                 ),
             ),
         ]
@@ -252,10 +256,12 @@ def _parse_datetime_value(value):
 
 GraphQLDate = GraphQLScalarType(
     name="Date",
-    description="The `Date` scalar type represents day-accuracy date objects."
-    "Values are serialized following the ISO-8601 datetime format specification, "
-    'for example "2017-03-21". The year, month and day fields must be included, '
-    "and the format followed exactly, or the behavior is undefined.",
+    description=(
+        "The `Date` scalar type represents day-accuracy date objects."
+        "Values are serialized following the ISO-8601 datetime format specification, "
+        'for example "2017-03-21". The year, month and day fields must be included, '
+        "and the format followed exactly, or the behavior is undefined."
+    ),
     serialize=_serialize_date,
     parse_value=_parse_date_value,
     parse_literal=_unused_function,  # We don't yet support parsing Date objects in literals.
@@ -264,11 +270,13 @@ GraphQLDate = GraphQLScalarType(
 
 GraphQLDateTime = GraphQLScalarType(
     name="DateTime",
-    description="The `DateTime` scalar type represents timezone-aware second-accuracy timestamps."
-    "Values are serialized following the ISO-8601 datetime format specification, "
-    'for example "2017-03-21T12:34:56+00:00". All of these fields must be included, '
-    "including the seconds and the time zone, and the format followed exactly, "
-    "or the behavior is undefined.",
+    description=(
+        "The `DateTime` scalar type represents timezone-aware second-accuracy timestamps."
+        "Values are serialized following the ISO-8601 datetime format specification, "
+        'for example "2017-03-21T12:34:56+00:00". All of these fields must be included, '
+        "including the seconds and the time zone, and the format followed exactly, "
+        "or the behavior is undefined."
+    ),
     serialize=_serialize_datetime,
     parse_value=_parse_datetime_value,
     parse_literal=_unused_function,  # We don't yet support parsing DateTime objects in literals.
@@ -277,12 +285,14 @@ GraphQLDateTime = GraphQLScalarType(
 
 GraphQLDecimal = GraphQLScalarType(
     name="Decimal",
-    description="The `Decimal` scalar type is an arbitrary-precision decimal number object "
-    "useful for representing values that should never be rounded, such as "
-    "currency amounts. Values are allowed to be transported as either a native Decimal "
-    "type, if the underlying transport allows that, or serialized as strings in "
-    'decimal format, without thousands separators and using a "." as the '
-    'decimal separator: for example, "12345678.012345".',
+    description=(
+        "The `Decimal` scalar type is an arbitrary-precision decimal number object "
+        "useful for representing values that should never be rounded, such as "
+        "currency amounts. Values are allowed to be transported as either a native Decimal "
+        "type, if the underlying transport allows that, or serialized as strings in "
+        'decimal format, without thousands separators and using a "." as the '
+        'decimal separator: for example, "12345678.012345".'
+    ),
     serialize=str,
     parse_value=Decimal,
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
