@@ -96,12 +96,12 @@ def _get_table_to_column_metadata(engine, database_name, schema_name):
     """Return a dict mapping the name of each table to a list of column metadata dicts."""
     columns_query = text(
         """
-    SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
-    FROM {database}.INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = '{schema}';
-    """.format(
+        SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
+        FROM {database}.INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '{schema}';
+        """.format(  # nosec
             database=database_name, schema=schema_name
-        )  # nosec
+        )
     )
 
     result_proxy = engine.execute(columns_query)
@@ -115,16 +115,16 @@ def _get_table_to_explicit_primary_key_columns(engine, database_name, schema_nam
     """Return a dict mapping each table to its set of explicit primary key columns."""
     primary_key_query = text(
         """
-    SELECT KU.table_name as TABLE_NAME,column_name as PRIMARY_KEY_COLUMN
-    FROM {database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-    INNER JOIN
-        {database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KU
-              ON TC.CONSTRAINT_TYPE = 'PRIMARY KEY' AND
-                 TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME
-    WHERE KU.CONSTRAINT_SCHEMA = '{schema}'
-    """.format(
+        SELECT KU.table_name as TABLE_NAME,column_name as PRIMARY_KEY_COLUMN
+        FROM {database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+        INNER JOIN
+            {database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KU
+                  ON TC.CONSTRAINT_TYPE = 'PRIMARY KEY' AND
+                     TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME
+        WHERE KU.CONSTRAINT_SCHEMA = '{schema}'
+        """.format(  # nosec
             database=database_name, schema=schema_name
-        )  # nosec
+        )
     )
 
     result_proxy = engine.execute(primary_key_query)

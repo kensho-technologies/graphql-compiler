@@ -417,9 +417,9 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": match_operator
-            }  # nosec, the operators are hardcoded above
+            }
 
             # In Gremlin, equality comparisons use two equal signs instead of one.
             gremlin_operator = u"==" if operator == u"=" else operator
@@ -430,7 +430,7 @@ class CompilerTests(unittest.TestCase):
                 .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                     animal_name: m.Animal___1.name
                 ])}
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": gremlin_operator
             }
 
@@ -441,9 +441,9 @@ class CompilerTests(unittest.TestCase):
                     db_1.schema_1.[Animal] AS [Animal_1]
                 WHERE
                     [Animal_1].name %(operator)s :wanted
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": operator
-            }  # nosec, the operators are hardcoded above
+            }
 
             # In Cypher, inequality comparisons use "<>" instead of "!=".
             cypher_operator = u"<>" if operator == u"!=" else operator
@@ -451,9 +451,9 @@ class CompilerTests(unittest.TestCase):
                 MATCH (Animal___1:Animal)
                     WHERE (Animal___1.name %(operator)s $wanted)
                 RETURN Animal___1.name AS `animal_name`
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": cypher_operator
-            }  # nosec, the operators are hardcoded above
+            }
 
             expected_output_metadata = {
                 "animal_name": OutputMetadata(type=GraphQLString, optional=False),
