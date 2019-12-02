@@ -15,7 +15,7 @@ from sqlalchemy.sql.functions import func
 
 from . import blocks
 from ..schema import COUNT_META_FIELD_NAME
-from .expressions import FoldedContextField
+from .expressions import BinaryComposition, FoldedContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
 
@@ -107,6 +107,27 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
     return used_columns
 
 
+def _find_x_count_used_in_global_filter(expression_from_global_filter):
+    """Recursively find fold_scope_location and fold_path of _x_counts used in global filters."""
+    # For FoldContextField expressions, determine the corresponding field is an _x_count.
+    if (isinstance(expression_from_global_filter, FoldedContextField) and
+            expression_from_global_filter.fold_scope_location.field == COUNT_META_FIELD_NAME):
+        fold_scope_location = expression_from_global_filter.fold_scope_location
+        fold_path = fold_scope_location.fold_path
+        return fold_scope_location, fold_path
+
+    # For BinaryComposition expressions, check the left and right sides.
+    elif isinstance(expression_from_global_filter, BinaryComposition):
+        for subexpression in (expression_from_global_filter.left,
+                              expression_from_global_filter.right):
+            if (isinstance(subexpression, BinaryComposition) or
+                    isinstance(subexpression, FoldedContextField)):
+                return _find_x_count_used_in_global_filter(subexpression)
+
+    # If no instance of _x_count is found return Nones.
+    return None, None
+
+
 def _find_folded_fields(ir):
     """For each fold path, find folded fields (outputs and metafields used in filters)."""
     folded_fields = {}
@@ -125,10 +146,8 @@ def _find_folded_fields(ir):
         # Check the left and right side of Filter predicates to see if _x_count is involved.
         if global_operation_start and isinstance(block, blocks.Filter):
             for subexpression in (block.predicate.left, block.predicate.right):
-                if (isinstance(subexpression, FoldedContextField) and
-                        subexpression.fold_scope_location.field == COUNT_META_FIELD_NAME):
-                    fold_scope_location = subexpression.fold_scope_location
-                    fold_path = fold_scope_location.fold_path
+                fold_scope_location, fold_path = _find_x_count_used_in_global_filter(subexpression)
+                if fold_scope_location and fold_path:
                     folded_fields.setdefault(fold_path, set()).add(fold_scope_location)
 
     return folded_fields
