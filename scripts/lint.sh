@@ -53,6 +53,11 @@ isort --check-only --settings-path=setup.cfg --diff --recursive $lintable_locati
 isort_exit_code=$?
 echo -e "\n*** End of isort run; exit: $isort_exit_code ***\n"
 
+echo -e '*** Running black... ***\n'
+black --check --diff .
+black_exit_code=$?
+echo -e "\n*** End of black run; exit: $black_exit_code ***\n"
+
 echo -e '*** Running flake8... ***\n'
 flake8 --config=setup.cfg $lintable_locations
 flake_exit_code=$?
@@ -78,12 +83,15 @@ bandit -r $lintable_locations
 bandit_exit_code=$?
 echo -e "\n*** End of bandit run, exit: $bandit_exit_code ***\n"
 
-if [[ ("$flake_exit_code" != "0") ||
-      ("$pydocstyle_exit_code" != "0") ||
-      ("$pydocstyle_test_exit_code" != "0") ||
-      ("$pylint_exit_code" != "0") ||
-      ("$bandit_exit_code" != "0") ||
-      ("$isort_exit_code" != "0") ]]; then
+if  [[
+        ("$flake_exit_code" != "0") ||
+        ("$pydocstyle_exit_code" != "0") ||
+        ("$pydocstyle_test_exit_code" != "0") ||
+        ("$pylint_exit_code" != "0") ||
+        ("$bandit_exit_code" != "0") ||
+        ("$isort_exit_code" != "0") ||
+        ("$black_exit_code" != "0")
+    ]]; then
     echo -e "\n*** Lint failed. ***\n"
     echo -e "isort exit: $isort_exit_code"
     echo -e "flake8 exit: $flake_exit_code"
