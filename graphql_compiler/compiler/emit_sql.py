@@ -16,6 +16,7 @@ from sqlalchemy.sql.functions import func
 from . import blocks
 from ..schema import COUNT_META_FIELD_NAME
 from .expressions import BinaryComposition, FoldedContextField
+from .ir_lowering_sql import ContextColumn
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
 
@@ -107,6 +108,18 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
     return used_columns
 
 
+def _find_tagged_parameters(expression_from_filter):
+    """Return True if the expression contains a ContextColumn (i.e. a tagged parameter)."""
+    if isinstance(expression_from_filter, ContextColumn):
+        return True
+
+    elif isinstance(expression_from_filter, BinaryComposition):
+        for subexpression in (expression_from_filter.left, expression_from_filter.right):
+            return _find_tagged_parameters(subexpression)
+
+    return False
+
+
 def _find_x_count_used_in_global_filter(expression_from_global_filter):
     """Recursively find fold_scope_location and fold_path of _x_counts used in global filters."""
     # For FoldContextField expressions, determine the corresponding field is an _x_count.
@@ -120,9 +133,7 @@ def _find_x_count_used_in_global_filter(expression_from_global_filter):
     elif isinstance(expression_from_global_filter, BinaryComposition):
         for subexpression in (expression_from_global_filter.left,
                               expression_from_global_filter.right):
-            if (isinstance(subexpression, BinaryComposition) or
-                    isinstance(subexpression, FoldedContextField)):
-                return _find_x_count_used_in_global_filter(subexpression)
+            return _find_x_count_used_in_global_filter(subexpression)
 
     # If no instance of _x_count is found return Nones.
     return None, None
@@ -856,6 +867,9 @@ class CompilationState(object):
         # regular fields i.e. non-_x_count fields. Filtering on _x_count will use the COUNT(*)
         # output from the folded subquery and apply the filter in the global WHERE clause.
         if self._current_fold is not None:
+            if _find_tagged_parameters(predicate):
+                raise NotImplementedError("Filtering with a tagged parameter in a fold scope "
+                                          "is not implemented yet.")
             self._current_fold.add_filter(predicate, self._aliases)
 
         # Otherwise, add the filter to the compilation state. Note that this is for filters outside
