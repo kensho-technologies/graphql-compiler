@@ -27,6 +27,7 @@ def check_test_data(test_case, test_data, expected_blocks, expected_location_typ
 
     compilation_results = graphql_to_ir(test_case.schema, test_data.graphql_input,
                                         type_equivalence_hints=schema_based_type_equivalence_hints)
+
     compare_ir_blocks(test_case, expected_blocks, compilation_results.ir_blocks)
     compare_input_metadata(
         test_case, test_data.expected_input_metadata, compilation_results.input_metadata)

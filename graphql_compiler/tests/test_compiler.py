@@ -6104,7 +6104,8 @@ class CompilerTests(unittest.TestCase):
                 ((Animal___1.out_Animal_ParentOf IS null) OR
                 (Animal___1.out_Animal_ParentOf.size() = 0)) OR
                 (Animal__out_Animal_ParentOf___1 IS NOT null)
-            )'''
+            )
+        '''
 
         expected_gremlin = '''
             g.V('@class', 'Animal')
@@ -6114,19 +6115,21 @@ class CompilerTests(unittest.TestCase):
             }{
                 null
             }{
-                it.out('Animal_ParentOf')}
-                .as('Animal__out_Animal_ParentOf___1')
-                .optional('Animal___1').as('Animal___2')
-                .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                    children_with_higher_net_worth: ((
-                        m.Animal___2.in_Animal_ParentOf == null) ? [] : (
-                            m.Animal___2.in_Animal_ParentOf.collect{
-                                entry -> entry.outV.next()
-                            }.findAll{
-                                entry -> ((m.Animal__out_Animal_ParentOf___1 == null) ||
-                                (entry.net_worth >= m.Animal__out_Animal_ParentOf___1.net_worth))}.
-                                collect{entry -> entry.name})), name: m.Animal___1.name
-                ])}'''
+                it.out('Animal_ParentOf')
+            }.as('Animal__out_Animal_ParentOf___1')
+            .optional('Animal___1').as('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                children_with_higher_net_worth: ((
+                    m.Animal___2.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___2.in_Animal_ParentOf.collect{
+                            entry -> entry.outV.next()
+                        }.findAll{
+                            entry -> ((m.Animal__out_Animal_ParentOf___1 == null) ||
+                                (entry.net_worth >= m.Animal__out_Animal_ParentOf___1.net_worth))
+                        }.collect{entry -> entry.name})), name: m.Animal___1.name
+                ])
+            }
+        '''
 
         expected_cypher = '''
             MATCH (Animal___1:Animal)
@@ -6182,7 +6185,8 @@ class CompilerTests(unittest.TestCase):
                     (Animal___1.out_Animal_OfSpecies.size() = 0)) OR
                     (Animal__out_Animal_OfSpecies___1 IS NOT null)
                 )
-            )'''
+            )
+        '''
         expected_gremlin = NotImplementedError
 
         expected_mssql = SKIP_TEST
