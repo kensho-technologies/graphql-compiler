@@ -16,8 +16,8 @@ from sqlalchemy.sql.functions import func
 from . import blocks
 from ..schema import COUNT_META_FIELD_NAME
 from .expressions import BinaryComposition, FoldedContextField
-from .ir_lowering_sql import ContextColumn
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
+from .ir_lowering_sql import ContextColumn
 
 
 # Some reserved column names used in emitted SQL queries
@@ -868,8 +868,8 @@ class CompilationState(object):
         # output from the folded subquery and apply the filter in the global WHERE clause.
         if self._current_fold is not None:
             if _find_tagged_parameters(predicate):
-                raise NotImplementedError("Filtering with a tagged parameter in a fold scope "
-                                          "is not implemented yet.")
+                raise NotImplementedError(u'Filtering with a tagged parameter in a fold scope '
+                                          u'is not implemented yet.')
             self._current_fold.add_filter(predicate, self._aliases)
 
         # Otherwise, add the filter to the compilation state. Note that this is for filters outside
