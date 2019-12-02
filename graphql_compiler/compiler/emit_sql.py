@@ -122,7 +122,7 @@ def _find_tagged_parameters(expression_from_filter):
 
 def _find_x_count_used_in_global_filter(expression_from_global_filter):
     """Recursively find fold_scope_location and fold_path of _x_counts used in global filters."""
-    # For FoldContextField expressions, determine the corresponding field is an _x_count.
+    # For FoldContextField expressions, determine if the corresponding field is an _x_count.
     if (isinstance(expression_from_global_filter, FoldedContextField) and
             expression_from_global_filter.fold_scope_location.field == COUNT_META_FIELD_NAME):
         fold_scope_location = expression_from_global_filter.fold_scope_location
