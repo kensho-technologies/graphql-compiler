@@ -67,7 +67,7 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
     used_columns = {}
 
     # Find filters used
-    for location, location_info in ir.query_metadata_table.registered_locations:
+    for location, _ in ir.query_metadata_table.registered_locations:
         if isinstance(location, FoldScopeLocation):
             continue
         for filter_info in ir.query_metadata_table.get_filter_infos(location):
