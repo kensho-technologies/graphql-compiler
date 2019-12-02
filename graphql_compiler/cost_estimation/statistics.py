@@ -102,8 +102,11 @@ class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
 
     def __init__(
-        self, class_counts, vertex_edge_vertex_counts=None,
-        distinct_field_values_counts=None, field_quantiles=None
+        self,
+        class_counts,
+        vertex_edge_vertex_counts=None,
+        distinct_field_values_counts=None,
+        field_quantiles=None,
     ):
         """Initialize statistics with the given data.
 
@@ -136,8 +139,10 @@ class LocalStatistics(Statistics):
         # Validate arguments
         for vertex_name, quantile_list in six.iteritems(field_quantiles):
             if len(quantile_list) < 2:
-                raise AssertionError(u'The number of quantiles should be at least 2. Vertex '
-                                     u'{} has {}.'.format(vertex_name, len(quantile_list)))
+                raise AssertionError(
+                    u"The number of quantiles should be at least 2. Vertex "
+                    u"{} has {}.".format(vertex_name, len(quantile_list))
+                )
 
         self._class_counts = frozendict(class_counts)
         self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
@@ -147,8 +152,10 @@ class LocalStatistics(Statistics):
     def get_class_count(self, class_name):
         """See base class."""
         if class_name not in self._class_counts:
-            raise AssertionError(u'Class count statistic is required, but entry not found for: '
-                                 u'{}'.format(class_name))
+            raise AssertionError(
+                u"Class count statistic is required, but entry not found for: "
+                u"{}".format(class_name)
+            )
         return self._class_counts[class_name]
 
     def get_vertex_edge_vertex_count(

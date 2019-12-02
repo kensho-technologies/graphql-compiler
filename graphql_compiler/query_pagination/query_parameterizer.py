@@ -2,7 +2,7 @@
 from collections import namedtuple
 
 
-RESERVED_PARAMETER_PREFIX = '_paged_'
+RESERVED_PARAMETER_PREFIX = "_paged_"
 
 # ParameterizedPaginationQueries namedtuple, describing two query ASTs that have PaginationFilters
 # describing filters with which the query result size can be controlled. Note that these filters are
@@ -11,14 +11,14 @@ RESERVED_PARAMETER_PREFIX = '_paged_'
 # the user parameters to ensure better pagination, the user_parameters dict may differ from the
 # original query's parameters that were provided to the paginator.
 ParameterizedPaginationQueries = namedtuple(
-    'ParameterizedPaginationQueries',
+    "ParameterizedPaginationQueries",
     (
-        'next_page_query',          # Document, AST of query that will return the next page of
-                                    # results when combined with pagination parameters.
-        'remainder_query',          # Document, AST of query that will return the remainder of
-                                    # results when combined with pagination parameters.
-        'pagination_filters',       # List[PaginationFilter], filters usable for pagination.
-        'user_parameters',          # dict, parameters that the user has defined for other filters.
+        "next_page_query",  # Document, AST of query that will return the next page of
+        # results when combined with pagination parameters.
+        "remainder_query",  # Document, AST of query that will return the remainder of
+        # results when combined with pagination parameters.
+        "pagination_filters",  # List[PaginationFilter], filters usable for pagination.
+        "user_parameters",  # dict, parameters that the user has defined for other filters.
     ),
 )
 
@@ -27,17 +27,17 @@ ParameterizedPaginationQueries = namedtuple(
 # query parameterizer, or filters that the user has added whose parameter values may be modified for
 # generating paginated queries.
 PaginationFilter = namedtuple(
-    'PaginationFilter',
+    "PaginationFilter",
     (
-        'vertex_class',                 # str, vertex class to which the property field belongs to.
-        'property_field',               # str, name of the property field filtering is done over.
-        'next_page_query_filter',       # Directive, filter directive with '<' operator usable
-                                        # for pagination in the page query.
-        'remainder_query_filter',       # Directive, filter directive with '>=' operator usable
-                                        # for pagination in the remainder query.
-        'related_filters',              # List[Directive], filter directives that share the same
-                                        # vertex and property field as the next_page_query_filter,
-                                        # and are used to generate more accurate pages.
+        "vertex_class",  # str, vertex class to which the property field belongs to.
+        "property_field",  # str, name of the property field filtering is done over.
+        "next_page_query_filter",  # Directive, filter directive with '<' operator usable
+        # for pagination in the page query.
+        "remainder_query_filter",  # Directive, filter directive with '>=' operator usable
+        # for pagination in the remainder query.
+        "related_filters",  # List[Directive], filter directives that share the same
+        # vertex and property field as the next_page_query_filter,
+        # and are used to generate more accurate pages.
     ),
 )
 
