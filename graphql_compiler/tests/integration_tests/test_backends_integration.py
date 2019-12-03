@@ -1,6 +1,8 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
+from datetime import date
 from decimal import Decimal
+from typing import Any, Dict, List, Tuple
 from unittest import TestCase
 
 from graphql.type import GraphQLID
@@ -83,7 +85,13 @@ class IntegrationTests(TestCase):
         cls.maxDiff = None
         cls.schema = get_schema()
 
-    def assertResultsEqual(self, graphql_query, parameters, backend_name, expected_results):
+    def assertResultsEqual(
+        self,
+        graphql_query: str,
+        parameters: Dict[str, Any],
+        backend_name: str,
+        expected_results: List[Dict[str, Any]],
+    ) -> None:
         """Assert that two lists of DB results are equal, independent of order."""
         backend_results = self.compile_and_run_query(graphql_query, parameters, backend_name)
         try:
@@ -98,7 +106,12 @@ class IntegrationTests(TestCase):
             raise
 
     @classmethod
-    def compile_and_run_query(cls, graphql_query, parameters, backend_name):
+    def compile_and_run_query(
+        cls,
+        graphql_query: str,
+        parameters: Dict[str, Any],
+        backend_name: str,
+    ) -> Any:
         """Compiles and runs the graphql query with the supplied parameters against all backends.
 
         Args:
@@ -109,22 +122,24 @@ class IntegrationTests(TestCase):
         Returns:
             List[Dict[str, Any]], backend results as a list of dictionaries.
         """
+        # Mypy doesn't like our decorator magic, we have to manually ignore the type checks
+        # on all the properties that we magically added via the integration testing decorator.
         if backend_name in SQL_BACKENDS:
-            engine = cls.sql_backend_name_to_engine[backend_name]
+            engine = cls.sql_backend_name_to_engine[backend_name]  # type: ignore
             results = compile_and_run_sql_query(
-                cls.sql_schema_info, graphql_query, parameters, engine
+                cls.sql_schema_info, graphql_query, parameters, engine  # type: ignore
             )
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
-                cls.schema, graphql_query, parameters, cls.orientdb_client
+                cls.schema, graphql_query, parameters, cls.orientdb_client  # type: ignore
             )
         elif backend_name in NEO4J_BACKENDS:
             results = compile_and_run_neo4j_query(
-                cls.schema, graphql_query, parameters, cls.neo4j_client
+                cls.schema, graphql_query, parameters, cls.neo4j_client  # type: ignore
             )
         elif backend_name in REDISGRAPH_BACKENDS:
             results = compile_and_run_redisgraph_query(
-                cls.schema, graphql_query, parameters, cls.redisgraph_client
+                cls.schema, graphql_query, parameters, cls.redisgraph_client  # type: ignore
             )
         else:
             raise AssertionError(u"Unknown test backend {}.".format(backend_name))
@@ -132,7 +147,7 @@ class IntegrationTests(TestCase):
 
     @use_all_backends()
     @integration_fixtures
-    def test_simple_output(self, backend_name):
+    def test_simple_output(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
@@ -155,7 +170,7 @@ class IntegrationTests(TestCase):
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     @use_all_backends(except_backends=(test_backend.NEO4J, test_backend.REDISGRAPH))
     @integration_fixtures
-    def test_simple_filter(self, backend_name):
+    def test_simple_filter(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
@@ -199,7 +214,7 @@ class IntegrationTests(TestCase):
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     @use_all_backends(except_backends=(test_backend.REDISGRAPH, test_backend.NEO4J))
     @integration_fixtures
-    def test_two_filters(self, backend_name):
+    def test_two_filters(self, backend_name: str) -> None:
         graphql_query = """
             {
                 Animal {
@@ -225,7 +240,7 @@ class IntegrationTests(TestCase):
     # https://oss.redislabs.com/redisgraph/cypher_support/#string-operators
     @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
-    def test_has_substring_precedence(self, backend_name):
+    def test_has_substring_precedence(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
@@ -483,10 +498,10 @@ class IntegrationTests(TestCase):
         except_backends=(test_backend.REDISGRAPH,)  # TODO(bojanserafimov): Resolve syntax error
     )
     @integration_fixtures
-    def test_optional_basic(self, backend_name):
+    def test_optional_basic(self, backend_name: str) -> None:
         # (query, args, expected_results) tuples.
         # The queries are ran in the order specified here.
-        queries = [
+        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]]]] = [
             # Query 1: Children of Animal 1
             (
                 """
@@ -557,7 +572,7 @@ class IntegrationTests(TestCase):
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
     @use_all_backends(except_backends=(test_backend.REDISGRAPH))
     @integration_fixtures
-    def test_filter_on_date(self, backend_name):
+    def test_filter_on_date(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
