@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import reduce
+from typing import Any, Dict
 import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLScalarType, GraphQLString
@@ -7,7 +8,6 @@ import sqlalchemy.dialects.mssql.base as mssqltypes
 import sqlalchemy.dialects.mysql.base as mysqltypes
 import sqlalchemy.dialects.postgresql as postgrestypes
 import sqlalchemy.sql.sqltypes as sqltypes
-from typing import Any, Dict
 
 from ...global_utils import merge_non_overlapping_dicts
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
