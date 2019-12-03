@@ -1,13 +1,24 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from decimal import Decimal
+from typing import Any, Dict, List, Tuple, TypeVar, Union
 
+from graphql.type.schema import GraphQLSchema
+from pyorient.orient import OrientDB
+from redisgraph.client import Graph
 import six
+from sqlalchemy.engine.base import Engine
+
+from graphql_compiler.schema.schema_info import SQLAlchemySchemaInfo
+from graphql_compiler.tests.test_data_tools.neo4j_graph import Neo4jClient
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
 
 
-def sort_db_results(results):
+T = TypeVar("T")
+
+
+def sort_db_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     """Deterministically sort DB results.
 
     Args:
@@ -16,15 +27,15 @@ def sort_db_results(results):
     Returns:
         List[Dict], sorted DB results.
     """
-    sort_order = []
+    sort_order: List[str] = []
     if len(results) > 0:
         sort_order = sorted(six.iterkeys(results[0]))
 
-    def sort_key(result):
+    def sort_key(result: Dict[str, Any]) -> Tuple[Tuple[bool, Any], ...]:
         """Convert None/Not None to avoid comparisons of None to a non-None type."""
         return tuple((result[col] is not None, result[col]) for col in sort_order)
 
-    def sorted_value(value):
+    def sorted_value(value: T) -> Union[List[Any], T]:
         """Return a sorted version of a value, if it is a list."""
         if isinstance(value, list):
             return sorted(value)
@@ -35,7 +46,7 @@ def sort_db_results(results):
     )
 
 
-def try_convert_decimal_to_string(value):
+def try_convert_decimal_to_string(value: T) -> Any:
     """Return Decimals as string if value is a Decimal, return value otherwise."""
     if isinstance(value, list):
         return [try_convert_decimal_to_string(subvalue) for subvalue in value]
@@ -44,7 +55,12 @@ def try_convert_decimal_to_string(value):
     return value
 
 
-def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_client):
+def compile_and_run_match_query(
+    schema: GraphQLSchema,
+    graphql_query: str,
+    parameters: Dict[str, Any],
+    orientdb_client: OrientDB,
+) -> List[Dict[str, Any]]:
     """Compile and run a MATCH query against the supplied graph client."""
     # MATCH code emitted by the compiler expects Decimals to be passed in as strings
     converted_parameters = {
@@ -64,7 +80,12 @@ def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_clie
     return results
 
 
-def compile_and_run_sql_query(sql_schema_info, graphql_query, parameters, engine):
+def compile_and_run_sql_query(
+    sql_schema_info: SQLAlchemySchemaInfo,
+    graphql_query: str,
+    parameters: Dict[str, Any],
+    engine: Engine,
+) -> List[Dict[str, Any]]:
     """Compile and run a SQL query against the supplied SQL backend."""
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query = compilation_result.query
@@ -74,7 +95,12 @@ def compile_and_run_sql_query(sql_schema_info, graphql_query, parameters, engine
     return results
 
 
-def compile_and_run_neo4j_query(schema, graphql_query, parameters, neo4j_client):
+def compile_and_run_neo4j_query(
+    schema: GraphQLSchema,
+    graphql_query: str,
+    parameters: Dict[str, Any],
+    neo4j_client: Neo4jClient,
+) -> List[Dict[str, Any]]:
     """Compile and run a Cypher query against the supplied graph client."""
     compilation_result = compile_graphql_to_cypher(
         schema, graphql_query, type_equivalence_hints=None
@@ -85,7 +111,9 @@ def compile_and_run_neo4j_query(schema, graphql_query, parameters, neo4j_client)
     return results.data()
 
 
-def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgraph_client):
+def compile_and_run_redisgraph_query(
+    schema: GraphQLSchema, graphql_query: str, parameters: Dict[str, Any], redisgraph_client: Graph
+) -> List[Dict[str, Any]]:
     """Compile and run a Cypher query against the supplied graph client."""
     compilation_result = graphql_to_redisgraph_cypher(schema, graphql_query, parameters)
     query = compilation_result.query
