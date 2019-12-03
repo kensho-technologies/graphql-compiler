@@ -78,11 +78,17 @@ bandit -r $lintable_locations
 bandit_exit_code=$?
 echo -e "\n*** End of bandit run, exit: $bandit_exit_code ***\n"
 
+echo -e '\n*** Running sphinx-build... ***\n'
+sphinx-build -nqW -b dummy docs/source/ docs/build/ --keep-going
+sphinx_build_exit_code=$?
+echo -e "\n*** End of sphinx-build, exit: $sphinx_build_exit_code ***\n"
+
 if [[ ("$flake_exit_code" != "0") ||
       ("$pydocstyle_exit_code" != "0") ||
       ("$pydocstyle_test_exit_code" != "0") ||
       ("$pylint_exit_code" != "0") ||
       ("$bandit_exit_code" != "0") ||
+      ("sphinx_build_exit_code" != "0") ||
       ("$isort_exit_code" != "0") ]]; then
     echo -e "\n*** Lint failed. ***\n"
     echo -e "isort exit: $isort_exit_code"
@@ -91,6 +97,7 @@ if [[ ("$flake_exit_code" != "0") ||
     echo -e "pydocstyle on tests exit: $pydocstyle_test_exit_code"
     echo -e "pylint exit: $pylint_exit_code"
     echo -e "bandit exit: $bandit_exit_code"
+    echo -e "sphinx-build exit: $sphinx_build_exit_code"
     exit 1
 fi
 
