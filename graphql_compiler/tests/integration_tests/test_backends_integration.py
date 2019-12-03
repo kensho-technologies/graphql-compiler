@@ -107,10 +107,7 @@ class IntegrationTests(TestCase):
 
     @classmethod
     def compile_and_run_query(
-        cls,
-        graphql_query: str,
-        parameters: Dict[str, Any],
-        backend_name: str,
+        cls, graphql_query: str, parameters: Dict[str, Any], backend_name: str,
     ) -> Any:
         """Compiles and runs the graphql query with the supplied parameters against all backends.
 

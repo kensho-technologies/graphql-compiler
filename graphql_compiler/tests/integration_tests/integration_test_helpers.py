@@ -16,7 +16,7 @@ from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
 
 
-T = TypeVar('T')
+T = TypeVar("T")
 
 
 def sort_db_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -32,9 +32,7 @@ def sort_db_results(results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     if len(results) > 0:
         sort_order = sorted(six.iterkeys(results[0]))
 
-    def sort_key(
-        result: Dict[str, Any]
-    ) -> Tuple[Tuple[bool, Any], ...]:
+    def sort_key(result: Dict[str, Any]) -> Tuple[Tuple[bool, Any], ...]:
         """Convert None/Not None to avoid comparisons of None to a non-None type."""
         return tuple((result[col] is not None, result[col]) for col in sort_order)
 
