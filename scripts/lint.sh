@@ -63,6 +63,11 @@ flake8 --config=setup.cfg $lintable_locations
 flake_exit_code=$?
 echo -e "\n*** End of flake8 run, exit: $flake_exit_code ***\n"
 
+echo -e '*** Running mypy... ***\n'
+mypy $lintable_locations
+mypy_exit_code=$?
+echo -e "\n*** End of mypy run, exit: $mypy_exit_code ***\n"
+
 echo -e '\n*** Running pydocstyle... ***\n'
 pydocstyle --config=.pydocstyle $lintable_locations
 pydocstyle_exit_code=$?
@@ -90,11 +95,14 @@ if  [[
         ("$pylint_exit_code" != "0") ||
         ("$bandit_exit_code" != "0") ||
         ("$isort_exit_code" != "0") ||
-        ("$black_exit_code" != "0")
+        ("$black_exit_code" != "0") ||
+        ("$mypy_exit_code" != "0")
     ]]; then
     echo -e "\n*** Lint failed. ***\n"
     echo -e "isort exit: $isort_exit_code"
+    echo -e "black exit: $black_exit_code"
     echo -e "flake8 exit: $flake_exit_code"
+    echo -e "mypy exit: $mypy_exit_code"
     echo -e "pydocstyle exit: $pydocstyle_exit_code"
     echo -e "pydocstyle on tests exit: $pydocstyle_test_exit_code"
     echo -e "pylint exit: $pylint_exit_code"

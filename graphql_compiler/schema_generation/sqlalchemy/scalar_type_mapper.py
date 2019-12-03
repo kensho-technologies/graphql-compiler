@@ -2,11 +2,12 @@
 from functools import reduce
 import warnings
 
-from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLString
+from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLScalarType, GraphQLString
 import sqlalchemy.dialects.mssql.base as mssqltypes
 import sqlalchemy.dialects.mysql.base as mysqltypes
 import sqlalchemy.dialects.postgresql as postgrestypes
 import sqlalchemy.sql.sqltypes as sqltypes
+from typing import Any, Dict
 
 from ...global_utils import merge_non_overlapping_dicts
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
@@ -162,7 +163,7 @@ MYSQL_CLASS_TO_GRAPHQL_TYPE = {
 }
 
 
-SQL_CLASS_TO_GRAPHQL_TYPE = reduce(
+SQL_CLASS_TO_GRAPHQL_TYPE: Dict[Any, GraphQLScalarType] = reduce(
     merge_non_overlapping_dicts,
     (
         GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE,
