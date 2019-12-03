@@ -122,8 +122,8 @@ if  [[
     echo -e "pydocstyle exit: $pydocstyle_exit_code"
     echo -e "pydocstyle on tests exit: $pydocstyle_test_exit_code"
     echo -e "pylint exit: $pylint_exit_code"
-    echo -e "bandit exit: $bandit_exit_code"
     echo -e "sphinx-build exit: $sphinx_build_exit_code"
+    echo -e "bandit exit: $bandit_exit_code"
     exit 1
 fi
 
