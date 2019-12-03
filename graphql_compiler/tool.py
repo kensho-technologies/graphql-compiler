@@ -11,10 +11,10 @@ from . import pretty_print_graphql
 
 def main():
     """Read a GraphQL query from standard input, and output it pretty-printed to standard output."""
-    query = ' '.join(sys.stdin.readlines())
+    query = " ".join(sys.stdin.readlines())
 
     sys.stdout.write(pretty_print_graphql(query))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

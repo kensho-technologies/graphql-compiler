@@ -6,18 +6,23 @@ from graphql.language.visitor import Visitor, visit
 import six
 
 from .utils import (
-    SchemaNameConflictError, check_ast_schema_is_valid, check_type_name_is_valid,
-    get_copy_of_node_with_new_name, get_query_type_name, get_scalar_names
+    SchemaNameConflictError,
+    check_ast_schema_is_valid,
+    check_type_name_is_valid,
+    get_copy_of_node_with_new_name,
+    get_query_type_name,
+    get_scalar_names,
 )
 
 
 RenamedSchemaDescriptor = namedtuple(
-    'RenamedSchemaDescriptor', (
-        'schema_ast',  # Document, AST representing the renamed schema
-        'schema',  # GraphQLSchema, representing the same schema as schema_ast
-        'reverse_name_map',  # Dict[str, str], renamed type/query type field name to original name
+    "RenamedSchemaDescriptor",
+    (
+        "schema_ast",  # Document, AST representing the renamed schema
+        "schema",  # GraphQLSchema, representing the same schema as schema_ast
+        "reverse_name_map",  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
-    )
+    ),
 )
 
 
@@ -131,46 +136,50 @@ def _rename_query_type_fields(ast, renamings, query_type):
 class RenameSchemaTypesVisitor(Visitor):
     """Traverse a Document AST, editing the names of nodes."""
 
-    noop_types = frozenset({
-        'Argument',
-        'BooleanValue',
-        'Directive',
-        'DirectiveDefinition',
-        'Document',
-        'EnumValue',
-        'EnumValueDefinition',
-        'Field',
-        'FieldDefinition',
-        'FloatValue',
-        'FragmentDefinition',
-        'FragmentSpread',
-        'InlineFragment',
-        'InputObjectTypeDefinition',
-        'InputValueDefinition',
-        'IntValue',
-        'ListType',
-        'ListValue',
-        'Name',
-        'NonNullType',
-        'ObjectField',
-        'ObjectValue',
-        'OperationDefinition',
-        'OperationTypeDefinition',
-        'ScalarTypeDefinition',
-        'SchemaDefinition',
-        'SelectionSet',
-        'StringValue',
-        'TypeExtensionDefinition',
-        'Variable',
-        'VariableDefinition',
-    })
-    rename_types = frozenset({
-        'EnumTypeDefinition',
-        'InterfaceTypeDefinition',
-        'NamedType',
-        'ObjectTypeDefinition',
-        'UnionTypeDefinition',
-    })
+    noop_types = frozenset(
+        {
+            "Argument",
+            "BooleanValue",
+            "Directive",
+            "DirectiveDefinition",
+            "Document",
+            "EnumValue",
+            "EnumValueDefinition",
+            "Field",
+            "FieldDefinition",
+            "FloatValue",
+            "FragmentDefinition",
+            "FragmentSpread",
+            "InlineFragment",
+            "InputObjectTypeDefinition",
+            "InputValueDefinition",
+            "IntValue",
+            "ListType",
+            "ListValue",
+            "Name",
+            "NonNullType",
+            "ObjectField",
+            "ObjectValue",
+            "OperationDefinition",
+            "OperationTypeDefinition",
+            "ScalarTypeDefinition",
+            "SchemaDefinition",
+            "SelectionSet",
+            "StringValue",
+            "TypeExtensionDefinition",
+            "Variable",
+            "VariableDefinition",
+        }
+    )
+    rename_types = frozenset(
+        {
+            "EnumTypeDefinition",
+            "InterfaceTypeDefinition",
+            "NamedType",
+            "ObjectTypeDefinition",
+            "UnionTypeDefinition",
+        }
+    )
 
     def __init__(self, renamings, query_type, scalar_types):
         """Create a visitor for renaming types in a schema AST.
@@ -188,7 +197,7 @@ class RenameSchemaTypesVisitor(Visitor):
         # reverse_name_map contains all types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
-        self.builtin_types = frozenset({'String', 'Int', 'Float', 'Boolean', 'ID'})
+        self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
     def _rename_name_and_add_to_record(self, node):
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
@@ -220,8 +229,8 @@ class RenameSchemaTypesVisitor(Visitor):
         check_type_name_is_valid(new_name_string)
 
         if (
-            new_name_string in self.reverse_name_map and
-            self.reverse_name_map[new_name_string] != name_string
+            new_name_string in self.reverse_name_map
+            and self.reverse_name_map[new_name_string] != name_string
         ):
             raise SchemaNameConflictError(
                 u'"{}" and "{}" are both renamed to "{}"'.format(

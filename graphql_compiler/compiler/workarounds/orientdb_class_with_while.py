@@ -31,9 +31,11 @@ def workaround_type_coercions_in_recursions(match_query):
 
             if has_coerce_type and has_recurse_root:
                 new_where_block = convert_coerce_type_and_add_to_where_block(
-                    match_step.coerce_type_block, match_step.where_block)
-                new_match_step = match_step._replace(coerce_type_block=None,
-                                                     where_block=new_where_block)
+                    match_step.coerce_type_block, match_step.where_block
+                )
+                new_match_step = match_step._replace(
+                    coerce_type_block=None, where_block=new_where_block
+                )
 
             new_traversal.append(new_match_step)
 

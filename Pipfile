@@ -4,10 +4,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-# The Cython dependency of pymssql is not correctly resolved on all systems
-# so it is explicitly included here.
-cython = "==0.29.2"
-
 # Test requirements that are not otherwise necessary when using the package.
 mysqlclient = "==1.3.14"
 neo4j = ">=1.7.4,<2"
@@ -19,11 +15,13 @@ redisgraph = ">=1.7,<1.9"
 
 # Linters and other development tools
 bandit = ">=1.5.1,<2"
-coveralls = ">=1.5.1,<2"
+black = ">=19.10b0"  # This is still marked as a beta release, make sure to run "pipenv lock --pre".
+codecov = ">=2.0.15,<3"
 flake8 = ">=3.6.0,<4"
+flake8-bugbear = ">=19.8.0"
 flake8-print = ">=3.1.0,<4"
-flake8-quotes = ">=1.0.0,<2"
 isort = ">=4.3.4,<5"
+mypy = ">=0.750,<1"
 parameterized = ">=0.6.1,<1"
 pydocstyle = ">=3.0.0,<4"
 pylint = "==1.9.4"  # v1.9.5 is marked as "python_requires < 3.7", update this after we're Py3+ only
@@ -47,3 +45,6 @@ sqlalchemy = ">=1.3.0,<2"
 
 [requires]
 python_version = "3.6"
+
+[pipenv]
+allow_prereleases = true

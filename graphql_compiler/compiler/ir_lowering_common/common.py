@@ -3,11 +3,24 @@
 import six
 
 from ..blocks import (
-    ConstructResult, EndOptional, Filter, Fold, MarkLocation, Recurse, Traverse, Unfold
+    ConstructResult,
+    EndOptional,
+    Filter,
+    Fold,
+    MarkLocation,
+    Recurse,
+    Traverse,
+    Unfold,
 )
 from ..expressions import (
-    BinaryComposition, ContextField, ContextFieldExistence, FalseLiteral, Literal, NullLiteral,
-    TernaryConditional, TrueLiteral
+    BinaryComposition,
+    ContextField,
+    ContextFieldExistence,
+    FalseLiteral,
+    Literal,
+    NullLiteral,
+    TernaryConditional,
+    TrueLiteral,
 )
 from ..helpers import validate_safe_string
 
@@ -23,7 +36,8 @@ def merge_consecutive_filter_clauses(ir_blocks):
         last_block = new_ir_blocks[-1]
         if isinstance(last_block, Filter) and isinstance(block, Filter):
             new_ir_blocks[-1] = Filter(
-                BinaryComposition(u'&&', last_block.predicate, block.predicate))
+                BinaryComposition(u"&&", last_block.predicate, block.predicate)
+            )
         else:
             new_ir_blocks.append(block)
 
@@ -38,7 +52,7 @@ class OutputContextVertex(ContextField):
         super(OutputContextVertex, self).validate()
 
         if self.location.field is not None:
-            raise ValueError(u'Expected location at a vertex, but got: {}'.format(self.location))
+            raise ValueError(u"Expected location at a vertex, but got: {}".format(self.location))
 
     def to_match(self):
         """Return a unicode object with the MATCH representation of this expression."""
@@ -48,14 +62,17 @@ class OutputContextVertex(ContextField):
         validate_safe_string(mark_name)
 
         if field_name is not None:
-            raise AssertionError(u'Vertex location has non-None field_name: '
-                                 u'{} {}'.format(field_name, self.location))
+            raise AssertionError(
+                u"Vertex location has non-None field_name: "
+                u"{} {}".format(field_name, self.location)
+            )
 
         return mark_name
 
 
 def lower_context_field_existence(ir_blocks, query_metadata_table):
     """Lower ContextFieldExistence expressions into lower-level expressions."""
+
     def regular_visitor_fn(expression):
         """Expression visitor function that rewrites ContextFieldExistence expressions."""
         if not isinstance(expression, ContextFieldExistence):
@@ -66,9 +83,8 @@ def lower_context_field_existence(ir_blocks, query_metadata_table):
         # Since this function is only used in blocks that aren't ConstructResult,
         # the location check is performed using a regular ContextField expression.
         return BinaryComposition(
-            u'!=',
-            ContextField(expression.location, location_type),
-            NullLiteral)
+            u"!=", ContextField(expression.location, location_type), NullLiteral
+        )
 
     def construct_result_visitor_fn(expression):
         """Expression visitor function that rewrites ContextFieldExistence expressions."""
@@ -80,9 +96,8 @@ def lower_context_field_existence(ir_blocks, query_metadata_table):
         # Since this function is only used in ConstructResult blocks,
         # the location check is performed using the special OutputContextVertex expression.
         return BinaryComposition(
-            u'!=',
-            OutputContextVertex(expression.location, location_type),
-            NullLiteral)
+            u"!=", OutputContextVertex(expression.location, location_type), NullLiteral
+        )
 
     new_ir_blocks = []
     for block in ir_blocks:
@@ -98,6 +113,7 @@ def lower_context_field_existence(ir_blocks, query_metadata_table):
 
 def short_circuit_ternary_conditionals(ir_blocks, query_metadata_table):
     """If the predicate outcome in a TernaryConditional is a Literal, evaluate and simplify it."""
+
     def visitor_fn(expression):
         """Simplify TernaryConditionals."""
         if isinstance(expression, TernaryConditional) and isinstance(expression.predicate, Literal):
@@ -130,8 +146,8 @@ def optimize_boolean_expression_comparisons(ir_blocks):
         a new list of basic block objects, with the optimization applied
     """
     operator_inverses = {
-        u'=': u'!=',
-        u'!=': u'=',
+        u"=": u"!=",
+        u"!=": u"=",
     }
 
     def visitor_fn(expression):
@@ -148,10 +164,10 @@ def optimize_boolean_expression_comparisons(ir_blocks):
 
         identity_literal = None  # The boolean literal for which we just use the inner expression.
         inverse_literal = None  # The boolean literal for which we negate the inner expression.
-        if expression.operator == u'=':
+        if expression.operator == u"=":
             identity_literal = TrueLiteral
             inverse_literal = FalseLiteral
-        elif expression.operator == u'!=':
+        elif expression.operator == u"!=":
             identity_literal = FalseLiteral
             inverse_literal = TrueLiteral
         else:
@@ -177,7 +193,8 @@ def optimize_boolean_expression_comparisons(ir_blocks):
             return BinaryComposition(
                 operator_inverses[expression_to_rewrite.operator],
                 expression_to_rewrite.left,
-                expression_to_rewrite.right)
+                expression_to_rewrite.right,
+            )
 
     new_ir_blocks = []
     for block in ir_blocks:
@@ -207,16 +224,18 @@ def extract_folds_from_ir_blocks(ir_blocks):
     for block in ir_blocks:
         if isinstance(block, Fold):
             if in_fold_location is not None:
-                raise AssertionError(u'in_fold_location was not None at a Fold block: {} {} '
-                                     u'{}'.format(current_folded_blocks, remaining_ir_blocks,
-                                                  ir_blocks))
+                raise AssertionError(
+                    u"in_fold_location was not None at a Fold block: {} {} "
+                    u"{}".format(current_folded_blocks, remaining_ir_blocks, ir_blocks)
+                )
 
             in_fold_location = block.fold_scope_location
         elif isinstance(block, Unfold):
             if in_fold_location is None:
-                raise AssertionError(u'in_fold_location was None at an Unfold block: {} {} '
-                                     u'{}'.format(current_folded_blocks, remaining_ir_blocks,
-                                                  ir_blocks))
+                raise AssertionError(
+                    u"in_fold_location was None at an Unfold block: {} {} "
+                    u"{}".format(current_folded_blocks, remaining_ir_blocks, ir_blocks)
+                )
 
             folds[in_fold_location] = current_folded_blocks
             current_folded_blocks = []
@@ -266,15 +285,20 @@ def extract_optional_location_root_info(ir_blocks):
 
         if isinstance(current_block, Traverse) and current_block.optional:
             if preceding_location is None:
-                raise AssertionError(u'No MarkLocation found before an optional Traverse: {} {}'
-                                     .format(current_block, non_folded_ir_blocks))
+                raise AssertionError(
+                    u"No MarkLocation found before an optional Traverse: {} {}".format(
+                        current_block, non_folded_ir_blocks
+                    )
+                )
 
             in_optional_root_locations.append(preceding_location)
             encountered_traverse_within_optional.append(False)
         elif isinstance(current_block, EndOptional):
             if len(in_optional_root_locations) == 0:
-                raise AssertionError(u'in_optional_root_locations was empty at an EndOptional '
-                                     u'block: {}'.format(ir_blocks))
+                raise AssertionError(
+                    u"in_optional_root_locations was empty at an EndOptional "
+                    u"block: {}".format(ir_blocks)
+                )
 
             if encountered_traverse_within_optional[-1]:
                 complex_optional_roots.append(in_optional_root_locations[-1])
@@ -297,7 +321,8 @@ def extract_optional_location_root_info(ir_blocks):
 
 
 def extract_simple_optional_location_info(
-        ir_blocks, complex_optional_roots, location_to_optional_roots):
+    ir_blocks, complex_optional_roots, location_to_optional_roots
+):
     """Construct a map from simple optional locations to their inner location and traversed edge.
 
     Args:
@@ -318,10 +343,12 @@ def extract_simple_optional_location_info(
     """
     # Simple optional roots are a subset of location_to_optional_roots.values() (all optional roots)
     # We filter out the ones that are also present in complex_optional_roots.
-    location_to_preceding_optional_root_iteritems = six.iteritems({
-        location: optional_root_locations_stack[-1]
-        for location, optional_root_locations_stack in six.iteritems(location_to_optional_roots)
-    })
+    location_to_preceding_optional_root_iteritems = six.iteritems(
+        {
+            location: optional_root_locations_stack[-1]
+            for location, optional_root_locations_stack in six.iteritems(location_to_optional_roots)
+        }
+    )
     simple_optional_root_to_inner_location = {
         optional_root_location: inner_location
         for inner_location, optional_root_location in location_to_preceding_optional_root_iteritems
@@ -343,8 +370,8 @@ def extract_simple_optional_location_info(
                 # i.e. it does not contain any Traverses within.
                 inner_location = simple_optional_root_to_inner_location[preceding_location]
                 simple_optional_info_dict = {
-                    'inner_location': inner_location,
-                    'edge_field': current_block.get_field_name(),
+                    "inner_location": inner_location,
+                    "edge_field": current_block.get_field_name(),
                 }
                 simple_optional_root_info[preceding_location] = simple_optional_info_dict
 

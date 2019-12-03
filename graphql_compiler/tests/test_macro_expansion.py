@@ -16,16 +16,16 @@ class MacroExpansionTests(unittest.TestCase):
         self.schema_with_macros = get_schema_with_macros(self.macro_registry)
 
     def test_macro_edge_basic(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandparentOf {
                     name @output(out_name: "grandkid")
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf {
@@ -33,11 +33,12 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self. schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -45,17 +46,17 @@ class MacroExpansionTests(unittest.TestCase):
         # The macro or the user code could have an unused (pro-forma) field for the sake of not
         # having an empty selection in a vertex field. We remove pro-forma fields if they are
         # no longer necessary. This test checks that this is done correctly.
-        query = '''{
+        query = """{
             Animal {
                 name @output(out_name: "name")
                 out_Animal_GrandparentOf {
                     uuid
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 name @output(out_name: "name")
                 out_Animal_ParentOf {
@@ -64,11 +65,12 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
@@ -76,17 +78,17 @@ class MacroExpansionTests(unittest.TestCase):
         # The macro or the user code could have an unused (pro-forma) field for the sake of not
         # having an empty selection in a vertex field. We remove pro-forma fields if they are
         # no longer necessary. This test checks that this is done correctly.
-        query = '''{
+        query = """{
             Animal {
                 name @output(out_name: "name")
                 out_Animal_GrandparentOf {
                     name
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 name @output(out_name: "name")
                 out_Animal_ParentOf {
@@ -95,25 +97,26 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_on_interface(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Entity_AlmostRelated {
                     name @output(out_name: "distant_relative")
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Entity_Related {
                     out_Entity_Related {
@@ -121,28 +124,29 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_non_leaf_target_and_field_merging(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_RichYoungerSiblings {
                     net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                               @output(out_name: "sibling_net_worth")
                 }
             }
-        }'''
+        }"""
         args = {
-            'net_worth_upper_bound': 5,
+            "net_worth_upper_bound": 5,
         }
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 net_worth @tag(tag_name: "net_worth")
                 out_Animal_BornAt {
@@ -159,18 +163,19 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {
-            'net_worth_upper_bound': 5,
+            "net_worth_upper_bound": 5,
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_source_merging(self):
-        query = '''{
+        query = """{
             Animal {
                 net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                           @output(out_name: "net_worth")
@@ -178,12 +183,12 @@ class MacroExpansionTests(unittest.TestCase):
                     uuid
                 }
             }
-        }'''
+        }"""
         args = {
-            'net_worth_upper_bound': 5,
+            "net_worth_upper_bound": 5,
         }
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 net_worth @filter(op_name: "<", value: ["$net_worth_upper_bound"])
                           @output(out_name: "net_worth")
@@ -200,30 +205,31 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {
-            'net_worth_upper_bound': 5,
+            "net_worth_upper_bound": 5,
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_tag_filter_order(self):
         # Tags should appear before filters. Test that this is not violated during expansion.
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_RichYoungerSiblings_2 {
                     uuid
                 }
             }
-        }'''
+        }"""
         args = {
-            'net_worth_upper_bound': 5,
+            "net_worth_upper_bound": 5,
         }
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 net_worth @tag(tag_name: "net_worth")
                 in_Animal_ParentOf {
@@ -238,18 +244,19 @@ class MacroExpansionTests(unittest.TestCase):
                     event_date @filter(op_name: ">", value: ["%birthday"])
                 }
             }
-        }'''
+        }"""
         expected_args = {
-            'net_worth_upper_bound': 5,
+            "net_worth_upper_bound": 5,
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_0(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandparentOf {
                     ... on Animal {
@@ -257,10 +264,10 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf {
@@ -270,16 +277,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_1(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_RelatedFood {
                    ... on Food {
@@ -287,10 +295,10 @@ class MacroExpansionTests(unittest.TestCase):
                    }
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 in_Entity_Related {
                     ... on Food {
@@ -298,16 +306,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_4(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_RelatedEntity {
                    ... on Event {
@@ -315,10 +324,10 @@ class MacroExpansionTests(unittest.TestCase):
                    }
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 in_Entity_Related {
                     ... on Event {
@@ -326,16 +335,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_5(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_RelatedEntity {
                    ... on Animal {
@@ -343,10 +353,10 @@ class MacroExpansionTests(unittest.TestCase):
                    }
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 in_Entity_Related {
                     ... on Animal {
@@ -354,16 +364,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_with_filter_0(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandparentOf {
                     ... on Animal @filter(op_name: "name_or_alias", value: ["$wanted"]) {
@@ -371,12 +382,10 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
-        args = {
-            'wanted': 'croissant'
-        }
+        }"""
+        args = {"wanted": "croissant"}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf {
@@ -386,18 +395,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
-        expected_args = {
-            'wanted': 'croissant'
-        }
+        }"""
+        expected_args = {"wanted": "croissant"}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_with_filter_1(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_RelatedEntity {
                    ... on Food @filter(op_name: "name_or_alias", value: ["$wanted"]) {
@@ -405,12 +413,10 @@ class MacroExpansionTests(unittest.TestCase):
                    }
                 }
             }
-        }'''
-        args = {
-            'wanted': 'croissant'
-        }
+        }"""
+        args = {"wanted": "croissant"}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 in_Entity_Related {
                     ... on Food @filter(op_name: "name_or_alias", value: ["$wanted"]){
@@ -418,27 +424,26 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
-        expected_args = {
-            'wanted': 'croissant'
-        }
+        }"""
+        expected_args = {"wanted": "croissant"}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_with_filter_3(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandchildrenCalledNate {
                     name @output(out_name: "official_name")
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
@@ -446,30 +451,31 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {
-            'wanted': 'Nate',
+            "wanted": "Nate",
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_target_coercion_with_filter_4(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandchildrenCalledNate @filter(op_name: "name_or_alias",
                                                            value: ["$something"]) {
                     name @output(out_name: "official_name")
                 }
             }
-        }'''
+        }"""
         args = {
-            'something': 'Peter',
+            "something": "Peter",
         }
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"])
@@ -478,31 +484,32 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {
-            'something': 'Peter',
-            'wanted': 'Nate',
+            "something": "Peter",
+            "wanted": "Nate",
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_arguments(self):
-        query = '''{
+        query = """{
             Location {
                 name @filter(op_name: "=", value: ["$location"])
                 out_Location_Orphans {
                     name @output(out_name: "name")
                 }
             }
-        }'''
+        }"""
         args = {
-            'location': 'Europe',
+            "location": "Europe",
         }
 
-        expected_query = '''{
+        expected_query = """{
             Location {
                 name @filter(op_name: "=", value: ["$location"])
                 in_Animal_LivesIn {
@@ -513,19 +520,20 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {
-            'location': 'Europe',
-            'num_parents': 0,
+            "location": "Europe",
+            "num_parents": 0,
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_edge_tag_collision(self):
-        query = '''{
+        query = """{
             Animal {
                 net_worth @tag(tag_name: "parent_net_worth")
                 out_Animal_RichSiblings {
@@ -533,10 +541,10 @@ class MacroExpansionTests(unittest.TestCase):
                     name @output(out_name: "sibling")
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 net_worth @tag(tag_name: "parent_net_worth")
                 in_Animal_ParentOf {
@@ -548,18 +556,20 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.xfail(strict=True, reason='tag deduplication not implemented yet',
-                       raises=GraphQLCompilationError)
+    @pytest.mark.xfail(
+        strict=True, reason="tag deduplication not implemented yet", raises=GraphQLCompilationError
+    )
     def test_macro_edge_colocated_tags(self):
-        query = '''{
+        query = """{
             Animal {
                 net_worth @tag(tag_name: "animal_net_worth")
                 out_Animal_RichYoungerSiblings {
@@ -567,10 +577,10 @@ class MacroExpansionTests(unittest.TestCase):
                               @output(out_name: "sibling_net_worth")
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 net_worth @tag(tag_name: "animal_net_worth")
                 out_Animal_BornAt {
@@ -587,18 +597,20 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
-    @pytest.mark.xfail(strict=True, reason='tag deduplication not implemented yet',
-                       raises=GraphQLCompilationError)
+    @pytest.mark.xfail(
+        strict=True, reason="tag deduplication not implemented yet", raises=GraphQLCompilationError
+    )
     def test_macro_edge_colocated_tags_with_same_name(self):
-        query = '''{
+        query = """{
             Animal {
                 net_worth @tag(tag_name: "net_worth")
                 out_Animal_RichYoungerSiblings {
@@ -606,10 +618,10 @@ class MacroExpansionTests(unittest.TestCase):
                               @output(out_name: "sibling_net_worth")
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 net_worth @tag(tag_name: "net_worth")
                 out_Animal_BornAt {
@@ -626,16 +638,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_nested_use(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandparentOf {
                     out_Animal_GrandparentOf {
@@ -643,10 +656,10 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf {
@@ -658,16 +671,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_parallel_use(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandparentOf {
                    name @output(out_name: "grandkid")
@@ -678,10 +692,10 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         args = {}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf {
@@ -696,27 +710,26 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_expansion_with_filter_directive(self):
-        query = '''{
+        query = """{
             Animal {
                 out_Animal_GrandparentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
                     name @output(out_name: "grandkid")
                 }
             }
-        }'''
-        args = {
-            'wanted': 'Larry'
-        }
+        }"""
+        args = {"wanted": "Larry"}
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 out_Animal_ParentOf {
                     out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
@@ -724,18 +737,17 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
-        expected_args = {
-            'wanted': 'Larry'
-        }
+        }"""
+        expected_args = {"wanted": "Larry"}
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)
 
     def test_macro_expansion_with_optional_directives(self):
-        query = '''{
+        query = """{
             Animal {
                 name @filter(op_name: "=", value: ["$name"])
 
@@ -743,12 +755,12 @@ class MacroExpansionTests(unittest.TestCase):
                     name @output(out_name: "sibling_name")
                 }
             }
-        }'''
+        }"""
         args = {
-            'name': 'Nate',
+            "name": "Nate",
         }
 
-        expected_query = '''{
+        expected_query = """{
             Animal {
                 name @filter(op_name: "=", value: ["$name"])
 
@@ -764,12 +776,13 @@ class MacroExpansionTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
+        }"""
         expected_args = {
-            'name': 'Nate',
+            "name": "Nate",
         }
 
         expanded_query, new_args = perform_macro_expansion(
-            self.macro_registry, self.schema_with_macros, query, args)
+            self.macro_registry, self.schema_with_macros, query, args
+        )
         compare_graphql(self, expected_query, expanded_query)
         self.assertEqual(expected_args, new_args)

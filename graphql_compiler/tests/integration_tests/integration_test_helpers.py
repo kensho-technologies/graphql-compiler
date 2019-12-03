@@ -30,10 +30,9 @@ def sort_db_results(results):
             return sorted(value)
         return value
 
-    return sorted([
-        {k: sorted_value(v) for k, v in six.iteritems(row)}
-        for row in results
-    ], key=sort_key)
+    return sorted(
+        [{k: sorted_value(v) for k, v in six.iteritems(row)} for row in results], key=sort_key
+    )
 
 
 def try_convert_decimal_to_string(value):
@@ -49,8 +48,7 @@ def compile_and_run_match_query(schema, graphql_query, parameters, orientdb_clie
     """Compile and run a MATCH query against the supplied graph client."""
     # MATCH code emitted by the compiler expects Decimals to be passed in as strings
     converted_parameters = {
-        name: try_convert_decimal_to_string(value)
-        for name, value in six.iteritems(parameters)
+        name: try_convert_decimal_to_string(value) for name, value in six.iteritems(parameters)
     }
     compilation_result = graphql_to_match(schema, graphql_query, converted_parameters)
 
@@ -79,7 +77,8 @@ def compile_and_run_sql_query(sql_schema_info, graphql_query, parameters, engine
 def compile_and_run_neo4j_query(schema, graphql_query, parameters, neo4j_client):
     """Compile and run a Cypher query against the supplied graph client."""
     compilation_result = compile_graphql_to_cypher(
-        schema, graphql_query, type_equivalence_hints=None)
+        schema, graphql_query, type_equivalence_hints=None
+    )
     query = compilation_result.query
     with neo4j_client.driver.session() as session:
         results = session.run(query, parameters)
@@ -108,13 +107,13 @@ def compile_and_run_redisgraph_query(schema, graphql_query, parameters, redisgra
     records = result_set[1:]
 
     # redisgraph gives us back bytes, but we want strings.
-    decoded_column_names = [column_name.decode('utf-8') for column_name in column_names]
+    decoded_column_names = [column_name.decode("utf-8") for column_name in column_names]
     decoded_records = []
     for record in records:
         # decode if bytes, leave alone otherwise. For more info see here:
         # https://oss.redislabs.com/redisgraph/result_structure/#top-level-members
         decoded_record = [
-            field.decode('utf-8') if type(field) in (bytes, bytearray) else field
+            field.decode("utf-8") if type(field) in (bytes, bytearray) else field
             for field in record
         ]
         decoded_records.append(decoded_record)

@@ -21,17 +21,17 @@ def read_file(filename):
     # see here:
     # https://github.com/pypa/virtualenv/issues/201#issuecomment-3145690
     top_level_directory = path.dirname(path.dirname(path.dirname(path.abspath(__file__))))
-    with codecs.open(path.join(top_level_directory, 'graphql_compiler', filename), 'r') as f:
+    with codecs.open(path.join(top_level_directory, "graphql_compiler", filename), "r") as f:
         return f.read()
 
 
 def find_version():
     """Return current version of package."""
-    version_file = read_file('__init__.py')
+    version_file = read_file("__init__.py")
     version_match = re.search(r'^__version__ = ["\']([^"\']*)["\']', version_file, re.M)
     if version_match:
         return version_match.group(1)
-    raise RuntimeError('Unable to find version string.')
+    raise RuntimeError("Unable to find version string.")
 
 
 def main():
@@ -41,12 +41,15 @@ def main():
     module_path = path.relpath(__file__)
     current_datetime = datetime.datetime.now().isoformat()
 
-    log_message = ('# Auto-generated output from `{path}`.\n'
-                   '# Do not edit directly!\n'
-                   '# Generated on {datetime} from compiler version {version}.\n\n')
+    log_message = (
+        "# Auto-generated output from `{path}`.\n"
+        "# Do not edit directly!\n"
+        "# Generated on {datetime} from compiler version {version}.\n\n"
+    )
 
     sys.stdout.write(
-        log_message.format(path=module_path, datetime=current_datetime, version=find_version()))
+        log_message.format(path=module_path, datetime=current_datetime, version=find_version())
+    )
 
     sql_command_generators = [
         get_event_generation_commands,
@@ -55,9 +58,9 @@ def main():
     ]
     for sql_command_generator in sql_command_generators:
         sql_command_list = sql_command_generator()
-        sys.stdout.write('\n'.join(sql_command_list))
-        sys.stdout.write('\n')
+        sys.stdout.write("\n".join(sql_command_list))
+        sys.stdout.write("\n")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()

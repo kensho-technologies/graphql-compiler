@@ -3,10 +3,10 @@
 from neo4j import GraphDatabase
 
 
-NEO4J_SERVER = 'localhost'
+NEO4J_SERVER = "localhost"
 NEO4J_PORT = 7687
-NEO4J_USER = 'neo4j'
-NEO4J_PASSWORD = 'root'  # nosec
+NEO4J_USER = "neo4j"
+NEO4J_PASSWORD = "root"  # nosec
 
 
 class Neo4jClient(object):
@@ -18,7 +18,7 @@ class Neo4jClient(object):
 
 def get_neo4j_url(database_name):
     """Return an Neo4j path for the specified database on the NEO4J_SERVER."""
-    template = 'bolt://{}/{}'
+    template = "bolt://{}/{}"
     return template.format(NEO4J_SERVER, database_name)
 
 
