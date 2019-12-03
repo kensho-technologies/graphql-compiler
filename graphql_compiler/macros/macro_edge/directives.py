@@ -4,17 +4,25 @@ from copy import copy
 from itertools import chain
 
 from graphql import (
-    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLString
+    DirectiveLocation,
+    GraphQLArgument,
+    GraphQLDirective,
+    GraphQLNonNull,
+    GraphQLString,
 )
 
 from ...schema import (
-    FilterDirective, FoldDirective, OptionalDirective, RecurseDirective, TagDirective,
-    check_for_nondefault_directive_names
+    FilterDirective,
+    FoldDirective,
+    OptionalDirective,
+    RecurseDirective,
+    TagDirective,
+    check_for_nondefault_directive_names,
 )
 
 
 MacroEdgeDirective = GraphQLDirective(
-    name='macro_edge',
+    name="macro_edge",
     locations=[
         # Used to mark edges that are defined via macros in the schema.
         DirectiveLocation.FIELD_DEFINITION,
@@ -23,25 +31,25 @@ MacroEdgeDirective = GraphQLDirective(
 
 
 MacroEdgeDefinitionDirective = GraphQLDirective(
-    name='macro_edge_definition',
-    args=OrderedDict([
-        ('name', GraphQLArgument(
-            type=GraphQLNonNull(GraphQLString),
-            description='Name of the filter operation to perform.',
-        )),
-    ]),
-    locations=[
-        DirectiveLocation.FIELD,
-    ],
+    name="macro_edge_definition",
+    args=OrderedDict(
+        [
+            (
+                "name",
+                GraphQLArgument(
+                    type=GraphQLNonNull(GraphQLString),
+                    description="Name of the filter operation to perform.",
+                ),
+            ),
+        ]
+    ),
+    locations=[DirectiveLocation.FIELD,],
 )
 
 
 MacroEdgeTargetDirective = GraphQLDirective(
-    name='macro_edge_target',
-    locations=[
-        DirectiveLocation.FIELD,
-        DirectiveLocation.INLINE_FRAGMENT,
-    ],
+    name="macro_edge_target",
+    locations=[DirectiveLocation.FIELD, DirectiveLocation.INLINE_FRAGMENT,],
 )
 
 # Directives reserved for macro edges
@@ -52,19 +60,16 @@ MACRO_EDGE_DIRECTIVES = (
 )
 
 # Directives required present in a macro edge definition
-DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset({
-    MacroEdgeDefinitionDirective,
-    MacroEdgeTargetDirective
-})
+DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset(
+    {MacroEdgeDefinitionDirective, MacroEdgeTargetDirective}
+)
 
 # Directives allowed within a macro edge definition
-DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
-    FoldDirective,
-    FilterDirective,
-    OptionalDirective,
-    TagDirective,
-    RecurseDirective,
-}.union(DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
+DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset(
+    {FoldDirective, FilterDirective, OptionalDirective, TagDirective, RecurseDirective,}.union(
+        DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
+    )
+)
 
 
 def get_schema_for_macro_edge_definitions(querying_schema):

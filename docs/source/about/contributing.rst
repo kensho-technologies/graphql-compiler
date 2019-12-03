@@ -4,11 +4,8 @@ Contributing
 Thank you for taking the time to contribute to this project!
 
 To get started, make sure that you have :code:`pipenv`, :code:`docker` and
-:code:`docker-compose` installed on your computer. Additionally, since this
-is a package that supports both Python 2 and Python 3, please make sure
-you have Python 2.7.15+ and Python 3.6+ installed locally. This project
-assumes that they are available on the system as :code:`python2` and
-:code:`python3`, respectively. If you do not already have them installed,
+:code:`docker-compose` installed on your computer. Please make sure
+you have Python 3.6+ installed locally. If you do not already have it installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 
 Integration tests are run against multiple SQL databases, some of which
@@ -95,57 +92,25 @@ that your files start with a line like:
 
    # Copyright 20xx-present Kensho Technologies, LLC.
 
-Python 2 vs Python 3
---------------------
-
-In order to ensure that tests run with a fixed set of packages in both
-Python 2 and Python 3, we always run the tests in a virtualenv managed
-by pipenv. However, since some of our dependencies have different
-requirements for Python 2 and Python 3, we have to keep two pipenv
-lockfiles -- one per Python version.
-
-We have chosen to make the Python 3 lockfile the default (hence named
-:code:`Pipfile.lock`), since Python 3 offers better performance and we like
-our tests and linters running quickly. The Python 2 lockfile is named
-:code:`Pipfile.py2.lock`.
-
-If you need to set up a Python 2 virtualenv locally, simply run the
-following script:
-
-::
-
-   ./scripts/make_py2_venv.sh
-
-If you change the Pipfile or the package requirements, please make sure
-to regenerate the lockfiles for both Python versions. The easiest way to
-do so is with the following script:
-
-::
-
-   ./scripts/make_pipenv_lockfiles.sh
-
-Then, re-run
-
-::
-
-   pipenv sync --dev
-
-to install the relevant dependencies.
-
 Read the Docs
 -------------
 
 We are currently in the process of moving most of our documentation to
 Read the Docs, a web utility that makes it easy to view and present
-documentation.
+documentation. We first plan to get the Read the Docs documentation up
+to date with the markdown documentation present as of commit
+16fd083e78551f866a0cf0c7397542aea1c214d9 and then working on adding the
+documentation added since that commit.
 
-Since Read the Docs does not currently `support Pipfiles
-<https://github.com/readthedocs/readthedocs.org/issues/3181>`__, we must keep the
-documentation building requirements in both the repository's :code:`Pipfile`, which we use for
-continuous integration and local development, and in :code:`docs/requirements.txt`, which we use
-for Read The Docs.
+Since Read the Docs does not currently `support
+Pipfiles <https://github.com/readthedocs/readthedocs.org/issues/3181>`__
+the package requirements are in:
 
-The relevant documentation source code lives in:
+::
+
+   docs/requirements.txt
+
+The relevant source code lives in:
 
 ::
 
@@ -155,9 +120,7 @@ To build the website run:
 
 ::
 
-   pipenv shell
    cd docs
-   make clean
    make html
 
 Then open :code:`docs/build/index.html` with a web browser to view it.
