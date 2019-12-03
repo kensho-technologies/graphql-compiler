@@ -1,6 +1,5 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
-from datetime import date
 from decimal import Decimal
 from typing import Any, Dict, List, Tuple
 from unittest import TestCase

@@ -1,7 +1,6 @@
 # Copyright 2018-present Kensho Technologies, LLC.
-from datetime import date
 from decimal import Decimal
-from typing import Any, Dict, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, List, Tuple, TypeVar, Union
 
 from graphql.type.schema import GraphQLSchema
 from pyorient.orient import OrientDB
