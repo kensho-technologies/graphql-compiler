@@ -32,6 +32,19 @@ For each :code:`Animal`:
 - if it is not a parent of another animal, a row with its name in the :code:`name` column, and a
   :code:`null` value in the :code:`child_name` column.
 
+
+.. note::
+
+    To pretty-print GraphQL queries in the format above, use the included pretty-printer:
+
+    ::
+
+        python -m graphql_compiler.tool <input_file.graphql >output_file.graphql
+
+    It's modeled after Python's :code:`json.tool`, reading from stdin and
+    writing to stdout.
+
+
 Constraints and Rules
 ~~~~~~~~~~~~~~~~~~~~~
 
