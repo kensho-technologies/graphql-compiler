@@ -30,6 +30,7 @@ from ..schema import (
     CUSTOM_SCALAR_TYPES,
     ClassToFieldTypeOverridesType,
     GraphQLSchemaFieldType,
+    TypeEquivalenceHintsType,
     is_vertex_field_name,
 )
 from ..schema.schema_info import (
@@ -512,9 +513,7 @@ def get_schema() -> GraphQLSchema:
     return schema
 
 
-def get_type_equivalence_hints() -> Dict[
-    Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
-]:
+def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
     schema = get_schema()
     return {
@@ -783,7 +782,7 @@ def generate_schema(
     orientdb_client: OrientDB,
     class_to_field_type_overrides: Optional[ClassToFieldTypeOverridesType] = None,
     hidden_classes: Optional[Set[str]] = None,
-) -> Tuple[GraphQLSchema, Dict[Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType]]:
+) -> Tuple[GraphQLSchema, TypeEquivalenceHintsType]:
     """Generate schema and type equivalence dict from a pyorient client."""
     schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
