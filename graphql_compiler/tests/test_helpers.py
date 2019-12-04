@@ -26,7 +26,12 @@ from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..macros import MacroRegistry, create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
-from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
+from ..schema import (
+    CUSTOM_SCALAR_TYPES,
+    ClassToFieldTypeOverridesType,
+    GraphQLSchemaFieldType,
+    is_vertex_field_name,
+)
 from ..schema.schema_info import (
     CommonSchemaInfo,
     DirectJoinDescriptor,
@@ -42,9 +47,6 @@ from ..schema_generation.orientdb.utils import (
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.utils import amend_custom_scalar_types
 
-
-# The valid types that a field inside an object or interface in the GraphQL schema may be.
-GraphQLSchemaFieldType = Union[GraphQLList, GraphQLNonNull, GraphQLScalarType]
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
@@ -779,7 +781,7 @@ def generate_schema_graph(orientdb_client: OrientDB) -> SchemaGraph:
 
 def generate_schema(
     orientdb_client: OrientDB,
-    class_to_field_type_overrides: Optional[Dict[str, Dict[str, GraphQLSchemaFieldType]]] = None,
+    class_to_field_type_overrides: Optional[ClassToFieldTypeOverridesType] = None,
     hidden_classes: Optional[Set[str]] = None,
 ) -> Tuple[GraphQLSchema, Dict[Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType]]:
     """Generate schema and type equivalence dict from a pyorient client."""
