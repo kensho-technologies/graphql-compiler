@@ -83,6 +83,21 @@ pylint $pylint_lintable_locations
 pylint_exit_code=$?
 echo -e "\n*** End of pylint run, exit: $pylint_exit_code ***\n"
 
+echo -e '\n*** Running sphinx-build to test documentation... ***\n'
+# Arguments:
+# -n: Runs in nit-picky mode. Currently, this generates warnings for all missing references.
+# -q: Do not output anything on standard output, only write warnings and errors to standard error.
+# -W: Turn warnings into errors. This means that the build stops at the first warning and
+#     sphinx-build exits with exit status 1.
+# -b <buildername>: Selects a builder. In this case we are using the dummy builder. Note that it
+#                   doesn't produce any output but still needs a build directory parameter.
+# --keep-going: With -W option, keep going processing when getting warnings to the end of build,
+#               and sphinx-build exits with exit status 1.
+# For more info see: https://www.sphinx-doc.org/en/master/man/sphinx-build.html
+sphinx-build -n -q -W -b dummy docs/source/ docs/build/ --keep-going
+sphinx_build_exit_code=$?
+echo -e "\n*** End of sphinx-build, exit: $sphinx_build_exit_code ***\n"
+
 echo -e '\n*** Running bandit... ***\n'
 bandit -r $lintable_locations
 bandit_exit_code=$?
@@ -96,6 +111,7 @@ if  [[
         ("$bandit_exit_code" != "0") ||
         ("$isort_exit_code" != "0") ||
         ("$black_exit_code" != "0") ||
+        ("$sphinx_build_exit_code" != "0") ||
         ("$mypy_exit_code" != "0")
     ]]; then
     echo -e "\n*** Lint failed. ***\n"
@@ -106,6 +122,7 @@ if  [[
     echo -e "pydocstyle exit: $pydocstyle_exit_code"
     echo -e "pydocstyle on tests exit: $pydocstyle_test_exit_code"
     echo -e "pylint exit: $pylint_exit_code"
+    echo -e "sphinx-build exit: $sphinx_build_exit_code"
     echo -e "bandit exit: $bandit_exit_code"
     exit 1
 fi
