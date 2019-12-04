@@ -9,7 +9,6 @@ from unittest import TestCase
 from graphql import GraphQLList, parse
 from graphql.type.definition import (
     GraphQLInterfaceType,
-    GraphQLList,
     GraphQLNonNull,
     GraphQLObjectType,
     GraphQLScalarType,
@@ -42,12 +41,6 @@ from ..schema_generation.orientdb.utils import (
 )
 from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.utils import amend_custom_scalar_types
-from .test_compiler import CompilerTests
-from .test_emit_output import EmitCypherTests, EmitGremlinTests, EmitMatchTests
-from .test_end_to_end import QueryFormattingTests
-from .test_ir_generation import IrGenerationTests
-from .test_macro_expansion import MacroExpansionTests
-from .test_sqlalchemy_extensions import CommonIrLoweringTests
 
 
 # The valid types that a field inside an object or interface in the GraphQL schema may be.
@@ -447,7 +440,7 @@ def compare_ir_blocks(
         )
 
 
-def compare_graphql(test_case: MacroExpansionTests, expected: str, received: str) -> None:
+def compare_graphql(test_case: TestCase, expected: str, received: str) -> None:
     """Compare the expected and received GraphQL code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(pretty_print_graphql(expected), pretty_print_graphql(received))
     compare_ignoring_whitespace(test_case, expected, received, msg)
