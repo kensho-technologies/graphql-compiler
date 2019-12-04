@@ -57,11 +57,14 @@ def try_get_pagination_plan(schema_info, query_ast, number_of_pages, hints=None)
         if quantiles is None:
             raise GraphQLPaginationError(u'Cannot paginate because no quantiles exist for {}.{}'
                                          .format(pagination_node.name.value, pagination_field))
-        if len(quantiles) < 10 * number_of_pages:
+        quantile_requirement_factor = 1.5  # XXX should be at least 10?
+        if len(quantiles) < quantile_requirement_factor * number_of_pages:
             raise GraphQLPaginationError(u'Cannot paginate because there are not enought quantiles '
                                          u'for {}.{}. Found {}, but {} are needed to paginate {} pages'
                                          .format(pagination_node.name.value, pagination_field,
-                                                 len(quantiles), 10 * number_of_pages, number_of_pages))
+                                                 len(quantiles),
+                                                 quantile_requirement_factor * number_of_pages,
+                                                 number_of_pages))
     else:
         type_name = schema_info.schema.get_type(
             pagination_node.name.value).fields[pagination_field].type.name

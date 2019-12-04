@@ -80,9 +80,10 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
     elif field_supports_range_reasoning(schema_info, vertex_type.name, pagination_field):
         quantiles = schema_info.statistics.get_field_quantiles(
             vertex_type.name, pagination_field)
-        if quantiles is None or len(quantiles) < 10 * vertex_partition.number_of_splits:
+        quantile_requirement_factor = 1.5  # XXX should be at least 10?
+        if quantiles is None or len(quantiles) < quantile_requirement_factor * vertex_partition.number_of_splits:
             raise AssertionError('Invalid vertex partition {}. Not enough quantile data.'
-                                 .format(vertex_partitions))
+                                 .format(vertex_partition))
 
         # Since we can't be sure the minimum observed value is the
         # actual minimum value, we treat values less than it as part
