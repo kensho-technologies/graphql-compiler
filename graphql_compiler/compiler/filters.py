@@ -308,6 +308,51 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     return blocks.Filter(filter_predicate)
 
 
+@vertex_field_only(u'is_primary_or_secondary')
+@takes_parameters(0)
+def _process_primary_or_secondary_filter_directive(filter_operation_info, location, context, parameters):
+    filtered_field_type = filter_operation_info.field_type
+    if isinstance(filtered_field_type, GraphQLUnionType):
+        raise GraphQLCompilationError(u'Cannot apply "primary_or_secondary" to union type '
+                                      u'{}'.format(filtered_field_type))
+
+    current_type_fields = filtered_field_type.fields
+    primary_field_name = 'PrimaryIssue'
+    secondary_field_name = 'FndgStats'
+    primary_field = current_type_fields.get(primary_field_name, None)
+    secondary_field = current_type_fields.get(secondary_field_name, None)
+    if primary_field is None:
+        raise GraphQLCompilationError(u'Cannot apply "primary_or_secondary" to type {} because it lacks a '
+                                      u'"{}" field.'.format(filtered_field_type, primary_field_name))
+    if secondary_field is None:
+        raise GraphQLCompilationError(u'Cannot apply "primary_or_secondary" to type {} because it lacks a '
+                                      u'"{}" field.'.format(filtered_field_type, secondary_field_name))
+
+    primary_field_type = strip_non_null_from_type(primary_field.type)
+    secondary_field_type = strip_non_null_from_type(secondary_field.type)
+
+    if not isinstance(primary_field_type, GraphQLScalarType):
+        raise GraphQLCompilationError(u'Cannot apply "primary_or_secondary" to type {} because its "primary" '
+                                      u'field is not a scalar.'.format(filtered_field_type))
+    if not isinstance(secondary_field_type, GraphQLScalarType):
+        raise GraphQLCompilationError(u'Cannot apply "primary_or_secondary" to type {} because its '
+                                      u'"secondary" field is not a scalar.'.format(filtered_field_type))
+
+    check_against_name = expressions.BinaryComposition(
+        u'=', expressions.LocalField(primary_field_name, primary_field.type), expressions.Literal(1))
+    check_against_alias = expressions.BinaryComposition(
+        u'=',
+        expressions.LocalField(secondary_field_name, secondary_field.type),
+        expressions.TrueLiteral)
+    filter_predicate = expressions.BinaryComposition(
+        u'||', check_against_name, check_against_alias)
+
+    # XXX wrong if inside optional scope
+
+    return blocks.Filter(filter_predicate)
+
+
+
 @vertex_field_only(u'name_or_alias')
 @takes_parameters(1)
 def _process_name_or_alias_filter_directive(filter_operation_info, location, context, parameters):
@@ -870,6 +915,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset({
     u'is_not_null',
 })
 UNARY_FILTERS = frozenset({
+    u'is_primary_or_secondary',
     u'is_null',
     u'is_not_null'
 })
@@ -886,7 +932,7 @@ UNARY_FILTERS = frozenset({
 #
 # If the filter on out_Foo_Bar filters the Foo, we say that it filters the outer scope.
 # Instead, if the filter filters the Bar connected to the Foo, it filters the inner scope.
-INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u'name_or_alias'})
+INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u'name_or_alias', u'is_primary_or_secondary'})
 OUTER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u'has_edge_degree'})
 
 VERTEX_FIELD_OPERATORS = INNER_SCOPE_VERTEX_FIELD_OPERATORS | OUTER_SCOPE_VERTEX_FIELD_OPERATORS
@@ -919,6 +965,7 @@ def process_filter_directive(filter_operation_info, location, context):
     op_name, operator_params = _get_filter_op_name_and_values(filter_operation_info.directive)
 
     non_comparison_filters = {
+        u'is_primary_or_secondary': _process_primary_or_secondary_filter_directive,
         u'name_or_alias': _process_name_or_alias_filter_directive,
         u'between': _process_between_filter_directive,
         u'in_collection': _process_in_collection_filter_directive,
@@ -959,6 +1006,8 @@ def process_filter_directive(filter_operation_info, location, context):
 
     fields = ((filter_operation_info.field_name,) if op_name != 'name_or_alias'
               else ('name', 'alias'))
+    if op_name == 'is_primary_or_secondary':
+        fields = ('PrimaryIssue', 'FndgStats')
 
     context['metadata'].record_filter_info(
         location,

@@ -137,6 +137,9 @@ class Literal(Expression):
     def to_sql(self, aliases, current_alias):
         """Return the value."""
         self.validate()
+        if self.value == 1:
+            # XXX sketchy
+            return sqlalchemy.literal_column("1")
         return self.value
 
 
