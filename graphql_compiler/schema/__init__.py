@@ -21,7 +21,11 @@ from graphql import (
 from graphql.type.directives import specified_directives
 import six
 
-from .typedefs import ClassToFieldTypeOverridesType, GraphQLSchemaFieldType
+from .typedefs import (  # noqa
+    ClassToFieldTypeOverridesType,
+    GraphQLSchemaFieldType,
+    TypeEquivalenceHintsType,
+)
 
 
 # Constraints:

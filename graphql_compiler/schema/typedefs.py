@@ -1,11 +1,11 @@
 from typing import Dict, Union
 
 from graphql import (
+    GraphQLInterfaceType,
     GraphQLList,
     GraphQLNonNull,
-    GraphQLScalarType,
-    GraphQLInterfaceType,
     GraphQLObjectType,
+    GraphQLScalarType,
     GraphQLUnionType,
 )
 

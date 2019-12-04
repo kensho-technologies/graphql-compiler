@@ -3,17 +3,11 @@
 from collections import namedtuple
 from pprint import pformat
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
-from graphql.type.definition import (
-    GraphQLInterfaceType,
-    GraphQLNonNull,
-    GraphQLObjectType,
-    GraphQLScalarType,
-    GraphQLUnionType,
-)
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 from graphql.type.schema import GraphQLSchema
 from graphql.utils.build_ast_schema import build_ast_schema
 from pyorient.orient import OrientDB
