@@ -21,6 +21,12 @@ from graphql import (
 from graphql.type.directives import specified_directives
 import six
 
+from .typedefs import (  # noqa
+    ClassToFieldTypeOverridesType,
+    GraphQLSchemaFieldType,
+    TypeEquivalenceHintsType,
+)
+
 
 # Constraints:
 # - 'op_name' can only contain characters [A-Za-z_];
