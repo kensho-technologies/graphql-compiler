@@ -7,7 +7,13 @@ from typing import Dict
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
 from ..compiler.compiler_frontend import OutputMetadata
-from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType, TypeEquivalenceHintsType
+from ..schema import (
+    GraphQLDate,
+    GraphQLDateTime,
+    GraphQLDecimal,
+    GraphQLSchemaFieldType,
+    TypeEquivalenceHintsType,
+)
 
 
 CommonTestData = namedtuple(
