@@ -12,7 +12,6 @@ from ..schema import (
     GraphQLDateTime,
     GraphQLDecimal,
     GraphQLSchemaFieldType,
-    TypeEquivalenceHintsType,
 )
 
 
