@@ -16,7 +16,6 @@ from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
     fast_sql_server_reflect,
     get_first_column_in_table,
 )
-from ...schema.schema_info import CommonSchemaInfo
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
