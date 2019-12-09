@@ -38,7 +38,7 @@ __version__ = "1.11.0"
 
 
 def graphql_to_match(
-        common_schema_info: CommonSchemaInfo, graphql_query: str, parameters: Dict[str, Any]
+    common_schema_info: CommonSchemaInfo, graphql_query: str, parameters: Dict[str, Any]
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a MATCH query and associated metadata.
 
@@ -61,7 +61,7 @@ def graphql_to_match(
 
 
 def graphql_to_sql(
-        sql_schema_info: SQLAlchemySchemaInfo, graphql_query: str, parameters: Dict[str, Any]
+    sql_schema_info: SQLAlchemySchemaInfo, graphql_query: str, parameters: Dict[str, Any]
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a SQL query and associated metadata.
 
@@ -86,7 +86,7 @@ def graphql_to_sql(
 
 
 def graphql_to_gremlin(
-        common_schema_info: CommonSchemaInfo, graphql_query: str, parameters: Dict[str, Any]
+    common_schema_info: CommonSchemaInfo, graphql_query: str, parameters: Dict[str, Any]
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a Gremlin query and associated metadata.
 
@@ -108,7 +108,7 @@ def graphql_to_gremlin(
 
 
 def graphql_to_redisgraph_cypher(
-        common_schema_info: CommonSchemaInfo, graphql_query: str, parameters: Dict[str, Any]
+    common_schema_info: CommonSchemaInfo, graphql_query: str, parameters: Dict[str, Any]
 ) -> CompilationResult:
     """Compile the GraphQL input into a RedisGraph Cypher query and associated metadata.
 

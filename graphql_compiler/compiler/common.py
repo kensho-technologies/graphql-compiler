@@ -25,7 +25,7 @@ CYPHER_LANGUAGE = backend.cypher_backend.language
 
 
 def compile_graphql_to_match(
-        common_schema_info: CommonSchemaInfo, graphql_query: str
+    common_schema_info: CommonSchemaInfo, graphql_query: str
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a MATCH query and associated metadata.
 
@@ -40,7 +40,7 @@ def compile_graphql_to_match(
 
 
 def compile_graphql_to_gremlin(
-        common_schema_info: CommonSchemaInfo, graphql_query: str
+    common_schema_info: CommonSchemaInfo, graphql_query: str
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a Gremlin query and associated metadata.
 
@@ -55,7 +55,7 @@ def compile_graphql_to_gremlin(
 
 
 def compile_graphql_to_sql(
-        sql_schema_info: SQLAlchemySchemaInfo, graphql_query: str
+    sql_schema_info: SQLAlchemySchemaInfo, graphql_query: str
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a SQL query and associated metadata.
 
@@ -70,7 +70,7 @@ def compile_graphql_to_sql(
 
 
 def compile_graphql_to_cypher(
-        common_schema_info: CommonSchemaInfo, graphql_query: str
+    common_schema_info: CommonSchemaInfo, graphql_query: str
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a Cypher query and associated metadata.
 
@@ -85,9 +85,9 @@ def compile_graphql_to_cypher(
 
 
 def _compile_graphql_generic(
-        target_backend: Backend,
-        schema_info: Union[CommonSchemaInfo, SQLAlchemySchemaInfo],
-        graphql_string: str
+    target_backend: Backend,
+    schema_info: Union[CommonSchemaInfo, SQLAlchemySchemaInfo],
+    graphql_string: str,
 ) -> CompilationResult:
     """Compile the GraphQL input, lowering and emitting the query using the given functions.
 
