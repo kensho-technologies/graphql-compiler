@@ -13,6 +13,7 @@ from graphql_compiler.tests.test_data_tools.neo4j_graph import Neo4jClient
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
+from ...schema.schema_info import CommonSchemaInfo
 
 
 T = TypeVar("T")
@@ -66,7 +67,8 @@ def compile_and_run_match_query(
     converted_parameters = {
         name: try_convert_decimal_to_string(value) for name, value in six.iteritems(parameters)
     }
-    compilation_result = graphql_to_match(schema, graphql_query, converted_parameters)
+    common_schema_info = CommonSchemaInfo(schema, None)
+    compilation_result = graphql_to_match(common_schema_info, graphql_query, converted_parameters)
 
     # Get results, adding None for optional columns with no matches
     query = compilation_result.query
@@ -102,9 +104,8 @@ def compile_and_run_neo4j_query(
     neo4j_client: Neo4jClient,
 ) -> List[Dict[str, Any]]:
     """Compile and run a Cypher query against the supplied graph client."""
-    compilation_result = compile_graphql_to_cypher(
-        schema, graphql_query, type_equivalence_hints=None
-    )
+    common_schema_info = CommonSchemaInfo(schema, None)
+    compilation_result = compile_graphql_to_cypher(common_schema_info, graphql_query)
     query = compilation_result.query
     with neo4j_client.driver.session() as session:
         results = session.run(query, parameters)
@@ -115,7 +116,8 @@ def compile_and_run_redisgraph_query(
     schema: GraphQLSchema, graphql_query: str, parameters: Dict[str, Any], redisgraph_client: Graph
 ) -> List[Dict[str, Any]]:
     """Compile and run a Cypher query against the supplied graph client."""
-    compilation_result = graphql_to_redisgraph_cypher(schema, graphql_query, parameters)
+    common_schema_info = CommonSchemaInfo(schema, None)
+    compilation_result = graphql_to_redisgraph_cypher(common_schema_info, graphql_query, parameters)
     query = compilation_result.query
     result_set = redisgraph_client.query(query).result_set
 
