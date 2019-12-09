@@ -15,6 +15,7 @@ from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
     fast_sql_server_reflect,
     get_first_column_in_table,
 )
+from ...schema.schema_info import CommonSchemaInfo
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
@@ -120,6 +121,7 @@ class IntegrationTests(TestCase):
         """
         # Mypy doesn't like our decorator magic, we have to manually ignore the type checks
         # on all the properties that we magically added via the integration testing decorator.
+        common_schema_info = CommonSchemaInfo(cls.schema, None)
         if backend_name in SQL_BACKENDS:
             engine = cls.sql_backend_name_to_engine[backend_name]  # type: ignore
             results = compile_and_run_sql_query(
@@ -127,15 +129,15 @@ class IntegrationTests(TestCase):
             )
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
-                cls.schema, graphql_query, parameters, cls.orientdb_client  # type: ignore
+                common_schema_info, graphql_query, parameters, cls.orientdb_client  # type: ignore
             )
         elif backend_name in NEO4J_BACKENDS:
             results = compile_and_run_neo4j_query(
-                cls.schema, graphql_query, parameters, cls.neo4j_client  # type: ignore
+                common_schema_info, graphql_query, parameters, cls.neo4j_client  # type: ignore
             )
         elif backend_name in REDISGRAPH_BACKENDS:
             results = compile_and_run_redisgraph_query(
-                cls.schema, graphql_query, parameters, cls.redisgraph_client  # type: ignore
+                common_schema_info, graphql_query, parameters, cls.redisgraph_client  # type: ignore
             )
         else:
             raise AssertionError(u"Unknown test backend {}.".format(backend_name))

@@ -12,6 +12,7 @@ from snapshottest import TestCase
 from .. import test_input_data
 from ... import graphql_to_match
 from ...schema.typedefs import TypeEquivalenceHintsType
+from ...schema.schema_info import CommonSchemaInfo
 from ..test_helpers import get_schema
 from ..test_input_data import CommonTestData
 
@@ -49,12 +50,8 @@ def execute_graphql(
             for key, value in six.iteritems(test_data.type_equivalence_hints)
         }
 
-    result = graphql_to_match(
-        schema,
-        test_data.graphql_input,
-        sample_parameters,
-        type_equivalence_hints=schema_based_type_equivalence_hints,
-    )
+    common_schema_info = CommonSchemaInfo(schema, schema_based_type_equivalence_hints)
+    result = graphql_to_match(common_schema_info, test_data.graphql_input, sample_parameters)
 
     # We need to preprocess the results to be agnostic of the returned order.
     # For this we perform the following steps
