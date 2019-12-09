@@ -4,8 +4,8 @@ from copy import copy
 
 from graphql import print_ast
 from graphql.language.ast import (
-    Argument, Directive, Document, Field, InlineFragment, ListValue, Name, OperationDefinition,
-    SelectionSet, StringValue
+    ArgumentNode, DirectiveNode, DocumentNode, FieldNode, InlineFragmentNode, ListValueNode,
+    NameNode, OperationDefinitionNode, SelectionSetNode, StringValueNode
 )
 
 from ..ast_manipulation import get_only_query_definition
@@ -117,7 +117,7 @@ def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descr
                 u'AST "{}".'.format(child_out_name, child_query_type)
             )
         else:
-            new_child_query_ast = Document(
+            new_child_query_ast = DocumentNode(
                 definitions=[child_query_type_with_filter]
             )
 
@@ -161,13 +161,13 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
         with an @filter added at the specified field if such a field is found. If no changes
         were made, this is the same object as the input
     """
-    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+    if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
             u'Input AST is of type "{}", which should not be a selection.'
             u''.format(type(ast).__name__)
         )
 
-    if isinstance(ast, Field):
+    if isinstance(ast, FieldNode):
         # Check whether this field has the expected directive, if so, modify and return
         if (
             ast.directives is not None and
@@ -207,7 +207,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
 
     if made_changes:
         new_ast = copy(ast)
-        new_ast.selection_set = SelectionSet(selections=new_selections)
+        new_ast.selection_set = SelectionSetNode(selections=new_selections)
         return new_ast
     else:
         return ast
@@ -215,7 +215,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
 
 def _is_output_directive_with_name(directive, out_name):
     """Return whether or not the input is an @output directive with the desired out_name."""
-    if not isinstance(directive, Directive):
+    if not isinstance(directive, DirectiveNode):
         raise AssertionError(u'Input "{}" is not a directive.'.format(directive))
     return (
         directive.name.value == OutputDirective.name and
@@ -225,18 +225,18 @@ def _is_output_directive_with_name(directive, out_name):
 
 def _get_in_collection_filter_directive(input_filter_name):
     """Create a @filter directive with in_collecion operation and the desired variable name."""
-    return Directive(
-        name=Name(value=FilterDirective.name),
+    return DirectiveNode(
+        name=NameNode(value=FilterDirective.name),
         arguments=[
-            Argument(
-                name=Name(value='op_name'),
-                value=StringValue(value='in_collection'),
+            ArgumentNode(
+                name=NameNode(value='op_name'),
+                value=StringValueNode(value='in_collection'),
             ),
-            Argument(
-                name=Name(value='value'),
-                value=ListValue(
+            ArgumentNode(
+                name=NameNode(value='value'),
+                value=ListValueNode(
                     values=[
-                        StringValue(value=u'$' + input_filter_name),
+                        StringValueNode(value=u'$' + input_filter_name),
                     ],
                 ),
             ),

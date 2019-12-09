@@ -34,8 +34,8 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
 
     def test_filter_directive_order(self):
         bad_query = '''{
-            Animal @filter(value: ["$name"], op_name: "name_or_alias") {
-                uuid @filter(value: ["$max_uuid"], op_name: "<=")
+            Animal @filter(op_name: "name_or_alias", value: ["$name"]) {
+                uuid @filter(op_name: "<=", value: ["$max_uuid"])
 
                 out_Entity_Related {
                   ...on Species{
@@ -62,8 +62,8 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
 
     def test_args_not_in_schema(self):
         bad_query = '''{
-            Animal @filter(value: ["$name"], unknown_arg: "value", op_name: "name_or_alias") {
-                uuid @filter(value: ["$max_uuid"], op_name: "<=")
+            Animal @filter(op_name: "name_or_alias", value: ["$name"], unknown_arg: "value") {
+                uuid @filter(op_name: "<=", value: ["$max_uuid"])
 
                 out_Entity_Related {
                   ...on Species{
@@ -91,7 +91,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
     def test_missing_args(self):
         bad_query = '''{
             Animal @filter(value: ["$name"]) {
-                uuid @filter(value: ["$max_uuid"], op_name: "<=")
+                uuid @filter(op_name: "<=", value: ["$max_uuid"])
 
                 out_Entity_Related {
                   ...on Species{
@@ -119,7 +119,7 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
     def test_other_directive(self):
         bad_query = '''{
             Animal @filter(value: ["$name"]) {
-                uuid @filter(value: ["$max_uuid"], op_name: "<=")
+                uuid @filter(op_name: "<=", value: ["$max_uuid"])
 
                 out_Entity_Related @other(arg1: "val1", arg2: "val2") {
                   ...on Species{

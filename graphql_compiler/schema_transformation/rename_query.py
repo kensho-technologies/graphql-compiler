@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from graphql.language.ast import Field
+from graphql.language.ast import FieldNode
 from graphql.language.visitor import Visitor, visit
 from graphql.validation import validate
 
@@ -47,7 +47,7 @@ def rename_query(ast, renamed_schema_descriptor):
     query_definition = ast.definitions[0]
 
     for selection in query_definition.selection_set.selections:
-        if not isinstance(selection, Field):  # possibly an InlineFragment
+        if not isinstance(selection, FieldNode):  # possibly an InlineFragment
             raise GraphQLValidationError(
                 u'Each root selection must be of type "Field", not "{}" as in '
                 u'selection "{}"'.format(type(selection).__name__, selection)

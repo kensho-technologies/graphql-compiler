@@ -127,7 +127,7 @@ def _get_type_equivalence_hints(schema_id_to_ast, type_equivalence_hints_names):
     name_to_type = {}
     for ast in six.itervalues(schema_id_to_ast):
         schema = build_ast_schema(ast)
-        name_to_type.update(schema.get_type_map())
+        name_to_type.update(schema.type_map)
     type_equivalence_hints = {}
     for object_type_name, union_type_name in six.iteritems(type_equivalence_hints_names):
         object_type = name_to_type[object_type_name]
@@ -264,6 +264,8 @@ type SchemaQuery {
   Animal: Animal
   Creature: Creature
 }
+
+directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
 directive @output(out_name: String!) on FIELD
 '''

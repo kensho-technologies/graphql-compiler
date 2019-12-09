@@ -7,6 +7,7 @@ from . import test_input_data
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import FoldScopeLocation, Location
 from ..compiler.metadata import FilterInfo, OutputInfo, RecurseInfo
+from ..global_utils import is_same_type
 from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import get_schema
 
@@ -21,7 +22,7 @@ class ExplainInfoTests(unittest.TestCase):
     def compare_output_info(self, expected, received):
         """Compare two OutputInfo objects, using proper GraphQL type comparison operators."""
         self.assertEqual(expected.location, received.location)
-        self.assertTrue((expected.type).is_same_type(received.type))
+        self.assertTrue(is_same_type(expected.type, received.type))
         self.assertEqual(expected.optional, received.optional)
 
     def check(self, graphql_test, expected_filters, expected_recurses, expected_outputs):

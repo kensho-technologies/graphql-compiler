@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Helper functions for dealing with GraphQL directives."""
 
-from graphql.language.ast import InlineFragment
+from graphql.language.ast import InlineFragmentNode
 import six
 
 from ..ast_manipulation import get_ast_field_name, get_ast_field_name_or_none
@@ -86,7 +86,7 @@ def get_local_filter_directives(ast, current_schema_type, inner_vertex_fields):
                         raise GraphQLCompilationError(
                             u'Found disallowed filter on a property field: {} {} '
                             u'{}'.format(directive_obj, current_schema_type, filtered_field_name))
-                    elif isinstance(ast, InlineFragment):
+                    elif isinstance(ast, InlineFragmentNode):
                         raise GraphQLCompilationError(
                             u'Found disallowed filter on a type coercion: {} '
                             u'{}'.format(directive_obj, current_schema_type))

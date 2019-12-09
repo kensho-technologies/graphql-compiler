@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from graphql.language import DirectiveLocation
 from graphql.validation import validate
 import six
 
@@ -26,12 +27,20 @@ def validate_schema_and_query_ast(schema, query_ast):
     unsupported_default_directives = frozenset([
         frozenset([
             'include',
-            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset([
+                DirectiveLocation.FIELD,
+                DirectiveLocation.FRAGMENT_SPREAD,
+                DirectiveLocation.INLINE_FRAGMENT
+            ]),
             frozenset(['if'])
         ]),
         frozenset([
             'skip',
-            frozenset(['FIELD', 'FRAGMENT_SPREAD', 'INLINE_FRAGMENT']),
+            frozenset([
+                DirectiveLocation.FIELD,
+                DirectiveLocation.FRAGMENT_SPREAD,
+                DirectiveLocation.INLINE_FRAGMENT
+            ]),
             frozenset(['if'])
         ])
     ])
@@ -41,7 +50,7 @@ def validate_schema_and_query_ast(schema, query_ast):
     supported_default_directive = frozenset([
         frozenset([
             'deprecated',
-            frozenset(['FIELD_DEFINITION', 'ENUM_VALUE']),
+            frozenset([DirectiveLocation.FIELD_DEFINITION, DirectiveLocation.ENUM_VALUE]),
             frozenset(['reason'])
         ])
     ])
@@ -63,7 +72,7 @@ def validate_schema_and_query_ast(schema, query_ast):
             frozenset(directive.locations),
             frozenset(six.viewkeys(directive.args))
         ])
-        for directive in schema.get_directives()
+        for directive in schema.to_kwargs()['directives']
     }
 
     # Directives missing from the actual directives provided.

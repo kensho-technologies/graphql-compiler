@@ -6,7 +6,7 @@ from decimal import Decimal
 import unittest
 
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
-from graphql.utils.schema_printer import print_schema
+from graphql.utilities.schema_printer import print_schema
 import pytz
 import six
 
@@ -36,7 +36,7 @@ class SchemaTests(unittest.TestCase):
                 if line.startswith('directive')
             }
 
-        test_directives = _get_directives_in_string_form(get_schema().get_directives())
+        test_directives = _get_directives_in_string_form(get_schema().to_kwargs()['directives'])
         actual_directives = _get_directives_in_string_form(schema.DIRECTIVES)
         self.assertEqual(test_directives, actual_directives)
 

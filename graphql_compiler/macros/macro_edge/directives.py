@@ -26,7 +26,7 @@ MacroEdgeDefinitionDirective = GraphQLDirective(
     name='macro_edge_definition',
     args=OrderedDict([
         ('name', GraphQLArgument(
-            type=GraphQLNonNull(GraphQLString),
+            type_=GraphQLNonNull(GraphQLString),
             description='Name of the filter operation to perform.',
         )),
     ]),
@@ -51,35 +51,36 @@ MACRO_EDGE_DIRECTIVES = (
     MacroEdgeTargetDirective,
 )
 
-# Directives required present in a macro edge definition
+# Names of directives required present in a macro edge definition
 DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset({
-    MacroEdgeDefinitionDirective,
-    MacroEdgeTargetDirective
+    MacroEdgeDefinitionDirective.name,
+    MacroEdgeTargetDirective.name
 })
 
-# Directives allowed within a macro edge definition
+# Names of directives allowed within a macro edge definition
 DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
-    FoldDirective,
-    FilterDirective,
-    OptionalDirective,
-    TagDirective,
-    RecurseDirective,
+    FoldDirective.name,
+    FilterDirective.name,
+    OptionalDirective.name,
+    TagDirective.name,
+    RecurseDirective.name,
 }.union(DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
 
 
 def get_schema_for_macro_edge_definitions(querying_schema):
     """Given a schema object used for querying, create a schema used for macro edge definitions."""
-    original_directives = querying_schema.get_directives()
+    original_directives = querying_schema.to_kwargs()['directives']
     check_for_nondefault_directive_names(original_directives)
 
-    names_of_allowed_directives = {
-        directive.name for directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
-    }
+    directives_required_in_macro_edge_definition = [
+        MacroEdgeDefinitionDirective,
+        MacroEdgeTargetDirective
+    ]
 
     new_directives = [
         directive
-        for directive in chain(original_directives, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
-        if directive.name in names_of_allowed_directives
+        for directive in chain(original_directives, directives_required_in_macro_edge_definition)
+        if directive.name in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
     ]
 
     # Unfortunately, GraphQLSchema objects do not easily allow creating derived schemas,

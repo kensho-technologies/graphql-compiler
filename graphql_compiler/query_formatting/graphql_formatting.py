@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from graphql import parse
-from graphql.language.printer import PrintingVisitor, join, wrap
+from graphql.language.printer import PrintAstVisitor, join, wrap
 from graphql.language.visitor import visit
 import six
 
@@ -23,7 +23,7 @@ def pretty_print_graphql(query, use_four_spaces=True):
 DIRECTIVES_BY_NAME = {d.name: d for d in DIRECTIVES}
 
 
-class CustomPrintingVisitor(PrintingVisitor):
+class CustomPrintingVisitor(PrintAstVisitor):
     # Directives are easier to read if their arguments appear in the order in
     # which we defined them in the schema. For example, @filter directives are
     # much easier to read if the operation comes before the values. The

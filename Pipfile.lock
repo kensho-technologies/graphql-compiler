@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "ad94326ce02372e04a9dae08b12c03f4366864d6682d37c0dc5179e994bb730b"
+            "sha256": "dd6a4ad2ca4c498c569cc53aef928b8f032221e2f2af682e39dcf83528a967ea"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -40,18 +40,11 @@
         },
         "graphql-core": {
             "hashes": [
-                "sha256:1488f2a5c2272dc9ba66e3042a6d1c30cea0db4c80bd1e911c6791ad6187d91b",
-                "sha256:da64c472d720da4537a2e8de8ba859210b62841bd47a9be65ca35177f62fe0e4"
+                "sha256:908d31016ec816586319e49e1a1f7f1f7741c882a412da3b253e10a12dfc83a7",
+                "sha256:a87999a16ace994f28bb15c189865293fc80f4425cf87cd6da1c14f68703074f"
             ],
             "index": "pypi",
-            "version": "==2.2.1"
-        },
-        "promise": {
-            "hashes": [
-                "sha256:2ebbfc10b7abf6354403ed785fe4f04b9dfd421eb1a474ac8d187022228332af",
-                "sha256:348f5f6c3edd4fd47c9cd65aed03ac1b31136d375aa63871a57d3e444c85655c"
-            ],
-            "version": "==2.2.1"
+            "version": "==3.0.0"
         },
         "python-dateutil": {
             "hashes": [
@@ -67,13 +60,6 @@
             ],
             "index": "pypi",
             "version": "==2019.3"
-        },
-        "rx": {
-            "hashes": [
-                "sha256:13a1d8d9e252625c173dc795471e614eadfe1cf40ffc684e08b8fff0d9748c23",
-                "sha256:7357592bc7e881a95e0c2013b73326f704953301ab551fbc8133a6fadab84105"
-            ],
-            "version": "==1.6.1"
         },
         "six": {
             "hashes": [
@@ -589,7 +575,6 @@
                 "sha256:e547b1074e52c10f0581de415b509aa61e577f5248340a68b356938393d773c8",
                 "sha256:fcfe2c7a9fbf323f3520ef9766b82e80cd433d7f8c87ff084b18bcde716923af"
             ],
-            "markers": "python_version >= '3.5' and platform_machine == 'x86_64' and sys_platform == 'darwin'",
             "version": "==0.3.0"
         },
         "wcwidth": {

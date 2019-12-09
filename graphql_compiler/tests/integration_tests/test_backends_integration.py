@@ -4,7 +4,7 @@ from decimal import Decimal
 from unittest import TestCase
 
 from graphql.type import GraphQLID
-from graphql.utils.schema_printer import print_schema
+from graphql.utilities.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
@@ -564,7 +564,7 @@ class IntegrationTests(TestCase):
     @integration_fixtures
     def test_selectively_hide_classes(self):
         schema, _ = generate_schema(self.orientdb_client, hidden_classes={'Animal'})
-        self.assertNotIn('Animal', schema.get_type_map())
+        self.assertNotIn('Animal', schema.type_map)
 
     @integration_fixtures
     def test_parsed_schema_element_custom_fields(self):

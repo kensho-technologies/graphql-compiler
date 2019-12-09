@@ -4,7 +4,7 @@ import unittest
 
 from graphql import parse
 from graphql.language.printer import print_ast
-from graphql.language.visitor_meta import QUERY_DOCUMENT_KEYS
+from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 
 from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
 from ...schema_transformation.utils import InvalidTypeNameError, SchemaNameConflictError

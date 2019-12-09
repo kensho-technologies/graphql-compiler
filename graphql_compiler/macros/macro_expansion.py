@@ -2,7 +2,7 @@
 from copy import copy
 from itertools import chain
 
-from graphql.language.ast import InlineFragment, SelectionSet
+from graphql.language.ast import InlineFragmentNode, SelectionSetNode
 
 from ..ast_manipulation import (
     get_ast_field_name, get_only_query_definition, get_only_selection_from_ast
@@ -45,7 +45,7 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
         prefix_selections = []  # Selections from macro expansion to be added before this selection
         suffix_selections = []  # Selections from macro expansion to be added after this selection
 
-        if isinstance(selection_ast, InlineFragment):
+        if isinstance(selection_ast, InlineFragmentNode):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
                 macro_registry, vertex_field_type,
@@ -80,7 +80,7 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
         if new_selection_ast is not selection_ast:
             made_changes = True
 
-        new_selection_set = merge_selection_sets(new_selection_set, SelectionSet(
+        new_selection_set = merge_selection_sets(new_selection_set, SelectionSetNode(
             list(chain(prefix_selections, [new_selection_ast], suffix_selections))))
 
     if made_changes:
@@ -141,7 +141,7 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
         new_query_args = query_args
     else:
         new_definition = copy(definition_ast)
-        new_definition.selection_set = SelectionSet([new_base_ast])
+        new_definition.selection_set = SelectionSetNode([new_base_ast])
 
         new_query_ast = copy(query_ast)
         new_query_ast.definitions = [new_definition]

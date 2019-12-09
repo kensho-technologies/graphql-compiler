@@ -3,11 +3,11 @@ from collections import OrderedDict, namedtuple
 from copy import copy
 
 from graphql.language.ast import (
-    Argument, Directive, Document, Field, InterfaceTypeDefinition, Name, ObjectTypeDefinition,
-    OperationDefinition, SelectionSet, StringValue
+    ArgumentNode, DirectiveNode, DocumentNode, FieldNode, InterfaceTypeDefinitionNode, NameNode,
+    ObjectTypeDefinitionNode, OperationDefinitionNode, SelectionSetNode, StringValueNode
 )
 from graphql.language.visitor import TypeInfoVisitor, Visitor, visit
-from graphql.utils.type_info import TypeInfo
+from graphql.utilities.type_info import TypeInfo
 from graphql.validation import validate
 import six
 
@@ -123,11 +123,11 @@ def _get_edge_to_stitch_fields(merged_schema_descriptor):
     edge_to_stitch_fields = {}
     for type_definition in merged_schema_descriptor.schema_ast.definitions:
         if isinstance(type_definition, (
-            ObjectTypeDefinition, InterfaceTypeDefinition
+            ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode
         )):
             for field_definition in type_definition.fields:
                 stitch_directive = try_get_ast_by_name_and_type(
-                    field_definition.directives, u'stitch', Directive
+                    field_definition.directives, u'stitch', DirectiveNode
                 )
                 if stitch_directive is not None:
                     fields_by_name = get_uniquely_named_objects_by_name(stitch_directive.arguments)
@@ -261,7 +261,7 @@ def _split_query_ast_one_level_recursive(
     # Return input, or make copy
     if new_selections is not selections:
         new_ast = copy(ast)
-        new_ast.selection_set = SelectionSet(selections=new_selections)
+        new_ast.selection_set = SelectionSetNode(selections=new_selections)
         return new_ast
     else:
         return ast
@@ -463,7 +463,7 @@ def _split_vertex_fields_intra_and_cross_schema(
     intra_schema_fields = []
     cross_schema_fields = []
     for vertex_field in vertex_fields:
-        if isinstance(vertex_field, Field):
+        if isinstance(vertex_field, FieldNode):
             stitch_data_key = (parent_type_name, vertex_field.name.value)
             if stitch_data_key in edge_to_stitch_fields:
                 cross_schema_fields.append(vertex_field)
@@ -538,7 +538,7 @@ def _get_child_query_node_and_out_name(ast, child_type_name, child_field_name, n
 
     # Get existing field with name in child
     existing_child_property_field = try_get_ast_by_name_and_type(
-        child_selections, child_field_name, Field
+        child_selections, child_field_name, FieldNode
     )
     child_property_field = _get_property_field(
         existing_child_property_field, child_field_name, None
@@ -602,7 +602,7 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
                 )
             elif directive.name.value == OptionalDirective.name:
                 if try_get_ast_by_name_and_type(
-                    new_field.directives, OptionalDirective.name, Directive
+                    new_field.directives, OptionalDirective.name, DirectiveNode
                 ) is None:
                     # New optional directive
                     new_field.directives.append(directive)
@@ -631,7 +631,7 @@ def _get_out_name_optionally_add_output(field, name_assigner):
     """
     # Check for existing directive
     output_directive = try_get_ast_by_name_and_type(
-        field.directives, OutputDirective.name, Directive
+        field.directives, OutputDirective.name, DirectiveNode
     )
     if output_directive is None:
         # Create and add new directive to field
@@ -647,12 +647,12 @@ def _get_out_name_optionally_add_output(field, name_assigner):
 
 def _get_output_directive(out_name):
     """Return a Directive representing an @output with the input out_name."""
-    return Directive(
-        name=Name(value=OutputDirective.name),
+    return DirectiveNode(
+        name=NameNode(value=OutputDirective.name),
         arguments=[
-            Argument(
-                name=Name(value=u'out_name'),
-                value=StringValue(value=out_name),
+            ArgumentNode(
+                name=NameNode(value=u'out_name'),
+                value=StringValueNode(value=out_name),
             ),
         ],
     )
@@ -660,15 +660,15 @@ def _get_output_directive(out_name):
 
 def _get_query_document(root_vertex_field_name, root_selections):
     """Return a Document representing a query with the specified name and selections."""
-    return Document(
+    return DocumentNode(
         definitions=[
-            OperationDefinition(
+            OperationDefinitionNode(
                 operation='query',
-                selection_set=SelectionSet(
+                selection_set=SelectionSetNode(
                     selections=[
-                        Field(
-                            name=Name(value=root_vertex_field_name),
-                            selection_set=SelectionSet(
+                        FieldNode(
+                            name=NameNode(value=root_vertex_field_name),
+                            selection_set=SelectionSetNode(
                                 selections=root_selections,
                             ),
                             directives=[],

@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import six
+from graphql import GraphQLNamedType, GraphQLList, GraphQLNonNull
 
 
 def merge_non_overlapping_dicts(merge_target, new_data):
@@ -15,3 +16,16 @@ def merge_non_overlapping_dicts(merge_target, new_data):
         result[key] = value
 
     return result
+
+
+def is_same_type(to_compare1, to_compare2):
+    """Determine if two GraphQL types are of the same type."""
+    if isinstance(to_compare1, GraphQLNamedType) and isinstance(to_compare2, GraphQLNamedType):
+        return (to_compare1.__class__ is to_compare2.__class__ and
+                to_compare1.name == to_compare2.name)
+    elif isinstance(to_compare1, GraphQLList) and isinstance(to_compare2, GraphQLList):
+        return is_same_type(to_compare1.of_type, to_compare2.of_type)
+    elif isinstance(to_compare1, GraphQLNonNull) and isinstance(to_compare2, GraphQLNonNull):
+        return is_same_type(to_compare1.of_type, to_compare2.of_type)
+    else:
+        return False

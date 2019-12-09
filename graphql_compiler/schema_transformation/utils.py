@@ -3,10 +3,10 @@ from copy import copy
 import string
 
 from graphql import build_ast_schema
-from graphql.language.ast import Field, InlineFragment, Name
+from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
-from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
+from graphql.utilities.assert_valid_name import re_name
 from graphql.validation import validate
 import six
 
@@ -95,7 +95,7 @@ def check_type_name_is_valid(name):
     """
     if not isinstance(name, str):
         raise InvalidTypeNameError(u'Name "{}" is not a string.'.format(name))
-    if not COMPILED_NAME_PATTERN.match(name):
+    if not re_name.match(name):
         raise InvalidTypeNameError(u'"{}" is not a valid GraphQL name.'.format(name))
     if name.startswith('__'):
         raise InvalidTypeNameError(u'"{}" starts with two underscores, which is reserved for '
@@ -111,7 +111,8 @@ def get_query_type_name(schema):
     Returns:
         str, name of the query type (e.g. RootSchemaQuery)
     """
-    return schema.get_query_type().name
+    # TODO(Selene)
+    return schema.to_kwargs()['query'].name
 
 
 def get_scalar_names(schema):
@@ -127,7 +128,8 @@ def get_scalar_names(schema):
     Returns:
         Set[str], set of names of scalars used in the schema
     """
-    type_map = schema.get_type_map()
+    # TODO(Selene)
+    type_map = schema.type_map
     scalars = {
         type_name
         for type_name, type_object in six.iteritems(type_map)
@@ -174,7 +176,7 @@ def try_get_inline_fragment(selections):
     inline_fragments_in_selection = [
         selection
         for selection in selections
-        if isinstance(selection, InlineFragment)
+        if isinstance(selection, InlineFragmentNode)
     ]
     if len(inline_fragments_in_selection) == 0:
         return None
@@ -205,13 +207,13 @@ def get_copy_of_node_with_new_name(node, new_name):
     """
     node_type = type(node).__name__
     allowed_types = frozenset((
-        'EnumTypeDefinition',
-        'Field',
-        'FieldDefinition',
-        'InterfaceTypeDefinition',
-        'NamedType',
-        'ObjectTypeDefinition',
-        'UnionTypeDefinition',
+        'EnumTypeDefinitionNode',
+        'FieldNode',
+        'FieldDefinitionNode',
+        'InterfaceTypeDefinitionNode',
+        'NamedTypeNode',
+        'ObjectTypeDefinitionNode',
+        'UnionTypeDefinitionNode',
     ))
     if node_type not in allowed_types:
         raise AssertionError(
@@ -220,7 +222,7 @@ def get_copy_of_node_with_new_name(node, new_name):
             )
         )
     node_with_new_name = copy(node)  # shallow copy is enough
-    node_with_new_name.name = Name(value=new_name)
+    node_with_new_name.name = NameNode(value=new_name)
     return node_with_new_name
 
 
@@ -338,14 +340,15 @@ def check_ast_schema_is_valid(ast):
     """
     try:
         schema = build_ast_schema(ast)
-    except Exception as e:  # Can't be more specific -- see graphql/utils/build_ast_schema.py
+    except Exception as e:  # Can't be more specific -- see graphql/utilities/build_ast_schema.py
         raise SchemaStructureError(u'Input is not a valid schema. Message: {}'.format(e))
 
-    if schema.get_mutation_type() is not None:
+    # TODO(Selene): make sure that this does the right thing
+    if schema.to_kwargs()['mutation'] is not None:
         raise SchemaStructureError(
             u'Renaming schemas that contain mutations is currently not supported.'
         )
-    if schema.get_subscription_type() is not None:
+    if schema.to_kwargs()['subscription'] is not None:
         raise SchemaStructureError(
             u'Renaming schemas that contain subscriptions is currently not supported.'
         )
@@ -366,7 +369,7 @@ def is_property_field_ast(field):
     Returns:
         True if the selection is a property field, False if it's a vertex field.
     """
-    if isinstance(field, Field):
+    if isinstance(field, FieldNode):
         if (
             field.selection_set is None or
             field.selection_set.selections is None or
@@ -417,13 +420,13 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         selections = node.selections
         if (
             len(selections) == 1 and
-            isinstance(selections[0], InlineFragment)
+            isinstance(selections[0], InlineFragmentNode)
         ):
             return
         else:
             seen_vertex_field = False  # Whether we're seen a vertex field
             for field in selections:
-                if isinstance(field, InlineFragment):
+                if isinstance(field, InlineFragmentNode):
                     raise GraphQLValidationError(
                         u'Inline fragments must be the only selection in scope. However, in '
                         u'selections {}, an InlineFragment coexists with other selections.'.format(

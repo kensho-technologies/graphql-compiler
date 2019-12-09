@@ -3,12 +3,12 @@ from collections import namedtuple
 
 from graphql import parse
 from graphql.language.ast import (
-    Directive, FieldDefinition, InterfaceTypeDefinition, ListType, Name, NamedType,
-    ObjectTypeDefinition
+    DirectiveNode, FieldDefinitionNode, InterfaceTypeDefinitionNode, ListTypeNode, NameNode,
+    NamedTypeNode, ObjectTypeDefinitionNode
 )
 from graphql.language.printer import print_ast
-from graphql.utils.build_ast_schema import build_ast_schema
-from graphql.utils.schema_printer import print_schema
+from graphql.utilities.build_ast_schema import build_ast_schema
+from graphql.utilities.schema_printer import print_schema
 import six
 
 from ..ast_manipulation import safe_parse_graphql
@@ -173,16 +173,24 @@ def get_schema_with_macros(macro_registry):
 
     definitions_by_name = {}
     for definition in schema_ast.definitions:
-        if isinstance(definition, (ObjectTypeDefinition, InterfaceTypeDefinition)):
+        if isinstance(definition, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
             definitions_by_name[definition.name.value] = definition
 
     for class_name, macros_for_class in six.iteritems(macro_registry.macro_edges_at_class):
         for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_class):
-            list_type_at_target = ListType(NamedType(Name(macro_edge_descriptor.target_class_name)))
+            list_type_at_target = ListTypeNode(
+                type=NamedTypeNode(name=NameNode(value=macro_edge_descriptor.target_class_name))
+            )
             arguments = []
-            directives = [Directive(Name(MacroEdgeDirective.name))]
-            definitions_by_name[class_name].fields.append(FieldDefinition(
-                Name(macro_edge_name), arguments, list_type_at_target, directives=directives))
+            directives = [DirectiveNode(name=NameNode(value=MacroEdgeDirective.name))]
+            definitions_by_name[class_name].fields.append(
+                FieldDefinitionNode(
+                    name=NameNode(value=macro_edge_name),
+                    arguments=arguments,
+                    type=list_type_at_target,
+                    directives=directives
+                )
+            )
 
     return build_ast_schema(schema_ast)
 

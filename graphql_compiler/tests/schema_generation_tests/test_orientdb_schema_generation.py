@@ -6,6 +6,7 @@ from graphql.type import GraphQLInterfaceType, GraphQLList, GraphQLObjectType, G
 import pytest
 import six
 
+from ...global_utils import is_same_type
 from ...schema_generation.graphql_schema import _get_union_type_name
 from ...schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
 from ...schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
@@ -302,7 +303,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         name_property = schema_graph.get_element_by_class_name('Entity').properties['name']
-        self.assertTrue(name_property.type.is_same_type(GraphQLString))
+        self.assertTrue(is_same_type(name_property.type, GraphQLString))
 
     def test_native_orientdb_collection_property(self):
         schema_data = [
@@ -312,7 +313,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         alias_property = schema_graph.get_element_by_class_name('Person').properties['alias']
-        self.assertTrue(alias_property.type.is_same_type(GraphQLList(GraphQLString)))
+        self.assertTrue(is_same_type(alias_property.type, GraphQLList(GraphQLString)))
         self.assertEqual(alias_property.default, set())
 
     def test_class_collection_property(self):
@@ -324,8 +325,11 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         friends_property = schema_graph.get_element_by_class_name('DataPoint').properties[
             'data_source']
-        self.assertTrue(friends_property.type.is_same_type(
-            GraphQLList(GraphQLObjectType('ExternalSource', {}))))
+        self.assertTrue(
+            is_same_type(
+                friends_property.type, GraphQLList(GraphQLObjectType('ExternalSource', {}))
+            )
+        )
         self.assertEqual(friends_property.default, list())
 
     def test_link_parsing(self):
@@ -387,14 +391,14 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertEqual(set(person_baby_union.types), {baby, person})
 
         # Assert that arbitrarily chosen inherited property is still correctly inherited
-        self.assertTrue(baby.fields['name'].type.is_same_type(GraphQLString))
+        self.assertTrue(is_same_type(baby.fields['name'].type, GraphQLString))
 
         # Assert that arbitrarily chosen edge is correctly represented on all ends
         location_list_type = GraphQLList(location)
         union_list_type = GraphQLList(person_baby_union)
-        self.assertTrue(person.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
-        self.assertTrue(baby.fields['out_Person_LivesIn'].type.is_same_type(location_list_type))
-        self.assertTrue(location.fields['in_Person_LivesIn'].type.is_same_type(union_list_type))
+        self.assertTrue(is_same_type(person.fields['out_Person_LivesIn'].type, location_list_type))
+        self.assertTrue(is_same_type(baby.fields['out_Person_LivesIn'].type, location_list_type))
+        self.assertTrue(is_same_type(location.fields['in_Person_LivesIn'].type, union_list_type))
 
     def test_filter_type_equivalences_with_no_edges(self):
         schema_data = [
@@ -463,7 +467,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         }
 
         graphql_schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_data)
-        for name in six.iterkeys(graphql_schema.get_type_map()):
+        for name in six.iterkeys(graphql_schema.type_map):
             self.assertNotIn(name, names_of_non_graph_classes_to_ignore)
 
         non_graph_class_type = graphql_schema.get_type(

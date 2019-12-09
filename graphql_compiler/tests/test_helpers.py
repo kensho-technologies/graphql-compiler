@@ -6,7 +6,7 @@ import re
 
 from graphql import GraphQLList, parse
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
-from graphql.utils.build_ast_schema import build_ast_schema
+from graphql.utilities.build_ast_schema import build_ast_schema
 import six
 import sqlalchemy
 from sqlalchemy.dialects import mssql, postgresql
@@ -15,6 +15,7 @@ from graphql_compiler.schema_generation.orientdb import get_graphql_schema_from_
 
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..global_utils import is_same_type
 from ..macros import create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
@@ -42,7 +43,7 @@ SCHEMA_TEXT = '''
         query: RootSchemaQuery
     }
 
-    directive @filter(op_name: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+    directive @filter(op_name: String!, value: [String!]) repeatable on FIELD | INLINE_FRAGMENT
 
     directive @tag(tag_name: String!) on FIELD
 
@@ -56,7 +57,7 @@ SCHEMA_TEXT = '''
 
     directive @fold on FIELD
 
-    type Animal implements Entity, UniquelyIdentifiable {
+    type Animal implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         birthday: Date
@@ -76,7 +77,7 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 
-    type BirthEvent implements Entity, UniquelyIdentifiable {
+    type BirthEvent implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -107,7 +108,7 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 
-    type Event implements Entity, UniquelyIdentifiable {
+    type Event implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -121,7 +122,7 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 
-    type FeedingEvent implements Entity, UniquelyIdentifiable {
+    type FeedingEvent implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -136,7 +137,7 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 
-    type Food implements Entity, UniquelyIdentifiable {
+    type Food implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -147,7 +148,7 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 
-    type FoodOrSpecies implements Entity, UniquelyIdentifiable {
+    type FoodOrSpecies implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -158,7 +159,7 @@ SCHEMA_TEXT = '''
         uuid: ID
     }
 
-    type Location implements Entity, UniquelyIdentifiable {
+    type Location implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -182,7 +183,7 @@ SCHEMA_TEXT = '''
         UniquelyIdentifiable: [UniquelyIdentifiable]
     }
 
-    type Species implements Entity, UniquelyIdentifiable {
+    type Species implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -435,7 +436,7 @@ def compare_input_metadata(test_case, expected, received):
         expected_value = expected[key]
         received_value = received[key]
 
-        test_case.assertTrue(expected_value.is_same_type(received_value),
+        test_case.assertTrue(is_same_type(expected_value, received_value),
                              msg=u'{} != {}'.format(str(expected_value), str(received_value)))
 
 
@@ -474,7 +475,7 @@ def _get_schema_without_list_valued_property_fields():
     schema = get_schema()
 
     types_with_fields = (GraphQLInterfaceType, GraphQLObjectType)
-    for type_name, graphql_type in six.iteritems(schema.get_type_map()):
+    for type_name, graphql_type in six.iteritems(schema.type_map):
         if isinstance(graphql_type, types_with_fields):
             if type_name != 'RootSchemaQuery' and not type_name.startswith('__'):
                 fields_to_pop = []
