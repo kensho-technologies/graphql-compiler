@@ -15,7 +15,7 @@ redisgraph = ">=1.7,<1.9"
 
 # Linters and other development tools
 bandit = ">=1.5.1,<2"
-black = ">=19.10b0"  # This is still marked as a beta release, make sure to run "pipenv lock --pre".
+black = "==19.10b0"  # This is still marked as a beta release, pin it explicitly: https://github.com/pypa/pipenv/issues/1760
 codecov = ">=2.0.15,<3"
 flake8 = ">=3.6.0,<4"
 flake8-bugbear = ">=19.8.0"
@@ -46,6 +46,3 @@ graphql-compiler = {editable = true, path = "."}  # necessary to make some pylin
 
 [requires]
 python_version = "3.6"
-
-[pipenv]
-allow_prereleases = true
