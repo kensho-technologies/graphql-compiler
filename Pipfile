@@ -15,7 +15,7 @@ redisgraph = ">=1.7,<1.9"
 
 # Linters and other development tools
 bandit = ">=1.5.1,<2"
-black = ">=19.10b0"  # This is still marked as a beta release, make sure to run "pipenv lock --pre".
+black = "==19.10b0"  # This is still marked as a beta release, pin it explicitly: https://github.com/pypa/pipenv/issues/1760
 codecov = ">=2.0.15,<3"
 flake8 = ">=3.6.0,<4"
 flake8-bugbear = ">=19.8.0"
@@ -23,9 +23,9 @@ flake8-print = ">=3.1.0,<4"
 isort = ">=4.3.4,<5"
 mypy = ">=0.750,<1"
 parameterized = ">=0.6.1,<1"
-pydocstyle = ">=3.0.0,<4"
-pylint = "==1.9.4"  # v1.9.5 is marked as "python_requires < 3.7", update this after we're Py3+ only
-pytest = ">=4.1.0,<5"
+pydocstyle = ">=5.0.1,<6"
+pylint = ">=2.4.4,<3"
+pytest = ">=5.1.3,<6"
 pytest-cov = ">=2.6.1,<3"
 snapshottest = ">=0.5.1,<1"
 
@@ -43,8 +43,9 @@ pytz = ">=2017.2"
 six = ">=1.10.0"
 sqlalchemy = ">=1.3.0,<2"
 
+# The below is necessary to make a few pylint passes work properly, since pylint expects to be able
+# to run "import graphql_compiler" in the environment in which it runs.
+graphql-compiler = {editable = true, path = "."}
+
 [requires]
 python_version = "3.6"
-
-[pipenv]
-allow_prereleases = true
