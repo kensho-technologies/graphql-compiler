@@ -2,7 +2,6 @@
 from decimal import Decimal
 from typing import Any, Dict, List, Tuple, TypeVar, Union
 
-from graphql.type.schema import GraphQLSchema
 from pyorient.orient import OrientDB
 from redisgraph.client import Graph
 import six
