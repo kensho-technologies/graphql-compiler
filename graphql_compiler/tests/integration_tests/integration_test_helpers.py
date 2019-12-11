@@ -111,9 +111,9 @@ def compile_and_run_neo4j_query(
 
 def compile_and_run_redisgraph_query(
     common_schema_info: CommonSchemaInfo,
-        graphql_query: str,
-        parameters: Dict[str, Any],
-        redisgraph_client: Graph,
+    graphql_query: str,
+    parameters: Dict[str, Any],
+    redisgraph_client: Graph,
 ) -> List[Dict[str, Any]]:
     """Compile and run a Cypher query against the supplied graph client."""
     compilation_result = graphql_to_redisgraph_cypher(common_schema_info, graphql_query, parameters)
