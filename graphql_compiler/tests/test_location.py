@@ -1,10 +1,13 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+from typing import List
 import unittest
 
-from ..compiler.helpers import FoldScopeLocation, Location
+from ..compiler.helpers import BaseLocation, FoldScopeLocation, Location
 
 
-def compare_sorted_locations_list(test_case, sorted_locations):
+def compare_sorted_locations_list(
+    test_case: unittest.TestCase, sorted_locations: List[BaseLocation]
+) -> None:
     """Ensure that the given list of locations is in ascending order."""
     for i in range(len(sorted_locations)):
         first_location = sorted_locations[i]
@@ -16,7 +19,7 @@ def compare_sorted_locations_list(test_case, sorted_locations):
 
 
 class LocationTests(unittest.TestCase):
-    def test_location_name(self):
+    def test_location_name(self) -> None:
         base_location = Location(("Animal",))
         self.assertEqual((u"Animal___1", None), base_location.get_location_name())
 
@@ -39,7 +42,7 @@ class LocationTests(unittest.TestCase):
             (u"Animal__out_Animal_ParentOf___1", u"name"), child_at_field.get_location_name()
         )
 
-    def test_location_comparisons(self):
+    def test_location_comparisons(self) -> None:
         sorted_locations = [
             Location(("Animal", "in_Animal_Parent_of"), "uuid", 3),
             Location(("Animal", "in_Animal_Parent_of", "in_Animal_FedAt"), "name", 2),
@@ -56,7 +59,7 @@ class LocationTests(unittest.TestCase):
                 received_location_comparison = first_location < second_location
                 self.assertEqual(expected_comparison, received_location_comparison)
 
-    def test_fold_scope_location_comparisons(self):
+    def test_fold_scope_location_comparisons(self) -> None:
         sorted_locations = [
             FoldScopeLocation(
                 Location(("Animal", "in_Animal_Parent_of")), (("in", "Animal_OfSpecies",),), None
@@ -88,7 +91,7 @@ class LocationTests(unittest.TestCase):
                 received_comparison = first_location < second_location
                 self.assertEqual(expected_comparison, received_comparison)
 
-    def test_mixed_location_comparisons(self):
+    def test_mixed_location_comparisons(self) -> None:
         sorted_locations = [
             FoldScopeLocation(
                 Location(("Animal", "in_Animal_Parent_of")), (("in", "Animal_OfSpecies",),), None

@@ -1,6 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
+from typing import Any, Tuple
 import unittest
 
 from graphql import (
@@ -20,7 +21,7 @@ from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
 from ..query_formatting.common import deserialize_json_argument, validate_argument_type
-from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
 from .test_helpers import compare_gremlin, compare_match, get_schema
 
 
@@ -33,7 +34,7 @@ EXAMPLE_GRAPHQL_QUERY = """{
 
 
 class QueryFormattingTests(unittest.TestCase):
-    def test_correct_arguments(self):
+    def test_correct_arguments(self) -> None:
         wanted_name = "Top Cat"
         min_worth = Decimal("123456789.0123456")
         expected_match = """
@@ -81,7 +82,7 @@ class QueryFormattingTests(unittest.TestCase):
         actual_gremlin = graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, arguments).query
         compare_gremlin(self, expected_gremlin, actual_gremlin)
 
-    def test_missing_argument(self):
+    def test_missing_argument(self) -> None:
         schema = get_schema()
         compiled_match_result = compile_graphql_to_match(schema, EXAMPLE_GRAPHQL_QUERY)
         compiled_gremlin_result = compile_graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY)
@@ -98,7 +99,7 @@ class QueryFormattingTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidArgumentError):
             graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, {})
 
-    def test_surplus_argument(self):
+    def test_surplus_argument(self) -> None:
         schema = get_schema()
         compiled_match_result = compile_graphql_to_match(schema, EXAMPLE_GRAPHQL_QUERY)
         compiled_gremlin_result = compile_graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY)
@@ -116,7 +117,7 @@ class QueryFormattingTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidArgumentError):
             graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, arguments)
 
-    def test_misnamed_argument(self):
+    def test_misnamed_argument(self) -> None:
         schema = get_schema()
         compiled_match_result = compile_graphql_to_match(schema, EXAMPLE_GRAPHQL_QUERY)
         compiled_gremlin_result = compile_graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY)
@@ -134,7 +135,7 @@ class QueryFormattingTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidArgumentError):
             graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, {})
 
-    def test_wrong_argument_type(self):
+    def test_wrong_argument_type(self) -> None:
         schema = get_schema()
         compiled_match_result = compile_graphql_to_match(schema, EXAMPLE_GRAPHQL_QUERY)
         compiled_gremlin_result = compile_graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY)
@@ -160,8 +161,12 @@ class QueryFormattingTests(unittest.TestCase):
             with self.assertRaises(GraphQLInvalidArgumentError):
                 graphql_to_gremlin(schema, EXAMPLE_GRAPHQL_QUERY, {})
 
-    def test_argument_types(self):
-        test_cases = (
+    def test_argument_types(self) -> None:
+        valid_values_type = Tuple[Any, ...]
+        invalid_values_type = Tuple[Any, ...]
+        test_case_type = Tuple[GraphQLSchemaFieldType, valid_values_type, invalid_values_type]
+
+        test_cases: Tuple[test_case_type, ...] = (
             (GraphQLString, ("asdf",), (4, 5.4, True)),
             (GraphQLID, ("13d72846-1777-6c3a-5743-5d9ced3032ed", "asf"), (4, 4.4, True)),
             (GraphQLFloat, (4.1, 4.0), ("4.3", 5)),
@@ -200,7 +205,7 @@ class QueryFormattingTests(unittest.TestCase):
                 with self.assertRaises(GraphQLInvalidArgumentError):
                     validate_argument_type(arbitrary_argument_name, graphql_type, invalid_value)
 
-    def test_non_null_types_pass_validation(self):
+    def test_non_null_types_pass_validation(self) -> None:
         type_and_value = [
             (GraphQLString, "abc"),  # sanity check
             (GraphQLNonNull(GraphQLString), "abc"),
@@ -214,7 +219,7 @@ class QueryFormattingTests(unittest.TestCase):
         for graphql_type, value in type_and_value:
             validate_argument_type(arbitrary_argument_name, graphql_type, value)
 
-    def test_date_deserialization(self):
+    def test_date_deserialization(self) -> None:
         # Invalid month
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_json_argument("birthday", GraphQLDate, "2014-14-01")
@@ -227,7 +232,7 @@ class QueryFormattingTests(unittest.TestCase):
         value = deserialize_json_argument("birthday", GraphQLDate, "2014-02-05")
         self.assertEqual(datetime.date(2014, 2, 5), value)
 
-    def test_datetime_deserialization(self):
+    def test_datetime_deserialization(self) -> None:
         # No time provided
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_json_argument("birth_time", GraphQLDateTime, "2014-02-05")
@@ -250,7 +255,7 @@ class QueryFormattingTests(unittest.TestCase):
         )
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
 
-    def test_float_deserialization(self):
+    def test_float_deserialization(self) -> None:
         # Invalid string
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_json_argument("amount", GraphQLFloat, "sdg")
@@ -274,7 +279,7 @@ class QueryFormattingTests(unittest.TestCase):
         # Valid float with comma
         self.assertEqual(float(5.1), deserialize_json_argument("amount", GraphQLFloat, float(5.1)))
 
-    def test_id_deserialization(self):
+    def test_id_deserialization(self) -> None:
         # Float
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_json_argument("amount", GraphQLID, 5.3)
@@ -285,7 +290,7 @@ class QueryFormattingTests(unittest.TestCase):
         # String
         self.assertEqual("5", deserialize_json_argument("amount", GraphQLID, "5"))
 
-    def test_int_deserialization(self):
+    def test_int_deserialization(self) -> None:
         # Int
         self.assertEqual(5, deserialize_json_argument("amount", GraphQLInt, 5))
 
@@ -306,7 +311,7 @@ class QueryFormattingTests(unittest.TestCase):
                 ),
             )
 
-    def test_invalid_directive_comparison(self):
+    def test_invalid_directive_comparison(self) -> None:
         # This test will fail if the directive types in deserialize_json_argument are compared by
         # their python object reference instead of by their names.
         #
