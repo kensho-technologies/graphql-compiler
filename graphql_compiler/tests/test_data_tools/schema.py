@@ -2,8 +2,10 @@
 from glob import glob
 from os import path
 
+from pyorient import OrientDB
 
-def load_schema(client):
+
+def load_schema(client: OrientDB) -> None:
     """Read the schema file and apply the specified SQL updates to the client."""
     project_root = path.dirname(path.dirname(path.abspath(__file__)))
     file_path = path.join(project_root, "test_data_tools/schema.sql")
