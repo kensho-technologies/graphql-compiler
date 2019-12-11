@@ -110,7 +110,7 @@ def get_all_tag_names(ast):
 def get_type_at_macro_edge_target(schema, ast):
     """Return the GraphQL type at the @macro_edge_target or None if there is no target."""
     root_type = get_ast_field_name(ast)
-    root_schema_type = get_field_type_from_schema(schema.get_query_type(), root_type)
+    root_schema_type = get_field_type_from_schema(schema.to_kwargs()['query'], root_type)
 
     # Allow list types at the query root in the schema.
     if isinstance(root_schema_type, GraphQLList):

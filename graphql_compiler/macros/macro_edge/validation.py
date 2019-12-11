@@ -275,7 +275,7 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
     # Propagate the changes back to the result_ast
     root_level_selection.selection_set = SelectionSetNode(selections=first_level_selections)
     query_ast.selection_set = SelectionSetNode(selections=[root_level_selection])
-    return DocumentNode(defintions=[query_ast])
+    return DocumentNode(definitions=[query_ast])
 
 
 # ############
@@ -318,8 +318,7 @@ def get_and_validate_macro_edge_info(schema, subclass_sets, ast, macro_edge_args
     macro_directives = get_directives_for_ast(ast)
 
     _validate_query_definition(ast)
-    # TODO:(selene)
-    # _validate_ast_with_builtin_graphql_validation(schema, ast)
+    _validate_ast_with_builtin_graphql_validation(schema, DocumentNode(definitions=[ast]))
     _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives)
     _validate_non_required_macro_definition_directives(ast)
 

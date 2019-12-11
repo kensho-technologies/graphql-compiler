@@ -101,12 +101,16 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
             # No coercion in the macro edge definition,
             # slip the user's type coercion inside the target AST.
             new_coercion = InlineFragmentNode(
-                coercion.type_condition, target_ast.selection_set, directives=[])
-            target_ast.selection_set = SelectionSetNode([new_coercion])
+                type_condition=coercion.type_condition,
+                selection_set=target_ast.selection_set,
+                directives=[]
+            )
+            target_ast.selection_set = SelectionSetNode(selections=[new_coercion])
             target_ast = new_coercion
 
     # Merge the continuation into the target
-    target_ast.directives += continuation_ast.directives
+    # target_ast.directives += continuation_ast.directives
+    target_ast.directives = list(target_ast.directives) + list(continuation_ast.directives)
     target_ast.selection_set = merge_selection_sets(
         target_ast.selection_set, continuation_ast.selection_set)
 

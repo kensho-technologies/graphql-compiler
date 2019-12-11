@@ -3,10 +3,11 @@ from collections import namedtuple
 
 from graphql import parse
 from graphql.language.ast import (
-    DirectiveNode, FieldDefinitionNode, InterfaceTypeDefinitionNode, ListTypeNode, NameNode,
-    NamedTypeNode, ObjectTypeDefinitionNode
+    DirectiveNode, DocumentNode, FieldDefinitionNode, InterfaceTypeDefinitionNode, ListTypeNode,
+    NameNode, NamedTypeNode, ObjectTypeDefinitionNode
 )
 from graphql.language.printer import print_ast
+from graphql.pyutils import FrozenList
 from graphql.utilities.build_ast_schema import build_ast_schema
 from graphql.utilities.schema_printer import print_schema
 import six
@@ -165,7 +166,7 @@ def get_schema_with_macros(macro_registry):
                         we want to add to the schema.
 
     Returns:
-        GraphQLSchema with additional fields where macroe edges can be used.
+        GraphQLSchema with additional fields where macro edges can be used.
     """
     # The easiest way to manipulate the schema is through its AST. The easiest
     # way to get an AST is to print it and parse it.
@@ -174,7 +175,8 @@ def get_schema_with_macros(macro_registry):
     definitions_by_name = {}
     for definition in schema_ast.definitions:
         if isinstance(definition, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
-            definitions_by_name[definition.name.value] = definition
+            # Cast to list (from FrozenList) to allow for updates.
+            definitions_by_name[definition.name.value] = list(definition.fields)
 
     for class_name, macros_for_class in six.iteritems(macro_registry.macro_edges_at_class):
         for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_class):
@@ -183,7 +185,7 @@ def get_schema_with_macros(macro_registry):
             )
             arguments = []
             directives = [DirectiveNode(name=NameNode(value=MacroEdgeDirective.name))]
-            definitions_by_name[class_name].fields.append(
+            definitions_by_name[class_name].append(
                 FieldDefinitionNode(
                     name=NameNode(value=macro_edge_name),
                     arguments=arguments,
@@ -192,7 +194,34 @@ def get_schema_with_macros(macro_registry):
                 )
             )
 
-    return build_ast_schema(schema_ast)
+    new_definitions = []
+    for definition in schema_ast.definitions:
+        # Create new (Object)/(Interface)TypeDefinitionNode based on the updated fields.
+        if isinstance(definition, ObjectTypeDefinitionNode):
+            new_definitions.append(ObjectTypeDefinitionNode(
+                interfaces=definition.interfaces,
+                description=definition.description,
+                name=definition.name,
+                directives=definition.directives,
+                loc=definition.loc,
+                fields=FrozenList(definitions_by_name[definition.name.value])
+            ))
+        elif isinstance(definitions_by_name, InterfaceTypeDefinitionNode):
+            new_definitions.append(ObjectTypeDefinitionNode(
+                description=definition.description,
+                name=definition.name,
+                directives=definition.directives,
+                loc=definition.loc,
+                fields=FrozenList(definitions_by_name[definition.name.value])
+            ))
+        else:
+            new_definitions.append(definition)
+
+    new_schema_ast = DocumentNode(
+        definitions=new_definitions,
+        loc=schema_ast.loc
+    )
+    return build_ast_schema(new_schema_ast)
 
 
 def get_schema_for_macro_definition(schema):

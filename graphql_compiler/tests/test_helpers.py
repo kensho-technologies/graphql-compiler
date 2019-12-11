@@ -57,6 +57,8 @@ SCHEMA_TEXT = '''
 
     directive @fold on FIELD
 
+    directive @macro_edge on FIELD_DEFINITION
+
     type Animal implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]

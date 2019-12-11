@@ -89,7 +89,7 @@ def get_schema_for_macro_edge_definitions(querying_schema):
     # altering the object's internals directly.
     macro_edge_schema = copy(querying_schema)
     # pylint: disable=protected-access
-    macro_edge_schema._directives = new_directives
+    macro_edge_schema.directives = new_directives
     # pylint: enable=protected-access
 
     return macro_edge_schema

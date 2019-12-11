@@ -43,7 +43,7 @@ class MacroSchemaTests(unittest.TestCase):
         original_schema = self.macro_registry.schema_without_macros
         macro_definition_schema = get_schema_for_macro_definition(original_schema)
         macro_schema_directive_names = {
-            directive.name for directive in macro_definition_schema.get_directives()
+            directive.name for directive in macro_definition_schema.to_kwargs()['directives']
         }
         for directive in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
             self.assertIn(directive, macro_schema_directive_names)
@@ -52,16 +52,16 @@ class MacroSchemaTests(unittest.TestCase):
         original_schema = self.macro_registry.schema_without_macros
         macro_definition_schema = get_schema_for_macro_definition(original_schema)
         macro_schema_directive_names = {
-            directive.name for directive in macro_definition_schema.get_directives()
+            directive.name for directive in macro_definition_schema.to_kwargs()['directives']
         }
-        for directive in original_schema.get_directives():
-            if directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
-                self.assertIn(directive, macro_schema_directive_names)
+        for directive in original_schema.to_kwargs()['directives']:
+            if directive.name in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
+                self.assertIn(directive.name, macro_schema_directive_names)
 
     def test_get_schema_for_macro_definition_removal(self):
         schema_with_macros = get_schema_with_macros(self.macro_registry)
         macro_definition_schema = get_schema_for_macro_definition(schema_with_macros)
-        for directive in macro_definition_schema.get_directives():
+        for directive in macro_definition_schema.to_kwargs()['directives']:
             self.assertTrue(directive.name != OutputDirective.name)
             self.assertTrue(directive.name != OutputSourceDirective.name)
 

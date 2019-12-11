@@ -81,7 +81,7 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
             made_changes = True
 
         new_selection_set = merge_selection_sets(new_selection_set, SelectionSetNode(
-            list(chain(prefix_selections, [new_selection_ast], suffix_selections))))
+            selections=list(chain(prefix_selections, [new_selection_ast], suffix_selections))))
 
     if made_changes:
         result_ast = copy(ast)
@@ -120,7 +120,7 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
     base_ast = get_only_selection_from_ast(definition_ast, GraphQLInvalidMacroError)
 
     base_start_type_name = get_ast_field_name(base_ast)
-    query_type = macro_registry.schema_without_macros.get_query_type()
+    query_type = macro_registry.schema_without_macros.to_kwargs()['query']
     base_start_type = query_type.fields[base_start_type_name].type
     tag_names = get_all_tag_names(base_ast)
 
@@ -141,7 +141,7 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
         new_query_args = query_args
     else:
         new_definition = copy(definition_ast)
-        new_definition.selection_set = SelectionSetNode([new_base_ast])
+        new_definition.selection_set = SelectionSetNode(selections=[new_base_ast])
 
         new_query_ast = copy(query_ast)
         new_query_ast.definitions = [new_definition]

@@ -7,6 +7,7 @@ from graphql.language.ast import (
     ArgumentNode, FieldNode, InlineFragmentNode, ListValueNode, NameNode, OperationDefinitionNode,
     SelectionSetNode, StringValueNode
 )
+from graphql.pyutils import FrozenList
 import six
 
 from ...compiler.helpers import (
@@ -39,7 +40,9 @@ def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
         return tag_directive
 
     renamed_tag_directive = copy(tag_directive)
-    renamed_tag_directive.arguments = [ArgumentNode(NameNode('tag_name'), StringValueNode(new_name))]
+    renamed_tag_directive.arguments = [
+        ArgumentNode(name=NameNode(value='tag_name'), value=StringValueNode(value=new_name))
+    ]
     return renamed_tag_directive
 
 
@@ -76,12 +79,14 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive):
                     new_name = name_change_map[current_name]
                     if new_name != current_name:
                         made_changes = True
-                        new_value = StringValueNode('%' + new_name)
+                        new_value = StringValueNode(value='%' + new_name)
 
                 new_value_list.append(new_value)
 
             if made_changes:
-                new_argument = ArgumentNode(NameNode('value'), value=ListValueNode(new_value_list))
+                new_argument = ArgumentNode(
+                    name=NameNode(value='value'), value=ListValueNode(values=new_value_list)
+                )
             else:
                 new_argument = argument
             new_arguments.append(new_argument)
@@ -172,7 +177,7 @@ def replace_tag_names(name_change_map, ast):
                 made_changes = True
 
             new_selections.append(new_selection_ast)
-        new_selection_set = SelectionSetNode(new_selections)
+        new_selection_set = SelectionSetNode(selections=new_selections)
 
     # Process the current node's directives.
     directives = ast.directives
@@ -220,11 +225,11 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
             new_selections.append(new_selection_ast)
         new_selection_set = SelectionSetNode(selections=new_selections)
 
-    directives_to_keep = [
+    directives_to_keep = FrozenList([
         directive
         for directive in ast.directives
         if directive.name.value not in directive_names_to_omit
-    ]
+    ])
     if len(directives_to_keep) != len(ast.directives):
         made_changes = True
 
@@ -283,7 +288,7 @@ def find_target_and_copy_path_to_it(ast):
         return ast, None
     else:
         new_ast = copy(ast)
-        new_ast.selection_set = SelectionSetNode(new_selections)
+        new_ast.selection_set = SelectionSetNode(selections=new_selections)
         return new_ast, target_ast
 
 
@@ -387,7 +392,7 @@ def merge_selection_sets(selection_set_a, selection_set_b):
         for name in selection_name_order
         if name in merged_selection_dict
     ]
-    return SelectionSetNode(sorted(
+    return SelectionSetNode(selections=sorted(
         merged_selections,
         key=lambda ast: ast.selection_set is not None
     ))

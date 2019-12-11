@@ -193,6 +193,14 @@ RecurseDirective = GraphQLDirective(
     ]
 )
 
+# TODO(selene): import from macros
+MacroEdgeDirective = GraphQLDirective(
+    name='macro_edge',
+    locations=[
+        # Used to mark edges that are defined via macros in the schema.
+        DirectiveLocation.FIELD_DEFINITION,
+    ],
+)
 
 OUTBOUND_EDGE_FIELD_PREFIX = 'out_'
 INBOUND_EDGE_FIELD_PREFIX = 'in_'
@@ -292,6 +300,7 @@ DIRECTIVES = (
     OptionalDirective,
     RecurseDirective,
     FoldDirective,
+    MacroEdgeDirective,
 )
 
 
