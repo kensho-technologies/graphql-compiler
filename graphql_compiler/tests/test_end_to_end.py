@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
-from typing import Any, Tuple
+from typing import Any, Dict, List, Tuple
 import unittest
 
 from graphql import (
@@ -160,7 +160,7 @@ class QueryFormattingTests(unittest.TestCase):
             common_schema_info, EXAMPLE_GRAPHQL_QUERY
         )
 
-        wrong_argument_types = [
+        wrong_argument_types: List[Dict[str, Any]] = [
             {"wanted_name": 123},
             {"wanted_name": ["abc", "def", "ghi"]},
             {"wanted_name": ["abc"]},
