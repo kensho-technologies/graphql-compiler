@@ -11,8 +11,8 @@ from snapshottest import TestCase
 
 from .. import test_input_data
 from ... import graphql_to_match
-from ...schema.typedefs import TypeEquivalenceHintsType
 from ...schema.schema_info import CommonSchemaInfo
+from ...schema.typedefs import TypeEquivalenceHintsType
 from ..test_helpers import get_schema
 from ..test_input_data import CommonTestData
 
