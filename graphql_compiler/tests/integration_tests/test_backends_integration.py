@@ -10,6 +10,7 @@ from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
+from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
     fast_sql_server_reflect,
@@ -120,6 +121,7 @@ class IntegrationTests(TestCase):
         """
         # Mypy doesn't like our decorator magic, we have to manually ignore the type checks
         # on all the properties that we magically added via the integration testing decorator.
+        common_schema_info = CommonSchemaInfo(cls.schema, None)  # type: ignore
         if backend_name in SQL_BACKENDS:
             engine = cls.sql_backend_name_to_engine[backend_name]  # type: ignore
             results = compile_and_run_sql_query(
@@ -127,15 +129,15 @@ class IntegrationTests(TestCase):
             )
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
-                cls.schema, graphql_query, parameters, cls.orientdb_client  # type: ignore
+                common_schema_info, graphql_query, parameters, cls.orientdb_client  # type: ignore
             )
         elif backend_name in NEO4J_BACKENDS:
             results = compile_and_run_neo4j_query(
-                cls.schema, graphql_query, parameters, cls.neo4j_client  # type: ignore
+                common_schema_info, graphql_query, parameters, cls.neo4j_client  # type: ignore
             )
         elif backend_name in REDISGRAPH_BACKENDS:
             results = compile_and_run_redisgraph_query(
-                cls.schema, graphql_query, parameters, cls.redisgraph_client  # type: ignore
+                common_schema_info, graphql_query, parameters, cls.redisgraph_client  # type: ignore
             )
         else:
             raise AssertionError(u"Unknown test backend {}.".format(backend_name))
