@@ -119,15 +119,13 @@ def _validate_non_required_macro_definition_directives(
             subselection_inside_fold_scope = True
         elif name == MacroEdgeTargetDirective.name:
             if inside_optional_scope:
-                pass  # XXX Allow the @macro edge target to be in @optional scope
-                # raise GraphQLInvalidMacroError(
-                #     u"The @macro_edge_target cannot be inside an @optional scope."
-                # )
+                raise GraphQLInvalidMacroError(
+                    u"The @macro_edge_target cannot be inside an @optional scope."
+                )
             if OptionalDirective.name in names_of_directives_at_ast:
-                pass  # XXX Allow the @macro edge target to be in @optional scope
-                # raise GraphQLInvalidMacroError(
-                #     u"The @macro_edge_target cannot be placed at a field marked @optional."
-                # )
+                raise GraphQLInvalidMacroError(
+                    u"The @macro_edge_target cannot be placed at a field marked @optional."
+                )
 
             if inside_fold_scope:
                 raise GraphQLInvalidMacroError(
