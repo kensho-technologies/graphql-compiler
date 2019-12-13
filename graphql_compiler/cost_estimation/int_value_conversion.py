@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from uuid import UUID
 import datetime
+import pytz
 
 from .helpers import is_int_field_type, is_uuid4_type, is_datetime_field_type, is_date_field_type
 
@@ -54,7 +55,7 @@ def convert_int_to_field_value(schema_info, vertex_class, property_field, int_va
     if is_int_field_type(schema_info, vertex_class, property_field):
         return int_value
     if is_datetime_field_type(schema_info, vertex_class, property_field):
-        return datetime.datetime.utcfromtimestamp(int_value)
+        return datetime.datetime(1970, 1, 1, tzinfo=pytz.utc) + datetime.timedelta(microseconds=int_value)
     if is_date_field_type(schema_info, vertex_class, property_field):
         # TODO(bojanserafimov): this is not tested
         return datetime.date.fromordinal(int_value)
@@ -80,7 +81,9 @@ def convert_field_value_to_int(schema_info, vertex_class, property_field, value)
     if is_int_field_type(schema_info, vertex_class, property_field):
         return value
     if is_datetime_field_type(schema_info, vertex_class, property_field):
-        return int((value - datetime.datetime(1970, 1, 1)).total_seconds())
+        if value.tzinfo != pytz.utc:
+            raise AssertionError()
+        return int((value - datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)) / datetime.timedelta(microseconds=1))
     if is_date_field_type(schema_info, vertex_class, property_field):
         return value.toordinal()
     elif is_uuid4_type(schema_info, vertex_class, property_field):

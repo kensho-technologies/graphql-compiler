@@ -2,6 +2,7 @@
 from datetime import date, datetime
 from typing import Any, Dict, List
 import unittest
+import pytz
 
 import pytest
 
@@ -1401,19 +1402,47 @@ class IntegerIntervalTests(unittest.TestCase):
         self.assertEqual(expected_intersection, received_intersection)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_int_value_conversion_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        uuid_values = [
+            "00000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000001",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        ]
+        for uuid_value in uuid_values:
+            int_value = convert_field_value_to_int(schema_info, 'Event', 'uuid', uuid_value)
+            recovered_uuid = convert_int_to_field_value(
+                schema_info, 'Event', 'uuid', int_value)
+            self.assertEqual(uuid_value, recovered_uuid)
+
+        invalid_uuid_values = [
+            "80000000-0000-",
+        ]
+        for uuid_value in invalid_uuid_values:
+            with self.assertRaises(Exception):
+                int_value = convert_field_value_to_int(
+                    schema_info, 'Event', 'uuid', uuid_value)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
     def test_int_value_conversion_datetime(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
         uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
-        statistics = LocalStatistics(dict(), field_quantiles={
-            ('Event', 'event_date'): [
-                datetime(2019, 3, 1),
-                datetime(2019, 6, 1),
-                datetime(2019, 8, 1),
-                datetime(2019, 9, 1),
-            ],
-        })
+        statistics = LocalStatistics({})
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
             type_equivalence_hints=type_equivalence_hints,
@@ -1423,13 +1452,50 @@ class IntegerIntervalTests(unittest.TestCase):
             uuid4_fields=uuid4_fields)
 
         datetime_values = [
-            datetime(2000, 1, 1),
-            datetime(3000, 1, 1),
-            datetime(1000, 1, 1),
-            datetime(1, 1, 1),
+            datetime(2000, 1, 1, tzinfo=pytz.utc),
+            datetime(3000, 1, 1, tzinfo=pytz.utc),
+            datetime(1000, 1, 1, tzinfo=pytz.utc),
+            datetime(1, 1, 1, tzinfo=pytz.utc),
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.utc),
         ]
         for datetime_value in datetime_values:
             int_value = convert_field_value_to_int(schema_info, 'Event', 'event_date', datetime_value)
             recovered_datetime = convert_int_to_field_value(
                 schema_info, 'Event', 'event_date', int_value)
             self.assertAlmostEqual(0, (datetime_value - recovered_datetime).total_seconds())
+
+        invalid_datetime_values = [
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=None),
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone('GMT')),
+        ]
+        for datetime_value in invalid_datetime_values:
+            with self.assertRaises(Exception):
+                int_value = convert_field_value_to_int(
+                    schema_info, 'Event', 'event_date', datetime_value)
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_int_value_conversion_date(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        date_values = [
+            date(2000, 1, 1),
+            date(3000, 1, 1),
+            date(1000, 1, 1),
+            date(1, 1, 1),
+        ]
+        for date_value in date_values:
+            int_value = convert_field_value_to_int(schema_info, 'Animal', 'birthday', date_value)
+            recovered_date = convert_int_to_field_value(
+                schema_info, 'Animal', 'birthday', int_value)
+            self.assertEqual(date_value, recovered_date)
