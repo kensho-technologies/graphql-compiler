@@ -27,7 +27,7 @@ jobs:
           bash -c "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -"
           sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
           sudo apt-get update
-          sudo apt-get install unixodbc-dev python-mysqldb
+          sudo apt-get install unixodbc-dev python-mysqldb libmysqlclient-dev
           ACCEPT_EULA=Y sudo apt-get install msodbcsql17
       - name: Install Python dependencies
         run: |
@@ -58,13 +58,13 @@ jobs:
       mysql:
         image: mysql:8.0.11
         ports:
-          - "127.0.0.1:3306:3306"
+          - "127.0.0.1:13306:3306"
         env:
           MYSQL_ROOT_PASSWORD: root
       mariadb:
         image: mariadb:10.3.11
         ports:
-          - "127.0.0.1:3307:3306"
+          - "127.0.0.1:13307:3306"
         env:
           MYSQL_ROOT_PASSWORD: root
       mssql:
@@ -100,7 +100,7 @@ jobs:
           bash -c "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -"
           sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
           sudo apt-get update
-          sudo apt-get install unixodbc-dev python-mysqldb
+          sudo apt-get install unixodbc-dev python-mysqldb libmysqlclient-dev
           ACCEPT_EULA=Y sudo apt-get install msodbcsql17
       - name: Install Python dependencies
         run: |
