@@ -5,7 +5,7 @@ Thank you for taking the time to contribute to this project!
 
 To get started, make sure that you have :code:`pipenv`, :code:`docker` and
 :code:`docker-compose` installed on your computer. Please make sure
-you have Python 3.6+ installed locally. If you do not already have it installed,
+you have Python 3.8+ installed locally. If you do not already have it installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 
 Integration tests are run against multiple SQL databases, some of which
