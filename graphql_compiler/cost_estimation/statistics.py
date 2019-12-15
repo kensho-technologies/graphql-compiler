@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 
-from frozendict import frozendict
 import six
 
 
@@ -144,10 +143,10 @@ class LocalStatistics(Statistics):
                     u"{} has {}.".format(vertex_name, len(quantile_list))
                 )
 
-        self._class_counts = frozendict(class_counts)
-        self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
-        self._distinct_field_values_counts = frozendict(distinct_field_values_counts)
-        self._field_quantiles = frozendict(field_quantiles)
+        self._class_counts = class_counts
+        self._vertex_edge_vertex_counts = vertex_edge_vertex_counts
+        self._distinct_field_values_counts = distinct_field_values_counts
+        self._field_quantiles = field_quantiles
 
     def get_class_count(self, class_name):
         """See base class."""
