@@ -111,7 +111,6 @@ def get_query_type_name(schema):
     Returns:
         str, name of the query type (e.g. RootSchemaQuery)
     """
-    # TODO(Selene)
     return schema.to_kwargs()['query'].name
 
 
@@ -128,7 +127,6 @@ def get_scalar_names(schema):
     Returns:
         Set[str], set of names of scalars used in the schema
     """
-    # TODO(Selene)
     type_map = schema.type_map
     scalars = {
         type_name

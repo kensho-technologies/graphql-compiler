@@ -3,46 +3,12 @@ from collections import OrderedDict
 from copy import copy
 from itertools import chain
 
-from graphql import (
-    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLString
-)
-
 from ...schema import (
-    FilterDirective, FoldDirective, OptionalDirective, RecurseDirective, TagDirective,
+    FilterDirective, FoldDirective, MacroEdgeDefinitionDirective, MacroEdgeDirective,
+    MacroEdgeTargetDirective, OptionalDirective, RecurseDirective, TagDirective,
     check_for_nondefault_directive_names
 )
 
-
-MacroEdgeDirective = GraphQLDirective(
-    name='macro_edge',
-    locations=[
-        # Used to mark edges that are defined via macros in the schema.
-        DirectiveLocation.FIELD_DEFINITION,
-    ],
-)
-
-
-MacroEdgeDefinitionDirective = GraphQLDirective(
-    name='macro_edge_definition',
-    args=OrderedDict([
-        ('name', GraphQLArgument(
-            type_=GraphQLNonNull(GraphQLString),
-            description='Name of the filter operation to perform.',
-        )),
-    ]),
-    locations=[
-        DirectiveLocation.FIELD,
-    ],
-)
-
-
-MacroEdgeTargetDirective = GraphQLDirective(
-    name='macro_edge_target',
-    locations=[
-        DirectiveLocation.FIELD,
-        DirectiveLocation.INLINE_FRAGMENT,
-    ],
-)
 
 # Directives reserved for macro edges
 MACRO_EDGE_DIRECTIVES = (

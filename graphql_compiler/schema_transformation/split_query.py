@@ -4,7 +4,8 @@ from copy import copy
 
 from graphql.language.ast import (
     ArgumentNode, DirectiveNode, DocumentNode, FieldNode, InterfaceTypeDefinitionNode, NameNode,
-    ObjectTypeDefinitionNode, OperationDefinitionNode, SelectionSetNode, StringValueNode
+    ObjectTypeDefinitionNode, OperationDefinitionNode, OperationType, SelectionSetNode,
+    StringValueNode
 )
 from graphql.language.visitor import TypeInfoVisitor, Visitor, visit
 from graphql.utilities.type_info import TypeInfo
@@ -56,9 +57,9 @@ def split_query(query_ast, merged_schema_descriptor):
     @filter directives.
 
     Args:
-        query_ast: Document, representing a GraphQL query to split
+        query_ast: DocumentNode, representing a GraphQL query to split
         merged_schema_descriptor: MergedSchemaDescriptor namedtuple, containing:
-                                  schema_ast: Document representing the merged schema
+                                  schema_ast: DocumentNode representing the merged schema
                                   schema: GraphQLSchema representing the merged schema
                                   type_name_to_schema_id: Dict[str, str], mapping type names to
                                                           the id of the schema it came from
@@ -395,7 +396,7 @@ def _process_cross_schema_field(
         existing_property_field, parent_field_name, cross_schema_field.directives
     )
     # Add @output if needed, record out_name
-    parent_output_name = _get_out_name_optionally_add_output(
+    parent_property_field, parent_output_name = _get_out_name_optionally_add_output(
         parent_property_field, name_assigner
     )
     # Create child query node around ast
@@ -544,7 +545,10 @@ def _get_child_query_node_and_out_name(ast, child_type_name, child_field_name, n
         existing_child_property_field, child_field_name, None
     )
     # Add @output if needed, record out_name
-    child_output_name = _get_out_name_optionally_add_output(child_property_field, name_assigner)
+    child_property_field, child_output_name = _get_out_name_optionally_add_output(
+        child_property_field,
+        name_assigner
+    )
     # Get new child_selections by replacing or adding in new property field
     child_property_fields_map, child_vertex_fields = _split_selections_property_and_vertex(
         child_selections
@@ -563,35 +567,32 @@ def _get_child_query_node_and_out_name(ast, child_type_name, child_field_name, n
 
 
 def _get_property_field(existing_field, field_name, directives_from_edge):
-    """Return a Field object with field_name, sharing directives with any such existing field.
+    """Return a FieldNode with field_name, sharing directives with any such existing FieldNode.
 
-    Any valid directives in directives_on_edge will be transferred over to the new field.
-    If there is an existing Field in selection with field_name, the returned new Field
+    Any valid directives in directives_on_edge will be transferred over to the new FieldNode.
+    If there is an existing FieldNode in selection with field_name, the returned new FieldNode
     will also contain all directives of the existing field with that name.
 
     Args:
-        existing_field: Field or None. If it's not None, it is a field with field_name. The
+        existing_field: FieldNode or None. If it's not None, it is a FieldNode with field_name. The
                         directives of this field will carry output to the output field
         field_name: str, the name of the output field
-        directives_from_edge: List[Directive], the directives of a vertex field. The output
+        directives_from_edge: List[DirectiveNode], the directives of a vertex field. The output
                               field will contain all @filter and any @optional directives
                               from this list
 
     Returns:
-        Field object, with field_name as its name, containing directives from any field in the
+        FieldNode, with field_name as its name, containing directives from any field in the
         input selections with the same name and directives from the input list of directives
     """
-    new_field = FieldNode(
-        name=NameNode(value=field_name),
-        directives=[],
-    )
+    new_field_directives = []
 
     # Transfer directives from existing field of the same name
     if existing_field is not None:
         # Existing field, add all its directives
         directives_from_existing_field = existing_field.directives
         if directives_from_existing_field is not None:
-            new_field.directives.extend(directives_from_existing_field)
+            new_field_directives.extend(directives_from_existing_field)
     # Transfer directives from edge
     if directives_from_edge is not None:
         for directive in directives_from_edge:
@@ -602,18 +603,22 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
                 )
             elif directive.name.value == OptionalDirective.name:
                 if try_get_ast_by_name_and_type(
-                    new_field.directives, OptionalDirective.name, DirectiveNode
+                    new_field_directives, OptionalDirective.name, DirectiveNode
                 ) is None:
                     # New optional directive
-                    new_field.directives.append(directive)
+                    new_field_directives.append(directive)
             elif directive.name.value == FilterDirective.name:
-                new_field.directives.append(directive)
+                new_field_directives.append(directive)
             else:
                 raise AssertionError(
                     u'Unreachable code reached. Directive "{}" is of an unsupported type, and '
                     u'was not caught in a prior validation step.'.format(directive)
                 )
 
+    new_field = FieldNode(
+        name=NameNode(value=field_name),
+        directives=new_field_directives,
+    )
     return new_field
 
 
@@ -621,7 +626,7 @@ def _get_out_name_optionally_add_output(field, name_assigner):
     """Return out_name of @output on field, creating new @output if needed.
 
     Args:
-        field: Field object, whose directives we may modify by adding an @output directive
+        field: FieldNode object, whose directives we may modify by adding an @output directive
         name_assigner: IntermediateOutNameAssigner, object used to generate and keep track of
                        names of newly created @output directives
 
@@ -638,11 +643,21 @@ def _get_out_name_optionally_add_output(field, name_assigner):
         out_name = name_assigner.assign_and_return_out_name()
         output_directive = _get_output_directive(out_name)
         if field.directives is None:
-            field.directives = []
-        field.directives.append(output_directive)
-        return out_name
+            new_directives = []
+        else:
+            new_directives = list(field.directives)
+        new_directives.append(output_directive)
+        new_field = FieldNode(
+            alias=field.alias,
+            name=field.name,
+            arguments=field.arguments,
+            selection_set=field.selection_set,
+            directives=new_directives,
+            loc=field.loc,
+        )
+        return new_field, out_name
     else:
-        return output_directive.arguments[0].value.value  # Location of value of out_name
+        return field, output_directive.arguments[0].value.value  # Location of value of out_name
 
 
 def _get_output_directive(out_name):
@@ -663,7 +678,7 @@ def _get_query_document(root_vertex_field_name, root_selections):
     return DocumentNode(
         definitions=[
             OperationDefinitionNode(
-                operation='query',
+                operation=OperationType.QUERY,
                 selection_set=SelectionSetNode(
                     selections=[
                         FieldNode(

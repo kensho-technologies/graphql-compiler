@@ -194,7 +194,7 @@ RecurseDirective = GraphQLDirective(
     ]
 )
 
-# TODO(selene): import from macros
+# TODO(selene): comments for the macro directives
 MacroEdgeDirective = GraphQLDirective(
     name='macro_edge',
     locations=[
@@ -203,7 +203,30 @@ MacroEdgeDirective = GraphQLDirective(
     ],
 )
 
-# TODO(selene): fill in descriptions
+
+MacroEdgeDefinitionDirective = GraphQLDirective(
+    name='macro_edge_definition',
+    args=OrderedDict([
+        ('name', GraphQLArgument(
+            type_=GraphQLNonNull(GraphQLString),
+            description='Name of the filter operation to perform.',
+        )),
+    ]),
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
+)
+
+
+MacroEdgeTargetDirective = GraphQLDirective(
+    name='macro_edge_target',
+    locations=[
+        DirectiveLocation.FIELD,
+        DirectiveLocation.INLINE_FRAGMENT,
+    ],
+)
+
+# TODO(selene): fill in descriptions and comment
 StitchDirective = GraphQLDirective(
     name='stitch',
     args=OrderedDict([(

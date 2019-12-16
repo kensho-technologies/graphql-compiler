@@ -79,7 +79,6 @@ def _validate_non_required_macro_definition_directives(ast, inside_optional_scop
         inside_optional_scope: bool, whether the subtree is within an @optional scope
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
-    # TODO(Selene)
     names_of_allowed_directives = frozenset({
         directive
         for directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
