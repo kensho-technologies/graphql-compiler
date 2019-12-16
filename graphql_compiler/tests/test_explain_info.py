@@ -28,18 +28,18 @@ class ExplainInfoTests(unittest.TestCase):
     def check(
         self,
         graphql_test: Callable[[], test_input_data.CommonTestData],
-        expected_filters: List[Tuple[BaseLocation, List[FilterInfo]]],
-        expected_recurses: List[Tuple[Location, List[RecurseInfo]]],
-        expected_outputs: List[Tuple[str, OutputInfo]],
+        expected_filter_list: List[Tuple[BaseLocation, List[FilterInfo]]],
+        expected_recurse_list: List[Tuple[Location, List[RecurseInfo]]],
+        expected_output_list: List[Tuple[str, OutputInfo]],
     ) -> None:
         """Verify query produces expected explain infos."""
         ir_and_metadata = graphql_to_ir(self.schema, graphql_test().graphql_input)
         meta = ir_and_metadata.query_metadata_table
 
         # Unfortunately literal dicts don't accept Location() as keys
-        expected_filters = dict(expected_filters)
-        expected_recurses = dict(expected_recurses)
-        expected_outputs = dict(expected_outputs)
+        expected_filters = dict(expected_filter_list)
+        expected_recurses = dict(expected_recurse_list)
+        expected_outputs = dict(expected_output_list)
 
         for location, _ in meta.registered_locations:
             # Do filters match with expected for this location?
@@ -55,7 +55,8 @@ class ExplainInfoTests(unittest.TestCase):
 
         for output_name, output_info in meta.outputs:
             # Does output info match with expected?
-            self.compare_output_info(expected_outputs.get(output_name, None), output_info)
+            self.assertIn(output_name, expected_outputs)
+            self.compare_output_info(expected_outputs[output_name], output_info)
             if output_info:
                 del expected_outputs[output_name]
 
