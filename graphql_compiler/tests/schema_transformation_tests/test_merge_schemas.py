@@ -33,6 +33,8 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
               Droid: Droid
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
             }
@@ -85,6 +87,8 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
               Kid: Kid
               Dog: Dog!
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Human {
               id: String
@@ -144,6 +148,8 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
               Human: Human
               Droid: Droid
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Human {
               id: String
@@ -382,6 +388,8 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
               Kid: Kid
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
               birthday: Date
@@ -572,6 +580,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
               Person: Person
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
               out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
@@ -645,6 +655,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
               Person: Person
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
               out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
@@ -704,6 +716,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
               Human: Human
               Person: Person
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Human {
               id: String
@@ -766,6 +780,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
               Person: Person
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
               out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
@@ -826,6 +842,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
               Human: Human
               Person: Person
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Human {
               id: String
@@ -889,6 +907,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
               Person: Person
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
               out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
@@ -919,6 +939,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
             schema {
               query: SchemaQuery
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Person {
               identifier: ID
@@ -964,6 +986,8 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
               id: Int
               out_example_edge: [Person] @stitch(source_field: "id", sink_field: "identifier")
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Person {
               identifier: ID
@@ -1539,6 +1563,8 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
               President: President
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
               out_example_edge: [Individual] @stitch(source_field: "id", sink_field: "ID")
@@ -1590,6 +1616,8 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
               Individual: Individual
               President: President
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Human {
               id: String
@@ -1665,6 +1693,8 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
               Politician: Politician
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             interface Individual {
               ID: String
               out_example_edge: [Person] @stitch(source_field: "ID", sink_field: "identifier")
@@ -1727,6 +1757,8 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
               Kid: Kid
             }
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Human {
               id: String
               out_example_edge: [PersonOrKid] @stitch(source_field: "id", sink_field: "identifier")
@@ -1752,6 +1784,8 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
             schema {
               query: SchemaQuery
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type Individual {
               ID: String
@@ -1821,6 +1855,8 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
 
             union PersonOrKid = Person | Kid
 
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type Individual {
               ID: String
               in_example_edge: [PersonOrKid] @stitch(source_field: "ID", sink_field: "identifier")
@@ -1872,6 +1908,8 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
               Person: Person
               Kid: Kid
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             interface Individual {
               ID: String

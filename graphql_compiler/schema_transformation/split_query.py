@@ -581,8 +581,8 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
         Field object, with field_name as its name, containing directives from any field in the
         input selections with the same name and directives from the input list of directives
     """
-    new_field = Field(
-        name=Name(value=field_name),
+    new_field = FieldNode(
+        name=NameNode(value=field_name),
         directives=[],
     )
 
@@ -743,12 +743,12 @@ class SchemaIdSetterVisitor(Visitor):
         self.query_node = query_node
         self.type_name_to_schema_id = type_name_to_schema_id
 
-    def enter_Field(self, *args):
+    def enter_field(self, *args):
         """Check the schema of the type that the field leads to."""
         child_type_name = strip_non_null_and_list_from_type(self.type_info.get_type()).name
         self._check_or_set_schema_id(child_type_name)
 
-    def enter_InlineFragment(self, node, *args):
+    def enter_inline_fragment(self, node, *args):
         """Check the schema of the coerced type."""
         self._check_or_set_schema_id(node.type_condition.name.value)
 

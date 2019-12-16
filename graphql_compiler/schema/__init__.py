@@ -32,6 +32,7 @@ FilterDirective = GraphQLDirective(
             description='List of string operands for the operator.',
         ))]
     ),
+    is_repeatable=True,
     locations=[
         DirectiveLocation.FIELD,
         DirectiveLocation.INLINE_FRAGMENT,
@@ -202,6 +203,24 @@ MacroEdgeDirective = GraphQLDirective(
     ],
 )
 
+# TODO(selene): fill in descriptions
+StitchDirective = GraphQLDirective(
+    name='stitch',
+    args=OrderedDict([(
+        'source_field', GraphQLArgument(
+            type_=GraphQLNonNull(GraphQLString),
+            description='',
+        )),
+        ('sink_field', GraphQLArgument(
+            type_=GraphQLList(GraphQLNonNull(GraphQLString)),
+            description='',
+        ))]
+    ),
+    locations=[
+        DirectiveLocation.FIELD_DEFINITION
+    ]
+)
+
 OUTBOUND_EDGE_FIELD_PREFIX = 'out_'
 INBOUND_EDGE_FIELD_PREFIX = 'in_'
 VERTEX_FIELD_PREFIXES = frozenset({OUTBOUND_EDGE_FIELD_PREFIX, INBOUND_EDGE_FIELD_PREFIX})
@@ -301,6 +320,7 @@ DIRECTIVES = (
     RecurseDirective,
     FoldDirective,
     MacroEdgeDirective,
+    StitchDirective
 )
 
 

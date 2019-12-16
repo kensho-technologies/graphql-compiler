@@ -541,6 +541,8 @@ class IntegrationTests(TestCase):
         schema, _ = generate_schema(self.orientdb_client,
                                     class_to_field_type_overrides=class_to_field_type_overrides,
                                     hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME})
+        # TODO(selene): similar to this issue in test_schema.py, the update to print_schema breaks
+        # this test
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 
     @integration_fixtures

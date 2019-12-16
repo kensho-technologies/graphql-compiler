@@ -234,27 +234,27 @@ class CheckValidTypesAndNamesVisitor(Visitor):
     """
 
     disallowed_types = frozenset({  # types not supported in renaming or merging
-        'InputObjectTypeDefinition',
-        'TypeExtensionDefinition',
+        'InputObjectTypeDefinitionNode',
+        'ObjectTypeExtensionNode',
     })
     unexpected_types = frozenset({  # types not expected to be found in schema definition
-        'Field',
-        'FragmentDefinition',
-        'FragmentSpread',
-        'InlineFragment',
-        'ObjectField',
-        'ObjectValue',
-        'OperationDefinition',
-        'SelectionSet',
-        'Variable',
-        'VariableDefinition',
+        'FieldNode',
+        'FragmentDefinitionNode',
+        'FragmentSpreadNode',
+        'InlineFragmentNode',
+        'ObjectFieldNode',
+        'ObjectValueNode',
+        'OperationDefinitionNode',
+        'SelectionSetNode',
+        'VariableNode',
+        'VariableDefinitionNode',
     })
     check_name_validity_types = frozenset({  # nodes whose name need to be checked
-        'EnumTypeDefinition',
-        'InterfaceTypeDefinition',
-        'ObjectTypeDefinition',
-        'ScalarTypeDefinition',
-        'UnionTypeDefinition',
+        'EnumTypeDefinitionNode',
+        'InterfaceTypeDefinitionNode',
+        'ObjectTypeDefinitionNode',
+        'ScalarTypeDefinitionNode',
+        'UnionTypeDefinitionNode',
     })
 
     def enter(self, node, key, parent, path, ancestors):
@@ -293,17 +293,17 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
         self.query_type = query_type
         self.in_query_type = False
 
-    def enter_ObjectTypeDefinition(self, node, *args):
+    def enter_object_type_definition(self, node, *args):
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_ObjectTypeDefinition(self, node, *args):
+    def leave_object_type_definition(self, node, *args):
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_FieldDefinition(self, node, *args):
+    def enter_field_definition(self, node, *args):
         """If inside the query type, check that the field and queried type names match.
 
         Raises:
@@ -343,7 +343,6 @@ def check_ast_schema_is_valid(ast):
     except Exception as e:  # Can't be more specific -- see graphql/utilities/build_ast_schema.py
         raise SchemaStructureError(u'Input is not a valid schema. Message: {}'.format(e))
 
-    # TODO(Selene): make sure that this does the right thing
     if schema.to_kwargs()['mutation'] is not None:
         raise SchemaStructureError(
             u'Renaming schemas that contain mutations is currently not supported.'
@@ -400,7 +399,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         OptionalDirective.name,
     ))
 
-    def enter_Directive(self, node, *args):
+    def enter_directive(self, node, *args):
         """Check that the directive is supported."""
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
@@ -408,7 +407,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                 u'supported.'.format(node.name.value, self.supported_directives)
             )
 
-    def enter_SelectionSet(self, node, *args):
+    def enter_selection_set(self, node, *args):
         """Check selections are valid.
 
         If selections contains an InlineFragment, check that it is the only inline fragment in

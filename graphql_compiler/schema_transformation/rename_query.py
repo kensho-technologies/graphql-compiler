@@ -90,7 +90,7 @@ class RenameQueryVisitor(Visitor):
             node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
 
-    def enter_NamedType(self, node, *args):
+    def enter_named_type(self, node, *args):
         """Rename name of node."""
         # NamedType nodes describe types in the schema, appearing in InlineFragments
         renamed_node = self._rename_name(node)
@@ -99,15 +99,15 @@ class RenameQueryVisitor(Visitor):
         else:  # Name changed, return new node, `visit` will make shallow copies along path
             return renamed_node
 
-    def enter_SelectionSet(self, node, *args):
+    def enter_selection_set(self, node, *args):
         """Record that we entered another nested level of selections."""
         self.selection_set_level += 1
 
-    def leave_SelectionSet(self, node, *args):
+    def leave_selection_set(self, node, *args):
         """Record that we left a level of selections."""
         self.selection_set_level -= 1
 
-    def enter_Field(self, node, *args):
+    def enter_field(self, node, *args):
         """Rename root vertex fields."""
         # For a Field to be a root vertex field, it needs to be the first level of
         # selections (fields in more nested selections are normal fields that should not be

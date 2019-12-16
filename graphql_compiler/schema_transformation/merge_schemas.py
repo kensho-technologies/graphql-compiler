@@ -5,6 +5,7 @@ from copy import deepcopy
 from graphql import build_ast_schema
 from graphql.language import ast as ast_types
 from graphql.language.printer import print_ast
+from graphql.pyutils import FrozenList
 import six
 
 from ..ast_manipulation import get_ast_with_non_null_stripped
@@ -117,7 +118,7 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
 
     if type_equivalence_hints is None:
         type_equivalence_hints = {}
-    _add_cross_schema_edges(merged_schema_ast, type_name_to_schema_id, scalars,
+    merged_schema_ast = _add_cross_schema_edges(merged_schema_ast, type_name_to_schema_id, scalars,
                             cross_schema_edges, type_equivalence_hints, query_type)
 
     return MergedSchemaDescriptor(
@@ -145,7 +146,7 @@ def _get_basic_schema_ast(query_type):
             ast_types.SchemaDefinitionNode(
                 operation_types=[
                     ast_types.OperationTypeDefinitionNode(
-                        operation='query',
+                        operation=ast_types.OperationType.QUERY,
                         type=ast_types.NamedTypeNode(
                             name=ast_types.NameNode(value=query_type)
                         ),
@@ -225,7 +226,7 @@ def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_sc
                 new_definition, directives, merged_schema_ast
             )
         elif isinstance(new_definition, ast_types.ScalarTypeDefinitionNode):
-            existing_scalars, merged_schema_ast = _process_scalar_definition(
+            scalars, merged_schema_ast = _process_scalar_definition(
                 new_definition, scalars, type_name_to_schema_id, merged_schema_ast
             )
         elif isinstance(new_definition, (
@@ -296,8 +297,8 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
     """
     directive_name = directive.name.value
     if directive_name in existing_directives:
-        if directive == existing_directives[directive_name]:
-            return
+        if print_ast(directive) == print_ast(existing_directives[directive_name]):
+            return existing_directives, merged_schema_ast
         else:
             raise SchemaNameConflictError(
                 u'Directive "{}" with definition "{}" has already been defined with '
@@ -334,7 +335,7 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
     """
     scalar_name = scalar.name.value
     if scalar_name in existing_scalars:
-        return
+        return existing_scalars, merged_schema_ast
     if scalar_name in type_name_to_schema_id:
         raise SchemaNameConflictError(
             u'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
@@ -513,6 +514,23 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
                     edge_name, INBOUND_EDGE_DIRECTION
                 )
                 type_name_to_definition[inbound_edge_source_type_name] = new_source_type_node
+
+    new_definitions = []
+    for definition in schema_ast.definitions:
+        if (
+            isinstance(definition, ast_types.ObjectTypeDefinitionNode) and
+            definition.name.value == query_type
+        ):  # query type definition
+            new_definitions.append(definition)
+        elif isinstance(definition, (
+            ast_types.InterfaceTypeDefinitionNode,
+            ast_types.ObjectTypeDefinitionNode,
+        )):
+            new_definitions.append(type_name_to_definition[definition.name.value])
+        else:
+            new_definitions.append(definition)
+
+    return ast_types.DocumentNode(definitions=FrozenList(new_definitions))
 
 
 def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id, scalars,
@@ -775,7 +793,8 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
             description=source_type_node.description,
             name=source_type_node.name,
             directives=source_type_node.directives,
-            fields=new_type_fields
+            fields=new_type_fields,
+            interfaces=source_type_node.interfaces
         )
     elif type(source_type_node) == ast_types.InterfaceTypeDefinitionNode:
         new_source_type_node = ast_types.InterfaceTypeDefinitionNode(

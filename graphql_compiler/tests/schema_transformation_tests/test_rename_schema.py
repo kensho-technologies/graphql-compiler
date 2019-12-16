@@ -5,6 +5,7 @@ import unittest
 from graphql import parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
+from graphql.pyutils import snake_to_camel
 
 from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
 from ...schema_transformation.utils import InvalidTypeNameError, SchemaNameConflictError
@@ -14,11 +15,15 @@ from .input_schema_strings import InputSchemaStrings as ISS
 class TestRenameSchema(unittest.TestCase):
     def test_rename_visitor_type_coverage(self):
         """Check that all types are covered without overlap."""
-        all_types = set(ast_type.__name__ for ast_type in QUERY_DOCUMENT_KEYS)
+        all_types_snake_case = set(ast_type for ast_type in QUERY_DOCUMENT_KEYS)
         type_sets = [
             RenameSchemaTypesVisitor.noop_types,
             RenameSchemaTypesVisitor.rename_types,
         ]
+        all_types = set([
+            snake_to_camel(node_type) + "Node"
+            for node_type in all_types_snake_case
+        ])
         type_sets_union = set()
         for type_set in type_sets:
             self.assertTrue(type_sets_union.isdisjoint(type_set))
@@ -37,6 +42,8 @@ class TestRenameSchema(unittest.TestCase):
             schema {
               query: SchemaQuery
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type NewHuman {
               id: String
@@ -183,7 +190,7 @@ class TestRenameSchema(unittest.TestCase):
               age: Int
             }
 
-            type NewHuman implements NewCharacter, Creature {
+            type NewHuman implements NewCharacter & Creature {
               id: String
               age: Int
             }
@@ -208,6 +215,8 @@ class TestRenameSchema(unittest.TestCase):
             schema {
               query: SchemaQuery
             }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type NewHuman {
               id: String
