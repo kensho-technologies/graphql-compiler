@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from graphql import GraphQLInt
 
-from ..schema import GraphQLDateTime, GraphQLDate
+from ..schema import GraphQLDate, GraphQLDateTime
 
 
 def is_datetime_field_type(schema_info, vertex_name, field_name):
