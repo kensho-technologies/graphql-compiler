@@ -174,6 +174,7 @@ class RenameSchemaTypesVisitor(Visitor):
             "ObjectTypeExtensionNode",
             "InputObjectTypeExtensionNode",
             "ScalarTypeExtensionNode",
+
         }
     )
     rename_types = frozenset(

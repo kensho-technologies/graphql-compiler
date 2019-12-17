@@ -16,6 +16,7 @@ from ..compiler import (
 )
 from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..schema.schema_info import CommonSchemaInfo
 from .test_helpers import (
     SKIP_TEST,
     compare_cypher,
@@ -48,14 +49,13 @@ def check_test_data(
     else:
         schema_based_type_equivalence_hints = None
 
+    common_schema_info = CommonSchemaInfo(test_case.schema, schema_based_type_equivalence_hints)
+    graphql_query = test_data.graphql_input
+
     if expected_match == SKIP_TEST:
         pass
     else:
-        result = compile_graphql_to_match(
-            test_case.schema,
-            test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints,
-        )
+        result = compile_graphql_to_match(common_schema_info, test_data.graphql_input)
         compare_match(test_case, expected_match, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -65,17 +65,9 @@ def check_test_data(
         pass
     elif expected_gremlin == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_gremlin(
-                test_case.schema,
-                test_data.graphql_input,
-                type_equivalence_hints=schema_based_type_equivalence_hints,
-            )
+            compile_graphql_to_gremlin(common_schema_info, graphql_query)
     else:
-        result = compile_graphql_to_gremlin(
-            test_case.schema,
-            test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints,
-        )
+        result = compile_graphql_to_gremlin(common_schema_info, graphql_query)
         compare_gremlin(test_case, expected_gremlin, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -114,17 +106,9 @@ def check_test_data(
         pass
     elif expected_cypher == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_cypher(
-                test_case.schema,
-                test_data.graphql_input,
-                type_equivalence_hints=schema_based_type_equivalence_hints,
-            )
+            compile_graphql_to_cypher(common_schema_info, graphql_query)
     else:
-        result = compile_graphql_to_cypher(
-            test_case.schema,
-            test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints,
-        )
+        result = compile_graphql_to_cypher(common_schema_info, graphql_query)
         compare_cypher(test_case, expected_cypher, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -417,9 +401,9 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": match_operator
-            }  # nosec, the operators are hardcoded above
+            }
 
             # In Gremlin, equality comparisons use two equal signs instead of one.
             gremlin_operator = u"==" if operator == u"=" else operator
@@ -430,7 +414,7 @@ class CompilerTests(unittest.TestCase):
                 .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                     animal_name: m.Animal___1.name
                 ])}
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": gremlin_operator
             }
 
@@ -441,9 +425,9 @@ class CompilerTests(unittest.TestCase):
                     db_1.schema_1.[Animal] AS [Animal_1]
                 WHERE
                     [Animal_1].name %(operator)s :wanted
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": operator
-            }  # nosec, the operators are hardcoded above
+            }
 
             # In Cypher, inequality comparisons use "<>" instead of "!=".
             cypher_operator = u"<>" if operator == u"!=" else operator
@@ -451,9 +435,9 @@ class CompilerTests(unittest.TestCase):
                 MATCH (Animal___1:Animal)
                     WHERE (Animal___1.name %(operator)s $wanted)
                 RETURN Animal___1.name AS `animal_name`
-            """ % {
+            """ % {  # nosec, the operators are hardcoded above
                 "operator": cypher_operator
-            }  # nosec, the operators are hardcoded above
+            }
 
             expected_output_metadata = {
                 "animal_name": OutputMetadata(type=GraphQLString, optional=False),

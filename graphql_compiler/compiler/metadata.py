@@ -10,14 +10,21 @@ from .helpers import Location
 LocationInfo = namedtuple(
     "LocationInfo",
     (
+        # fmt: off
         "parent_location",  # Location/FoldScopeLocation, the parent of the current location
         "type",  # GraphQL type object for the type at that location
-        "coerced_from_type",  # GraphQL type object for the type before coercion,
+
+        # GraphQL type object for the type before coercion,
         # or None if no coercion was applied
+        "coerced_from_type",
+
         "optional_scopes_depth",  # int, how many nested optional scopes this location is in
         "recursive_scopes_depth",  # int, how many nested recursion scopes this location is in
-        "is_within_fold",  # bool, True if this location is within a fold scope;
+
+        # bool, True if this location is within a fold scope;
         #       fold scopes are not allowed to nest within each other.
+        "is_within_fold",
+        # fmt: on
     ),
 )
 
@@ -263,8 +270,11 @@ class QueryMetadataTable(object):
 
     def __str__(self):
         """Return a human-readable str representation of the QueryMetadataTable object."""
-        return u"QueryMetadataTable(root_location={}, locations={}, inputs={}, outputs={}, tags={})".format(
-            self._root_location, self._locations, self._inputs, self._outputs, self._tags
+        return (
+            u"QueryMetadataTable(root_location={}, locations={}, inputs={}, "
+            u"outputs={}, tags={})".format(
+                self._root_location, self._locations, self._inputs, self._outputs, self._tags
+            )
         )
 
     def __repr__(self):

@@ -3,28 +3,44 @@
 from collections import namedtuple
 from pprint import pformat
 import re
+from typing import Any, Dict, List, Optional, Set, Tuple
+from unittest import TestCase
 
 from graphql import GraphQLList, parse
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
+from graphql.type.schema import GraphQLSchema
 from graphql.utilities.build_ast_schema import build_ast_schema
+from pyorient.orient import OrientDB
 import six
 import sqlalchemy
 from sqlalchemy.dialects import mssql, postgresql
 
-from graphql_compiler.schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
-
+from ..compiler.compiler_entities import BasicBlock
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
 from ..global_utils import is_same_type
-from ..macros import create_macro_registry, register_macro_edge
+from ..macros import MacroRegistry, create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
-from ..schema import CUSTOM_SCALAR_TYPES, is_vertex_field_name
-from ..schema.schema_info import CommonSchemaInfo, DirectJoinDescriptor, make_sqlalchemy_schema_info
+from ..schema import (
+    CUSTOM_SCALAR_TYPES,
+    ClassToFieldTypeOverridesType,
+    GraphQLSchemaFieldType,
+    TypeEquivalenceHintsType,
+    is_vertex_field_name,
+)
+from ..schema.schema_info import (
+    CommonSchemaInfo,
+    DirectJoinDescriptor,
+    SQLAlchemySchemaInfo,
+    make_sqlalchemy_schema_info,
+)
+from ..schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
 from ..schema_generation.orientdb.utils import (
     ORIENTDB_INDEX_RECORDS_QUERY,
     ORIENTDB_SCHEMA_RECORDS_QUERY,
 )
+from ..schema_generation.schema_graph import SchemaGraph
 from ..schema_generation.utils import amend_custom_scalar_types
 
 
@@ -384,27 +400,31 @@ BackendTester = namedtuple(
         # Given a SchemaInfo and a connection pool to a database, install the given schema into
         # the database, erasing content if necessary.
         "setup_schema"
-        # Given a SchemaInfo, a dict representation of data fitting the schema, and a connection pool
-        # to a database with the same schema, install the given data into the database, erasing any
-        # existing data.
+        # Given a SchemaInfo, a dict representation of data fitting the schema,
+        # and a connection pool to a database with the same schema,
+        # install the given data into the database, erasing any existing data.
         "setup_data",
     ),
 )
 
 
-def transform(emitted_output):
+def transform(emitted_output: str) -> str:
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
     return WHITESPACE_PATTERN.sub(u"", emitted_output)
 
 
-def _get_mismatch_message(expected_blocks, received_blocks):
+def _get_mismatch_message(
+    expected_blocks: List[BasicBlock], received_blocks: List[BasicBlock]
+) -> str:
     """Create a well-formated error message indicating that two lists of blocks are mismatched."""
     pretty_expected = pformat(expected_blocks)
     pretty_received = pformat(received_blocks)
     return u"{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
 
 
-def compare_ir_blocks(test_case, expected_blocks, received_blocks):
+def compare_ir_blocks(
+    test_case: TestCase, expected_blocks: List[BasicBlock], received_blocks: List[BasicBlock]
+) -> None:
     """Compare the expected and received IR blocks."""
     mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
 
@@ -422,13 +442,15 @@ def compare_ir_blocks(test_case, expected_blocks, received_blocks):
         )
 
 
-def compare_graphql(test_case, expected, received):
+def compare_graphql(test_case: TestCase, expected: str, received: str) -> None:
     """Compare the expected and received GraphQL code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(pretty_print_graphql(expected), pretty_print_graphql(received))
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_match(test_case, expected, received, parameterized=True):
+def compare_match(
+    test_case: TestCase, expected: str, received: str, parameterized: bool = True,
+) -> None:
     """Compare the expected and received MATCH code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(
         pretty_print_match(expected, parameterized=parameterized),
@@ -437,25 +459,29 @@ def compare_match(test_case, expected, received, parameterized=True):
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_sql(test_case, expected, received):
+def compare_sql(test_case: TestCase, expected: str, received: str) -> None:
     """Compare the expected and received SQL query, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(expected, received)
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_gremlin(test_case, expected, received):
+def compare_gremlin(test_case: TestCase, expected: str, received: str,) -> None:
     """Compare the expected and received Gremlin code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(pretty_print_gremlin(expected), pretty_print_gremlin(received))
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_cypher(test_case, expected, received):
+def compare_cypher(test_case: TestCase, expected: str, received: str) -> None:
     """Compare the expected and received Cypher query, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(expected, received)
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_input_metadata(test_case, expected, received):
+def compare_input_metadata(
+    test_case: TestCase,
+    expected: Dict[str, GraphQLSchemaFieldType],
+    received: Dict[str, GraphQLSchemaFieldType],
+) -> None:
     """Compare two dicts of input metadata, using proper GraphQL type comparison operators."""
     # First, assert that the sets of keys in both dicts are equal.
     test_case.assertEqual(set(six.iterkeys(expected)), set(six.iterkeys(received)))
@@ -471,12 +497,14 @@ def compare_input_metadata(test_case, expected, received):
         )
 
 
-def compare_ignoring_whitespace(test_case, expected, received, msg):
+def compare_ignoring_whitespace(
+    test_case: Any, expected: str, received: str, msg: Optional[str]
+) -> None:
     """Compare expected and received code, ignoring whitespace, with the given failure message."""
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
 
 
-def get_schema():
+def get_schema() -> GraphQLSchema:
     """Get a schema object for testing."""
     ast = parse(SCHEMA_TEXT)
     schema = build_ast_schema(ast)
@@ -484,7 +512,7 @@ def get_schema():
     return schema
 
 
-def get_type_equivalence_hints():
+def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
     schema = get_schema()
     return {
@@ -496,12 +524,12 @@ def get_type_equivalence_hints():
     }
 
 
-def get_common_schema_info():
+def get_common_schema_info() -> CommonSchemaInfo:
     """Get the default CommonSchemaInfo used for testing."""
     return CommonSchemaInfo(get_schema(), get_type_equivalence_hints())
 
 
-def _get_schema_without_list_valued_property_fields():
+def _get_schema_without_list_valued_property_fields() -> GraphQLSchema:
     """Get the default testing schema, skipping any list-valued property fields it has."""
     schema = get_schema()
 
@@ -520,7 +548,7 @@ def _get_schema_without_list_valued_property_fields():
     return schema
 
 
-def get_sqlalchemy_schema_info(dialect="mssql"):
+def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
     """Get a SQLAlchemySchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
@@ -714,7 +742,7 @@ def get_sqlalchemy_schema_info(dialect="mssql"):
         },
     ]
 
-    join_descriptors = {}
+    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]] = {}
     for edge in edges:
         join_descriptors.setdefault(edge["from_table"], {})[
             "out_{}".format(edge["name"])
@@ -740,7 +768,7 @@ def get_sqlalchemy_schema_info(dialect="mssql"):
     )
 
 
-def generate_schema_graph(orientdb_client):
+def generate_schema_graph(orientdb_client: OrientDB) -> SchemaGraph:
     """Generate SchemaGraph from a pyorient client."""
     schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
@@ -749,7 +777,11 @@ def generate_schema_graph(orientdb_client):
     return get_orientdb_schema_graph(schema_data, index_query_data)
 
 
-def generate_schema(orientdb_client, class_to_field_type_overrides=None, hidden_classes=None):
+def generate_schema(
+    orientdb_client: OrientDB,
+    class_to_field_type_overrides: Optional[ClassToFieldTypeOverridesType] = None,
+    hidden_classes: Optional[Set[str]] = None,
+) -> Tuple[GraphQLSchema, TypeEquivalenceHintsType]:
     """Generate schema and type equivalence dict from a pyorient client."""
     schema_records = orientdb_client.command(ORIENTDB_SCHEMA_RECORDS_QUERY)
     schema_data = [x.oRecordData for x in schema_records]
@@ -758,17 +790,7 @@ def generate_schema(orientdb_client, class_to_field_type_overrides=None, hidden_
     )
 
 
-def construct_location_types(location_types_as_strings):
-    """Convert the supplied dict into a proper location_types dict with GraphQL types as values."""
-    schema = get_schema()
-
-    return {
-        location: schema.get_type(type_name)
-        for location, type_name in six.iteritems(location_types_as_strings)
-    }
-
-
-def get_empty_test_macro_registry():
+def get_empty_test_macro_registry() -> MacroRegistry:
     """Return a MacroRegistry with appropriate type_equivalence_hints and subclass_set."""
     schema = get_schema()
     type_equivalence_hints = {
@@ -779,7 +801,7 @@ def get_empty_test_macro_registry():
     return macro_registry
 
 
-def get_test_macro_registry():
+def get_test_macro_registry() -> MacroRegistry:
     """Return a MacroRegistry object containing macros used in tests."""
     macro_registry = get_empty_test_macro_registry()
     for graphql, args in VALID_MACROS_TEXT:

@@ -602,6 +602,7 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
     """
     new_field_directives = []
 
+
     # Transfer directives from existing field of the same name
     if existing_field is not None:
         # Existing field, add all its directives
@@ -696,6 +697,7 @@ def _get_query_document(root_vertex_field_name, root_selections):
                         FieldNode(
                             name=NameNode(value=root_vertex_field_name),
                             selection_set=SelectionSetNode(selections=root_selections,),
+
                             directives=[],
                         )
                     ]

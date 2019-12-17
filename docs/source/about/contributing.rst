@@ -5,7 +5,7 @@ Thank you for taking the time to contribute to this project!
 
 To get started, make sure that you have :code:`pipenv`, :code:`docker` and
 :code:`docker-compose` installed on your computer. Please make sure
-you have Python 3.6+ installed locally. If you do not already have it installed,
+you have Python 3.8+ installed locally. If you do not already have it installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 
 Integration tests are run against multiple SQL databases, some of which
@@ -97,20 +97,15 @@ Read the Docs
 
 We are currently in the process of moving most of our documentation to
 Read the Docs, a web utility that makes it easy to view and present
-documentation. We first plan to get the Read the Docs documentation up
-to date with the markdown documentation present as of commit
-16fd083e78551f866a0cf0c7397542aea1c214d9 and then working on adding the
-documentation added since that commit.
+documentation.
 
-Since Read the Docs does not currently `support
-Pipfiles <https://github.com/readthedocs/readthedocs.org/issues/3181>`__
-the package requirements are in:
+Since Read the Docs does not currently `support Pipfiles
+<https://github.com/readthedocs/readthedocs.org/issues/3181>`__, we must keep the
+documentation building requirements in both the repository's :code:`Pipfile`, which we use for
+continuous integration and local development, and in :code:`docs/requirements.txt`, which we use
+for Read The Docs.
 
-::
-
-   docs/requirements.txt
-
-The relevant source code lives in:
+The relevant documentation source code lives in:
 
 ::
 
@@ -120,7 +115,9 @@ To build the website run:
 
 ::
 
+   pipenv shell
    cd docs
+   make clean
    make html
 
 Then open :code:`docs/build/index.html` with a web browser to view it.

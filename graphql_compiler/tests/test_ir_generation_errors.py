@@ -14,12 +14,12 @@ from .test_helpers import get_schema
 class IrGenerationErrorTests(unittest.TestCase):
     """Ensure illegal inputs raise proper exceptions."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Initialize the test schema once for all tests, and disable max diff limits."""
         self.maxDiff = None
         self.schema = get_schema()
 
-    def test_repeated_field_name(self):
+    def test_repeated_field_name(self) -> None:
         repeated_property_field = """{
             Animal {
                 name @output(out_name: "name")
@@ -53,7 +53,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_output_source_directive_constraints(self):
+    def test_output_source_directive_constraints(self) -> None:
         output_source_not_on_last_vertex_element = """{
             Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
                 out_Animal_ParentOf @output_source {
@@ -112,7 +112,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_optional_directive_constraints(self):
+    def test_optional_directive_constraints(self) -> None:
         optional_on_property_field = """{
             Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
                 out_Animal_ParentOf {
@@ -194,7 +194,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_starts_with_op_filter_missing_value_argument(self):
+    def test_starts_with_op_filter_missing_value_argument(self) -> None:
         graphql_input = """{
             Animal {
                 name @filter(op_name: "starts_with")
@@ -205,7 +205,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(self.schema, graphql_input)
 
-    def test_fold_directive_constraints(self):
+    def test_fold_directive_constraints(self) -> None:
         fold_on_property_field = """{
             Animal @filter(op_name: "name_or_alias", value: ["$animal_name"]) {
                 out_Animal_ParentOf {
@@ -398,7 +398,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_output_directive_constraints(self):
+    def test_output_directive_constraints(self) -> None:
         output_on_vertex_field = (
             GraphQLCompilationError,
             """{
@@ -479,7 +479,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(expected_error):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_tag_directive_constraints(self):
+    def test_tag_directive_constraints(self) -> None:
         tag_on_vertex_field = (
             GraphQLCompilationError,
             """{
@@ -584,7 +584,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(expected_error):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_recurse_directive_constraints(self):
+    def test_recurse_directive_constraints(self) -> None:
         recurse_on_property_field = (
             GraphQLCompilationError,
             """{
@@ -681,7 +681,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(expected_error):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_filter_directive_bad_op_name(self):
+    def test_filter_directive_bad_op_name(self) -> None:
         with self.assertRaises(GraphQLCompilationError):
             graphql_to_ir(
                 self.schema,
@@ -692,7 +692,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }""",
             )
 
-    def test_filter_directive_undeclared_argument(self):
+    def test_filter_directive_undeclared_argument(self) -> None:
         with self.assertRaises(GraphQLCompilationError):
             graphql_to_ir(
                 self.schema,
@@ -703,7 +703,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }""",
             )
 
-    def test_filter_directive_literal_argument(self):
+    def test_filter_directive_literal_argument(self) -> None:
         # Literal arguments are currently not supported, and instead raise errors.
         with self.assertRaises(GraphQLCompilationError):
             graphql_to_ir(
@@ -715,7 +715,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }""",
             )
 
-    def test_filter_directive_non_list_value_argument(self):
+    def test_filter_directive_non_list_value_argument(self) -> None:
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(
                 self.schema,
@@ -726,7 +726,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }""",
             )
 
-    def test_filter_directive_wrong_location(self):
+    def test_filter_directive_wrong_location(self) -> None:
         invalid_graphql_inputs = [
             # 'name_or_alias' must be on a vertex field that has 'name' and 'alias' properties,
             # Event vertex fields and property fields (like 'name') do not satisfy this.
@@ -754,8 +754,8 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_filter_directive_bad_arg_counts(self):
-        def generate_args_string(num_args):
+    def test_filter_directive_bad_arg_counts(self) -> None:
+        def generate_args_string(num_args: int) -> str:
             """Generate a GraphQL array with the given args, as a string."""
             if num_args == 0:
                 return u"[]"
@@ -809,7 +809,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                 with self.assertRaises(GraphQLCompilationError):
                     graphql_to_ir(self.schema, base_query % (args))
 
-    def test_simple_bad_graphql(self):
+    def test_simple_bad_graphql(self) -> None:
         bad_graphqls = (
             (GraphQLParsingError, "not really graphql"),
             # graphql that doesn't match the graph schema
@@ -854,7 +854,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(expected_error):
                 graphql_to_ir(self.schema, graphql)
 
-    def test_duplicate_directive_on_same_field(self):
+    def test_duplicate_directive_on_same_field(self) -> None:
         # sanity check: the non-duplicate version of the query compiles fine
         graphql_to_ir(
             self.schema,
@@ -880,7 +880,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             }""",
             )
 
-    def test_property_field_after_vertex_field(self):
+    def test_property_field_after_vertex_field(self) -> None:
         # sanity check: the correctly-ordered version of the query compiles fine
         graphql_to_ir(
             self.schema,
@@ -935,7 +935,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_fragment_and_fields_in_same_selection(self):
+    def test_fragment_and_fields_in_same_selection(self) -> None:
         invalid_graphql_queries = (
             # Property field and fragment in the same selection set.
             """{
@@ -988,7 +988,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_directive_on_fragment(self):
+    def test_directive_on_fragment(self) -> None:
         invalid_graphql = """{
             Animal {
                 name @output(out_name: "animal_name")
@@ -1006,7 +1006,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_more_than_one_fragment_in_scope(self):
+    def test_more_than_one_fragment_in_scope(self) -> None:
         invalid_graphql = """{
             Animal {
                 name @output(out_name: "animal_name")
@@ -1027,7 +1027,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLCompilationError):
             graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_fragment_on_nonexistent_type(self):
+    def test_fragment_on_nonexistent_type(self) -> None:
         invalid_graphql = """{
             Animal {
                 name @output(out_name: "animal_name")
@@ -1045,7 +1045,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_filter_on_union_type_field(self):
+    def test_filter_on_union_type_field(self) -> None:
         # Filtering cannot be applied on a union type, because we don't yet know
         # what fields are available at the location.
         invalid_graphql = """{
@@ -1062,7 +1062,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLCompilationError):
             graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_no_output_fields(self):
+    def test_no_output_fields(self) -> None:
         # The GraphQL query must have at least one field marked @output, otherwise
         # why query at all if you don't want any results?
         invalid_graphql = """{
@@ -1078,7 +1078,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLCompilationError):
             graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_type_coercion_immediately_after_query_root(self):
+    def test_type_coercion_immediately_after_query_root(self) -> None:
         # The below pattern of applying a type coercion immediately after specifying a wider
         # type in the query root is nonsensical. Make sure we raise an appropriate error.
         invalid_graphql = """{
@@ -1092,7 +1092,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLCompilationError):
             graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_filter_graphql_type_validation(self):
+    def test_filter_graphql_type_validation(self) -> None:
         invalid_queries = [
             # The "=" filter requires a GraphQL leaf type on its left side,
             # but the "alias" field is a List of String. This should cause an error.
@@ -1140,7 +1140,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_input_type_validation(self):
+    def test_input_type_validation(self) -> None:
         invalid_queries = [
             # The inferred types for "wanted" conflict between String and ID.
             """{
@@ -1163,7 +1163,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_tag_type_validation(self):
+    def test_tag_type_validation(self) -> None:
         invalid_queries = [
             # The inferred types for "tagged" conflict between String and ID.
             """{
@@ -1198,7 +1198,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_invalid_variable_types(self):
+    def test_invalid_variable_types(self) -> None:
         # Variables currently cannot represent lists of Dates or lists of DateTimes.
         # Ensure such use of Variables causes compilation errors.
         invalid_queries = [
@@ -1222,7 +1222,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_invalid_edge_degree_queries(self):
+    def test_invalid_edge_degree_queries(self) -> None:
         invalid_queries = [
             # Can't filter with "has_edge_degree" on the root vertex field -- there's no edge.
             """{
@@ -1278,7 +1278,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLCompilationError):
                 graphql_to_ir(self.schema, invalid_graphql)
 
-    def test_missing_directives_in_schema(self):
+    def test_missing_directives_in_schema(self) -> None:
         """Ensure that validators properly identifiy missing directives in the schema.
 
         The schema should contain all directives that are supported by the graphql compiler,
@@ -1311,7 +1311,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(incomplete_schema, query)
 
-    def test_incorrect_directive_locations_in_schema(self):
+    def test_incorrect_directive_locations_in_schema(self) -> None:
         """Ensure appropriate errors are raised if nonexistent directive is provided."""
         schema_with_extra_directive = """
             schema {
@@ -1341,7 +1341,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(parsed_schema_with_extra_directive, query)
 
-    def test_directives_on_wrong_fields(self):
+    def test_directives_on_wrong_fields(self) -> None:
         """Ensure appropriate errors are raised if any directives are on the wrong location."""
         # Change @tag from FIELD to INLINE_FRAGMENT
         schema_with_wrong_directive_on_inline_fragment = """
@@ -1420,7 +1420,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             with self.assertRaises(GraphQLValidationError):
                 graphql_to_ir(parsed_incorrect_schema, query)
 
-    def test_directives_with_incorrect_arguments(self):
+    def test_directives_with_incorrect_arguments(self) -> None:
         """Ensure that proper errors are raised if directives are provided with incorrect args."""
         # Change @filter arg from String! to Int!
         schema_with_incorrect_args = """
@@ -1450,7 +1450,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(parsed_incorrect_schema, query)
 
-    def test_with_noninvertible_hints(self):
+    def test_with_noninvertible_hints(self) -> None:
         """Ensure TypeError is raised when the hints are non-invertible."""
         valid_graphql_input = """{
             Animal {
@@ -1473,7 +1473,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                 type_equivalence_hints=invalid_type_equivalence_hints,
             )
 
-    def test_filter_and_tag_on_same_field(self):
+    def test_filter_and_tag_on_same_field(self) -> None:
         invalid_graphql_input = """{
             Animal {
                 out_Entity_Related {

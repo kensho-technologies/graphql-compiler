@@ -213,6 +213,7 @@ def get_copy_of_node_with_new_name(node, new_name):
             "NamedTypeNode",
             "ObjectTypeDefinitionNode",
             "UnionTypeDefinitionNode",
+
         )
     )
     if node_type not in allowed_types:
@@ -237,6 +238,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         {  # types not supported in renaming or merging
             "InputObjectTypeDefinitionNode",
             "ObjectTypeExtensionNode",
+
         }
     )
     unexpected_types = frozenset(
@@ -343,6 +345,7 @@ def check_ast_schema_is_valid(ast):
     try:
         schema = build_ast_schema(ast)
     except Exception as e:  # Can't be more specific -- see graphql/utilities/build_ast_schema.py
+
         raise SchemaStructureError(u"Input is not a valid schema. Message: {}".format(e))
 
     if schema.to_kwargs()["mutation"] is not None:

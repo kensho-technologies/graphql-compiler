@@ -225,8 +225,9 @@ def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, 
     if conflicting_subclass_name is not None:
         extra_error_text = u""
         if conflicting_subclass_name != class_name:
-            extra_error_text = u"{} is a subclass of {}, which is where you attempted to define a macro edge".format(
-                conflicting_subclass_name, class_name
+            extra_error_text = (
+                u"{} is a subclass of {}, which is where you attempted to "
+                u"define a macro edge".format(conflicting_subclass_name, class_name)
             )
         raise GraphQLInvalidMacroError(
             u'The provided macro edge name "{edge_name}" has the same name as '
@@ -253,8 +254,11 @@ def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_nam
     if conflicting_subclass_name is not None:
         extra_error_text = u""
         if conflicting_subclass_name != reverse_start_class_name:
-            extra_error_text = u"{} is a subclass of {}, which is where your macro edge definition points to. ".format(
-                conflicting_subclass_name, reverse_start_class_name
+            extra_error_text = (
+                u"{} is a subclass of {}, which is where your "
+                u"macro edge definition points to. ".format(
+                    conflicting_subclass_name, reverse_start_class_name
+                )
             )
         raise GraphQLInvalidMacroError(
             u'The provided macro edge name "{edge_name}" is invalid: if the edge direction were '

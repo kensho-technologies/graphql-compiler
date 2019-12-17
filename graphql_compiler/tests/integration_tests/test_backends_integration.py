@@ -1,6 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
+from typing import Any, Callable, Dict, List, Tuple
 from unittest import TestCase
 
 from graphql.type import GraphQLID
@@ -9,6 +10,7 @@ from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
+from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
     fast_sql_server_reflect,
@@ -50,7 +52,7 @@ integration_fixtures = pytest.mark.usefixtures(
 )
 
 
-def use_all_backends(except_backends=()):
+def use_all_backends(except_backends: Tuple[str, ...] = ()) -> Callable:
     """Decorate test functions to make them use specific backends.
 
     By default, tests decorated with this function use all backends. However, some backends don't
@@ -78,12 +80,18 @@ def use_all_backends(except_backends=()):
 @pytest.mark.slow
 class IntegrationTests(TestCase):
     @classmethod
-    def setUpClass(cls):
+    def setUpClass(cls) -> None:
         """Initialize the test schema once for all tests, and disable max diff limits."""
         cls.maxDiff = None
-        cls.schema = get_schema()
+        cls.schema = get_schema()  # type: ignore  # we are adding an attribute to the object
 
-    def assertResultsEqual(self, graphql_query, parameters, backend_name, expected_results):
+    def assertResultsEqual(
+        self,
+        graphql_query: str,
+        parameters: Dict[str, Any],
+        backend_name: str,
+        expected_results: List[Dict[str, Any]],
+    ) -> None:
         """Assert that two lists of DB results are equal, independent of order."""
         backend_results = self.compile_and_run_query(graphql_query, parameters, backend_name)
         try:
@@ -98,7 +106,9 @@ class IntegrationTests(TestCase):
             raise
 
     @classmethod
-    def compile_and_run_query(cls, graphql_query, parameters, backend_name):
+    def compile_and_run_query(
+        cls, graphql_query: str, parameters: Dict[str, Any], backend_name: str,
+    ) -> Any:
         """Compiles and runs the graphql query with the supplied parameters against all backends.
 
         Args:
@@ -109,22 +119,25 @@ class IntegrationTests(TestCase):
         Returns:
             List[Dict[str, Any]], backend results as a list of dictionaries.
         """
+        # Mypy doesn't like our decorator magic, we have to manually ignore the type checks
+        # on all the properties that we magically added via the integration testing decorator.
+        common_schema_info = CommonSchemaInfo(cls.schema, None)  # type: ignore
         if backend_name in SQL_BACKENDS:
-            engine = cls.sql_backend_name_to_engine[backend_name]
+            engine = cls.sql_backend_name_to_engine[backend_name]  # type: ignore
             results = compile_and_run_sql_query(
-                cls.sql_schema_info, graphql_query, parameters, engine
+                cls.sql_schema_info, graphql_query, parameters, engine  # type: ignore
             )
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(
-                cls.schema, graphql_query, parameters, cls.orientdb_client
+                common_schema_info, graphql_query, parameters, cls.orientdb_client  # type: ignore
             )
         elif backend_name in NEO4J_BACKENDS:
             results = compile_and_run_neo4j_query(
-                cls.schema, graphql_query, parameters, cls.neo4j_client
+                common_schema_info, graphql_query, parameters, cls.neo4j_client  # type: ignore
             )
         elif backend_name in REDISGRAPH_BACKENDS:
             results = compile_and_run_redisgraph_query(
-                cls.schema, graphql_query, parameters, cls.redisgraph_client
+                common_schema_info, graphql_query, parameters, cls.redisgraph_client  # type: ignore
             )
         else:
             raise AssertionError(u"Unknown test backend {}.".format(backend_name))
@@ -132,7 +145,7 @@ class IntegrationTests(TestCase):
 
     @use_all_backends()
     @integration_fixtures
-    def test_simple_output(self, backend_name):
+    def test_simple_output(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
@@ -155,7 +168,7 @@ class IntegrationTests(TestCase):
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     @use_all_backends(except_backends=(test_backend.NEO4J, test_backend.REDISGRAPH))
     @integration_fixtures
-    def test_simple_filter(self, backend_name):
+    def test_simple_filter(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
@@ -175,7 +188,7 @@ class IntegrationTests(TestCase):
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     @integration_fixtures
-    def test_edge_from_superclass_with_preferred_location_not_at_root(self):
+    def test_edge_from_superclass_with_preferred_location_not_at_root(self) -> None:
         graphql_query = """{
             Animal {
                 name @output(out_name: "animal_name")
@@ -188,7 +201,7 @@ class IntegrationTests(TestCase):
         parameters = {
             "name": "Species 2",
         }
-        expected_results = []
+        expected_results: List[Dict[str, Any]] = []
 
         self.assertResultsEqual(graphql_query, parameters, test_backend.ORIENTDB, expected_results)
 
@@ -199,7 +212,7 @@ class IntegrationTests(TestCase):
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     @use_all_backends(except_backends=(test_backend.REDISGRAPH, test_backend.NEO4J))
     @integration_fixtures
-    def test_two_filters(self, backend_name):
+    def test_two_filters(self, backend_name: str) -> None:
         graphql_query = """
             {
                 Animal {
@@ -223,9 +236,9 @@ class IntegrationTests(TestCase):
 
     # RedisGraph doesn't support string function CONTAINS
     # https://oss.redislabs.com/redisgraph/cypher_support/#string-operators
-    @use_all_backends(except_backends=(test_backend.REDISGRAPH))
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH,))
     @integration_fixtures
-    def test_has_substring_precedence(self, backend_name):
+    def test_has_substring_precedence(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
@@ -247,7 +260,7 @@ class IntegrationTests(TestCase):
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     @integration_fixtures
-    def test_recurse(self):
+    def test_recurse(self) -> None:
         parameters = {
             "starting_animal_name": "Animal 1",
         }
@@ -410,10 +423,10 @@ class IntegrationTests(TestCase):
         )
     )
     @integration_fixtures
-    def test_fold_basic(self, backend_name):
+    def test_fold_basic(self, backend_name: str) -> None:
         # (query, args, expected_results) tuples.
         # The queries are ran in the order specified here.
-        queries = [
+        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]]]] = [
             # Query 1: Unfolded children of Animal 1
             (
                 """
@@ -483,10 +496,10 @@ class IntegrationTests(TestCase):
         except_backends=(test_backend.REDISGRAPH,)  # TODO(bojanserafimov): Resolve syntax error
     )
     @integration_fixtures
-    def test_optional_basic(self, backend_name):
+    def test_optional_basic(self, backend_name: str) -> None:
         # (query, args, expected_results) tuples.
         # The queries are ran in the order specified here.
-        queries = [
+        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]]]] = [
             # Query 1: Children of Animal 1
             (
                 """
@@ -555,9 +568,9 @@ class IntegrationTests(TestCase):
             self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
-    @use_all_backends(except_backends=(test_backend.REDISGRAPH))
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH,))
     @integration_fixtures
-    def test_filter_on_date(self, backend_name):
+    def test_filter_on_date(self, backend_name: str) -> None:
         graphql_query = """
         {
             Animal {
@@ -578,7 +591,7 @@ class IntegrationTests(TestCase):
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
         class_to_field_type_overrides = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
         schema, _ = generate_schema(
-            self.orientdb_client,
+            self.orientdb_client,  # type: ignore  # from fixture
             class_to_field_type_overrides=class_to_field_type_overrides,
             hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME},
         )
@@ -587,10 +600,11 @@ class IntegrationTests(TestCase):
         compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
 
     @integration_fixtures
-    def test_override_field_types(self):
+    def test_override_field_types(self) -> None:
         class_to_field_type_overrides = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
         schema, _ = generate_schema(
-            self.orientdb_client, class_to_field_type_overrides=class_to_field_type_overrides
+            self.orientdb_client,  # type: ignore  # from fixture
+            class_to_field_type_overrides=class_to_field_type_overrides,
         )
         # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
         # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
@@ -598,26 +612,29 @@ class IntegrationTests(TestCase):
         self.assertEqual(schema.get_type("Animal").fields["uuid"].type, GraphQLID)
 
     @integration_fixtures
-    def test_include_admissible_non_graph_class(self):
-        schema, _ = generate_schema(self.orientdb_client)
+    def test_include_admissible_non_graph_class(self) -> None:
+        schema, _ = generate_schema(self.orientdb_client)  # type: ignore  # from fixture
         # Included abstract non-vertex classes whose non-abstract subclasses are all vertexes.
         self.assertIsNotNone(schema.get_type("UniquelyIdentifiable"))
 
     @integration_fixtures
-    def test_selectively_hide_classes(self):
-        schema, _ = generate_schema(self.orientdb_client, hidden_classes={"Animal"})
+    def test_selectively_hide_classes(self) -> None:
+        schema, _ = generate_schema(
+            self.orientdb_client,  # type: ignore  # from fixture
+            hidden_classes={"Animal"},
+        )
         self.assertNotIn("Animal", schema.type_map)
 
     @integration_fixtures
-    def test_parsed_schema_element_custom_fields(self):
-        schema_graph = generate_schema_graph(self.orientdb_client)
+    def test_parsed_schema_element_custom_fields(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         parent_of_edge = schema_graph.get_element_by_class_name("Animal_ParentOf")
         expected_custom_class_fields = {"human_name_in": "Parent", "human_name_out": "Child"}
         self.assertEqual(expected_custom_class_fields, parent_of_edge.class_fields)
 
     @integration_fixtures
-    def test_sqlalchemy_fast_reflect(self):
-        engine = IntegrationTests.sql_backend_name_to_engine[test_backend.MSSQL]
+    def test_sqlalchemy_fast_reflect(self) -> None:
+        engine = self.sql_backend_name_to_engine[test_backend.MSSQL]  # type: ignore  # from fixture
 
         table_without_primary_key = Table(
             "TableWithoutPrimaryKey",

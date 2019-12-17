@@ -412,3 +412,4 @@ def merge_selection_sets(selection_set_a, selection_set_b):
     return SelectionSetNode(
         selections=sorted(merged_selections, key=lambda ast: ast.selection_set is not None)
     )
+

@@ -464,7 +464,6 @@ class OutputSource(MarkerBlock):
 
     def validate(self):
         """Validate the OutputSource block. An OutputSource block is always valid in isolation."""
-        pass
 
 
 class Fold(MarkerBlock):
@@ -494,7 +493,6 @@ class Unfold(MarkerBlock):
 
     def validate(self):
         """Unfold blocks are always valid in isolation."""
-        pass
 
 
 class EndOptional(MarkerBlock):
@@ -507,7 +505,6 @@ class EndOptional(MarkerBlock):
 
     def validate(self):
         """In isolation, EndOptional blocks are always valid."""
-        pass
 
 
 class GlobalOperationsStart(MarkerBlock):
@@ -522,4 +519,3 @@ class GlobalOperationsStart(MarkerBlock):
 
     def validate(self):
         """In isolation, GlobalOperationsStart blocks are always valid."""
-        pass

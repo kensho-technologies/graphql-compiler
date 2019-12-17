@@ -40,12 +40,12 @@ from .test_helpers import (
 
 
 class EmitMatchTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema_info = get_common_schema_info()
 
-    def test_simple_immediate_output(self):
+    def test_simple_immediate_output(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -77,7 +77,7 @@ class EmitMatchTests(unittest.TestCase):
         received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
 
-    def test_simple_traverse_filter_output(self):
+    def test_simple_traverse_filter_output(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -133,7 +133,7 @@ class EmitMatchTests(unittest.TestCase):
         received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
 
-    def test_datetime_variable_representation(self):
+    def test_datetime_variable_representation(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     BirthEvent {
@@ -185,7 +185,7 @@ class EmitMatchTests(unittest.TestCase):
         received_match = emit_match.emit_code_from_ir(self.schema_info, compound_match_query)
         compare_match(self, expected_match, received_match)
 
-    def test_datetime_output_representation(self):
+    def test_datetime_output_representation(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     BirthEvent {
@@ -221,12 +221,12 @@ class EmitMatchTests(unittest.TestCase):
 
 
 class EmitGremlinTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema_info = get_common_schema_info()
 
-    def test_simple_immediate_output(self):
+    def test_simple_immediate_output(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -256,7 +256,7 @@ class EmitGremlinTests(unittest.TestCase):
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
-    def test_simple_traverse_filter_output(self):
+    def test_simple_traverse_filter_output(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -305,7 +305,7 @@ class EmitGremlinTests(unittest.TestCase):
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
-    def test_output_inside_optional_traversal(self):
+    def test_output_inside_optional_traversal(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -333,8 +333,8 @@ class EmitGremlinTests(unittest.TestCase):
                         BinaryComposition(
                             u"!=",
                             # HACK(predrag): The type given to OutputContextVertex here is wrong,
-                            # but it shouldn't cause any trouble since it has absolutely nothing to do
-                            # with the code being tested.
+                            #                but it shouldn't cause any trouble since it has
+                            #                absolutely nothing to do with the code being tested.
                             OutputContextVertex(child_location, GraphQLString),
                             NullLiteral,
                         ),
@@ -361,7 +361,7 @@ class EmitGremlinTests(unittest.TestCase):
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
-    def test_datetime_variable_representation(self):
+    def test_datetime_variable_representation(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     BirthEvent {
@@ -407,7 +407,7 @@ class EmitGremlinTests(unittest.TestCase):
         received_gremlin = emit_gremlin.emit_code_from_ir(self.schema_info, ir_blocks)
         compare_gremlin(self, expected_gremlin, received_gremlin)
 
-    def test_datetime_output_representation(self):
+    def test_datetime_output_representation(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     BirthEvent {
@@ -448,12 +448,12 @@ class EmitCypherTests(unittest.TestCase):
     we need to compare two LocationInfo objects because equality comparison compares references.
     """
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema_info = get_common_schema_info()
 
-    def test_simple_immediate_output(self):
+    def test_simple_immediate_output(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -492,7 +492,7 @@ class EmitCypherTests(unittest.TestCase):
 
         compare_cypher(self, expected_cypher, received_cypher)
 
-    def test_simple_traverse_filter_output(self):
+    def test_simple_traverse_filter_output(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -565,7 +565,7 @@ class EmitCypherTests(unittest.TestCase):
         """
         compare_cypher(self, expected_cypher, received_cypher)
 
-    def test_output_inside_optional_traversal(self):
+    def test_output_inside_optional_traversal(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     Animal {
@@ -635,16 +635,16 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
         expected_cypher = """
-              MATCH (Animal___1:Animal)
-              OPTIONAL MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
-              RETURN
-                  (CASE WHEN (Animal__out_Animal_BornAt___1 IS NOT null)
-                  THEN Animal__out_Animal_BornAt___1.name ELSE null END) AS `bornat_name`
-          """
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
+            RETURN
+                (CASE WHEN (Animal__out_Animal_BornAt___1 IS NOT null)
+                THEN Animal__out_Animal_BornAt___1.name ELSE null END) AS `bornat_name`
+        """
 
         compare_cypher(self, expected_cypher, received_cypher)
 
-    def test_datetime_output_representation(self):
+    def test_datetime_output_representation(self) -> None:
         # corresponds to:
         # graphql_string = '''{
         #     BirthEvent {
@@ -679,9 +679,9 @@ class EmitCypherTests(unittest.TestCase):
         received_cypher = emit_cypher.emit_code_from_ir(self.schema_info, cypher_query)
 
         expected_cypher = """
-              MATCH (BirthEvent___1:BirthEvent)
-              RETURN
-              BirthEvent___1.event_date AS `event_date`
-          """
+            MATCH (BirthEvent___1:BirthEvent)
+            RETURN
+            BirthEvent___1.event_date AS `event_date`
+        """
 
         compare_cypher(self, expected_cypher, received_cypher)
