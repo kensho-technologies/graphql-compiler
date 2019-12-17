@@ -30,7 +30,7 @@ def _yield_ast_nodes_with_directives(ast):
                 for entry in _yield_ast_nodes_with_directives(sub_selection_set):
                     yield entry
     else:
-        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+        raise AssertionError(u"Unexpected AST type received: {} {}".format(type(ast), ast))
 
 
 def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type):
@@ -41,7 +41,7 @@ def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type)
             return current_type
 
     if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
-        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+        raise AssertionError(u"Unexpected AST type received: {} {}".format(type(ast), ast))
 
     # Recurse
     if ast.selection_set is not None:
@@ -53,12 +53,14 @@ def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type)
             elif isinstance(selection, InlineFragmentNode):
                 type_in_selection = schema.get_type(selection.type_condition.name.value)
             else:
-                raise AssertionError(u'Unexpected selection type received: {} {}'
-                                     .format(type(selection), selection))
+                raise AssertionError(
+                    u"Unexpected selection type received: {} {}".format(type(selection), selection)
+                )
 
             if type_in_selection is not None:
                 type_at_target = _get_type_at_macro_edge_target_using_current_type(
-                    schema, selection, type_in_selection)
+                    schema, selection, type_in_selection
+                )
                 if type_at_target is not None:
                     return type_at_target
 
@@ -68,6 +70,7 @@ def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type)
 # ############
 # Public API #
 # ############
+
 
 def get_directives_for_ast(ast):
     """Return a dict of directive name -> list of (ast, directive) where that directive is used.
@@ -110,7 +113,7 @@ def get_all_tag_names(ast):
 def get_type_at_macro_edge_target(schema, ast):
     """Return the GraphQL type at the @macro_edge_target or None if there is no target."""
     root_type = get_ast_field_name(ast)
-    root_schema_type = get_field_type_from_schema(schema.to_kwargs()['query'], root_type)
+    root_schema_type = get_field_type_from_schema(schema.to_kwargs()["query"], root_type)
 
     # Allow list types at the query root in the schema.
     if isinstance(root_schema_type, GraphQLList):

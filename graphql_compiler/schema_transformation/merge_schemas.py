@@ -12,38 +12,44 @@ from ..ast_manipulation import get_ast_with_non_null_stripped
 from ..compiler.helpers import INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION
 from ..compiler.subclass import compute_subclass_sets
 from .utils import (
-    InvalidCrossSchemaEdgeError, SchemaNameConflictError, check_ast_schema_is_valid,
-    check_schema_identifier_is_valid, get_query_type_name
+    InvalidCrossSchemaEdgeError,
+    SchemaNameConflictError,
+    check_ast_schema_is_valid,
+    check_schema_identifier_is_valid,
+    get_query_type_name,
 )
 
 
 MergedSchemaDescriptor = namedtuple(
-    'MergedSchemaDescriptor', (
-        'schema_ast',  # Document, AST representing the merged schema
-        'schema',  # GraphQLSchema, representing the same schema as schema_ast
-        'type_name_to_schema_id',
+    "MergedSchemaDescriptor",
+    (
+        "schema_ast",  # Document, AST representing the merged schema
+        "schema",  # GraphQLSchema, representing the same schema as schema_ast
+        "type_name_to_schema_id",
         # Dict[str, str], mapping type name to the id of its schema, includes Interface, Object,
         # Union, and Enum types
-    )
+    ),
 )
 
 
 CrossSchemaEdgeDescriptor = namedtuple(
-    'CrossSchemaEdgeDescriptor', (
-        'edge_name',  # str, name used for the corresponding in and out fields
-        'outbound_field_reference',  # FieldReference namedtuple for the outbound field
-        'inbound_field_reference',  # FieldReference namedtuple for the inbound field
-        'out_edge_only',  # bool, whether or not the edge is bidirectional
-    )
+    "CrossSchemaEdgeDescriptor",
+    (
+        "edge_name",  # str, name used for the corresponding in and out fields
+        "outbound_field_reference",  # FieldReference namedtuple for the outbound field
+        "inbound_field_reference",  # FieldReference namedtuple for the inbound field
+        "out_edge_only",  # bool, whether or not the edge is bidirectional
+    ),
 )
 
 
 FieldReference = namedtuple(
-    'FieldReference', (
-        'schema_id',  # str, identifier for the schema of the field
-        'type_name',  # str, name of the object or interface that the field belongs to
-        'field_name',  # str, name of the field, used in the stich directive
-    )
+    "FieldReference",
+    (
+        "schema_id",  # str, identifier for the schema of the field
+        "type_name",  # str, name of the object or interface that the field belongs to
+        "field_name",  # str, name of the field, used in the stich directive
+    ),
 )
 
 
@@ -95,13 +101,13 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
           fields
     """
     if len(schema_id_to_ast) <= 1:
-        raise ValueError(u'Expected at least two schemas to merge.')
+        raise ValueError(u"Expected at least two schemas to merge.")
 
-    query_type = 'RootSchemaQuery'
+    query_type = "RootSchemaQuery"
     merged_schema_ast = _get_basic_schema_ast(query_type)  # Document
 
     type_name_to_schema_id = {}  # Dict[str, str], name of object/interface/enum/union to schema id
-    scalars = {'String', 'Int', 'Float', 'Boolean', 'ID'}  # Set[str], user defined + builtins
+    scalars = {"String", "Int", "Float", "Boolean", "ID"}  # Set[str], user defined + builtins
     directives = {}  # Dict[str, DirectiveDefinition]
 
     for current_schema_id, current_ast in six.iteritems(schema_id_to_ast):
@@ -113,7 +119,7 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
             scalars,
             directives,
             current_schema_id,
-            current_ast
+            current_ast,
         )
 
     if type_equivalence_hints is None:
@@ -124,13 +130,13 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
         scalars,
         cross_schema_edges,
         type_equivalence_hints,
-        query_type
+        query_type,
     )
 
     return MergedSchemaDescriptor(
         schema_ast=merged_schema_ast,
         schema=build_ast_schema(merged_schema_ast),
-        type_name_to_schema_id=type_name_to_schema_id
+        type_name_to_schema_id=type_name_to_schema_id,
     )
 
 
@@ -153,26 +159,28 @@ def _get_basic_schema_ast(query_type):
                 operation_types=[
                     ast_types.OperationTypeDefinitionNode(
                         operation=ast_types.OperationType.QUERY,
-                        type=ast_types.NamedTypeNode(
-                            name=ast_types.NameNode(value=query_type)
-                        ),
+                        type=ast_types.NamedTypeNode(name=ast_types.NameNode(value=query_type)),
                     )
                 ],
                 directives=[],
             ),
             ast_types.ObjectTypeDefinitionNode(
-                name=ast_types.NameNode(value=query_type),
-                fields=[],
-                interfaces=[],
-                directives=[],
+                name=ast_types.NameNode(value=query_type), fields=[], interfaces=[], directives=[],
             ),
         ]
     )
     return blank_ast
 
 
-def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_schema_id, scalars,
-                      directives, current_schema_id, current_ast):
+def _accumulate_types(
+    merged_schema_ast,
+    merged_query_type_name,
+    type_name_to_schema_id,
+    scalars,
+    directives,
+    current_schema_id,
+    current_ast,
+):
     """Add all types and query type fields of current_ast into merged_schema_ast.
 
     Args:
@@ -223,8 +231,8 @@ def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_sc
         if isinstance(new_definition, ast_types.SchemaDefinitionNode):
             continue
         elif (
-            isinstance(new_definition, ast_types.ObjectTypeDefinitionNode) and
-            new_definition.name.value == current_query_type
+            isinstance(new_definition, ast_types.ObjectTypeDefinitionNode)
+            and new_definition.name.value == current_query_type
         ):  # query type definition
             new_query_type_fields = new_definition.fields  # List[FieldDefinition]
         elif isinstance(new_definition, ast_types.DirectiveDefinitionNode):
@@ -235,19 +243,25 @@ def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_sc
             scalars, merged_schema_ast = _process_scalar_definition(
                 new_definition, scalars, type_name_to_schema_id, merged_schema_ast
             )
-        elif isinstance(new_definition, (
-            ast_types.EnumTypeDefinitionNode,
-            ast_types.InterfaceTypeDefinitionNode,
-            ast_types.ObjectTypeDefinitionNode,
-            ast_types.UnionTypeDefinitionNode,
-        )):
+        elif isinstance(
+            new_definition,
+            (
+                ast_types.EnumTypeDefinitionNode,
+                ast_types.InterfaceTypeDefinitionNode,
+                ast_types.ObjectTypeDefinitionNode,
+                ast_types.UnionTypeDefinitionNode,
+            ),
+        ):
             type_name_to_schema_id, merged_schema_ast = _process_generic_type_definition(
-                new_definition, current_schema_id, scalars, type_name_to_schema_id,
-                merged_schema_ast
+                new_definition,
+                current_schema_id,
+                scalars,
+                type_name_to_schema_id,
+                merged_schema_ast,
             )
         else:  # All definition types should've been covered
             raise AssertionError(
-                u'Unreachable code reached. Missed definition type: '
+                u"Unreachable code reached. Missed definition type: "
                 u'"{}"'.format(type(new_definition).__name__)
             )
 
@@ -255,8 +269,10 @@ def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_sc
     # Since query_type was taken from the schema built from the input AST, the query type
     # should never be not found.
     if new_query_type_fields is None:
-        raise AssertionError(u'Unreachable code reached. Query type "{}" field definitions '
-                             u'unexpectedly not found.'.format(current_query_type))
+        raise AssertionError(
+            u'Unreachable code reached. Query type "{}" field definitions '
+            u"unexpectedly not found.".format(current_query_type)
+        )
 
     # Note that as field names and type names have been confirmed to match up, and types
     # were merged without name conflicts, query type fields can also be safely merged.
@@ -268,7 +284,7 @@ def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_sc
     merged_query_type_definition = new_definitions[query_type_index]
     if merged_query_type_definition.name.value != merged_query_type_name:
         raise AssertionError(
-            u'Unreachable code reached. The second definition in the schema is unexpectedly '
+            u"Unreachable code reached. The second definition in the schema is unexpectedly "
             u'not the query type "{}", but is instead "{}".'.format(
                 merged_query_type_name, merged_query_type_definition.name.value
             )
@@ -279,7 +295,7 @@ def _accumulate_types(merged_schema_ast, merged_query_type_name, type_name_to_sc
         name=merged_query_type_definition.name,
         interfaces=merged_query_type_definition.interfaces,
         fields=new_fields,
-        directives=merged_query_type_definition.directives
+        directives=merged_query_type_definition.directives,
     )
     new_definitions[query_type_index] = new_merged_query_type_definition
     new_merged_schema_ast = ast_types.DocumentNode(definitions=new_definitions)
@@ -323,8 +339,7 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
     return new_existing_directives, new_merged_schema_ast
 
 
-def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
-                               merged_schema_ast):
+def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id, merged_schema_ast):
     """Compare new scalar against existing scalars and types, update records and schema.
 
     Args:
@@ -346,9 +361,12 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
         raise SchemaNameConflictError(
             u'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
             u'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
-            u'to avoid conflicts.'.format(
-                scalar_name, scalar_name, type_name_to_schema_id[scalar_name],
-                scalar_name, type_name_to_schema_id[scalar_name]
+            u"to avoid conflicts.".format(
+                scalar_name,
+                scalar_name,
+                type_name_to_schema_id[scalar_name],
+                scalar_name,
+                type_name_to_schema_id[scalar_name],
             )
         )
     # new, valid scalar
@@ -360,8 +378,9 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
     return new_existing_scalars, new_merged_schema_ast
 
 
-def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
-                                     type_name_to_schema_id, merged_schema_ast):
+def _process_generic_type_definition(
+    generic_type, schema_id, existing_scalars, type_name_to_schema_id, merged_schema_ast
+):
     """Compare new type against existing scalars and types, update records and schema.
 
     Args:
@@ -385,15 +404,13 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
         raise SchemaNameConflictError(
             u'New type "{}" in schema "{}" clashes with existing scalar. Consider '
             u'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
-            u'to avoid conflicts.'.format(
-                type_name, schema_id, type_name, schema_id
-            )
+            u"to avoid conflicts.".format(type_name, schema_id, type_name, schema_id)
         )
     if type_name in type_name_to_schema_id:
         raise SchemaNameConflictError(
             u'New type "{}" in schema "{}" clashes with existing type "{}" in schema "{}". '
             u'Consider renaming type "{}" in either schema before merging to avoid '
-            u'conflicts.'.format(
+            u"conflicts.".format(
                 type_name, schema_id, type_name, type_name_to_schema_id[type_name], type_name
             )
         )
@@ -406,8 +423,14 @@ def _process_generic_type_definition(generic_type, schema_id, existing_scalars,
     return new_type_name_to_schema_id, new_merged_schema_ast
 
 
-def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_schema_edges,
-                            type_equivalence_hints, query_type):
+def _add_cross_schema_edges(
+    schema_ast,
+    type_name_to_schema_id,
+    scalars,
+    cross_schema_edges,
+    type_equivalence_hints,
+    query_type,
+):
     """Add cross-schema edges into the schema AST.
 
     Each cross-schema edge will be incorporated into the schema by adding vertex fields
@@ -458,18 +481,15 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
 
     for definition in schema_ast.definitions:
         if (
-            isinstance(definition, ast_types.ObjectTypeDefinitionNode) and
-            definition.name.value == query_type
+            isinstance(definition, ast_types.ObjectTypeDefinitionNode)
+            and definition.name.value == query_type
         ):  # query type definition
             continue
-        if isinstance(definition, (
-            ast_types.InterfaceTypeDefinitionNode,
-            ast_types.ObjectTypeDefinitionNode,
-        )):
+        if isinstance(
+            definition, (ast_types.InterfaceTypeDefinitionNode, ast_types.ObjectTypeDefinitionNode,)
+        ):
             type_name_to_definition[definition.name.value] = definition
-        elif isinstance(definition, (
-            ast_types.UnionTypeDefinitionNode,
-        )):
+        elif isinstance(definition, (ast_types.UnionTypeDefinitionNode,)):
             union_type_names.add(definition.name.value)
 
     # NOTE: All merge_schemas needs is the dict mapping names to names, not the dict mapping
@@ -483,8 +503,13 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
 
     # Iterate through edges list, incorporate each edge on one or both sides
     for cross_schema_edge in cross_schema_edges:
-        _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id,
-                                          scalars, union_type_names, cross_schema_edge)
+        _check_cross_schema_edge_is_valid(
+            type_name_to_definition,
+            type_name_to_schema_id,
+            scalars,
+            union_type_names,
+            cross_schema_edge,
+        )
 
         edge_name = cross_schema_edge.edge_name
         outbound_field_reference = cross_schema_edge.outbound_field_reference
@@ -504,9 +529,12 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
         for outbound_edge_source_type_name in outbound_edge_source_type_names:
             source_type_node = type_name_to_definition[outbound_edge_source_type_name]
             new_source_type_node = _add_edge_field(
-                source_type_node, outbound_edge_sink_type_name,
-                outbound_field_reference.field_name, inbound_field_reference.field_name,
-                edge_name, OUTBOUND_EDGE_DIRECTION
+                source_type_node,
+                outbound_edge_sink_type_name,
+                outbound_field_reference.field_name,
+                inbound_field_reference.field_name,
+                edge_name,
+                OUTBOUND_EDGE_DIRECTION,
             )
             type_name_to_definition[outbound_edge_source_type_name] = new_source_type_node
 
@@ -515,23 +543,25 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
             for inbound_edge_source_type_name in inbound_edge_source_type_names:
                 source_type_node = type_name_to_definition[inbound_edge_source_type_name]
                 new_source_type_node = _add_edge_field(
-                    source_type_node, inbound_edge_sink_type_name,
-                    inbound_field_reference.field_name, outbound_field_reference.field_name,
-                    edge_name, INBOUND_EDGE_DIRECTION
+                    source_type_node,
+                    inbound_edge_sink_type_name,
+                    inbound_field_reference.field_name,
+                    outbound_field_reference.field_name,
+                    edge_name,
+                    INBOUND_EDGE_DIRECTION,
                 )
                 type_name_to_definition[inbound_edge_source_type_name] = new_source_type_node
 
     new_definitions = []
     for definition in schema_ast.definitions:
         if (
-            isinstance(definition, ast_types.ObjectTypeDefinitionNode) and
-            definition.name.value == query_type
+            isinstance(definition, ast_types.ObjectTypeDefinitionNode)
+            and definition.name.value == query_type
         ):  # query type definition
             new_definitions.append(definition)
-        elif isinstance(definition, (
-            ast_types.InterfaceTypeDefinitionNode,
-            ast_types.ObjectTypeDefinitionNode,
-        )):
+        elif isinstance(
+            definition, (ast_types.InterfaceTypeDefinitionNode, ast_types.ObjectTypeDefinitionNode,)
+        ):
             new_definitions.append(type_name_to_definition[definition.name.value])
         else:
             new_definitions.append(definition)
@@ -539,8 +569,9 @@ def _add_cross_schema_edges(schema_ast, type_name_to_schema_id, scalars, cross_s
     return ast_types.DocumentNode(definitions=FrozenList(new_definitions))
 
 
-def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_schema_id, scalars,
-                                      union_type_names, cross_schema_edge):
+def _check_cross_schema_edge_is_valid(
+    type_name_to_definition, type_name_to_schema_id, scalars, union_type_names, cross_schema_edge
+):
     """Check that the edge crosses schemas and has valid field references of correct types.
 
     Args:
@@ -575,14 +606,15 @@ def _check_cross_schema_edge_is_valid(type_name_to_definition, type_name_to_sche
     if outbound_field_reference.schema_id == inbound_field_reference.schema_id:  # not cross-schema
         raise InvalidCrossSchemaEdgeError(
             u'Edge "{}" does not cross schemas. All CrossSchemaEdgeDescriptors provided must '
-            u'connect together types from different schemas.'.format(cross_schema_edge)
+            u"connect together types from different schemas.".format(cross_schema_edge)
         )
 
     _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cross_schema_edge)
 
 
-def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema_id,
-                                    union_type_names, field_reference):
+def _check_field_reference_is_valid(
+    type_name_to_definition, type_name_to_schema_id, union_type_names, field_reference
+):
     """Check that the field reference refers to a valid field.
 
     In particular, check that the field reference is on a type that exists in the correct
@@ -610,15 +642,15 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
     if type_name in union_type_names:
         raise InvalidCrossSchemaEdgeError(
             u'Type "{}" specified in the field reference "{}" is a union type, which may not '
-            u'be used in a cross-schema edge. Consider using the object type that is equivalent '
-            u'to this union type instead.'.format(type_name, field_reference)
+            u"be used in a cross-schema edge. Consider using the object type that is equivalent "
+            u"to this union type instead.".format(type_name, field_reference)
         )
 
     # Error if the type is nonexistent
     if type_name not in type_name_to_definition:
         raise InvalidCrossSchemaEdgeError(
             u'Type "{}" specified in the field reference "{}" is not found '
-            u'in the merged schema.'.format(type_name, field_reference)
+            u"in the merged schema.".format(type_name, field_reference)
         )
 
     # Error if the type is in a wrong or nonexistent schema
@@ -636,9 +668,7 @@ def _check_field_reference_is_valid(type_name_to_definition, type_name_to_schema
     if not any(field.name.value == field_name for field in type_fields):
         raise InvalidCrossSchemaEdgeError(
             u'Field "{}" is not found under type "{}" in schema "{}", as expected by the '
-            u'field reference "{}".'.format(
-                field_name, type_name, schema_id, field_reference
-            )
+            u'field reference "{}".'.format(field_name, type_name, schema_id, field_reference)
         )
 
 
@@ -676,27 +706,25 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
                 break
 
         if field_type is None:  # should never happen after _check_field_reference_is_valid
-            raise AssertionError(u'Unreachable code reached. Field "{}" unexpectedly '
-                                 u'not found.'.format(field_name))
+            raise AssertionError(
+                u'Unreachable code reached. Field "{}" unexpectedly '
+                u"not found.".format(field_name)
+            )
 
         if isinstance(field_type, ast_types.ListTypeNode):
             raise InvalidCrossSchemaEdgeError(
                 u'The {}bound field of cross-schema edge "{}" gives a list, while it '
-                u'should be a single scalar'.format(
-                    direction, cross_schema_edge
-                )
+                u"should be a single scalar".format(direction, cross_schema_edge)
             )
         elif isinstance(field_type, ast_types.NamedTypeNode):
             if field_type.name.value not in scalars:
                 raise InvalidCrossSchemaEdgeError(
                     u'The {}bound field of cross-schema edge "{}" is of type "{}", which '
-                    u'is not a scalar'.format(
-                        direction, cross_schema_edge, field_type.name.value
-                    )
+                    u"is not a scalar".format(direction, cross_schema_edge, field_type.name.value)
                 )
         else:  # since NonNull is stripped, field_type can only be ListType or NamedType
             raise AssertionError(
-                u'Unreachable code reached. Field has missed '
+                u"Unreachable code reached. Field has missed "
                 u'type "{}"'.format(type(field_type).__name__)
             )
 
@@ -729,16 +757,14 @@ def _scalars_match(scalar_name1, scalar_name2):
     if scalar_name1 == scalar_name2:
         return True
     scalar_names = frozenset((scalar_name1, scalar_name2))
-    if (
-        scalar_names == frozenset(('String', 'ID')) or
-        scalar_names == frozenset(('Int', 'ID'))
-    ):
+    if scalar_names == frozenset(("String", "ID")) or scalar_names == frozenset(("Int", "ID")):
         return True
     return False
 
 
-def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_field_name,
-                    edge_name, direction):
+def _add_edge_field(
+    source_type_node, sink_type_name, source_field_name, sink_field_name, edge_name, direction
+):
     """Add one direction of the specified edge as a field of the source type.
 
     Args:
@@ -767,14 +793,14 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
                 OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION
             )
         )
-    new_edge_field_name = direction + '_' + edge_name
+    new_edge_field_name = direction + "_" + edge_name
 
     # Error if new edge causes a field name clash
     if any(field.name.value == new_edge_field_name for field in type_fields):
         raise SchemaNameConflictError(
             u'New field "{}" under type "{}" created by the {}bound field of edge named '
             u'"{}" clashes with an existing field of the same name. Consider changing the '
-            u'name of your edge to avoid name conflicts.'.format(
+            u"name of your edge to avoid name conflicts.".format(
                 new_edge_field_name, source_type_node.name.value, direction, edge_name
             )
         )
@@ -783,13 +809,9 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
         name=ast_types.NameNode(value=new_edge_field_name),
         arguments=[],
         type=ast_types.ListTypeNode(
-            type=ast_types.NamedTypeNode(
-                name=ast_types.NameNode(value=sink_type_name),
-            ),
+            type=ast_types.NamedTypeNode(name=ast_types.NameNode(value=sink_type_name),),
         ),
-        directives=[
-            _build_stitch_directive(source_field_name, sink_field_name),
-        ],
+        directives=[_build_stitch_directive(source_field_name, sink_field_name),],
     )
 
     new_type_fields = list(type_fields)
@@ -800,21 +822,21 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
             name=source_type_node.name,
             directives=source_type_node.directives,
             fields=new_type_fields,
-            interfaces=source_type_node.interfaces
+            interfaces=source_type_node.interfaces,
         )
     elif type(source_type_node) == ast_types.InterfaceTypeDefinitionNode:
         new_source_type_node = ast_types.InterfaceTypeDefinitionNode(
             description=source_type_node.description,
             name=source_type_node.name,
             directives=source_type_node.directives,
-            fields=new_type_fields
+            fields=new_type_fields,
         )
     else:
         raise AssertionError(
             u'Input "source_type_node" must be of type {} or {}. Received type {}'.format(
                 ast_types.ObjectTypeDefinitionNode,
                 ast_types.InterfaceTypeDefinitionNode,
-                type(source_type_node)
+                type(source_type_node),
             )
         )
     return new_source_type_node
@@ -823,14 +845,14 @@ def _add_edge_field(source_type_node, sink_type_name, source_field_name, sink_fi
 def _build_stitch_directive(source_field_name, sink_field_name):
     """Build a Directive node for the stitch directive."""
     return ast_types.DirectiveNode(
-        name=ast_types.NameNode(value='stitch'),
+        name=ast_types.NameNode(value="stitch"),
         arguments=[
             ast_types.ArgumentNode(
-                name=ast_types.NameNode(value='source_field'),
+                name=ast_types.NameNode(value="source_field"),
                 value=ast_types.StringValueNode(value=source_field_name),
             ),
             ast_types.ArgumentNode(
-                name=ast_types.NameNode(value='sink_field'),
+                name=ast_types.NameNode(value="sink_field"),
                 value=ast_types.StringValueNode(value=sink_field_name),
             ),
         ],

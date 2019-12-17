@@ -14,7 +14,7 @@ from ..global_utils import is_same_type
 class CompilerEntity(object):
     """An abstract compiler entity. Can represent things like basic blocks and expressions."""
 
-    __slots__ = ('_print_args', '_print_kwargs')
+    __slots__ = ("_print_args", "_print_kwargs")
 
     def __init__(self, *args, **kwargs):
         """Construct a new CompilerEntity."""
@@ -30,14 +30,14 @@ class CompilerEntity(object):
         """Return a human-readable unicode representation of this CompilerEntity."""
         printed_args = []
         if self._print_args:
-            printed_args.append('{args}')
+            printed_args.append("{args}")
         if self._print_kwargs:
-            printed_args.append('{kwargs}')
+            printed_args.append("{kwargs}")
 
-        template = u'{cls_name}(' + u', '.join(printed_args) + u')'
-        return template.format(cls_name=type(self).__name__,
-                               args=self._print_args,
-                               kwargs=self._print_kwargs)
+        template = u"{cls_name}(" + u", ".join(printed_args) + u")"
+        return template.format(
+            cls_name=type(self).__name__, args=self._print_args, kwargs=self._print_kwargs
+        )
 
     def __repr__(self):
         """Return a human-readable str representation of the CompilerEntity object."""
@@ -63,6 +63,7 @@ class CompilerEntity(object):
                     return False
 
         return self._print_kwargs == other._print_kwargs
+
     # pylint: enable=protected-access
 
     def __ne__(self, other):
@@ -143,11 +144,11 @@ class MarkerBlock(BasicBlock):
 
         The effect of MarkerBlocks is applied during optimization and code generation steps.
         """
-        return u''
+        return u""
 
     def to_cypher(self):
         """Return the Cypher representation of the block, which should almost always be empty.
 
         The effect of MarkerBlocks is applied during optimization and code generation steps.
         """
-        return u''
+        return u""

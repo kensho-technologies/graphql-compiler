@@ -1,25 +1,37 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Commonly-used functions and data types from this package."""
 from .compiler import (  # noqa
-    CompilationResult, OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin,
-    compile_graphql_to_match, compile_graphql_to_sql
+    CompilationResult,
+    OutputMetadata,
+    compile_graphql_to_cypher,
+    compile_graphql_to_gremlin,
+    compile_graphql_to_match,
+    compile_graphql_to_sql,
 )
 from .exceptions import (  # noqa
-    GraphQLCompilationError, GraphQLError, GraphQLInvalidArgumentError, GraphQLParsingError,
-    GraphQLValidationError
+    GraphQLCompilationError,
+    GraphQLError,
+    GraphQLInvalidArgumentError,
+    GraphQLParsingError,
+    GraphQLValidationError,
 )
 from .query_formatting import insert_arguments_into_query  # noqa
 from .query_formatting.graphql_formatting import pretty_print_graphql  # noqa
 from .schema import (  # noqa
-    DIRECTIVES, EXTENDED_META_FIELD_DEFINITIONS, GraphQLDate, GraphQLDateTime, GraphQLDecimal,
-    insert_meta_fields_into_existing_schema, is_meta_field
+    DIRECTIVES,
+    EXTENDED_META_FIELD_DEFINITIONS,
+    GraphQLDate,
+    GraphQLDateTime,
+    GraphQLDecimal,
+    insert_meta_fields_into_existing_schema,
+    is_meta_field,
 )
 from .schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data  # noqa
 from .schema_generation.sqlalchemy import get_sqlalchemy_schema_info  # noqa
 
 
-__package_name__ = 'graphql-compiler'
-__version__ = '1.11.0'
+__package_name__ = "graphql-compiler"
+__version__ = "1.11.0"
 
 
 def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=None):
@@ -53,9 +65,11 @@ def graphql_to_match(schema, graphql_query, parameters, type_equivalence_hints=N
             - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
     """
     compilation_result = compile_graphql_to_match(
-        schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
+        schema, graphql_query, type_equivalence_hints=type_equivalence_hints
+    )
     return compilation_result._replace(
-        query=insert_arguments_into_query(compilation_result, parameters))
+        query=insert_arguments_into_query(compilation_result, parameters)
+    )
 
 
 def graphql_to_sql(sql_schema_info, graphql_query, parameters):
@@ -77,7 +91,8 @@ def graphql_to_sql(sql_schema_info, graphql_query, parameters):
     """
     compilation_result = compile_graphql_to_sql(sql_schema_info, graphql_query)
     return compilation_result._replace(
-        query=insert_arguments_into_query(compilation_result, parameters))
+        query=insert_arguments_into_query(compilation_result, parameters)
+    )
 
 
 def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints=None):
@@ -111,9 +126,11 @@ def graphql_to_gremlin(schema, graphql_query, parameters, type_equivalence_hints
             - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
     """
     compilation_result = compile_graphql_to_gremlin(
-        schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
+        schema, graphql_query, type_equivalence_hints=type_equivalence_hints
+    )
     return compilation_result._replace(
-        query=insert_arguments_into_query(compilation_result, parameters))
+        query=insert_arguments_into_query(compilation_result, parameters)
+    )
 
 
 def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equivalence_hints=None):
@@ -154,6 +171,8 @@ def graphql_to_redisgraph_cypher(schema, graphql_query, parameters, type_equival
             - input_metadata: dict, name of input variables -> inferred GraphQL type, based on use
     """
     compilation_result = compile_graphql_to_cypher(
-        schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
+        schema, graphql_query, type_equivalence_hints=type_equivalence_hints
+    )
     return compilation_result._replace(
-        query=insert_arguments_into_query(compilation_result, parameters))
+        query=insert_arguments_into_query(compilation_result, parameters)
+    )

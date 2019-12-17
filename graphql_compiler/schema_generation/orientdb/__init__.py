@@ -3,8 +3,9 @@ from ..graphql_schema import get_graphql_schema_from_schema_graph
 from .schema_graph_builder import get_orientdb_schema_graph
 
 
-def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_type_overrides=None,
-                                                 hidden_classes=None):
+def get_graphql_schema_from_orientdb_schema_data(
+    schema_data, class_to_field_type_overrides=None, hidden_classes=None
+):
     """Construct a GraphQL schema from an OrientDB schema.
 
     Args:
@@ -58,5 +59,7 @@ def get_graphql_schema_from_orientdb_schema_data(schema_data, class_to_field_typ
     """
     schema_graph = get_orientdb_schema_graph(schema_data, [])
     return get_graphql_schema_from_schema_graph(
-        schema_graph, class_to_field_type_overrides=class_to_field_type_overrides,
-        hidden_classes=hidden_classes)
+        schema_graph,
+        class_to_field_type_overrides=class_to_field_type_overrides,
+        hidden_classes=hidden_classes,
+    )

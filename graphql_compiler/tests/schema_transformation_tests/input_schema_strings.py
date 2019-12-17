@@ -3,7 +3,8 @@ from textwrap import dedent
 
 
 class InputSchemaStrings(object):
-    basic_schema = dedent('''\
+    basic_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -17,9 +18,11 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Human: Human
         }
-    ''')
+    """
+    )
 
-    multiple_objects_schema = dedent('''\
+    multiple_objects_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -41,9 +44,11 @@ class InputSchemaStrings(object):
           Droid: Droid
           Dog: Dog
         }
-    ''')
+    """
+    )
 
-    enum_schema = dedent('''\
+    enum_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -60,9 +65,11 @@ class InputSchemaStrings(object):
           TALL
           SHORT
         }
-    ''')
+    """
+    )
 
-    interface_schema = dedent('''\
+    interface_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -79,9 +86,11 @@ class InputSchemaStrings(object):
           Character: Character
           Kid: Kid
         }
-    ''')
+    """
+    )
 
-    multiple_interfaces_schema = dedent('''\
+    multiple_interfaces_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -104,9 +113,11 @@ class InputSchemaStrings(object):
           Creature: Creature
           Human: Human
         }
-    ''')
+    """
+    )
 
-    scalar_schema = dedent('''\
+    scalar_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -123,9 +134,11 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Human: Human
         }
-    ''')
+    """
+    )
 
-    union_schema = dedent('''\
+    union_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -144,9 +157,11 @@ class InputSchemaStrings(object):
           Human: Human
           Droid: Droid
         }
-    ''')
+    """
+    )
 
-    list_schema = dedent('''\
+    list_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -173,9 +188,11 @@ class InputSchemaStrings(object):
           TALL
           SHORT
         }
-    ''')
+    """
+    )
 
-    non_null_schema = dedent('''\
+    non_null_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -188,9 +205,11 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Dog: Dog!
         }
-    ''')
+    """
+    )
 
-    directive_schema = dedent('''\
+    directive_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -210,9 +229,11 @@ class InputSchemaStrings(object):
           Human: Human
           Droid: Droid
         }
-    ''')
+    """
+    )
 
-    various_types_schema = dedent('''\
+    various_types_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -245,9 +266,11 @@ class InputSchemaStrings(object):
           Human: Human
           Giraffe: Giraffe
         }
-    ''')
+    """
+    )
 
-    multiple_scalars_schema = dedent('''\
+    multiple_scalars_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -282,9 +305,11 @@ class InputSchemaStrings(object):
           Human: Human
           Giraffe: Giraffe
         }
-    ''')
+    """
+    )
 
-    same_field_schema = dedent('''\
+    same_field_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -296,9 +321,11 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Person: Person
         }
-    ''')
+    """
+    )
 
-    interface_with_subclasses_schema = dedent('''\
+    interface_with_subclasses_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -318,9 +345,11 @@ class InputSchemaStrings(object):
           Individual: Individual
           President: President
         }
-    ''')
+    """
+    )
 
-    union_with_subclasses_schema = dedent('''\
+    union_with_subclasses_schema = dedent(
+        """\
         schema {
          query: SchemaQuery
         }
@@ -340,4 +369,5 @@ class InputSchemaStrings(object):
           Person: Person
           Kid: Kid
         }
-    ''')
+    """
+    )

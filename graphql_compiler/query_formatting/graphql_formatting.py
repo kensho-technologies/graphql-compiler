@@ -34,7 +34,7 @@ class CustomPrintingVisitor(PrintAstVisitor):
         name_to_arg_value = {
             # Taking [0] is ok here because the GraphQL parser checks for the
             # existence of ':' in directive arguments.
-            arg.split(':', 1)[0]: arg
+            arg.split(":", 1)[0]: arg
             for arg in node.arguments
         }
 
@@ -61,26 +61,27 @@ class CustomPrintingVisitor(PrintAstVisitor):
 
             ordered_args = sorted_args + unsorted_args
 
-        return '@' + node.name + wrap('(', join(ordered_args, ', '), ')')
+        return "@" + node.name + wrap("(", join(ordered_args, ", "), ")")
 
 
 def fix_indentation_depth(query):
     """Make indentation use 4 spaces, rather than the 2 spaces GraphQL normally uses."""
-    lines = query.split('\n')
+    lines = query.split("\n")
     final_lines = []
 
     for line in lines:
         consecutive_spaces = 0
         for char in line:
-            if char == ' ':
+            if char == " ":
                 consecutive_spaces += 1
             else:
                 break
 
         if consecutive_spaces % 2 != 0:
-            raise AssertionError(u'Indentation was not a multiple of two: '
-                                 u'{}'.format(consecutive_spaces))
+            raise AssertionError(
+                u"Indentation was not a multiple of two: " u"{}".format(consecutive_spaces)
+            )
 
-        final_lines.append(('  ' * consecutive_spaces) + line[consecutive_spaces:])
+        final_lines.append(("  " * consecutive_spaces) + line[consecutive_spaces:])
 
-    return '\n'.join(final_lines)
+    return "\n".join(final_lines)
