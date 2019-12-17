@@ -46,7 +46,8 @@ def get_sqlalchemy_schema_info(
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
-    Return:
+
+    Returns:
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
     schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)

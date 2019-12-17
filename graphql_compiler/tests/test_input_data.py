@@ -2,11 +2,12 @@
 """Common GraphQL test inputs and expected outputs."""
 
 from collections import namedtuple
+from typing import Dict
 
 from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
 from ..compiler.compiler_frontend import OutputMetadata
-from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
 
 
 CommonTestData = namedtuple(
@@ -20,7 +21,7 @@ CommonTestData = namedtuple(
 )
 
 
-def immediate_output():  # noqa: D103
+def immediate_output() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -29,7 +30,7 @@ def immediate_output():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -39,7 +40,7 @@ def immediate_output():  # noqa: D103
     )
 
 
-def immediate_output_custom_scalars():  # noqa: D103
+def immediate_output_custom_scalars() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             birthday @output(out_name: "birthday")
@@ -50,7 +51,7 @@ def immediate_output_custom_scalars():  # noqa: D103
         "birthday": OutputMetadata(type=GraphQLDate, optional=False),
         "net_worth": OutputMetadata(type=GraphQLDecimal, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -60,7 +61,7 @@ def immediate_output_custom_scalars():  # noqa: D103
     )
 
 
-def immediate_output_with_custom_scalar_filter():  # noqa: D103
+def immediate_output_with_custom_scalar_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -82,7 +83,7 @@ def immediate_output_with_custom_scalar_filter():  # noqa: D103
     )
 
 
-def colocated_filter_and_tag():  # noqa: D103
+def colocated_filter_and_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Entity_Related {
@@ -95,7 +96,7 @@ def colocated_filter_and_tag():  # noqa: D103
     expected_output_metadata = {
         "related_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -105,7 +106,7 @@ def colocated_filter_and_tag():  # noqa: D103
     )
 
 
-def colocated_filter_with_differently_named_column_and_tag():  # noqa: D103
+def colocated_filter_with_differently_named_column_and_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Entity_Related {
@@ -118,7 +119,7 @@ def colocated_filter_with_differently_named_column_and_tag():  # noqa: D103
     expected_output_metadata = {
         "related_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -128,7 +129,7 @@ def colocated_filter_with_differently_named_column_and_tag():  # noqa: D103
     )
 
 
-def colocated_filter_and_tag_sharing_name_with_other_column():  # noqa: D103
+def colocated_filter_and_tag_sharing_name_with_other_column() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Entity_Related {
@@ -141,7 +142,7 @@ def colocated_filter_and_tag_sharing_name_with_other_column():  # noqa: D103
     expected_output_metadata = {
         "related_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -151,7 +152,7 @@ def colocated_filter_and_tag_sharing_name_with_other_column():  # noqa: D103
     )
 
 
-def colocated_out_of_order_filter_and_tag():  # noqa: D103
+def colocated_out_of_order_filter_and_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Entity_Related {
@@ -164,7 +165,7 @@ def colocated_out_of_order_filter_and_tag():  # noqa: D103
     expected_output_metadata = {
         "related_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -174,7 +175,7 @@ def colocated_out_of_order_filter_and_tag():  # noqa: D103
     )
 
 
-def multiple_filters():  # noqa: D103
+def multiple_filters() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: ">=", value: ["$lower_bound"])
@@ -198,7 +199,7 @@ def multiple_filters():  # noqa: D103
     )
 
 
-def traverse_and_output():  # noqa: D103
+def traverse_and_output() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Animal_ParentOf {
@@ -209,7 +210,7 @@ def traverse_and_output():  # noqa: D103
     expected_output_metadata = {
         "parent_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -219,7 +220,7 @@ def traverse_and_output():  # noqa: D103
     )
 
 
-def optional_traverse_after_mandatory_traverse():  # noqa: D103
+def optional_traverse_after_mandatory_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Animal_OfSpecies {
@@ -234,7 +235,7 @@ def optional_traverse_after_mandatory_traverse():  # noqa: D103
         "species_name": OutputMetadata(type=GraphQLString, optional=False),
         "child_name": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -244,7 +245,7 @@ def optional_traverse_after_mandatory_traverse():  # noqa: D103
     )
 
 
-def traverse_filter_and_output():  # noqa: D103
+def traverse_filter_and_output() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Animal_ParentOf @filter(op_name: "name_or_alias", value: ["$wanted"]) {
@@ -267,7 +268,7 @@ def traverse_filter_and_output():  # noqa: D103
     )
 
 
-def name_or_alias_filter_on_interface_type():  # noqa: D103
+def name_or_alias_filter_on_interface_type() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Entity_Related @filter(op_name: "name_or_alias", value: ["$wanted"]) {
@@ -290,7 +291,7 @@ def name_or_alias_filter_on_interface_type():  # noqa: D103
     )
 
 
-def output_source_and_complex_output():  # noqa: D103
+def output_source_and_complex_output() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: "=", value: ["$wanted"]) @output(out_name: "animal_name")
@@ -315,7 +316,7 @@ def output_source_and_complex_output():  # noqa: D103
     )
 
 
-def filter_on_optional_variable_equality():  # noqa: D103
+def filter_on_optional_variable_equality() -> CommonTestData:  # noqa: D103
     # The operand in the @filter directive originates from an optional block.
     graphql_input = """{
         Animal {
@@ -333,7 +334,7 @@ def filter_on_optional_variable_equality():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -343,7 +344,7 @@ def filter_on_optional_variable_equality():  # noqa: D103
     )
 
 
-def filter_on_optional_variable_name_or_alias():  # noqa: D103
+def filter_on_optional_variable_name_or_alias() -> CommonTestData:  # noqa: D103
     # The operand in the @filter directive originates from an optional block.
     graphql_input = """{
         Animal {
@@ -359,7 +360,7 @@ def filter_on_optional_variable_name_or_alias():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -369,7 +370,7 @@ def filter_on_optional_variable_name_or_alias():  # noqa: D103
     )
 
 
-def filter_in_optional_block():  # noqa: D103
+def filter_in_optional_block() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -397,7 +398,7 @@ def filter_in_optional_block():  # noqa: D103
     )
 
 
-def filter_in_optional_and_count():  # noqa: D103
+def filter_in_optional_and_count() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @output(out_name: "species_name")
@@ -426,7 +427,7 @@ def filter_in_optional_and_count():  # noqa: D103
     )
 
 
-def between_filter_on_simple_scalar():  # noqa: D103
+def between_filter_on_simple_scalar() -> CommonTestData:  # noqa: D103
     # The "between" filter emits different output depending on what the compared types are.
     # This test checks for correct code generation when the type is a simple scalar (a String).
     graphql_input = """{
@@ -451,7 +452,7 @@ def between_filter_on_simple_scalar():  # noqa: D103
     )
 
 
-def between_filter_on_date():  # noqa: D103
+def between_filter_on_date() -> CommonTestData:  # noqa: D103
     # The "between" filter emits different output depending on what the compared types are.
     # This test checks for correct code generation when the type is a custom scalar (Date).
     graphql_input = """{
@@ -476,7 +477,7 @@ def between_filter_on_date():  # noqa: D103
     )
 
 
-def between_filter_on_datetime():  # noqa: D103
+def between_filter_on_datetime() -> CommonTestData:  # noqa: D103
     # The "between" filter emits different output depending on what the compared types are.
     # This test checks for correct code generation when the type is a custom scalar (DateTime).
     graphql_input = """{
@@ -501,7 +502,7 @@ def between_filter_on_datetime():  # noqa: D103
     )
 
 
-def between_lowering_on_simple_scalar():  # noqa: D103
+def between_lowering_on_simple_scalar() -> CommonTestData:  # noqa: D103
     # The "between" filter emits different output depending on what the compared types are.
     # This test checks for correct code generation when the type is a simple scalar (a String).
     graphql_input = """{
@@ -527,7 +528,7 @@ def between_lowering_on_simple_scalar():  # noqa: D103
     )
 
 
-def between_lowering_with_extra_filters():  # noqa: D103
+def between_lowering_with_extra_filters() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: "<=", value: ["$upper"])
@@ -555,7 +556,7 @@ def between_lowering_with_extra_filters():  # noqa: D103
     )
 
 
-def no_between_lowering_on_simple_scalar():  # noqa: D103
+def no_between_lowering_on_simple_scalar() -> CommonTestData:  # noqa: D103
     # The following filters do not get lowered to a BETWEEN clause.
     # This is because the compiler has no way to decide which lower bound to use.
     # The parameters are not provided to the compiler.
@@ -584,7 +585,7 @@ def no_between_lowering_on_simple_scalar():  # noqa: D103
     )
 
 
-def complex_optional_variables():  # noqa: D103
+def complex_optional_variables() -> CommonTestData:  # noqa: D103
     # The operands in the @filter directives originate from an optional block.
     graphql_input = """{
         Animal {
@@ -616,7 +617,7 @@ def complex_optional_variables():  # noqa: D103
         "other_parent_fed_at": OutputMetadata(type=GraphQLDateTime, optional=True),
         "grandparent_fed_at": OutputMetadata(type=GraphQLDateTime, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -626,7 +627,7 @@ def complex_optional_variables():  # noqa: D103
     )
 
 
-def complex_optional_variables_with_starting_filter():  # noqa: D103
+def complex_optional_variables_with_starting_filter() -> CommonTestData:  # noqa: D103
     # The operands in the @filter directives originate from an optional block.
     graphql_input = """{
         Animal {
@@ -671,7 +672,7 @@ def complex_optional_variables_with_starting_filter():  # noqa: D103
     )
 
 
-def simple_fragment():  # noqa: D103
+def simple_fragment() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -690,7 +691,7 @@ def simple_fragment():  # noqa: D103
         "related_animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "related_animal_species": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -700,7 +701,7 @@ def simple_fragment():  # noqa: D103
     )
 
 
-def simple_union():  # noqa: D103
+def simple_union() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @output(out_name: "species_name")
@@ -715,7 +716,7 @@ def simple_union():  # noqa: D103
         "species_name": OutputMetadata(type=GraphQLString, optional=False),
         "food_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -725,7 +726,7 @@ def simple_union():  # noqa: D103
     )
 
 
-def filter_then_apply_fragment():  # noqa: D103
+def filter_then_apply_fragment() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @filter(op_name: "in_collection", value: ["$species"])
@@ -753,7 +754,7 @@ def filter_then_apply_fragment():  # noqa: D103
     )
 
 
-def filter_then_apply_fragment_with_multiple_traverses():  # noqa: D103
+def filter_then_apply_fragment_with_multiple_traverses() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @filter(op_name: "in_collection", value: ["$species"])
@@ -789,7 +790,7 @@ def filter_then_apply_fragment_with_multiple_traverses():  # noqa: D103
     )
 
 
-def filter_on_fragment_in_union():  # noqa: D103
+def filter_on_fragment_in_union() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @output(out_name: "species_name")
@@ -816,7 +817,7 @@ def filter_on_fragment_in_union():  # noqa: D103
     )
 
 
-def optional_on_union():  # noqa: D103
+def optional_on_union() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @output(out_name: "species_name")
@@ -831,7 +832,7 @@ def optional_on_union():  # noqa: D103
         "species_name": OutputMetadata(type=GraphQLString, optional=False),
         "food_name": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -841,7 +842,7 @@ def optional_on_union():  # noqa: D103
     )
 
 
-def typename_output():  # noqa: D103
+def typename_output() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             __typename @output(out_name: "base_cls")
@@ -854,7 +855,7 @@ def typename_output():  # noqa: D103
         "base_cls": OutputMetadata(type=GraphQLString, optional=False),
         "child_cls": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -864,7 +865,7 @@ def typename_output():  # noqa: D103
     )
 
 
-def typename_filter():  # noqa: D103
+def typename_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Entity {
             __typename @filter(op_name: "=", value: ["$base_cls"])
@@ -886,7 +887,7 @@ def typename_filter():  # noqa: D103
     )
 
 
-def simple_recurse():  # noqa: D103
+def simple_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Animal_ParentOf @recurse(depth: 1) {
@@ -897,7 +898,7 @@ def simple_recurse():  # noqa: D103
     expected_output_metadata = {
         "relation_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -907,7 +908,7 @@ def simple_recurse():  # noqa: D103
     )
 
 
-def traverse_then_recurse():  # noqa: D103
+def traverse_then_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -928,7 +929,7 @@ def traverse_then_recurse():  # noqa: D103
         "ancestor_name": OutputMetadata(type=GraphQLString, optional=False),
     }
 
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -938,7 +939,7 @@ def traverse_then_recurse():  # noqa: D103
     )
 
 
-def filter_then_traverse_and_recurse():  # noqa: D103
+def filter_then_traverse_and_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal @filter(op_name: "name_or_alias", value: ["$animal_name_or_alias"]) {
             name @output(out_name: "animal_name")
@@ -969,7 +970,7 @@ def filter_then_traverse_and_recurse():  # noqa: D103
     )
 
 
-def two_consecutive_recurses():  # noqa: D103
+def two_consecutive_recurses() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal @filter(op_name: "name_or_alias", value: ["$animal_name_or_alias"]) {
             name @output(out_name: "animal_name")
@@ -1004,7 +1005,7 @@ def two_consecutive_recurses():  # noqa: D103
     )
 
 
-def recurse_within_fragment():  # noqa: D103
+def recurse_within_fragment() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Food {
             name @output(out_name: "food_name")
@@ -1023,7 +1024,7 @@ def recurse_within_fragment():  # noqa: D103
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "relation_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1033,7 +1034,7 @@ def recurse_within_fragment():  # noqa: D103
     )
 
 
-def filter_within_recurse():  # noqa: D103
+def filter_within_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             out_Animal_ParentOf @recurse(depth: 3) {
@@ -1057,7 +1058,7 @@ def filter_within_recurse():  # noqa: D103
     )
 
 
-def recurse_with_immediate_type_coercion():  # noqa: D103
+def recurse_with_immediate_type_coercion() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             in_Entity_Related @recurse(depth: 4) {
@@ -1070,7 +1071,7 @@ def recurse_with_immediate_type_coercion():  # noqa: D103
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1080,7 +1081,7 @@ def recurse_with_immediate_type_coercion():  # noqa: D103
     )
 
 
-def recurse_with_immediate_type_coercion_and_filter():  # noqa: D103
+def recurse_with_immediate_type_coercion_and_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             in_Entity_Related @recurse(depth: 4) {
@@ -1106,7 +1107,7 @@ def recurse_with_immediate_type_coercion_and_filter():  # noqa: D103
     )
 
 
-def in_collection_op_filter_with_variable():  # noqa: D103
+def in_collection_op_filter_with_variable() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: "in_collection", value: ["$wanted"])
@@ -1126,7 +1127,7 @@ def in_collection_op_filter_with_variable():  # noqa: D103
     )
 
 
-def in_collection_op_filter_with_tag():  # noqa: D103
+def in_collection_op_filter_with_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1139,7 +1140,7 @@ def in_collection_op_filter_with_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1149,7 +1150,7 @@ def in_collection_op_filter_with_tag():  # noqa: D103
     )
 
 
-def in_collection_op_filter_with_optional_tag():  # noqa: D103
+def in_collection_op_filter_with_optional_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1164,7 +1165,7 @@ def in_collection_op_filter_with_optional_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1174,7 +1175,7 @@ def in_collection_op_filter_with_optional_tag():  # noqa: D103
     )
 
 
-def not_in_collection_op_filter_with_variable():  # noqa: D103
+def not_in_collection_op_filter_with_variable() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: "not_in_collection", value: ["$wanted"])
@@ -1194,7 +1195,7 @@ def not_in_collection_op_filter_with_variable():  # noqa: D103
     )
 
 
-def not_in_collection_op_filter_with_tag():  # noqa: D103
+def not_in_collection_op_filter_with_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1207,7 +1208,7 @@ def not_in_collection_op_filter_with_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1217,7 +1218,7 @@ def not_in_collection_op_filter_with_tag():  # noqa: D103
     )
 
 
-def not_in_collection_op_filter_with_optional_tag():  # noqa: D103
+def not_in_collection_op_filter_with_optional_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1232,7 +1233,7 @@ def not_in_collection_op_filter_with_optional_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1242,7 +1243,7 @@ def not_in_collection_op_filter_with_optional_tag():  # noqa: D103
     )
 
 
-def intersects_op_filter_with_variable():  # noqa: D103
+def intersects_op_filter_with_variable() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             alias @filter(op_name: "intersects", value: ["$wanted"])
@@ -1262,7 +1263,7 @@ def intersects_op_filter_with_variable():  # noqa: D103
     )
 
 
-def intersects_op_filter_with_tag():  # noqa: D103
+def intersects_op_filter_with_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1275,7 +1276,7 @@ def intersects_op_filter_with_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1285,7 +1286,7 @@ def intersects_op_filter_with_tag():  # noqa: D103
     )
 
 
-def intersects_op_filter_with_optional_tag():  # noqa: D103
+def intersects_op_filter_with_optional_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1300,7 +1301,7 @@ def intersects_op_filter_with_optional_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1310,7 +1311,7 @@ def intersects_op_filter_with_optional_tag():  # noqa: D103
     )
 
 
-def contains_op_filter_with_variable():  # noqa: D103
+def contains_op_filter_with_variable() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             alias @filter(op_name: "contains", value: ["$wanted"])
@@ -1332,7 +1333,7 @@ def contains_op_filter_with_variable():  # noqa: D103
     )
 
 
-def contains_op_filter_with_tag():  # noqa: D103
+def contains_op_filter_with_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name") @tag(tag_name: "name")
@@ -1344,7 +1345,7 @@ def contains_op_filter_with_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1354,7 +1355,7 @@ def contains_op_filter_with_tag():  # noqa: D103
     )
 
 
-def contains_op_filter_with_optional_tag():  # noqa: D103
+def contains_op_filter_with_optional_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1369,7 +1370,7 @@ def contains_op_filter_with_optional_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1379,7 +1380,7 @@ def contains_op_filter_with_optional_tag():  # noqa: D103
     )
 
 
-def not_contains_op_filter_with_variable():  # noqa: D103
+def not_contains_op_filter_with_variable() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             alias @filter(op_name: "not_contains", value: ["$wanted"])
@@ -1401,7 +1402,7 @@ def not_contains_op_filter_with_variable():  # noqa: D103
     )
 
 
-def not_contains_op_filter_with_tag():  # noqa: D103
+def not_contains_op_filter_with_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name") @tag(tag_name: "name")
@@ -1413,7 +1414,7 @@ def not_contains_op_filter_with_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1423,7 +1424,7 @@ def not_contains_op_filter_with_tag():  # noqa: D103
     )
 
 
-def not_contains_op_filter_with_optional_tag():  # noqa: D103
+def not_contains_op_filter_with_optional_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1438,7 +1439,7 @@ def not_contains_op_filter_with_optional_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1448,7 +1449,7 @@ def not_contains_op_filter_with_optional_tag():  # noqa: D103
     )
 
 
-def ends_with_op_filter():  # noqa: D103
+def ends_with_op_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: "ends_with", value: ["$wanted"])
@@ -1470,7 +1471,7 @@ def ends_with_op_filter():  # noqa: D103
     )
 
 
-def starts_with_op_filter():  # noqa: D103
+def starts_with_op_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: "starts_with", value: ["$wanted"])
@@ -1492,7 +1493,7 @@ def starts_with_op_filter():  # noqa: D103
     )
 
 
-def has_substring_op_filter():  # noqa: D103
+def has_substring_op_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @filter(op_name: "has_substring", value: ["$wanted"])
@@ -1514,7 +1515,7 @@ def has_substring_op_filter():  # noqa: D103
     )
 
 
-def has_substring_op_filter_with_optional_tag():  # noqa: D103
+def has_substring_op_filter_with_optional_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1529,7 +1530,7 @@ def has_substring_op_filter_with_optional_tag():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1539,7 +1540,7 @@ def has_substring_op_filter_with_optional_tag():  # noqa: D103
     )
 
 
-def has_edge_degree_op_filter():  # noqa: D103
+def has_edge_degree_op_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1565,7 +1566,7 @@ def has_edge_degree_op_filter():  # noqa: D103
     )
 
 
-def has_edge_degree_op_filter_with_optional():  # noqa: D103
+def has_edge_degree_op_filter_with_optional() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @output(out_name: "species_name")
@@ -1597,7 +1598,7 @@ def has_edge_degree_op_filter_with_optional():  # noqa: D103
     )
 
 
-def has_edge_degree_op_filter_with_optional_and_between():  # noqa: D103
+def has_edge_degree_op_filter_with_optional_and_between() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1632,7 +1633,7 @@ def has_edge_degree_op_filter_with_optional_and_between():  # noqa: D103
     )
 
 
-def has_edge_degree_op_filter_with_fold():  # noqa: D103
+def has_edge_degree_op_filter_with_fold() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @output(out_name: "species_name")
@@ -1664,7 +1665,7 @@ def has_edge_degree_op_filter_with_fold():  # noqa: D103
     )
 
 
-def is_null_op_filter_missing_value_argument():  # noqa: D103
+def is_null_op_filter_missing_value_argument() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -1672,7 +1673,7 @@ def is_null_op_filter_missing_value_argument():  # noqa: D103
         }
     }"""
     expected_output_metadata = {"name": OutputMetadata(type=GraphQLString, optional=False)}
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1682,7 +1683,7 @@ def is_null_op_filter_missing_value_argument():  # noqa: D103
     )
 
 
-def is_null_op_filter():  # noqa: D103
+def is_null_op_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -1690,7 +1691,7 @@ def is_null_op_filter():  # noqa: D103
         }
     }"""
     expected_output_metadata = {"name": OutputMetadata(type=GraphQLString, optional=False)}
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1700,7 +1701,7 @@ def is_null_op_filter():  # noqa: D103
     )
 
 
-def is_not_null_op_filter():  # noqa: D103
+def is_not_null_op_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -1708,7 +1709,7 @@ def is_not_null_op_filter():  # noqa: D103
         }
     }"""
     expected_output_metadata = {"name": OutputMetadata(type=GraphQLString, optional=False)}
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1718,7 +1719,7 @@ def is_not_null_op_filter():  # noqa: D103
     )
 
 
-def is_not_null_op_filter_missing_value_argument():  # noqa: D103
+def is_not_null_op_filter_missing_value_argument() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -1726,7 +1727,7 @@ def is_not_null_op_filter_missing_value_argument():  # noqa: D103
         }
     }"""
     expected_output_metadata = {"name": OutputMetadata(type=GraphQLString, optional=False)}
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1736,7 +1737,7 @@ def is_not_null_op_filter_missing_value_argument():  # noqa: D103
     )
 
 
-def fold_on_output_variable():  # noqa: D103
+def fold_on_output_variable() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1749,7 +1750,7 @@ def fold_on_output_variable():  # noqa: D103
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1759,7 +1760,7 @@ def fold_on_output_variable():  # noqa: D103
     )
 
 
-def fold_on_many_to_one_edge():  # noqa: D103
+def fold_on_many_to_one_edge() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1772,7 +1773,7 @@ def fold_on_many_to_one_edge():  # noqa: D103
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "homes_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1782,7 +1783,7 @@ def fold_on_many_to_one_edge():  # noqa: D103
     )
 
 
-def fold_same_edge_type_in_different_locations():  # noqa: D103
+def fold_same_edge_type_in_different_locations() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @ output(out_name: "animal_name")
@@ -1804,7 +1805,7 @@ def fold_same_edge_type_in_different_locations():  # noqa: D103
             type=GraphQLList(GraphQLString), optional=False
         ),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1814,7 +1815,7 @@ def fold_same_edge_type_in_different_locations():  # noqa: D103
     )
 
 
-def fold_on_two_output_variables():  # noqa: D103
+def fold_on_two_output_variables() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1830,7 +1831,7 @@ def fold_on_two_output_variables():  # noqa: D103
         "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
         "child_color_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1840,7 +1841,7 @@ def fold_on_two_output_variables():  # noqa: D103
     )
 
 
-def fold_after_traverse_no_output_on_root():  # noqa: D103
+def fold_after_traverse_no_output_on_root() -> CommonTestData:  # noqa: D103
     graphql_input = """{
                 Animal {
                     out_Animal_LivesIn {
@@ -1857,7 +1858,7 @@ def fold_after_traverse_no_output_on_root():  # noqa: D103
             type=GraphQLList(GraphQLString), optional=False
         ),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1867,7 +1868,7 @@ def fold_after_traverse_no_output_on_root():  # noqa: D103
     )
 
 
-def fold_after_traverse_different_types():  # noqa: D103
+def fold_after_traverse_different_types() -> CommonTestData:  # noqa: D103
     graphql_input = """{
             Animal {
                 name @output(out_name: "animal_name")
@@ -1884,7 +1885,7 @@ def fold_after_traverse_different_types():  # noqa: D103
             type=GraphQLList(GraphQLString), optional=False
         ),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1894,7 +1895,7 @@ def fold_after_traverse_different_types():  # noqa: D103
     )
 
 
-def fold_after_traverse():  # noqa: D103
+def fold_after_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1911,7 +1912,7 @@ def fold_after_traverse():  # noqa: D103
             type=GraphQLList(GraphQLString), optional=False
         ),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1921,7 +1922,7 @@ def fold_after_traverse():  # noqa: D103
     )
 
 
-def fold_and_traverse():  # noqa: D103
+def fold_and_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1938,7 +1939,7 @@ def fold_and_traverse():  # noqa: D103
             type=GraphQLList(GraphQLString), optional=False
         ),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1948,7 +1949,7 @@ def fold_and_traverse():  # noqa: D103
     )
 
 
-def fold_and_deep_traverse():  # noqa: D103
+def fold_and_deep_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1967,7 +1968,7 @@ def fold_and_deep_traverse():  # noqa: D103
             type=GraphQLList(GraphQLString), optional=False
         ),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -1977,7 +1978,7 @@ def fold_and_deep_traverse():  # noqa: D103
     )
 
 
-def traverse_and_fold_and_traverse():  # noqa: D103
+def traverse_and_fold_and_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -1996,7 +1997,7 @@ def traverse_and_fold_and_traverse():  # noqa: D103
             type=GraphQLList(GraphQLString), optional=False
         ),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2006,7 +2007,7 @@ def traverse_and_fold_and_traverse():  # noqa: D103
     )
 
 
-def multiple_outputs_in_same_fold():  # noqa: D103
+def multiple_outputs_in_same_fold() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2021,7 +2022,7 @@ def multiple_outputs_in_same_fold():  # noqa: D103
         "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
         "child_uuids_list": OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2031,7 +2032,7 @@ def multiple_outputs_in_same_fold():  # noqa: D103
     )
 
 
-def multiple_outputs_in_same_fold_and_traverse():  # noqa: D103
+def multiple_outputs_in_same_fold_and_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2050,7 +2051,7 @@ def multiple_outputs_in_same_fold_and_traverse():  # noqa: D103
         ),
         "sibling_and_self_uuids_list": OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2060,7 +2061,7 @@ def multiple_outputs_in_same_fold_and_traverse():  # noqa: D103
     )
 
 
-def multiple_folds():  # noqa: D103
+def multiple_folds() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2081,7 +2082,7 @@ def multiple_folds():  # noqa: D103
         "parent_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
         "parent_uuids_list": OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2091,7 +2092,7 @@ def multiple_folds():  # noqa: D103
     )
 
 
-def multiple_folds_and_traverse():  # noqa: D103
+def multiple_folds_and_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2120,7 +2121,7 @@ def multiple_folds_and_traverse():  # noqa: D103
         ),
         "sibling_and_self_uuids_list": OutputMetadata(type=GraphQLList(GraphQLID), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2130,7 +2131,7 @@ def multiple_folds_and_traverse():  # noqa: D103
     )
 
 
-def fold_date_and_datetime_fields():  # noqa: D103
+def fold_date_and_datetime_fields() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2147,7 +2148,7 @@ def fold_date_and_datetime_fields():  # noqa: D103
         "child_birthdays_list": OutputMetadata(type=GraphQLList(GraphQLDate), optional=False),
         "fed_at_datetimes_list": OutputMetadata(type=GraphQLList(GraphQLDateTime), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2157,7 +2158,7 @@ def fold_date_and_datetime_fields():  # noqa: D103
     )
 
 
-def coercion_to_union_base_type_inside_fold():  # noqa: D103
+def coercion_to_union_base_type_inside_fold() -> CommonTestData:  # noqa: D103
     # Given type_equivalence_hints = { Event: Union__BirthEvent__Event__FeedingEvent },
     # the coercion should be optimized away as a no-op.
     graphql_input = """{
@@ -2175,7 +2176,7 @@ def coercion_to_union_base_type_inside_fold():  # noqa: D103
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "important_events": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2185,7 +2186,7 @@ def coercion_to_union_base_type_inside_fold():  # noqa: D103
     )
 
 
-def no_op_coercion_inside_fold():  # noqa: D103
+def no_op_coercion_inside_fold() -> CommonTestData:  # noqa: D103
     # The type where the coercion is applied is already Entity, so the coercion is a no-op.
     graphql_input = """{
         Animal {
@@ -2202,7 +2203,7 @@ def no_op_coercion_inside_fold():  # noqa: D103
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "related_entities": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2212,7 +2213,7 @@ def no_op_coercion_inside_fold():  # noqa: D103
     )
 
 
-def no_op_coercion_with_eligible_subpath():  # noqa: D103
+def no_op_coercion_with_eligible_subpath() -> CommonTestData:  # noqa: D103
     # This test case has a no-op coercion and a preferred location inside an
     # eligible location. The no-op must be optimized away, or it will cause
     # problems when hiding the eligible non-preferred location.
@@ -2232,7 +2233,6 @@ def no_op_coercion_with_eligible_subpath():  # noqa: D103
             }
         }
     }"""
-    type_equivalence_hints = {}
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
@@ -2241,11 +2241,11 @@ def no_op_coercion_with_eligible_subpath():  # noqa: D103
         graphql_input=graphql_input,
         expected_output_metadata=expected_output_metadata,
         expected_input_metadata=expected_input_metadata,
-        type_equivalence_hints=type_equivalence_hints,
+        type_equivalence_hints=None,
     )
 
 
-def filter_within_fold_scope():  # noqa: D103
+def filter_within_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2272,7 +2272,7 @@ def filter_within_fold_scope():  # noqa: D103
     )
 
 
-def filter_on_fold_scope():  # noqa: D103
+def filter_on_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2298,7 +2298,7 @@ def filter_on_fold_scope():  # noqa: D103
     )
 
 
-def coercion_on_interface_within_fold_scope():  # noqa: D103
+def coercion_on_interface_within_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2313,7 +2313,7 @@ def coercion_on_interface_within_fold_scope():  # noqa: D103
         "name": OutputMetadata(type=GraphQLString, optional=False),
         "related_animals": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2323,7 +2323,7 @@ def coercion_on_interface_within_fold_scope():  # noqa: D103
     )
 
 
-def coercion_on_interface_within_fold_traversal():  # noqa: D103
+def coercion_on_interface_within_fold_traversal() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2342,7 +2342,7 @@ def coercion_on_interface_within_fold_traversal():  # noqa: D103
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "related_animal_species": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2352,7 +2352,7 @@ def coercion_on_interface_within_fold_traversal():  # noqa: D103
     )
 
 
-def coercion_on_union_within_fold_scope():  # noqa: D103
+def coercion_on_union_within_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2367,7 +2367,7 @@ def coercion_on_union_within_fold_scope():  # noqa: D103
         "name": OutputMetadata(type=GraphQLString, optional=False),
         "birth_events": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2377,7 +2377,7 @@ def coercion_on_union_within_fold_scope():  # noqa: D103
     )
 
 
-def coercion_filters_and_multiple_outputs_within_fold_scope():  # noqa: D103
+def coercion_filters_and_multiple_outputs_within_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2409,7 +2409,7 @@ def coercion_filters_and_multiple_outputs_within_fold_scope():  # noqa: D103
     )
 
 
-def coercion_filters_and_multiple_outputs_within_fold_traversal():  # noqa: D103
+def coercion_filters_and_multiple_outputs_within_fold_traversal() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2443,7 +2443,7 @@ def coercion_filters_and_multiple_outputs_within_fold_traversal():  # noqa: D103
     )
 
 
-def output_count_in_fold_scope():  # noqa: D103
+def output_count_in_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2458,7 +2458,7 @@ def output_count_in_fold_scope():  # noqa: D103
         "number_of_children": OutputMetadata(type=GraphQLInt, optional=False),
         "child_names": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2468,7 +2468,7 @@ def output_count_in_fold_scope():  # noqa: D103
     )
 
 
-def filter_count_with_runtime_parameter_in_fold_scope():  # noqa: D103
+def filter_count_with_runtime_parameter_in_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2494,7 +2494,7 @@ def filter_count_with_runtime_parameter_in_fold_scope():  # noqa: D103
     )
 
 
-def filter_count_with_tagged_parameter_in_fold_scope():  # noqa: D103
+def filter_count_with_tagged_parameter_in_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2511,7 +2511,7 @@ def filter_count_with_tagged_parameter_in_fold_scope():  # noqa: D103
         "name": OutputMetadata(type=GraphQLString, optional=False),
         "child_names": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2521,7 +2521,7 @@ def filter_count_with_tagged_parameter_in_fold_scope():  # noqa: D103
     )
 
 
-def filter_count_and_other_filters_in_fold_scope():  # noqa: D103
+def filter_count_and_other_filters_in_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2549,7 +2549,7 @@ def filter_count_and_other_filters_in_fold_scope():  # noqa: D103
     )
 
 
-def multiple_filters_on_count():  # noqa: D103
+def multiple_filters_on_count() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2577,7 +2577,7 @@ def multiple_filters_on_count():  # noqa: D103
     )
 
 
-def filter_on_count_with_nested_filter():  # noqa: D103
+def filter_on_count_with_nested_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Species {
             name @output(out_name: "name")
@@ -2605,7 +2605,7 @@ def filter_on_count_with_nested_filter():  # noqa: D103
     )
 
 
-def optional_and_traverse():  # noqa: D103
+def optional_and_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2622,7 +2622,7 @@ def optional_and_traverse():  # noqa: D103
         "child_name": OutputMetadata(type=GraphQLString, optional=True),
         "grandchild_name": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2632,7 +2632,7 @@ def optional_and_traverse():  # noqa: D103
     )
 
 
-def optional_and_traverse_after_filter():  # noqa: D103
+def optional_and_traverse_after_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2662,7 +2662,7 @@ def optional_and_traverse_after_filter():  # noqa: D103
     )
 
 
-def optional_and_deep_traverse():  # noqa: D103
+def optional_and_deep_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2683,7 +2683,7 @@ def optional_and_deep_traverse():  # noqa: D103
         "spouse_and_self_name": OutputMetadata(type=GraphQLString, optional=True),
         "spouse_species": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2693,7 +2693,7 @@ def optional_and_deep_traverse():  # noqa: D103
     )
 
 
-def traverse_and_optional_and_traverse():  # noqa: D103
+def traverse_and_optional_and_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2714,7 +2714,7 @@ def traverse_and_optional_and_traverse():  # noqa: D103
         "spouse_and_self_name": OutputMetadata(type=GraphQLString, optional=True),
         "spouse_and_self_species": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2724,7 +2724,7 @@ def traverse_and_optional_and_traverse():  # noqa: D103
     )
 
 
-def multiple_optional_traversals_with_starting_filter():  # noqa: D103
+def multiple_optional_traversals_with_starting_filter() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2762,7 +2762,7 @@ def multiple_optional_traversals_with_starting_filter():  # noqa: D103
     )
 
 
-def optional_traversal_and_optional_without_traversal():  # noqa: D103
+def optional_traversal_and_optional_without_traversal() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2796,7 +2796,7 @@ def optional_traversal_and_optional_without_traversal():  # noqa: D103
     )
 
 
-def coercion_on_interface_within_optional_traversal():  # noqa: D103
+def coercion_on_interface_within_optional_traversal() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -2815,7 +2815,7 @@ def coercion_on_interface_within_optional_traversal():  # noqa: D103
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
         "related_animal_species": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2825,7 +2825,7 @@ def coercion_on_interface_within_optional_traversal():  # noqa: D103
     )
 
 
-def filter_on_optional_traversal_equality():  # noqa: D103
+def filter_on_optional_traversal_equality() -> CommonTestData:  # noqa: D103
     # The operand in the @filter directive originates from an optional block.
     graphql_input = """{
         Animal {
@@ -2845,7 +2845,7 @@ def filter_on_optional_traversal_equality():  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2855,7 +2855,7 @@ def filter_on_optional_traversal_equality():  # noqa: D103
     )
 
 
-def filter_on_optional_traversal_name_or_alias():  # noqa: D103
+def filter_on_optional_traversal_name_or_alias() -> CommonTestData:  # noqa: D103
     # The operand in the @filter directive originates from an optional block.
     graphql_input = """{
         Animal {
@@ -2873,7 +2873,7 @@ def filter_on_optional_traversal_name_or_alias():  # noqa: D103
     expected_output_metadata = {
         "parent_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2883,7 +2883,7 @@ def filter_on_optional_traversal_name_or_alias():  # noqa: D103
     )
 
 
-def complex_optional_traversal_variables():  # noqa: D103
+def complex_optional_traversal_variables() -> CommonTestData:  # noqa: D103
     # The operands in the @filter directives originate from an optional block.
     graphql_input = """{
         Animal {
@@ -2928,7 +2928,7 @@ def complex_optional_traversal_variables():  # noqa: D103
     )
 
 
-def simple_optional_recurse():  # noqa: D103
+def simple_optional_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2945,7 +2945,7 @@ def simple_optional_recurse():  # noqa: D103
         "child_name": OutputMetadata(type=GraphQLString, optional=True),
         "self_and_ancestor_name": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2955,7 +2955,7 @@ def simple_optional_recurse():  # noqa: D103
     )
 
 
-def multiple_traverse_within_optional():  # noqa: D103
+def multiple_traverse_within_optional() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")
@@ -2976,7 +2976,7 @@ def multiple_traverse_within_optional():  # noqa: D103
         "grandchild_name": OutputMetadata(type=GraphQLString, optional=True),
         "child_feeding_time": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -2986,7 +2986,7 @@ def multiple_traverse_within_optional():  # noqa: D103
     )
 
 
-def optional_and_fold():  # noqa: D103
+def optional_and_fold() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -3003,7 +3003,7 @@ def optional_and_fold():  # noqa: D103
         "parent_name": OutputMetadata(type=GraphQLString, optional=True),
         "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -3013,7 +3013,7 @@ def optional_and_fold():  # noqa: D103
     )
 
 
-def fold_and_optional():  # noqa: D103
+def fold_and_optional() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -3030,7 +3030,7 @@ def fold_and_optional():  # noqa: D103
         "parent_name": OutputMetadata(type=GraphQLString, optional=True),
         "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -3040,7 +3040,7 @@ def fold_and_optional():  # noqa: D103
     )
 
 
-def optional_traversal_and_fold_traversal():  # noqa: D103
+def optional_traversal_and_fold_traversal() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -3061,7 +3061,7 @@ def optional_traversal_and_fold_traversal():  # noqa: D103
         "grandparent_name": OutputMetadata(type=GraphQLString, optional=True),
         "grandchild_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -3071,7 +3071,7 @@ def optional_traversal_and_fold_traversal():  # noqa: D103
     )
 
 
-def fold_traversal_and_optional_traversal():  # noqa: D103
+def fold_traversal_and_optional_traversal() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -3092,7 +3092,7 @@ def fold_traversal_and_optional_traversal():  # noqa: D103
         "grandparent_name": OutputMetadata(type=GraphQLString, optional=True),
         "grandchild_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -3102,7 +3102,7 @@ def fold_traversal_and_optional_traversal():  # noqa: D103
     )
 
 
-def between_lowering():  # noqa: D103
+def between_lowering() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             uuid @filter(op_name: "between", value: ["$uuid_lower", "$uuid_upper"])
@@ -3127,7 +3127,7 @@ def between_lowering():  # noqa: D103
     )
 
 
-def coercion_and_filter_with_tag():  # noqa: D103
+def coercion_and_filter_with_tag() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "origin") @tag(tag_name: "related")
@@ -3143,7 +3143,7 @@ def coercion_and_filter_with_tag():  # noqa: D103
         "origin": OutputMetadata(type=GraphQLString, optional=False),
         "related_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -3153,7 +3153,7 @@ def coercion_and_filter_with_tag():  # noqa: D103
     )
 
 
-def nested_optional_and_traverse():  # noqa: D103
+def nested_optional_and_traverse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -3174,7 +3174,7 @@ def nested_optional_and_traverse():  # noqa: D103
         "spouse_and_self_name": OutputMetadata(type=GraphQLString, optional=True),
         "spouse_species": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -3184,7 +3184,7 @@ def nested_optional_and_traverse():  # noqa: D103
     )
 
 
-def complex_nested_optionals():  # noqa: D103
+def complex_nested_optionals() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "animal_name")
@@ -3227,7 +3227,7 @@ def complex_nested_optionals():  # noqa: D103
         "grandparent_name": OutputMetadata(type=GraphQLString, optional=True),
         "grandparent_species": OutputMetadata(type=GraphQLString, optional=True),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     return CommonTestData(
         graphql_input=graphql_input,
@@ -3237,7 +3237,7 @@ def complex_nested_optionals():  # noqa: D103
     )
 
 
-def recursive_field_type_is_subtype_of_parent_field():  # noqa: D103
+def recursive_field_type_is_subtype_of_parent_field() -> CommonTestData:  # noqa: D103
     """Ensure that recursion is allowed along an edge linked to a supertype of the parent field."""
     graphql_input = """{
         BirthEvent {
@@ -3251,7 +3251,7 @@ def recursive_field_type_is_subtype_of_parent_field():  # noqa: D103
     expected_output_metadata = {
         "related_event_name": OutputMetadata(type=GraphQLString, optional=False),
     }
-    expected_input_metadata = {}
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
     type_equivalence_hints = {
         "Event": "Union__BirthEvent__Event__FeedingEvent",

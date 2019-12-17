@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import Any, Dict
 import unittest
 
 import pytest
@@ -23,8 +24,8 @@ from ..test_helpers import generate_schema_graph
 class QueryPaginationTests(unittest.TestCase):
     """Test the query pagination module."""
 
-    def test_pagination_planning_basic(self):
-        schema_graph = generate_schema_graph(self.orientdb_client)
+    def test_pagination_planning_basic(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
@@ -53,9 +54,9 @@ class QueryPaginationTests(unittest.TestCase):
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def test_basic_pagination(self):
+    def test_basic_pagination(self) -> None:
         """Ensure a basic pagination query is handled correctly."""
-        schema_graph = generate_schema_graph(self.orientdb_client)
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
@@ -64,7 +65,7 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "animal")
             }
         }"""
-        parameters = {}
+        parameters: Dict[str, Any] = {}
 
         count_data = {
             "Animal": 4,

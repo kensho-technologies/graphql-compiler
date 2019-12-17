@@ -26,7 +26,7 @@ Neo4j Python client called :code:`neo4j_client`:
 
 .. code:: python
 
-    compilation_result = compile_graphql_to_cypher(
-        schema, graphql_query, type_equivalence_hints=type_equivalence_hints)
+    common_schema_info = CommonSchemaInfo(schema, type_equivalence_hints)
+    compilation_result = compile_graphql_to_cypher(common_schema_info, graphql_query)
     with neo4j_client.driver.session() as session:
         result = session.run(compilation_result.query, parameters)
