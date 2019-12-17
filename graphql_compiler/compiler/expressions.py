@@ -10,12 +10,12 @@ from sqlalchemy.dialects.postgresql.base import PGDialect
 
 from . import cypher_helpers, sqlalchemy_extensions
 from ..exceptions import GraphQLCompilationError
+from ..global_utils import is_same_type
 from ..schema import (
     ALL_SUPPORTED_META_FIELDS, COUNT_META_FIELD_NAME, TYPENAME_META_FIELD_NAME, GraphQLDate,
     GraphQLDateTime
 )
 from .compiler_entities import Expression
-from ..global_utils import is_same_type
 from .helpers import (
     STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation, Location,
     ensure_unicode_string, is_graphql_type, safe_or_special_quoted_string, strip_non_null_from_type,

@@ -21,7 +21,7 @@ class TestRenameSchema(unittest.TestCase):
             RenameSchemaTypesVisitor.rename_types,
         ]
         all_types = set([
-            snake_to_camel(node_type) + "Node"
+            snake_to_camel(node_type) + 'Node'
             for node_type in all_types_snake_case
         ])
         type_sets_union = set()

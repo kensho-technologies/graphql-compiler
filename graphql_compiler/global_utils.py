@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+from graphql import GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
-from graphql import GraphQLNamedType, GraphQLList, GraphQLNonNull
 
 
 def merge_non_overlapping_dicts(merge_target, new_data):

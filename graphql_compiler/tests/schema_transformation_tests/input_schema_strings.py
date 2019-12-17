@@ -7,9 +7,9 @@ class InputSchemaStrings(object):
         schema {
           query: SchemaQuery
         }
-        
+
         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-        
+
         type Human {
           id: String
         }
@@ -112,7 +112,7 @@ class InputSchemaStrings(object):
         }
 
         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-        
+
         type Human {
           id: String
           birthday: Date
@@ -302,7 +302,7 @@ class InputSchemaStrings(object):
         schema {
           query: SchemaQuery
         }
-        
+
         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         interface Individual {

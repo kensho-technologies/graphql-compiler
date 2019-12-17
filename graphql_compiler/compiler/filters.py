@@ -7,6 +7,7 @@ from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..global_utils import is_same_type
 from ..schema import is_vertex_field_name
 from .helpers import (
     get_uniquely_named_objects_by_name, is_runtime_parameter, is_tagged_parameter,
@@ -14,8 +15,6 @@ from .helpers import (
     validate_tagged_argument_name
 )
 from .metadata import FilterInfo
-
-from ..global_utils import is_same_type
 
 
 def scalar_leaf_only(operator):

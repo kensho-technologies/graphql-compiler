@@ -60,7 +60,7 @@ SCHEMA_TEXT = '''
     directive @macro_edge on FIELD_DEFINITION
 
     directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-    
+
     type Animal implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]

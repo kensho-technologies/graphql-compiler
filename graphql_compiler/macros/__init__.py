@@ -4,7 +4,7 @@ from collections import namedtuple
 from graphql import parse
 from graphql.language.ast import (
     DirectiveNode, DocumentNode, FieldDefinitionNode, InterfaceTypeDefinitionNode, ListTypeNode,
-    NameNode, NamedTypeNode, ObjectTypeDefinitionNode
+    NamedTypeNode, NameNode, ObjectTypeDefinitionNode
 )
 from graphql.language.printer import print_ast
 from graphql.pyutils import FrozenList

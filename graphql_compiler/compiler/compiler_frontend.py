@@ -71,6 +71,7 @@ from ..ast_manipulation import (
     get_ast_field_name, get_only_query_definition, get_only_selection_from_ast, safe_parse_graphql
 )
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..global_utils import is_same_type
 from ..schema import COUNT_META_FIELD_NAME, is_vertex_field_name
 from .context_helpers import (
     get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
@@ -85,7 +86,6 @@ from .directive_helpers import (
     validate_vertex_field_directive_in_context, validate_vertex_field_directive_interactions
 )
 from .filters import process_filter_directive
-from ..global_utils import is_same_type
 from .helpers import (
     FoldScopeLocation, Location, get_edge_direction_and_name, get_field_type_from_schema,
     get_parameter_name, get_uniquely_named_objects_by_name, get_vertex_field_type, invert_dict,

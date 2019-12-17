@@ -118,8 +118,14 @@ def merge_schemas(schema_id_to_ast, cross_schema_edges, type_equivalence_hints=N
 
     if type_equivalence_hints is None:
         type_equivalence_hints = {}
-    merged_schema_ast = _add_cross_schema_edges(merged_schema_ast, type_name_to_schema_id, scalars,
-                            cross_schema_edges, type_equivalence_hints, query_type)
+    merged_schema_ast = _add_cross_schema_edges(
+        merged_schema_ast,
+        type_name_to_schema_id,
+        scalars,
+        cross_schema_edges,
+        type_equivalence_hints,
+        query_type
+    )
 
     return MergedSchemaDescriptor(
         schema_ast=merged_schema_ast,
@@ -290,8 +296,8 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
         merged_schema_ast: DocumentNode, AST representing a schema.
 
     Returns:
-        new_existing_directives: Dict[str, DirectiveDefinitionNode], existing_directives updated with
-                                 the directive.
+        new_existing_directives: Dict[str, DirectiveDefinitionNode], existing_directives updated
+                                 with the directive.
         new_merged_schema_ast: DocumentNode, merged_schema_ast with new directive added to its
                                definitions.
     """
