@@ -699,7 +699,6 @@ def _get_query_document(root_vertex_field_name, root_selections):
                         FieldNode(
                             name=NameNode(value=root_vertex_field_name),
                             selection_set=SelectionSetNode(selections=root_selections,),
-
                             directives=[],
                         )
                     ]

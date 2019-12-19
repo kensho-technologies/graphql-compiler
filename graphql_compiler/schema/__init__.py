@@ -228,8 +228,7 @@ MacroEdgeDefinitionDirective = GraphQLDirective(
             (
                 "name",
                 GraphQLArgument(
-                    type_=GraphQLNonNull(GraphQLString),
-                    description="Name of the macro edge.",
+                    type_=GraphQLNonNull(GraphQLString), description="Name of the macro edge.",
                 ),
             ),
         ]
@@ -249,10 +248,7 @@ StitchDirective = GraphQLDirective(
     args=OrderedDict(
         [
             ("source_field", GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",)),
-            (
-                "sink_field",
-                GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",),
-            ),
+            ("sink_field", GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",),),
         ]
     ),
     locations=[DirectiveLocation.FIELD_DEFINITION],

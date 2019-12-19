@@ -213,7 +213,6 @@ def get_copy_of_node_with_new_name(node, new_name):
             "NamedTypeNode",
             "ObjectTypeDefinitionNode",
             "UnionTypeDefinitionNode",
-
         )
     )
     if node_type not in allowed_types:

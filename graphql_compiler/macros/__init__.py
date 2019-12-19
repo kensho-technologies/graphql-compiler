@@ -229,7 +229,7 @@ def get_schema_with_macros(macro_registry):
         else:
             new_definitions.append(definition)
 
-    new_schema_ast = DocumentNode(definitions=new_definitions, loc=schema_ast.loc)
+    new_schema_ast = DocumentNode(definitions=new_definitions)
     return build_ast_schema(new_schema_ast)
 
 

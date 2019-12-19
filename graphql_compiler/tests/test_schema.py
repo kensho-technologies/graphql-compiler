@@ -32,16 +32,16 @@ class SchemaTests(unittest.TestCase):
             # double line break between GraphQLArguments. The not space character is retained and
             # reattached to the rest of the line.
             split_schema_lines = [
-                line.strip()
-                for line
-                in re.split("\n\n([^ ])", print_schema(fake_schema))]
+                line.strip() for line in re.split("\n\n([^ ])", print_schema(fake_schema))
+            ]
 
             # Reattach the deliminator's character to the rest of the line. The first line does
             # not have a separated character from regular expression splitting.
             schema_lines = [split_schema_lines[0]] + [
                 deliminator_character + line
-                for deliminator_character, line
-                in zip(split_schema_lines[1::2], split_schema_lines[2::2])
+                for deliminator_character, line in zip(
+                    split_schema_lines[1::2], split_schema_lines[2::2]
+                )
             ]
 
             return {line for line in schema_lines if line.startswith("directive")}
