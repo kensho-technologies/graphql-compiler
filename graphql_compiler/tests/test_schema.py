@@ -3,6 +3,7 @@
 from collections import OrderedDict
 from datetime import date, datetime
 from decimal import Decimal
+import re
 import unittest
 
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
@@ -26,13 +27,25 @@ class SchemaTests(unittest.TestCase):
             )
             fake_schema = GraphQLSchema(fake_query_type, directives=directives)
 
-            schema_lines = [line.strip() for line in print_schema(fake_schema).split("\n")]
+            # Split schema on double line breaks where the following character is not a space.
+            # It is not possible to simply split on double line breaks because print_schema puts a
+            # double line break between GraphQLArguments. The not space character is retained and
+            # reattached to the rest of the line.
+            split_schema_lines = [
+                line.strip()
+                for line
+                in re.split("\n\n([^ ])", print_schema(fake_schema))]
+
+            # Reattach the deliminator's character to the rest of the line. The first line does
+            # not have a separated character from regular expression splitting.
+            schema_lines = [split_schema_lines[0]] + [
+                deliminator_character + line
+                for deliminator_character, line
+                in zip(split_schema_lines[1::2], split_schema_lines[2::2])
+            ]
 
             return {line for line in schema_lines if line.startswith("directive")}
 
-        # TODO:(selene) this test fails because of the way print_schema was updated. The startswith
-        # directive trick no longer works and the descriptions are printed as a part of the schema
-        # which do not match.
         test_directives = _get_directives_in_string_form(get_schema().directives)
         actual_directives = _get_directives_in_string_form(schema.DIRECTIVES)
         self.assertEqual(test_directives, actual_directives)

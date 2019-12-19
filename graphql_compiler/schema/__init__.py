@@ -251,7 +251,7 @@ StitchDirective = GraphQLDirective(
             ("source_field", GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",)),
             (
                 "sink_field",
-                GraphQLArgument(type_=GraphQLList(GraphQLNonNull(GraphQLString)), description="",),
+                GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",),
             ),
         ]
     ),

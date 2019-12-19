@@ -60,17 +60,35 @@ SCHEMA_TEXT = """
         query: RootSchemaQuery
     }
 
-    directive @filter(op_name: String!, value: [String!]) repeatable on FIELD | INLINE_FRAGMENT
+    directive @filter(
+        \"\"\"Name of the filter operation to perform.\"\"\"
+        op_name: String!
 
-    directive @tag(tag_name: String!) on FIELD
+        \"\"\"List of string operands for the operator.\"\"\"
+        value: [String!]
+    ) repeatable on FIELD | INLINE_FRAGMENT
 
-    directive @output(out_name: String!) on FIELD
+    directive @tag(
+        \"\"\"Name to apply to the given property field.\"\"\"
+        tag_name: String!
+    ) on FIELD
+
+    directive @output(
+        \"\"\"What to designate the output field generated from this property field.\"\"\"
+        out_name: String!
+    ) on FIELD
 
     directive @output_source on FIELD
 
     directive @optional on FIELD
 
-    directive @recurse(depth: Int!) on FIELD
+    directive @recurse(
+        \"\"\"
+        Recurse up to this many times on this edge. A depth of 1 produces the current
+        vertex and its immediate neighbors along the given edge.
+        \"\"\"
+        depth: Int!
+    ) on FIELD
 
     directive @fold on FIELD
 
@@ -113,10 +131,31 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
+    \"\"\"
+    The `Date` scalar type represents day-accuracy date objects.Values are
+    serialized following the ISO-8601 datetime format specification, for example
+    "2017-03-21". The year, month and day fields must be included, and the format
+    followed exactly, or the behavior is undefined.
+    \"\"\"
     scalar Date
 
+    \"\"\"
+    The `DateTime` scalar type represents timezone-aware second-accuracy
+    timestamps.Values are serialized following the ISO-8601 datetime format
+    specification, for example "2017-03-21T12:34:56+00:00". All of these fields must
+    be included, including the seconds and the time zone, and the format followed
+    exactly, or the behavior is undefined.
+    \"\"\"
     scalar DateTime
 
+    \"\"\"
+    The `Decimal` scalar type is an arbitrary-precision decimal number object useful
+    for representing values that should never be rounded, such as currency amounts.
+    Values are allowed to be transported as either a native Decimal type, if the
+    underlying transport allows that, or serialized as strings in decimal format,
+    without thousands separators and using a "." as the decimal separator: for
+    example, "12345678.012345".
+    \"\"\"
     scalar Decimal
 
     interface Entity {
