@@ -151,7 +151,7 @@ def _get_basic_schema_ast(query_type):
         query_type: str, name of the query type for the schema
 
     Returns:
-        Document, representing a nearly blank schema
+        DocumentNode, representing a nearly blank schema
     """
     blank_ast = ast_types.DocumentNode(
         definitions=[
@@ -194,12 +194,14 @@ def _accumulate_types(
         current_ast: DocumentNode, representing the schema being merged into merged_schema_ast
 
     Returns:
-        new_merged_schema_ast: DocumentNode, updated version of merged_schema_ast with current_ast
-                               incorporated.
-        type_name_to_schema_id: Dict[str, str], updated version of type_name_to_schema_id input.
-        scalars: Set[str], potentially updated version of scalars input.
-        directives: Dict[str, DirectiveDefinitionNode], potentially updated version of directives
-                    input.
+        tuple (new_merged_schema_ast, type_name_to_schema_id, scalars, directives) with the
+        following information:
+            new_merged_schema_ast: DocumentNode, updated version of merged_schema_ast with
+                                   current_ast incorporated.
+            type_name_to_schema_id: Dict[str, str], updated version of type_name_to_schema_id input.
+            scalars: Set[str], potentially updated version of scalars input.
+            directives: Dict[str, DirectiveDefinitionNode], potentially updated version of
+                        directives input.
 
     Raises:
         - ValueError if the schema identifier is not a nonempty string of alphanumeric
@@ -312,10 +314,11 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
         merged_schema_ast: DocumentNode, AST representing a schema.
 
     Returns:
-        new_existing_directives: Dict[str, DirectiveDefinitionNode], existing_directives updated
-                                 with the directive.
-        new_merged_schema_ast: DocumentNode, merged_schema_ast with new directive added to its
-                               definitions.
+        tuple (new_existing_directives, new_merged_schema_ast) with the following information:
+            new_existing_directives: Dict[str, DirectiveDefinitionNode], existing_directives updated
+                                     with the directive.
+            new_merged_schema_ast: DocumentNode, merged_schema_ast with new directive added to its
+                                   definitions.
     """
     directive_name = directive.name.value
     if directive_name in existing_directives:
@@ -350,9 +353,11 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
         merged_schema_ast: DocumentNode, AST representing a schema.
 
     Returns:
-        new_existing_scalars: Set[str], existing_scalars updated with the name of the scalar added.
-        new_merged_schema_ast: DocumentNode: merged_schema_ast with new scalar added to its
-                               definitions.
+        tuple (new_existing_scalars, new_merged_schema_ast) with the following information:
+            new_existing_scalars: Set[str], existing_scalars updated with the name of the scalar
+                                  added.
+            new_merged_schema_ast: DocumentNode: merged_schema_ast with new scalar added to its
+                                   definitions.
     """
     scalar_name = scalar.name.value
     if scalar_name in existing_scalars:
@@ -394,10 +399,11 @@ def _process_generic_type_definition(
         merged_schema_ast: DocumentNode, AST representing a schema.
 
     Returns:
-        new_type_name_to_schema_id: Dict[str, str], type_name_to_schema_id updated with the
-                                    new generic_type.
-        new_merged_schema_ast: DocumentNode, merged_schema_ast with new generic_type added to
-                               its definitions.
+        tuple (new_type_name_to_schema_id, new_merged_schema_ast) with the following information:
+            new_type_name_to_schema_id: Dict[str, str], type_name_to_schema_id updated with the
+                                        new generic_type.
+            new_merged_schema_ast: DocumentNode, merged_schema_ast with new generic_type added to
+                                   its definitions.
     """
     type_name = generic_type.name.value
     if type_name in existing_scalars:
@@ -450,8 +456,7 @@ def _add_cross_schema_edges(
 
     Args:
         schema_ast: DocumentNode, representing a schema, satisfying various structural requirements
-                    as demanded by `check_ast_schema_is_valid` in utils.py. It is modified by
-                    this function
+                    as demanded by `check_ast_schema_is_valid` in utils.py.
         type_name_to_schema_id: Dict[str, str], mapping type name to the id of the schema that
                                 the type is from. Contains all Interface, Object, Union, and
                                 Enum types
@@ -466,6 +471,9 @@ def _add_cross_schema_edges(
                                 interface in the key is the most-derived common supertype
                                 of every GraphQL type in the "value" GraphQL union
         query_type: str, name of the query type in the merged schema
+
+    Returns:
+        DocumentNode, representing the schema_ast with added edges from cross_schema_edges
 
     Raises:
         - SchemaNameConflictError if any cross-schema edge name causes a name conflict with
@@ -778,8 +786,7 @@ def _add_edge_field(
                    or 'in')
 
     Returns:
-        new_source_type_node: (Interface/Object)TypeDefinitionNode, updated version of
-                              source_type_node.
+        (Interface/Object)TypeDefinitionNode, updated version of source_type_node.
 
     Raises:
         - SchemaNameConflictError if the new cross-schema edge name causes a name conflict with

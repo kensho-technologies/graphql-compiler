@@ -135,7 +135,7 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
     base_ast = get_only_selection_from_ast(definition_ast, GraphQLInvalidMacroError)
 
     base_start_type_name = get_ast_field_name(base_ast)
-    query_type = macro_registry.schema_without_macros.to_kwargs()["query"]
+    query_type = macro_registry.schema_without_macros.query_type
     base_start_type = query_type.fields[base_start_type_name].type
     tag_names = get_all_tag_names(base_ast)
 

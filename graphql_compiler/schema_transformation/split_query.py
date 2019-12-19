@@ -602,7 +602,6 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
     """
     new_field_directives = []
 
-
     # Transfer directives from existing field of the same name
     if existing_field is not None:
         # Existing field, add all its directives
@@ -642,13 +641,16 @@ def _get_out_name_optionally_add_output(field, name_assigner):
     """Return out_name of @output on field, creating new @output if needed.
 
     Args:
-        field: FieldNode object, whose directives we may modify by adding an @output directive
+        field: FieldNode, a field that may need an added an @output directive
         name_assigner: IntermediateOutNameAssigner, object used to generate and keep track of
                        names of newly created @output directives
 
     Returns:
-        str, name of the out_name of the @output directive, either pre-existing or newly
-        generated
+        tuple of (field, out_name) with the following information:
+            field: FieldNode, either the original field or a new FieldNode that has the same
+                   properties as the original field, but with an added @output directive
+            out_name: str, name of the out_name of the @output directive, either pre-existing or
+                      newly generated
     """
     # Check for existing directive
     output_directive = try_get_ast_by_name_and_type(

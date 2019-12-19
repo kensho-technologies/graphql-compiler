@@ -15,12 +15,11 @@ from .input_schema_strings import InputSchemaStrings as ISS
 class TestRenameSchema(unittest.TestCase):
     def test_rename_visitor_type_coverage(self):
         """Check that all types are covered without overlap."""
-        all_types_snake_case = set(ast_type for ast_type in QUERY_DOCUMENT_KEYS)
         type_sets = [
             RenameSchemaTypesVisitor.noop_types,
             RenameSchemaTypesVisitor.rename_types,
         ]
-        all_types = set([snake_to_camel(node_type) + "Node" for node_type in all_types_snake_case])
+        all_types = {snake_to_camel(node_type) + "Node" for node_type in QUERY_DOCUMENT_KEYS}
         type_sets_union = set()
         for type_set in type_sets:
             self.assertTrue(type_sets_union.isdisjoint(type_set))

@@ -229,7 +229,7 @@ MacroEdgeDefinitionDirective = GraphQLDirective(
                 "name",
                 GraphQLArgument(
                     type_=GraphQLNonNull(GraphQLString),
-                    description="Name of the filter operation to perform.",
+                    description="Name of the macro edge.",
                 ),
             ),
         ]
@@ -243,7 +243,7 @@ MacroEdgeTargetDirective = GraphQLDirective(
     locations=[DirectiveLocation.FIELD, DirectiveLocation.INLINE_FRAGMENT,],
 )
 
-# TODO(selene): fill in descriptions and comment
+# TODO(selene): comment for the stitch directive
 StitchDirective = GraphQLDirective(
     name="stitch",
     args=OrderedDict(

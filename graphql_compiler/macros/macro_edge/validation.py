@@ -66,19 +66,19 @@ def _validate_ast_with_builtin_graphql_validation(schema, ast):
 
 def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives):
     """Validate that macro definition and target directives appear once in the ast."""
-    for directive_definition in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
-        macro_data = macro_directives.get(directive_definition, None)
+    for directive_name in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
+        macro_data = macro_directives.get(directive_name, None)
         if not macro_data:
             raise GraphQLInvalidMacroError(
                 u'Required macro edge directive "@{}" was not found anywhere within the supplied '
-                u"macro edge definition GraphQL.".format(directive_definition)
+                u"macro edge definition GraphQL.".format(directive_name)
             )
 
         if len(macro_data) > 1:
             raise GraphQLInvalidMacroError(
                 u'Required macro edge directive "@{}" was unexpectedly present more than once in '
                 u"the supplied macro edge definition GraphQL. It was found {} times.".format(
-                    directive_definition, len(macro_data)
+                    directive_name, len(macro_data)
                 )
             )
 
@@ -275,7 +275,7 @@ def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_nam
 def _get_minimal_query_ast_from_macro_ast(macro_ast):
     """Get a query that should successfully compile to IR if the macro is valid."""
     ast_without_macro_directives = remove_directives_from_ast(
-        macro_ast, {directive for directive in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION}
+        macro_ast, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
     )
 
     # We will add this output directive to make the ast a valid query
@@ -291,7 +291,7 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
     # Shallow copy everything on the path to the first level selection list
     query_ast = copy(ast_without_macro_directives)
     root_level_selection = copy(get_only_selection_from_ast(query_ast, GraphQLInvalidMacroError))
-    first_level_selections = list(copy(root_level_selection.selection_set.selections))
+    first_level_selections = list(root_level_selection.selection_set.selections)
 
     # Add an output to a new or existing __typename field
     existing_typename_field = None

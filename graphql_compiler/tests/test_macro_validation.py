@@ -133,6 +133,7 @@ class MacroValidationTests(unittest.TestCase):
             macro_registry = get_empty_test_macro_registry()
             with self.assertRaises(GraphQLInvalidMacroError):
                 register_macro_edge(macro_registry, macro_edge_definition, args)
+
     def test_macro_with_target_inside_fold(self) -> None:
         macro_edge_definition = """{
             Animal @macro_edge_definition(name: "out_Animal_GrandparentOf_Invalid") {

@@ -21,6 +21,7 @@ def validate_schema_and_query_ast(schema, query_ast):
         list containing schema and/or query validation errors
     """
     core_graphql_errors = validate(schema, query_ast)
+
     # The following directives appear in the core-graphql library, but are not supported by the
     # GraphQL compiler.
     unsupported_default_directives = frozenset(
@@ -89,7 +90,7 @@ def validate_schema_and_query_ast(schema, query_ast):
                 frozenset(six.viewkeys(directive.args)),
             ]
         )
-        for directive in schema.to_kwargs()["directives"]
+        for directive in schema.directives
     }
 
     # Directives missing from the actual directives provided.

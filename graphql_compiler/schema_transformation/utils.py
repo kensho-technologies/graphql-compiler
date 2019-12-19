@@ -113,7 +113,7 @@ def get_query_type_name(schema):
     Returns:
         str, name of the query type (e.g. RootSchemaQuery)
     """
-    return schema.to_kwargs()["query"].name
+    return schema.query_type.name
 
 
 def get_scalar_names(schema):
@@ -238,7 +238,6 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         {  # types not supported in renaming or merging
             "InputObjectTypeDefinitionNode",
             "ObjectTypeExtensionNode",
-
         }
     )
     unexpected_types = frozenset(
@@ -344,15 +343,14 @@ def check_ast_schema_is_valid(ast):
     """
     try:
         schema = build_ast_schema(ast)
-    except Exception as e:  # Can't be more specific -- see graphql/utilities/build_ast_schema.py
-
+    except TypeError as e:
         raise SchemaStructureError(u"Input is not a valid schema. Message: {}".format(e))
 
-    if schema.to_kwargs()["mutation"] is not None:
+    if schema.mutation_type is not None:
         raise SchemaStructureError(
             u"Renaming schemas that contain mutations is currently not supported."
         )
-    if schema.to_kwargs()["subscription"] is not None:
+    if schema.subscription_type is not None:
         raise SchemaStructureError(
             u"Renaming schemas that contain subscriptions is currently not supported."
         )

@@ -19,15 +19,15 @@ def merge_non_overlapping_dicts(merge_target, new_data):
     return result
 
 
-def is_same_type(to_compare1, to_compare2):
-    """Determine if two GraphQL types are of the same type."""
-    if isinstance(to_compare1, GraphQLNamedType) and isinstance(to_compare2, GraphQLNamedType):
+def is_same_type(left, right):
+    """Determine if two GraphQL types are the same type."""
+    if isinstance(left, GraphQLNamedType) and isinstance(right, GraphQLNamedType):
         return (
-            to_compare1.__class__ is to_compare2.__class__ and to_compare1.name == to_compare2.name
+                left.__class__ is right.__class__ and left.name == right.name
         )
-    elif isinstance(to_compare1, GraphQLList) and isinstance(to_compare2, GraphQLList):
-        return is_same_type(to_compare1.of_type, to_compare2.of_type)
-    elif isinstance(to_compare1, GraphQLNonNull) and isinstance(to_compare2, GraphQLNonNull):
-        return is_same_type(to_compare1.of_type, to_compare2.of_type)
+    elif isinstance(left, GraphQLList) and isinstance(right, GraphQLList):
+        return is_same_type(left.of_type, right.of_type)
+    elif isinstance(left, GraphQLNonNull) and isinstance(right, GraphQLNonNull):
+        return is_same_type(left.of_type, right.of_type)
     else:
         return False

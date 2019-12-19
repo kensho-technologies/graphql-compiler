@@ -33,7 +33,7 @@ class SchemaTests(unittest.TestCase):
         # TODO:(selene) this test fails because of the way print_schema was updated. The startswith
         # directive trick no longer works and the descriptions are printed as a part of the schema
         # which do not match.
-        test_directives = _get_directives_in_string_form(get_schema().to_kwargs()["directives"])
+        test_directives = _get_directives_in_string_form(get_schema().directives)
         actual_directives = _get_directives_in_string_form(schema.DIRECTIVES)
         self.assertEqual(test_directives, actual_directives)
 

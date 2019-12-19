@@ -882,7 +882,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
 
     # Validation passed, so the base_start_type must exist as a field of the root query.
-    current_schema_type = get_field_type_from_schema(schema.to_kwargs()["query"], base_start_type)
+    current_schema_type = get_field_type_from_schema(schema.query_type, base_start_type)
 
     # Allow list types at the query root in the schema.
     if isinstance(current_schema_type, GraphQLList):

@@ -184,7 +184,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
             _is_output_directive_with_name(directive, field_out_name)
             for directive in ast.directives
         ):
-            new_directives = list(copy(ast.directives))
+            new_directives = list(ast.directives)
             new_directives.append(_get_in_collection_filter_directive(input_filter_name))
             new_ast = copy(ast)
             new_ast.directives = new_directives

@@ -41,7 +41,7 @@ DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset(
 
 def get_schema_for_macro_edge_definitions(querying_schema):
     """Given a schema object used for querying, create a schema used for macro edge definitions."""
-    original_directives = querying_schema.to_kwargs()["directives"]
+    original_directives = querying_schema.directives
     check_for_nondefault_directive_names(original_directives)
 
     directives_required_in_macro_edge_definition = [

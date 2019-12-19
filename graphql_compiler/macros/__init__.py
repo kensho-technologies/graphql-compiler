@@ -218,7 +218,7 @@ def get_schema_with_macros(macro_registry):
             )
         elif isinstance(definitions_by_name, InterfaceTypeDefinitionNode):
             new_definitions.append(
-                ObjectTypeDefinitionNode(
+                InterfaceTypeDefinitionNode(
                     description=definition.description,
                     name=definition.name,
                     directives=definition.directives,
