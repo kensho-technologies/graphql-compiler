@@ -35,11 +35,11 @@ class SchemaTests(unittest.TestCase):
                 line.strip() for line in re.split("\n\n([^ ])", print_schema(fake_schema))
             ]
 
-            # Reattach the deliminator's character to the rest of the line. The first line does
+            # Reattach the delimiter's character to the rest of the line. The first line does
             # not have a separated character from regular expression splitting.
             schema_lines = [split_schema_lines[0]] + [
-                deliminator_character + line
-                for deliminator_character, line in zip(
+                delimiter_character + line
+                for delimiter_character, line in zip(
                     split_schema_lines[1::2], split_schema_lines[2::2]
                 )
             ]

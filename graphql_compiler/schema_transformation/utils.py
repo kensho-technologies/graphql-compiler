@@ -340,10 +340,7 @@ def check_ast_schema_is_valid(ast):
           or if any query type field does not match the queried type.
         - InvalidTypeNameError if a type has a type name that is invalid or reserved
     """
-    try:
-        schema = build_ast_schema(ast)
-    except TypeError as e:
-        raise SchemaStructureError(u"Input is not a valid schema. Message: {}".format(e))
+    schema = build_ast_schema(ast)
 
     if schema.mutation_type is not None:
         raise SchemaStructureError(

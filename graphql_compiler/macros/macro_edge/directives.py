@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from copy import copy
 from itertools import chain
+from graphql.type import GraphQLSchema
 
 from ...schema import (
     FilterDirective,
@@ -55,13 +55,8 @@ def get_schema_for_macro_edge_definitions(querying_schema):
         if directive.name in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
     ]
 
-    # Unfortunately, GraphQLSchema objects do not easily allow creating derived schemas,
-    # since the GraphQLSchema constructor takes a "types" parameter whose value is not preserved
-    # in any of the constructed object's fields. To work around this, we rely on copying and
-    # altering the object's internals directly.
-    macro_edge_schema = copy(querying_schema)
-    # pylint: disable=protected-access
-    macro_edge_schema.directives = new_directives
-    # pylint: enable=protected-access
+    schema_arguments = querying_schema.to_kwargs()
+    schema_arguments["directives"] = new_directives
+    macro_edge_schema = GraphQLSchema(**schema_arguments)
 
     return macro_edge_schema

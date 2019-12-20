@@ -236,7 +236,7 @@ def _accumulate_types(
             isinstance(new_definition, ast_types.ObjectTypeDefinitionNode)
             and new_definition.name.value == current_query_type
         ):  # query type definition
-            new_query_type_fields = new_definition.fields  # List[FieldDefinition]
+            new_query_type_fields = new_definition.fields  # List[FieldDefinitionNode]
         elif isinstance(new_definition, ast_types.DirectiveDefinitionNode):
             directives, merged_schema_ast = _process_directive_definition(
                 new_definition, directives, merged_schema_ast
@@ -337,7 +337,7 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
     new_definitions = list(merged_schema_ast.definitions)
     new_definitions.append(directive)
     new_merged_schema_ast = ast_types.DocumentNode(definitions=new_definitions)
-    new_existing_directives = deepcopy(existing_directives)
+    new_existing_directives = dict(existing_directives)
     new_existing_directives[directive_name] = directive
     return new_existing_directives, new_merged_schema_ast
 
@@ -378,7 +378,7 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
     new_definitions = list(merged_schema_ast.definitions)
     new_definitions.append(scalar)
     new_merged_schema_ast = ast_types.DocumentNode(definitions=new_definitions)
-    new_existing_scalars = deepcopy(existing_scalars)
+    new_existing_scalars = set(existing_scalars)
     new_existing_scalars.add(scalar_name)
     return new_existing_scalars, new_merged_schema_ast
 
@@ -424,7 +424,7 @@ def _process_generic_type_definition(
     new_definitions = list(merged_schema_ast.definitions)
     new_definitions.append(generic_type)
     new_merged_schema_ast = ast_types.DocumentNode(definitions=new_definitions)
-    new_type_name_to_schema_id = deepcopy(type_name_to_schema_id)
+    new_type_name_to_schema_id = dict(type_name_to_schema_id)
     new_type_name_to_schema_id[type_name] = schema_id
     return new_type_name_to_schema_id, new_merged_schema_ast
 

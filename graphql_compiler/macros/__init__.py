@@ -180,11 +180,11 @@ def get_schema_with_macros(macro_registry):
     # way to get an AST is to print it and parse it.
     schema_ast = parse(print_schema(macro_registry.schema_without_macros))
 
-    definitions_by_name = {}
+    fields_by_definition_name = {}
     for definition in schema_ast.definitions:
         if isinstance(definition, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
             # Cast to list (from FrozenList) to allow for updates.
-            definitions_by_name[definition.name.value] = list(definition.fields)
+            fields_by_definition_name[definition.name.value] = list(definition.fields)
 
     for class_name, macros_for_class in six.iteritems(macro_registry.macro_edges_at_class):
         for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_class):
@@ -193,7 +193,7 @@ def get_schema_with_macros(macro_registry):
             )
             arguments = []
             directives = [DirectiveNode(name=NameNode(value=MacroEdgeDirective.name))]
-            definitions_by_name[class_name].append(
+            fields_by_definition_name[class_name].append(
                 FieldDefinitionNode(
                     name=NameNode(value=macro_edge_name),
                     arguments=arguments,
@@ -213,17 +213,17 @@ def get_schema_with_macros(macro_registry):
                     name=definition.name,
                     directives=definition.directives,
                     loc=definition.loc,
-                    fields=FrozenList(definitions_by_name[definition.name.value]),
+                    fields=FrozenList(fields_by_definition_name[definition.name.value]),
                 )
             )
-        elif isinstance(definitions_by_name, InterfaceTypeDefinitionNode):
+        elif isinstance(definition, InterfaceTypeDefinitionNode):
             new_definitions.append(
                 InterfaceTypeDefinitionNode(
                     description=definition.description,
                     name=definition.name,
                     directives=definition.directives,
                     loc=definition.loc,
-                    fields=FrozenList(definitions_by_name[definition.name.value]),
+                    fields=FrozenList(fields_by_definition_name[definition.name.value]),
                 )
             )
         else:

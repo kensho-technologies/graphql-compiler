@@ -98,9 +98,6 @@ def _validate_non_required_macro_definition_directives(
         inside_optional_scope: bool, whether the subtree is within an @optional scope
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
-    names_of_allowed_directives = frozenset(
-        {directive for directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION}
-    )
     names_of_directives_at_ast = frozenset({directive.name.value for directive in ast.directives})
 
     subselection_inside_optional_scope = inside_optional_scope
@@ -108,7 +105,7 @@ def _validate_non_required_macro_definition_directives(
 
     for directive in ast.directives:
         name = directive.name.value
-        if name not in names_of_allowed_directives:
+        if name not in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
             raise GraphQLInvalidMacroError(
                 u"Unexpected directive name found: {} {}".format(name, directive)
             )
