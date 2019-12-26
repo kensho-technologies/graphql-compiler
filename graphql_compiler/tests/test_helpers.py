@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Set, Tuple
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
 from graphql.utilities.build_ast_schema import build_ast_schema
 from pyorient.orient import OrientDB
@@ -554,13 +554,21 @@ def get_schema() -> GraphQLSchema:
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
     schema = get_schema()
-    return {
-        schema.get_type(key): schema.get_type(value)
-        for key, value in [
-            ("Event", "Union__BirthEvent__Event__FeedingEvent"),
-            ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),
-        ]
-    }
+    type_equivalence_hints = {}
+    for key, value in [
+        ("Event", "Union__BirthEvent__Event__FeedingEvent"),
+        ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),
+    ]:
+        key_type = schema.get_type(key)
+        value_type = schema.get_type(value)
+        if (
+                key_type and value_type
+                and (isinstance(key_type, GraphQLInterfaceType)
+                     or isinstance(key_type, GraphQLObjectType))
+                and isinstance(value_type, GraphQLUnionType)
+        ):
+            type_equivalence_hints[key_type] = value_type
+    return type_equivalence_hints
 
 
 def get_common_schema_info() -> CommonSchemaInfo:

@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
+
 from graphql.type import GraphQLSchema
 
 from ...schema import (

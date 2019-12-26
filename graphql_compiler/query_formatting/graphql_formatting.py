@@ -29,7 +29,7 @@ class CustomPrintingVisitor(PrintAstVisitor):
     # much easier to read if the operation comes before the values. The
     # arguments of the directives specified in the schema are defined as
     # OrderedDicts which allows us to sort the provided arguments to match.
-    def leave_Directive(self, node, *args):
+    def leave_directive(self, node, *args):
         """Call when exiting a directive node in the ast."""
         name_to_arg_value = {
             # Taking [0] is ok here because the GraphQL parser checks for the
