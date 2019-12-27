@@ -1,10 +1,16 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 from unittest import TestCase
 
-from graphql.type import GraphQLID, GraphQLObjectType, GraphQLScalarType
+from graphql.type import (
+    GraphQLID,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLObjectType,
+    GraphQLScalarType,
+)
 from graphql.utilities.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
@@ -601,7 +607,9 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_override_field_types(self) -> None:
-        class_to_field_type_overrides = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
+        class_to_field_type_overrides: Dict[
+            str, Dict[str, Union[GraphQLList[Any], GraphQLNonNull[Any], GraphQLScalarType]]
+        ] = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
         schema, _ = generate_schema(
             self.orientdb_client,  # type: ignore  # from fixture
             class_to_field_type_overrides=class_to_field_type_overrides,
@@ -613,8 +621,10 @@ class IntegrationTests(TestCase):
         if animal_type and isinstance(animal_type, GraphQLObjectType):
             self.assertEqual(animal_type.fields["uuid"].type, GraphQLID)
         else:
-            raise AssertionError(u"Expected \"Animal\" to be of type GraphQLObjectType, but was "
-                                 u"of type {}".format(type(animal_type)))
+            raise AssertionError(
+                u'Expected "Animal" to be of type GraphQLObjectType, but was '
+                u"of type {}".format(type(animal_type))
+            )
 
     @integration_fixtures
     def test_include_admissible_non_graph_class(self) -> None:

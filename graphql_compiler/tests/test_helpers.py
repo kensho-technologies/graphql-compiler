@@ -564,10 +564,13 @@ def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
         key_type = schema.get_type(key)
         value_type = schema.get_type(value)
         if (
-                key_type and value_type
-                and (isinstance(key_type, GraphQLInterfaceType)
-                     or isinstance(key_type, GraphQLObjectType))
-                and isinstance(value_type, GraphQLUnionType)
+            key_type
+            and value_type
+            and (
+                isinstance(key_type, GraphQLInterfaceType)
+                or isinstance(key_type, GraphQLObjectType)
+            )
+            and isinstance(value_type, GraphQLUnionType)
         ):
             type_equivalence_hints[key_type] = value_type
     return type_equivalence_hints

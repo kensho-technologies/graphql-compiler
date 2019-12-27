@@ -51,17 +51,21 @@ def execute_graphql(
             key_type = schema.get_type(key)
             value_type = schema.get_type(value)
             if (
-                key_type and value_type
-                and (isinstance(key_type, GraphQLInterfaceType)
-                     or isinstance(key_type, GraphQLObjectType))
+                key_type
+                and value_type
+                and (
+                    isinstance(key_type, GraphQLInterfaceType)
+                    or isinstance(key_type, GraphQLObjectType)
+                )
                 and isinstance(value_type, GraphQLUnionType)
             ):
                 schema_based_type_equivalence_hints[key_type] = value_type
             else:
-                raise AssertionError(u"Expected key_type to be of type GraphQLInterfaceType or "
-                                     u"GraphQLObject Type, but received {}; and value_type to be "
-                                     u"of type GraphQLUnionType, but "
-                                     u"received {}.".format(type(key_type), type(value_type)))
+                raise AssertionError(
+                    u"Expected key_type to be of type GraphQLInterfaceType or GraphQLObject Type, "
+                    u"but received {}; and value_type to be of type GraphQLUnionType, but "
+                    u"received {}.".format(type(key_type), type(value_type))
+                )
 
     common_schema_info = CommonSchemaInfo(schema, schema_based_type_equivalence_hints)
     result = graphql_to_match(common_schema_info, test_data.graphql_input, sample_parameters)
