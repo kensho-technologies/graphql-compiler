@@ -3,7 +3,7 @@
 from collections import namedtuple
 from pprint import pformat
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
@@ -554,7 +554,9 @@ def get_schema() -> GraphQLSchema:
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
     schema = get_schema()
-    type_equivalence_hints = {}
+    type_equivalence_hints: Dict[
+        Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
+    ] = {}
     for key, value in [
         ("Event", "Union__BirthEvent__Event__FeedingEvent"),
         ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),

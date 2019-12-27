@@ -4,7 +4,7 @@ from decimal import Decimal
 from typing import Any, Callable, Dict, List, Tuple
 from unittest import TestCase
 
-from graphql.type import GraphQLID, GraphQLObjectType
+from graphql.type import GraphQLID, GraphQLObjectType, GraphQLScalarType
 from graphql.utilities.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
@@ -589,7 +589,9 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
-        class_to_field_type_overrides = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
+        class_to_field_type_overrides: Dict[str, Dict[str, GraphQLScalarType]] = {
+            "UniquelyIdentifiable": {"uuid": GraphQLID}
+        }
         schema, _ = generate_schema(
             self.orientdb_client,  # type: ignore  # from fixture
             class_to_field_type_overrides=class_to_field_type_overrides,
