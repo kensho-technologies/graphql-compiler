@@ -1,11 +1,20 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from abc import ABCMeta
 import operator as python_operator
-from typing import Any, Callable, Dict, FrozenSet, Generic, List, Optional, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    Generic,
+    List,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
-from graphql.type.definition import GraphQLList, GraphQLObjectType, GraphQLOutputType, GraphQLScalarType
-from mypy_extensions import NoReturn
+from graphql.type.definition import GraphQLOutputType
 import six
 import sqlalchemy
 from sqlalchemy import bindparam, sql
@@ -57,7 +66,10 @@ ExpressionT = TypeVar("ExpressionT", bound=Expression)
 ReplacementExpressionT = TypeVar("ReplacementExpressionT", bound=Expression)
 ReplacementT = Union[ExpressionT, ReplacementExpressionT]
 
-def make_replacement_visitor(find_expression: Expression, replace_expression: ReplacementExpressionT) -> Callable[[ExpressionT], ReplacementT]:
+
+def make_replacement_visitor(
+    find_expression: Expression, replace_expression: ReplacementExpressionT
+) -> Callable[[ExpressionT], ReplacementT]:
     """Return a visitor function that replaces every instance of one expression with another one."""
 
     def visitor_fn(expression: ExpressionT) -> ReplacementT:
@@ -70,7 +82,10 @@ def make_replacement_visitor(find_expression: Expression, replace_expression: Re
     return visitor_fn
 
 
-def make_type_replacement_visitor(find_types: Union[Type[Expression], Tuple[Type[Expression], ...]], replacement_func: Callable[[ExpressionT], ReplacementT]) -> Callable[[ExpressionT], ReplacementT]:
+def make_type_replacement_visitor(
+    find_types: Union[Type[Expression], Tuple[Type[Expression], ...]],
+    replacement_func: Callable[[ExpressionT], ReplacementT],
+) -> Callable[[ExpressionT], ReplacementT]:
     """Return a visitor function that replaces expressions of a given type with new expressions."""
 
     def visitor_fn(expression: ExpressionT) -> ReplacementT:
@@ -84,6 +99,7 @@ def make_type_replacement_visitor(find_types: Union[Type[Expression], Tuple[Type
 
 
 ValueT = TypeVar("ValueT")
+
 
 class Literal(Generic[ValueT], Expression):
     """A literal, such as a boolean value, null, or a fixed string value.
@@ -777,7 +793,9 @@ class FoldedContextField(Expression):
 
     __slots__ = ("fold_scope_location", "field_type")
 
-    def __init__(self, fold_scope_location: FoldScopeLocation, field_type: GraphQLOutputType) -> None:
+    def __init__(
+        self, fold_scope_location: FoldScopeLocation, field_type: GraphQLOutputType
+    ) -> None:
         """Construct a new FoldedContextField object for this folded field.
 
         Args:
@@ -892,7 +910,8 @@ class FoldedContextField(Expression):
         if self.fold_scope_location.field is None:
             raise AssertionError(
                 u"Unreachable code reached, expected a location at a field "
-                u"but got {}: {}".format(self.fold_scope_location, self))
+                u"but got {}: {}".format(self.fold_scope_location, self)
+            )
 
         # _x_count is a special case that has already been coalesced to 0.
         # _x_count's intermediate output name is always fold_output__x_count
@@ -1285,9 +1304,7 @@ class BinaryComposition(Expression):
 
         match_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not match_operator or not format_spec:
-            raise AssertionError(
-                u"Unrecognized operator used: {} {}".format(self.operator, self)
-            )
+            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec % dict(
             operator=match_operator, left=self.left.to_match(), right=self.right.to_match()
@@ -1328,9 +1345,7 @@ class BinaryComposition(Expression):
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not gremlin_operator or not format_spec:
-            raise AssertionError(
-                u"Unrecognized operator used: {} {}".format(self.operator, self)
-            )
+            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec.format(
             operator=gremlin_operator, left=self.left.to_gremlin(), right=self.right.to_gremlin()
@@ -1378,9 +1393,7 @@ class BinaryComposition(Expression):
 
         cypher_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not cypher_operator or not format_spec:
-            raise AssertionError(
-                u"Unrecognized operator used: {} {}".format(self.operator, self)
-            )
+            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec.format(
             operator=cypher_operator, left=self.left.to_cypher(), right=self.right.to_cypher()
@@ -1419,6 +1432,7 @@ class BinaryComposition(Expression):
 
 
 ExpressionT2 = TypeVar("ExpressionT2", bound=Expression)
+
 
 class TernaryConditional(Expression):
     """A ternary conditional expression, returning one of two expressions depending on a third."""

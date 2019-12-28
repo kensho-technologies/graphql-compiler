@@ -341,7 +341,8 @@ class BaseLocation(object):
         if field_name is None:
             raise AssertionError(
                 u"Expected the location {} to be at a field, but it was not."
-                u"This is a bug.".format(self))
+                u"This is a bug.".format(self)
+            )
         return (mark_name, field_name)
 
     @abstractmethod
