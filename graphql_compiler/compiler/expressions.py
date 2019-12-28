@@ -1431,9 +1431,6 @@ class BinaryComposition(Expression):
         )
 
 
-ExpressionT2 = TypeVar("ExpressionT2", bound=Expression)
-
-
 class TernaryConditional(Expression):
     """A ternary conditional expression, returning one of two expressions depending on a third."""
 
@@ -1502,7 +1499,7 @@ class TernaryConditional(Expression):
         # emitting MATCH code for TernaryConditional that contains another TernaryConditional
         # anywhere within the predicate expression. This is because the predicate expression
         # must be surrounded in quotes, and it is unclear whether nested/escaped quotes would work.
-        def visitor_fn(expression: ExpressionT2) -> ExpressionT2:
+        def visitor_fn(expression: ExpressionT) -> ExpressionT:
             """Visitor function that ensures the predicate does not contain TernaryConditionals."""
             if isinstance(expression, TernaryConditional):
                 raise ValueError(
