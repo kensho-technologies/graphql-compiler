@@ -1,17 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import operator as python_operator
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    FrozenSet,
-    Generic,
-    List,
-    Tuple,
-    Type,
-    TypeVar,
-    Union,
-)
+from typing import Any, Callable, Dict, FrozenSet, Generic, List, Tuple, Type, TypeVar, Union
 
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
 from graphql.type.definition import GraphQLOutputType
