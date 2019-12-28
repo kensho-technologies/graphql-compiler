@@ -2,13 +2,20 @@
 """Common helper objects, base classes and methods."""
 from abc import ABCMeta, abstractmethod
 from collections import namedtuple
-from collections.abc import Hashable
 from functools import total_ordering
 import string
+from typing import Any, Collection, Dict, Hashable, Iterable, Optional, Tuple, TypeVar, Union
 
 import funcy
-from graphql import GraphQLList, GraphQLNonNull, GraphQLString, is_type
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
+from graphql import GraphQLNonNull, GraphQLString, is_type
+from graphql.language.ast import ArgumentNode
+from graphql.type.definition import (
+    GraphQLInterfaceType,
+    GraphQLList,
+    GraphQLObjectType,
+    GraphQLOutputType,
+    GraphQLUnionType,
+)
 import six
 
 from ..exceptions import GraphQLCompilationError
@@ -36,7 +43,10 @@ FilterOperationInfo = namedtuple(
 )
 
 
-def get_only_element_from_collection(one_element_collection):
+T = TypeVar("T")
+
+
+def get_only_element_from_collection(one_element_collection: Collection[T]) -> T:
     """Assert that the collection has exactly one element, then return that element."""
     if len(one_element_collection) != 1:
         raise AssertionError(
@@ -47,7 +57,9 @@ def get_only_element_from_collection(one_element_collection):
     return funcy.first(one_element_collection)
 
 
-def get_field_type_from_schema(schema_type, field_name):
+def get_field_type_from_schema(
+    schema_type: Union[GraphQLInterfaceType, GraphQLObjectType], field_name: str
+) -> GraphQLOutputType:
     """Return the type of the field in the given type, accounting for field name normalization."""
     if field_name == TYPENAME_META_FIELD_NAME:
         return GraphQLString
@@ -62,7 +74,9 @@ def get_field_type_from_schema(schema_type, field_name):
         return schema_type.fields[field_name].type
 
 
-def get_vertex_field_type(current_schema_type, vertex_field_name):
+def get_vertex_field_type(
+    current_schema_type: Union[GraphQLInterfaceType, GraphQLObjectType], vertex_field_name: str
+) -> GraphQLOutputType:
     """Return the type of the vertex within the specified vertex field name of the given type."""
     # According to the schema, the vertex field itself is of type GraphQLList, and this is
     # what get_field_type_from_schema returns. We care about what the type *inside* the list is,
@@ -83,21 +97,21 @@ def get_vertex_field_type(current_schema_type, vertex_field_name):
     return raw_field_type.of_type
 
 
-def strip_non_null_from_type(graphql_type):
+def strip_non_null_from_type(graphql_type: GraphQLOutputType) -> Any:
     """Return the GraphQL type stripped of its GraphQLNonNull annotations."""
     while isinstance(graphql_type, GraphQLNonNull):
         graphql_type = graphql_type.of_type
     return graphql_type
 
 
-def strip_non_null_and_list_from_type(graphql_type):
+def strip_non_null_and_list_from_type(graphql_type: GraphQLOutputType) -> Any:
     """Return the GraphQL type stripped of its GraphQLNonNull and GraphQLList annotations."""
     while isinstance(graphql_type, (GraphQLNonNull, GraphQLList)):
         graphql_type = graphql_type.of_type
     return graphql_type
 
 
-def get_edge_direction_and_name(vertex_field_name):
+def get_edge_direction_and_name(vertex_field_name: str) -> Tuple[str, str]:
     """Get the edge direction and name from a non-root vertex field name."""
     edge_direction = None
     edge_name = None
@@ -115,31 +129,34 @@ def get_edge_direction_and_name(vertex_field_name):
     return edge_direction, edge_name
 
 
-def is_vertex_field_type(graphql_type):
+def is_vertex_field_type(graphql_type: GraphQLOutputType) -> bool:
     """Return True if the argument is a vertex field type, and False otherwise."""
     # This will need to change if we ever support complex embedded types or edge field types.
     underlying_type = strip_non_null_from_type(graphql_type)
     return isinstance(underlying_type, (GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType))
 
 
-def is_graphql_type(graphql_type):
+def is_graphql_type(graphql_type: Any) -> bool:
     """Return True if the argument is a GraphQL type object, and False otherwise."""
     # Helper function to work around the fact that "is_type" is a poorly-named function.
     return is_type(graphql_type)
 
 
-def ensure_unicode_string(value):
+def ensure_unicode_string(value: str) -> str:
     """Ensure the value is a string, and return it as unicode."""
     if not isinstance(value, six.string_types):
         raise TypeError(u"Expected string value, got: {}".format(value))
     return six.text_type(value)
 
 
-def get_uniquely_named_objects_by_name(object_list):
+def get_uniquely_named_objects_by_name(
+    object_list: Iterable[ArgumentNode],
+) -> Dict[str, ArgumentNode]:
     """Return dict of name -> object pairs from a list of objects with unique names.
 
     Args:
-        object_list: list of objects, each X of which has a unique name accessible as X.name.value
+        object_list: iterable of AST argument nodes, each X of which
+                     has a unique name accessible as X.name.value
 
     Returns:
         dict, { X.name.value: X for x in object_list }
@@ -148,7 +165,7 @@ def get_uniquely_named_objects_by_name(object_list):
     if not object_list:
         return dict()
 
-    result = dict()
+    result: Dict[str, ArgumentNode] = dict()
     for obj in object_list:
         name = obj.name.value
         if name in result:
@@ -160,19 +177,19 @@ def get_uniquely_named_objects_by_name(object_list):
     return result
 
 
-def safe_quoted_string(value):
+def safe_quoted_string(value: str) -> str:
     """Return the provided string, surrounded by single quotes. Ensure string is safe."""
     validate_safe_string(value)
     return u"'{}'".format(value)
 
 
-def safe_or_special_quoted_string(value):
+def safe_or_special_quoted_string(value: str) -> str:
     """Return the provided string, surrounded by single quotes. Ensure string is safe or special."""
     validate_safe_or_special_string(value)
     return u"'{}'".format(value)
 
 
-def validate_safe_or_special_string(value, value_description="string"):
+def validate_safe_or_special_string(value: str, value_description: str = "string") -> None:
     """Ensure the string does not have illegal characters or is in a set of allowed strings."""
     # The following strings are explicitly allowed, despite having otherwise-illegal chars.
     legal_strings_with_special_chars = frozenset({"@rid", "@class", "@this", "%"})
@@ -180,7 +197,7 @@ def validate_safe_or_special_string(value, value_description="string"):
         validate_safe_string(value, value_description=value_description)
 
 
-def validate_safe_string(value, value_description="string"):
+def validate_safe_string(value: str, value_description: str = "string") -> None:
     """Ensure that the provided string not have illegal characters."""
     if not value:
         raise GraphQLCompilationError(u"Empty {}s are not allowed!".format(value_description))
@@ -201,17 +218,17 @@ def validate_safe_string(value, value_description="string"):
         )
 
 
-def validate_runtime_argument_name(name):
+def validate_runtime_argument_name(name: str) -> None:
     """Ensure that the provided string is valid for use as a runtime argument name."""
     validate_safe_string(name, value_description="runtime argument name")
 
 
-def validate_tagged_argument_name(name):
+def validate_tagged_argument_name(name: str) -> None:
     """Ensure that provided string is valid for use as a tagged argument name."""
     validate_safe_string(name, value_description="tagged argument name")
 
 
-def validate_output_name(name):
+def validate_output_name(name: str) -> None:
     """Ensure that the provided string is valid for use as an output name."""
     internal_name_prefix = u"___"
     if name.startswith(internal_name_prefix):
@@ -221,7 +238,7 @@ def validate_output_name(name):
     validate_safe_string(name, value_description="output name")
 
 
-def validate_edge_direction(edge_direction):
+def validate_edge_direction(edge_direction: str) -> None:
     """Ensure the provided edge direction is either "in" or "out"."""
     if not isinstance(edge_direction, six.string_types):
         raise TypeError(
@@ -234,27 +251,29 @@ def validate_edge_direction(edge_direction):
         raise ValueError(u"Unrecognized edge direction: {}".format(edge_direction))
 
 
-def validate_marked_location(location):
+def validate_marked_location(location: "BaseLocation") -> None:
     """Validate that a Location object is safe for marking, and not at a field."""
-    if not isinstance(location, (Location, FoldScopeLocation)):
+    if not isinstance(location, BaseLocation):
         raise TypeError(
-            u"Expected Location or FoldScopeLocation location, got: {} {}".format(
-                type(location).__name__, location
-            )
+            u"Expected a BaseLocation, got: {} {}".format(type(location).__name__, location)
         )
 
     if location.field is not None:
         raise GraphQLCompilationError(u"Cannot mark location at a field: {}".format(location))
 
 
-def _create_fold_path_component(edge_direction, edge_name):
+def _create_fold_path_component(edge_direction: str, edge_name: str) -> Tuple[Tuple[str, str], ...]:
     """Return a tuple representing a fold_path component of a FoldScopeLocation."""
     return ((edge_direction, edge_name),)  # tuple containing a tuple of two elements
 
 
-def invert_dict(invertible_dict):
+KeyT = TypeVar("KeyT", bound=Hashable)
+ValueT = TypeVar("ValueT", bound=Hashable)
+
+
+def invert_dict(invertible_dict: Dict[KeyT, ValueT]) -> Dict[ValueT, KeyT]:
     """Invert a dict. A dict is invertible if values are unique and hashable."""
-    inverted = {}
+    inverted: Dict[ValueT, KeyT] = {}
     for k, v in six.iteritems(invertible_dict):
         if not isinstance(v, Hashable):
             raise TypeError(
@@ -271,17 +290,17 @@ def invert_dict(invertible_dict):
     return inverted
 
 
-def is_runtime_parameter(argument):
+def is_runtime_parameter(argument: str) -> bool:
     """Return True if the directive argument defines a runtime parameter, and False otherwise."""
     return argument.startswith("$")
 
 
-def is_tagged_parameter(argument):
+def is_tagged_parameter(argument: str) -> bool:
     """Return True if the directive argument defines a tagged parameter, and False otherwise."""
     return argument.startswith("%")
 
 
-def get_parameter_name(argument):
+def get_parameter_name(argument: str) -> str:
     """Return the name of the parameter without the leading prefix."""
     if argument[0] not in {"$", "%"}:
         raise AssertionError(
@@ -291,48 +310,51 @@ def get_parameter_name(argument):
     return argument[1:]
 
 
+LocationT = TypeVar("LocationT", bound="BaseLocation")
+
+
 @total_ordering
 @six.add_metaclass(ABCMeta)
 class BaseLocation(object):
     """An abstract location object, describing a location in the GraphQL query."""
 
+    field: Optional[str]
+
     @abstractmethod
-    def navigate_to_field(self, field):
+    def navigate_to_field(self: LocationT, field: str) -> LocationT:
         """Return a new BaseLocation object at the specified field of the current BaseLocation."""
         raise NotImplementedError()
 
     @abstractmethod
-    def navigate_to_subpath(self, child):
+    def navigate_to_subpath(self: LocationT, child: str) -> LocationT:
         """Return a new BaseLocation after a traversal to the specified child location."""
         raise NotImplementedError()
 
     @abstractmethod
-    def get_location_name(self):
+    def get_location_name(self) -> Tuple[str, Optional[str]]:
         """Return a tuple of a unique name of the location, and the current field name (or None)."""
         raise NotImplementedError()
 
     @abstractmethod
-    def _check_if_object_of_same_type_is_smaller(self, other):
+    def _check_if_object_of_same_type_is_smaller(self: LocationT, other: LocationT) -> bool:
         """Return True if the other object is smaller than self in the total ordering."""
         raise NotImplementedError()
 
     @abstractmethod
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if the BaseLocations are equal, and False otherwise."""
         raise NotImplementedError()
 
-    def __lt__(self, other):
+    def __lt__(self, other: "BaseLocation") -> bool:
         """Return True if the other object is smaller than self in the total ordering."""
         if isinstance(self, Location) and isinstance(other, Location):
             return self._check_if_object_of_same_type_is_smaller(other)
         elif isinstance(self, FoldScopeLocation) and isinstance(other, FoldScopeLocation):
             return self._check_if_object_of_same_type_is_smaller(other)
         elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
-            if self != other.base_location:
-                return self < other.base_location
-            return False
+            return _compare_location_and_fold_scope_location(self, other)
         elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
-            return not other <= self
+            return _compare_location_and_fold_scope_location(other, self)
         else:
             raise AssertionError(
                 u"Received objects of types {}, {} in BaseLocation comparison. "
@@ -344,7 +366,9 @@ class BaseLocation(object):
 
 @six.python_2_unicode_compatible
 class Location(BaseLocation):
-    def __init__(self, query_path, field=None, visit_counter=1):
+    def __init__(
+        self, query_path: Tuple[str, ...], field: Optional[str] = None, visit_counter: int = 1
+    ) -> None:
         """Create a new Location object.
 
         Used to uniquely identify locations in the graph traversal, with three components.
@@ -392,20 +416,20 @@ class Location(BaseLocation):
         # visit 'Y' in two different ways to generate colliding 'X__Y___1' identifiers.
         self.visit_counter = visit_counter
 
-    def navigate_to_field(self, field):
+    def navigate_to_field(self, field: str) -> "Location":
         """Return a new Location object at the specified field of the current Location's vertex."""
         if self.field:
             raise AssertionError(u"Already at a field, cannot nest fields: {}".format(self))
         return Location(self.query_path, field=field, visit_counter=self.visit_counter)
 
-    def at_vertex(self):
+    def at_vertex(self) -> "Location":
         """Get the Location ignoring its field component."""
         if not self.field:
             return self
 
         return Location(self.query_path, field=None, visit_counter=self.visit_counter)
 
-    def navigate_to_subpath(self, child):
+    def navigate_to_subpath(self, child: str) -> "Location":
         """Return a new Location object at a child vertex of the current Location's vertex."""
         if not isinstance(child, six.string_types):
             raise TypeError(u"Expected child to be a string, was: {}".format(child))
@@ -413,7 +437,7 @@ class Location(BaseLocation):
             raise AssertionError(u"Currently at a field, cannot go to child: {}".format(self))
         return Location(self.query_path + (child,))
 
-    def navigate_to_fold(self, folded_child):
+    def navigate_to_fold(self, folded_child: str) -> "FoldScopeLocation":
         """Return a new FoldScopeLocation for the folded child vertex of the current Location."""
         if not isinstance(folded_child, six.string_types):
             raise TypeError(u"Expected folded_child to be a string, was: {}".format(folded_child))
@@ -427,18 +451,18 @@ class Location(BaseLocation):
         fold_path = _create_fold_path_component(edge_direction, edge_name)
         return FoldScopeLocation(self, fold_path)
 
-    def revisit(self):
+    def revisit(self) -> "Location":
         """Return a new Location object with an incremented 'visit_counter'."""
         if self.field:
             raise AssertionError(u"Attempted to revisit a location at a field: {}".format(self))
         return Location(self.query_path, field=None, visit_counter=(self.visit_counter + 1))
 
-    def get_location_name(self):
+    def get_location_name(self) -> Tuple[str, Optional[str]]:
         """Return a tuple of a unique name of the Location, and the current field name (or None)."""
         mark_name = u"__".join(self.query_path) + u"___" + six.text_type(self.visit_counter)
         return (mark_name, self.field)
 
-    def is_revisited_at(self, other_location):
+    def is_revisited_at(self, other_location: "Location") -> bool:
         """Return True if other_location is a revisit of this location, and False otherwise."""
         # Note that FoldScopeLocation objects cannot revisit Location objects, or each other.
         return (
@@ -447,15 +471,15 @@ class Location(BaseLocation):
             and self.visit_counter < other_location.visit_counter
         )
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a human-readable str representation of the Location object."""
         return u"Location({}, {}, {})".format(self.query_path, self.field, self.visit_counter)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a human-readable str representation of the Location object."""
         return self.__str__()
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if the Locations are equal, and False otherwise."""
         return (
             type(self) == type(other)
@@ -464,11 +488,11 @@ class Location(BaseLocation):
             and self.visit_counter == other.visit_counter
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
-    def _check_if_object_of_same_type_is_smaller(self, other):
+    def _check_if_object_of_same_type_is_smaller(self, other: "Location") -> bool:
         """Return True if the other object is smaller than self in the total ordering."""
         if not isinstance(other, Location):
             raise AssertionError(
@@ -494,14 +518,19 @@ class Location(BaseLocation):
 
         return self.field < other.field
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Return the object's hash value."""
         return hash(self.query_path) ^ hash(self.field) ^ hash(self.visit_counter)
 
 
 @six.python_2_unicode_compatible
 class FoldScopeLocation(BaseLocation):
-    def __init__(self, base_location, fold_path, field=None):
+    def __init__(
+        self,
+        base_location: Location,
+        fold_path: Tuple[Tuple[str, str], ...],
+        field: Optional[str] = None,
+    ) -> None:
         """Create a new FoldScopeLocation object. Used to represent the locations of @fold scopes.
 
         Args:
@@ -542,7 +571,7 @@ class FoldScopeLocation(BaseLocation):
         self.fold_path = fold_path
         self.field = field
 
-    def get_location_name(self):
+    def get_location_name(self) -> Tuple[str, Optional[str]]:
         """Return a tuple of a unique name of the location, and the current field name (or None)."""
         # We currently require that all outputs from a given fold are from the same location:
         # any given fold has one set of traversals away from the root, and all outputs are
@@ -563,27 +592,27 @@ class FoldScopeLocation(BaseLocation):
         )
         return (unique_name, self.field)
 
-    def get_first_folded_edge(self):
+    def get_first_folded_edge(self) -> Tuple[str, str]:
         """Return a tuple representing the first folded edge within the fold scope."""
         # The constructor of this object guarantees that the fold has at least one traversal,
         # so the [0]-indexing is guaranteed to not raise an exception.
         first_folded_edge_direction, first_folded_edge_name = self.fold_path[0]
         return first_folded_edge_direction, first_folded_edge_name
 
-    def at_vertex(self):
+    def at_vertex(self) -> "FoldScopeLocation":
         """Get the FoldScopeLocation ignoring its field component."""
         if not self.field:
             return self
 
         return FoldScopeLocation(self.base_location, self.fold_path, field=None)
 
-    def navigate_to_field(self, field):
+    def navigate_to_field(self, field: str) -> "FoldScopeLocation":
         """Return a new location object at the specified field of the current location."""
         if self.field:
             raise AssertionError(u"Already at a field, cannot nest fields: {}".format(self))
         return FoldScopeLocation(self.base_location, self.fold_path, field=field)
 
-    def navigate_to_subpath(self, child):
+    def navigate_to_subpath(self, child: str) -> "FoldScopeLocation":
         """Return a new location after a traversal to the specified child location."""
         if not isinstance(child, six.string_types):
             raise TypeError(u"Expected child to be a string, was: {}".format(child))
@@ -594,17 +623,17 @@ class FoldScopeLocation(BaseLocation):
         new_fold_path = self.fold_path + _create_fold_path_component(edge_direction, edge_name)
         return FoldScopeLocation(self.base_location, new_fold_path)
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a human-readable str representation of the FoldScopeLocation object."""
         return u"FoldScopeLocation({}, {}, field={})".format(
             self.base_location, self.fold_path, self.field
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a human-readable str representation of the FoldScopeLocation object."""
         return self.__str__()
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if the FoldScopeLocations are equal, and False otherwise."""
         return (
             type(self) == type(other)
@@ -613,15 +642,15 @@ class FoldScopeLocation(BaseLocation):
             and self.field == other.field
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         """Return the object's hash value."""
         return hash(self.base_location) ^ hash(self.fold_path) ^ hash(self.field)
 
-    def _check_if_object_of_same_type_is_smaller(self, other):
+    def _check_if_object_of_same_type_is_smaller(self, other: "FoldScopeLocation") -> bool:
         """Return True if the other object is smaller than self in the total ordering."""
         if not isinstance(other, FoldScopeLocation):
             raise AssertionError(
@@ -646,3 +675,13 @@ class FoldScopeLocation(BaseLocation):
             return False
 
         return self.field < other.field
+
+
+def _compare_location_and_fold_scope_location(
+    location: Location, fold_scope_location: FoldScopeLocation
+) -> bool:
+    """Return True if in our desired lexicographic ordering has location < fold_scope_location."""
+    # This helper makes it easier to implement the correct ordering logic while keeping mypy happy.
+    if location != fold_scope_location.base_location:
+        return location < fold_scope_location.base_location
+    return False
