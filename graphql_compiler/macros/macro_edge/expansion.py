@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from graphql.language.ast import Field, InlineFragment, SelectionSet
+from graphql.language.ast import FieldNode, InlineFragmentNode, SelectionSetNode
 
 from ...ast_manipulation import get_ast_field_name
 from ...exceptions import GraphQLCompilationError
@@ -67,7 +67,7 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
     # See if there's a type coercion in the selection_ast.
     coercion = None
     for selection in selection_ast.selection_set.selections:
-        if isinstance(selection, InlineFragment):
+        if isinstance(selection, InlineFragmentNode):
             if len(selection_ast.selection_set.selections) != 1:
                 raise GraphQLCompilationError(
                     u"Found selections outside type coercion. "
@@ -102,20 +102,23 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
                 )
 
         continuation_ast = coercion
-        if isinstance(target_ast, InlineFragment):
+        if isinstance(target_ast, InlineFragmentNode):
             # The macro edge definition has a type coercion as well, replace it with the user's one.
             target_ast.type_condition = coercion.type_condition
         else:
             # No coercion in the macro edge definition,
             # slip the user's type coercion inside the target AST.
-            new_coercion = InlineFragment(
-                coercion.type_condition, target_ast.selection_set, directives=[]
+            new_coercion = InlineFragmentNode(
+                type_condition=coercion.type_condition,
+                selection_set=target_ast.selection_set,
+                directives=[],
             )
-            target_ast.selection_set = SelectionSet([new_coercion])
+            target_ast.selection_set = SelectionSetNode(selections=[new_coercion])
             target_ast = new_coercion
 
     # Merge the continuation into the target
-    target_ast.directives += continuation_ast.directives
+    # target_ast.directives += continuation_ast.directives
+    target_ast.directives = list(target_ast.directives) + list(continuation_ast.directives)
     target_ast.selection_set = merge_selection_sets(
         target_ast.selection_set, continuation_ast.selection_set
     )
@@ -204,7 +207,7 @@ def expand_potential_macro_edge(macro_registry, current_schema_type, ast, query_
     )
 
     # If the input AST isn't a Field, it can't be a macro edge. Nothing to be done.
-    if not isinstance(ast, Field):
+    if not isinstance(ast, FieldNode):
         return no_op_result
 
     # If the field isn't a vertex field, it can't be a macro edge. Nothing to be done.

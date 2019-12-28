@@ -2,15 +2,15 @@
 from copy import copy
 
 from graphql.language.ast import (
-    Argument,
-    Directive,
-    Document,
-    Field,
-    InlineFragment,
-    Name,
-    OperationDefinition,
-    SelectionSet,
-    StringValue,
+    ArgumentNode,
+    DirectiveNode,
+    DocumentNode,
+    FieldNode,
+    InlineFragmentNode,
+    NameNode,
+    OperationDefinitionNode,
+    SelectionSetNode,
+    StringValueNode,
 )
 from graphql.validation import validate
 
@@ -66,19 +66,19 @@ def _validate_ast_with_builtin_graphql_validation(schema, ast):
 
 def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives):
     """Validate that macro definition and target directives appear once in the ast."""
-    for directive_definition in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
-        macro_data = macro_directives.get(directive_definition.name, None)
+    for directive_name in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION:
+        macro_data = macro_directives.get(directive_name, None)
         if not macro_data:
             raise GraphQLInvalidMacroError(
                 u'Required macro edge directive "@{}" was not found anywhere within the supplied '
-                u"macro edge definition GraphQL.".format(directive_definition.name)
+                u"macro edge definition GraphQL.".format(directive_name)
             )
 
         if len(macro_data) > 1:
             raise GraphQLInvalidMacroError(
                 u'Required macro edge directive "@{}" was unexpectedly present more than once in '
                 u"the supplied macro edge definition GraphQL. It was found {} times.".format(
-                    directive_definition.name, len(macro_data)
+                    directive_name, len(macro_data)
                 )
             )
 
@@ -98,9 +98,6 @@ def _validate_non_required_macro_definition_directives(
         inside_optional_scope: bool, whether the subtree is within an @optional scope
         inside_fold_scope: bool, whether the subtree is within a @fold scope
     """
-    names_of_allowed_directives = frozenset(
-        {directive.name for directive in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION}
-    )
     names_of_directives_at_ast = frozenset({directive.name.value for directive in ast.directives})
 
     subselection_inside_optional_scope = inside_optional_scope
@@ -108,7 +105,7 @@ def _validate_non_required_macro_definition_directives(
 
     for directive in ast.directives:
         name = directive.name.value
-        if name not in names_of_allowed_directives:
+        if name not in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
             raise GraphQLInvalidMacroError(
                 u"Unexpected directive name found: {} {}".format(name, directive)
             )
@@ -140,14 +137,14 @@ def _validate_non_required_macro_definition_directives(
             # checks that the macro is not on a union type, because union types always
             # start with a coercion.
             for selection in ast.selection_set.selections:
-                if isinstance(selection, InlineFragment):
+                if isinstance(selection, InlineFragmentNode):
                     raise GraphQLInvalidMacroError(
                         u"The @macro_edge_target cannot begin directly"
                         u"with a coercion. Please put the directive on"
                         u"the coercion block itself."
                     )
 
-    if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+    if isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         if ast.selection_set is not None:
             for selection in ast.selection_set.selections:
                 _validate_non_required_macro_definition_directives(
@@ -275,23 +272,28 @@ def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_nam
 def _get_minimal_query_ast_from_macro_ast(macro_ast):
     """Get a query that should successfully compile to IR if the macro is valid."""
     ast_without_macro_directives = remove_directives_from_ast(
-        macro_ast, {directive.name for directive in DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION}
+        macro_ast, DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION
     )
 
     # We will add this output directive to make the ast a valid query
-    output_directive = Directive(
-        Name("output"), arguments=[Argument(Name("out_name"), StringValue("dummy_output_name"))]
+    output_directive = DirectiveNode(
+        name=NameNode(value="output"),
+        arguments=[
+            ArgumentNode(
+                name=NameNode(value="out_name"), value=StringValueNode(value="dummy_output_name")
+            )
+        ],
     )
 
     # Shallow copy everything on the path to the first level selection list
     query_ast = copy(ast_without_macro_directives)
     root_level_selection = copy(get_only_selection_from_ast(query_ast, GraphQLInvalidMacroError))
-    first_level_selections = copy(root_level_selection.selection_set.selections)
+    first_level_selections = list(root_level_selection.selection_set.selections)
 
     # Add an output to a new or existing __typename field
     existing_typename_field = None
     for idx, selection in enumerate(first_level_selections):
-        if isinstance(selection, Field):
+        if isinstance(selection, FieldNode):
             if selection.name.value == "__typename":
                 # We have a copy of the list, but the elements are references to objects
                 # in macro_ast that we don't want to mutate. So the following copy is necessary.
@@ -300,12 +302,14 @@ def _get_minimal_query_ast_from_macro_ast(macro_ast):
                 existing_typename_field.directives.append(output_directive)
                 first_level_selections[idx] = existing_typename_field
     if existing_typename_field is None:
-        first_level_selections.insert(0, Field(Name("__typename"), directives=[output_directive]))
+        first_level_selections.insert(
+            0, FieldNode(name=NameNode(value="__typename"), directives=[output_directive])
+        )
 
     # Propagate the changes back to the result_ast
-    root_level_selection.selection_set = SelectionSet(first_level_selections)
-    query_ast.selection_set = SelectionSet([root_level_selection])
-    return Document([query_ast])
+    root_level_selection.selection_set = SelectionSetNode(selections=first_level_selections)
+    query_ast.selection_set = SelectionSetNode(selections=[root_level_selection])
+    return DocumentNode(definitions=[query_ast])
 
 
 # ############
@@ -350,7 +354,7 @@ def get_and_validate_macro_edge_info(
     macro_directives = get_directives_for_ast(ast)
 
     _validate_query_definition(ast)
-    _validate_ast_with_builtin_graphql_validation(schema, ast)
+    _validate_ast_with_builtin_graphql_validation(schema, DocumentNode(definitions=[ast]))
     _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives)
     _validate_non_required_macro_definition_directives(ast)
 

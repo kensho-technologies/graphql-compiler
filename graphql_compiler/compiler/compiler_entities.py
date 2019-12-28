@@ -6,6 +6,8 @@ from abc import ABCMeta, abstractmethod
 from graphql import is_type
 import six
 
+from ..global_utils import is_same_type
+
 
 @six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)
@@ -54,7 +56,7 @@ class CompilerEntity(object):
         # We have to split them out and compare them using "is_same_type()" instead.
         for self_arg, other_arg in six.moves.zip(self._print_args, other._print_args):
             if is_type(self_arg):
-                if not self_arg.is_same_type(other_arg):
+                if not is_same_type(self_arg, other_arg):
                     return False
             else:
                 if self_arg != other_arg:
