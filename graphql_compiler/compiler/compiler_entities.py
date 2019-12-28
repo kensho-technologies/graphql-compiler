@@ -2,6 +2,7 @@
 """Base classes for compiler entity objects like basic blocks and expressions."""
 
 from abc import ABCMeta, abstractmethod
+from typing import Any, Callable, TypeVar
 
 from graphql import is_type
 import six
@@ -16,17 +17,17 @@ class CompilerEntity(object):
 
     __slots__ = ("_print_args", "_print_kwargs")
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: Any, **kwargs: Any) -> None:
         """Construct a new CompilerEntity."""
         self._print_args = args
         self._print_kwargs = kwargs
 
     @abstractmethod
-    def validate(self):
+    def validate(self) -> None:
         """Ensure that the CompilerEntity is valid."""
         raise NotImplementedError()
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Return a human-readable unicode representation of this CompilerEntity."""
         printed_args = []
         if self._print_args:
@@ -39,12 +40,12 @@ class CompilerEntity(object):
             cls_name=type(self).__name__, args=self._print_args, kwargs=self._print_kwargs
         )
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         """Return a human-readable str representation of the CompilerEntity object."""
         return self.__str__()
 
     # pylint: disable=protected-access
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if the CompilerEntity objects are equal, and False otherwise."""
         if type(self) != type(other):
             return False
@@ -66,12 +67,12 @@ class CompilerEntity(object):
 
     # pylint: enable=protected-access
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
     @abstractmethod
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return the Gremlin unicode string representation of this object."""
         raise NotImplementedError()
 
@@ -82,7 +83,7 @@ class Expression(CompilerEntity):
 
     __slots__ = ()
 
-    def visit_and_update(self, visitor_fn):
+    def visit_and_update(self, visitor_fn: Callable[["Expression"], "Expression"]) -> "Expression":
         """Create an updated version (if needed) of the Expression via the visitor pattern.
 
         Args:
@@ -104,13 +105,18 @@ class Expression(CompilerEntity):
         return visitor_fn(self)
 
 
+BasicBlockT = TypeVar("BasicBlockT", bound="BasicBlock")
+
+
 @six.add_metaclass(ABCMeta)
 class BasicBlock(CompilerEntity):
     """A basic operation block of the GraphQL compiler."""
 
     __slots__ = ()
 
-    def visit_and_update_expressions(self, visitor_fn):
+    def visit_and_update_expressions(
+        self: BasicBlockT, visitor_fn: Callable[[Expression], Expression]
+    ) -> BasicBlockT:
         """Create an updated version (if needed) of the BasicBlock via the visitor pattern.
 
         Args:
@@ -127,6 +133,11 @@ class BasicBlock(CompilerEntity):
               object it was called with), this method returns 'self'.
             - Otherwise, this method returns a new BasicBlock object that reflects the updates
               requested by the visitor_fn.
+
+            Since the visitor_fn does not transform BasicBlock types, the type returned by
+            this function is guaranteed to be the same as the type of the "self" argument.
+            To learn more about how the BasicBlockT type variable accomplishes this, see PEP484:
+            https://www.python.org/dev/peps/pep-0484/#annotating-instance-and-class-methods
         """
         # Most BasicBlocks do not contain expressions, and immediately return 'self'.
         # Any BasicBlocks that contain Expressions will override this method.
@@ -139,14 +150,14 @@ class MarkerBlock(BasicBlock):
 
     __slots__ = ()
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return the Gremlin representation of the block, which should almost always be empty.
 
         The effect of MarkerBlocks is applied during optimization and code generation steps.
         """
         return u""
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Return the Cypher representation of the block, which should almost always be empty.
 
         The effect of MarkerBlocks is applied during optimization and code generation steps.
