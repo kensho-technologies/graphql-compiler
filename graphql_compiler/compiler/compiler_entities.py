@@ -2,10 +2,11 @@
 """Base classes for compiler entity objects like basic blocks and expressions."""
 
 from abc import ABCMeta, abstractmethod
-from typing import Any, Callable, TypeVar
+from typing import Any, Callable, Dict, Optional, Tuple, TypeVar, Union
 
 from graphql import is_type
 import six
+from sqlalchemy.sql.selectable import CTE, Alias
 
 from ..global_utils import is_same_type
 
@@ -77,6 +78,15 @@ class CompilerEntity(object):
         raise NotImplementedError()
 
 
+AliasType = Union[Alias, CTE]
+AliasesDictType = Dict[
+    Tuple[
+        Tuple[str, ...],
+        Optional[Tuple[Tuple[str, str], ...]],
+    ],
+    AliasType
+]
+
 @six.add_metaclass(ABCMeta)
 class Expression(CompilerEntity):
     """An expression that produces a value in the GraphQL compiler."""
@@ -103,6 +113,21 @@ class Expression(CompilerEntity):
         # Most Expressions simply visit themselves.
         # Any Expressions that contain Expressions will override this method.
         return visitor_fn(self)
+
+    @abstractmethod
+    def to_match(self) -> str:
+        """Return a string with the MATCH representation of this Expression."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def to_cypher(self) -> str:
+        """Return a string with the Cypher representation of this Expression."""
+        raise NotImplementedError()
+
+    @abstractmethod
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
+        """Return a SQLAlchemy object with the SQL representation of this Expression."""
+        raise NotImplementedError()
 
 
 BasicBlockT = TypeVar("BasicBlockT", bound="BasicBlock")

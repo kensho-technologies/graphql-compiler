@@ -335,6 +335,15 @@ class BaseLocation(object):
         """Return a tuple of a unique name of the location, and the current field name (or None)."""
         raise NotImplementedError()
 
+    def get_location_at_field_name(self) -> Tuple[str, str]:
+        """Assert the location is at a field, then return the same value as get_location_name()."""
+        mark_name, field_name = self.get_location_name()
+        if field_name is None:
+            raise AssertionError(
+                u"Expected the location {} to be at a field, but it was not."
+                u"This is a bug.".format(self))
+        return (mark_name, field_name)
+
     @abstractmethod
     def _check_if_object_of_same_type_is_smaller(self: LocationT, other: LocationT) -> bool:
         """Return True if the other object is smaller than self in the total ordering."""
