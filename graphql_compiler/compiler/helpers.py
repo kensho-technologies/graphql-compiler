@@ -378,6 +378,11 @@ class BaseLocation(object):
 
 @six.python_2_unicode_compatible
 class Location(BaseLocation):
+    """A location in the GraphQL query, anywhere except within a @fold scope."""
+
+    query_path: Tuple[str, ...]
+    visit_counter: int
+
     def __init__(
         self, query_path: Tuple[str, ...], field: Optional[str] = None, visit_counter: int = 1
     ) -> None:
@@ -537,6 +542,11 @@ class Location(BaseLocation):
 
 @six.python_2_unicode_compatible
 class FoldScopeLocation(BaseLocation):
+    """A location within a @fold scope."""
+
+    base_location: Location
+    fold_path: Tuple[Tuple[str, str], ...]
+
     def __init__(
         self,
         base_location: Location,
