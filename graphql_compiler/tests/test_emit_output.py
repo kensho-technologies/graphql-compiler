@@ -1,5 +1,4 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from typing import cast
 import unittest
 
 from graphql import GraphQLString
@@ -540,8 +539,8 @@ class EmitCypherTests(unittest.TestCase):
                     # see compiler.ir_lowering_cypher's replace_local_fields_with_context_fields
                     # method LocalField(u"name", GraphQLString) gets replaced with the
                     # child_location field "name"
-                    ContextField(child_location.navigate_to_field(u"name"), GraphQLString),
-                    ContextField(base_location.navigate_to_field(u"name"), GraphQLString),
+                    ContextField(child_name_location, GraphQLString),
+                    ContextField(base_name_location, GraphQLString),
                 )
             ),
             MarkLocation(child_location),

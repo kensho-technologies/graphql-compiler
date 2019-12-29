@@ -748,6 +748,7 @@ class OutputContextField(Expression):
         return template.format(mark_name=mark_name, field_name=field_name)
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
+        """Return a SQLAlchemy Column picked from the appropriate alias."""
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(
                 u"The SQL backend does not support lists. Cannot "
