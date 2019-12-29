@@ -72,7 +72,6 @@ class CompilerEntity(object):
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
-    @abstractmethod
     def to_gremlin(self) -> str:
         """Return the Gremlin unicode string representation of this object."""
         raise NotImplementedError()
@@ -109,17 +108,14 @@ class Expression(CompilerEntity):
         # Any Expressions that contain Expressions will override this method.
         return visitor_fn(self)
 
-    @abstractmethod
     def to_match(self) -> str:
         """Return a string with the MATCH representation of this Expression."""
         raise NotImplementedError()
 
-    @abstractmethod
     def to_cypher(self) -> str:
         """Return a string with the Cypher representation of this Expression."""
         raise NotImplementedError()
 
-    @abstractmethod
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a SQLAlchemy object with the SQL representation of this Expression."""
         raise NotImplementedError()
