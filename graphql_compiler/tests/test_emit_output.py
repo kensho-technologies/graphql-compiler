@@ -558,7 +558,7 @@ class EmitCypherTests(unittest.TestCase):
 
         expected_cypher = """
             MATCH (Animal___1:Animal)
-            MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
+            MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BirthEvent)
               WHERE (Animal__out_Animal_BornAt___1.name = Animal___1.name)
             RETURN
               Animal___1.name AS `animal_name`
@@ -575,7 +575,6 @@ class EmitCypherTests(unittest.TestCase):
         #     }
         # }'''
         base_location = Location(("Animal",))
-        base_name_location = base_location.navigate_to_field("name")
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,

@@ -366,7 +366,7 @@ class BaseLocation(object):
         elif isinstance(self, Location) and isinstance(other, FoldScopeLocation):
             return _compare_location_and_fold_scope_location(self, other)
         elif isinstance(self, FoldScopeLocation) and isinstance(other, Location):
-            return _compare_location_and_fold_scope_location(other, self)
+            return not _compare_location_and_fold_scope_location(other, self)
         else:
             raise AssertionError(
                 u"Received objects of types {}, {} in BaseLocation comparison. "
