@@ -4,7 +4,7 @@ from abc import ABCMeta, abstractmethod
 from collections import namedtuple
 from functools import total_ordering
 import string
-from typing import Any, Collection, Dict, Hashable, Iterable, Optional, Tuple, TypeVar, Union
+from typing import Any, Collection, Dict, Hashable, Iterable, Optional, Tuple, TypeVar, Union, cast
 
 import funcy
 from graphql import GraphQLNonNull, GraphQLString, is_type
@@ -76,7 +76,7 @@ def get_field_type_from_schema(
 
 def get_vertex_field_type(
     current_schema_type: Union[GraphQLInterfaceType, GraphQLObjectType], vertex_field_name: str
-) -> GraphQLOutputType:
+) -> Union[GraphQLInterfaceType, GraphQLObjectType]:
     """Return the type of the vertex within the specified vertex field name of the given type."""
     # According to the schema, the vertex field itself is of type GraphQLList, and this is
     # what get_field_type_from_schema returns. We care about what the type *inside* the list is,
@@ -94,7 +94,9 @@ def get_vertex_field_type(
             u"Found an edge whose schema type was not GraphQLList: "
             u"{} {} {}".format(current_schema_type, vertex_field_name, raw_field_type)
         )
-    return raw_field_type.of_type
+
+    field_type = cast(GraphQLList[Union[GraphQLInterfaceType, GraphQLObjectType]], raw_field_type)
+    return field_type.of_type
 
 
 def strip_non_null_from_type(graphql_type: GraphQLOutputType) -> Any:

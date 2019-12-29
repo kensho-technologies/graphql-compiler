@@ -783,7 +783,7 @@ class FoldedContextField(Expression):
     __slots__ = ("fold_scope_location", "field_type")
 
     def __init__(
-        self, fold_scope_location: FoldScopeLocation, field_type: GraphQLOutputType
+        self, fold_scope_location: FoldScopeLocation, field_type: GraphQLList[GraphQLOutputType]
     ) -> None:
         """Construct a new FoldedContextField object for this folded field.
 
