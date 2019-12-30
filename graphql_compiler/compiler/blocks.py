@@ -30,9 +30,6 @@ class QueryRoot(BasicBlock):
                          This will generally be a set of length 1, except when using Gremlin
                          with a non-final class, where we have to include all subclasses
                          of the start class. This is done using a Gremlin-only IR lowering step.
-
-        Returns:
-            new QueryRoot object
         """
         super(QueryRoot, self).__init__(start_class)
         self.start_class = start_class
@@ -80,9 +77,6 @@ class CoerceType(BasicBlock):
                           This will generally be a set of length 1, except when using Gremlin
                           with a non-final class, where we have to include all subclasses
                           of the target class. This is done using a Gremlin-only IR lowering step.
-
-        Returns:
-            new CoerceType object
         """
         super(CoerceType, self).__init__(target_class)
         self.target_class = target_class
@@ -122,9 +116,6 @@ class ConstructResult(BasicBlock):
         Args:
             fields: dict, variable name string -> Expression
                     see rules for variable names in validate_safe_string().
-
-        Returns:
-            new ConstructResult object
         """
         self.fields = {ensure_unicode_string(key): value for key, value in six.iteritems(fields)}
 
@@ -227,9 +218,6 @@ class MarkLocation(BasicBlock):
 
         Args:
             location: BaseLocation object, must not be at a property field in the query
-
-        Returns:
-            new MarkLocation object
         """
         super(MarkLocation, self).__init__(location)
         self.location = location
@@ -265,9 +253,8 @@ class Traverse(BasicBlock):
             edge_name: string obeying variable name rules (see validate_safe_string).
             optional: optional bool, specifying whether the traversal to the given location
                       is optional (i.e. non-filtering) or mandatory (filtering).
-
-        Returns:
-            new Traverse object
+            within_optional_scope: optional bool, set to True to indicate that this Traverse
+                                   is located within a scope marked @optional
         """
         super(Traverse, self).__init__(
             direction, edge_name, optional=optional, within_optional_scope=within_optional_scope
@@ -361,9 +348,8 @@ class Recurse(BasicBlock):
             direction: string, 'in' or 'out'.
             edge_name: string obeying variable name rules (see validate_safe_string).
             depth: int, always greater than or equal to 1.
-
-        Returns:
-            new Recurse object
+            within_optional_scope: optional bool, set to True to indicate that this Recurse
+                                   is located within a scope marked @optional
         """
         super(Recurse, self).__init__(
             direction, edge_name, depth, within_optional_scope=within_optional_scope
@@ -430,9 +416,6 @@ class Backtrack(BasicBlock):
             location: BaseLocation object, specifying where to backtrack to
             optional: optional bool, specifying whether the steps between the current location
                       and the location to which Backtrack is returning were optional or not
-
-        Returns:
-            new Backtrack object
         """
         super(Backtrack, self).__init__(location, optional=optional)
         self.location = location
