@@ -11,7 +11,7 @@ class MssqlXmlPathTests(TestCase):
         self.mssql_schema_info = get_sqlalchemy_schema_info(dialect="mssql")
 
     def test_convert_empty_string(self):
-        """Ensure empty list is correctly decoded."""
+        """Test empty list is correctly decoded."""
         query_output = {
             "child_names": "",
         }
@@ -29,7 +29,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_basic(self):
-        """Ensure basic XML path encoding (only pipe separations) is correctly decoded."""
+        """Test basic XML path encoding (only pipe separations) is correctly decoded."""
         query_output = {
             "child_names": "Animal 1|Animal 2|Animal 3|",
         }
@@ -47,7 +47,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_covert_none_result(self):
-        """Ensure "~" is properly decoded to None."""
+        """Test "~" is properly decoded to None."""
         query_output = {
             "child_names": "~|Animal 1|~",
         }
@@ -65,7 +65,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_caret_encodings(self):
-        """Ensure pipe, tilde, and carets are correctly decoded."""
+        """Test pipe, tilde, and carets are correctly decoded."""
         query_output = {
             "child_names": "name with a ^e (caret)|"
             "name with a ^d (pipe)|"
@@ -93,7 +93,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_ampersand_encodings(self):
-        """Ensure ampersand, less than, and greater than are correctly decoded."""
+        """Test ampersand, less than, and greater than are correctly decoded."""
         query_output = {
             "child_names": "name with a &amp; (ampersand)|"
             "name with a &gt; (greater than)|"
@@ -121,7 +121,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_hex_encodings(self):
-        """Ensure HTML hex encodings are properly decoded."""
+        """Test HTML hex encodings are properly decoded."""
         query_output = {
             "child_names": "name with a &#x06; (acknowledge)|"
             "&#x0B;many&#x06;hex&#x0F;&#x07;name&#x08;",
@@ -142,7 +142,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_basic_decimal(self):
-        """Ensure basic XML path encoding for decimals is correctly decoded."""
+        """Test basic XML path encoding for decimals is correctly decoded."""
         query_output = {
             "child_net_worths": "500|1000|400|~",
         }
@@ -162,7 +162,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_basic_datetime(self):
-        """Ensure basic XML path encoding for datetimes is correctly decoded."""
+        """Test basic XML path encoding for datetimes is correctly decoded."""
         query_output = {"child_birthdays": "2020-01-01|2000-02-29|~"}
         graphql_query = """{
             Animal {
@@ -180,7 +180,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_complex(self):
-        """Ensure more complex situations work with multiple folds, outputs, and types."""
+        """Test multiple folds, outputs, and types are correctly decoded."""
         query_output = {
             "child_birthdays": "2020-01-01|2000-02-29|~",
             "child_net_worths": "200|~|321",
