@@ -76,7 +76,7 @@ def _mssql_xml_path_string_to_list(
 
 
 def post_process_mssql_folds(
-    schema_info: SQLAlchemySchemaInfo, graphql_query: str, query_results: Dict[str, Any]
+    schema_info: SQLAlchemySchemaInfo, graphql_query: str, query_results: List[Dict[str, Any]]
 ) -> None:
     r"""Convert XML PATH fold results from a string to a list of the appropriate type.
 
@@ -114,8 +114,9 @@ def post_process_mssql_folds(
         if isinstance(block, blocks.ConstructResult):
             for out_name, expression in block.fields.items():
                 if isinstance(expression, expressions.FoldedContextField):
-                    xml_path_result = query_results[out_name]
-                    list_result = _mssql_xml_path_string_to_list(
-                        xml_path_result, expression.field_type.of_type
-                    )
-                    query_results[out_name] = list_result
+                    for query_result in query_results:
+                        xml_path_result = query_result[out_name]
+                        list_result = _mssql_xml_path_string_to_list(
+                            xml_path_result, expression.field_type.of_type
+                        )
+                        query_result[out_name] = list_result
