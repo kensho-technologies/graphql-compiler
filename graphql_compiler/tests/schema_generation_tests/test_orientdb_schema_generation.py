@@ -1,11 +1,11 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import unittest
 
-from frozendict import frozendict
 from graphql.type import GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLString
 import pytest
 import six
 
+from ...global_utils import is_same_type
 from ...schema_generation.graphql_schema import _get_union_type_name
 from ...schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
 from ...schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
@@ -19,177 +19,144 @@ from ...schema_generation.orientdb.schema_properties import (
 )
 
 
-BASE_VERTEX = frozendict(
-    {"name": ORIENTDB_BASE_VERTEX_CLASS_NAME, "abstract": False, "properties": []}
-)
+BASE_VERTEX = {"name": ORIENTDB_BASE_VERTEX_CLASS_NAME, "abstract": False, "properties": []}
 
-BASE_EDGE = frozendict({"name": ORIENTDB_BASE_EDGE_CLASS_NAME, "abstract": False, "properties": []})
+BASE_EDGE = {"name": ORIENTDB_BASE_EDGE_CLASS_NAME, "abstract": False, "properties": []}
 
-EXTERNAL_SOURCE = frozendict({"name": "ExternalSource", "abstract": False, "properties": []})
+EXTERNAL_SOURCE = {"name": "ExternalSource", "abstract": False, "properties": []}
 
-ENTITY = frozendict(
-    {
-        "name": "Entity",
-        "abstract": True,
-        "superClasses": [ORIENTDB_BASE_VERTEX_CLASS_NAME],
-        "properties": [{"name": "name", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+ENTITY = {
+    "name": "Entity",
+    "abstract": True,
+    "superClasses": [ORIENTDB_BASE_VERTEX_CLASS_NAME],
+    "properties": [{"name": "name", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
-PERSON = frozendict(
-    {
-        "name": "Person",
-        "abstract": False,
-        "superClass": "Entity",
-        "properties": [
-            {
-                "name": "alias",
-                "type": PROPERTY_TYPE_EMBEDDED_SET_ID,
-                "linkedType": PROPERTY_TYPE_STRING_ID,
-                "defaultValue": "{}",
-            },
-        ],
-    }
-)
-
-BABY = frozendict({"name": "Baby", "abstract": False, "superClass": "Person", "properties": [],})
-
-
-DATA_POINT = frozendict(
-    {
-        "name": "DataPoint",
-        "abstract": True,
-        "properties": [
-            {
-                "name": "data_source",
-                "type": PROPERTY_TYPE_EMBEDDED_LIST_ID,
-                "linkedClass": "ExternalSource",
-                "defaultValue": "[]",
-            }
-        ],
-        "superClass": "V",
-    }
-)
-
-PERSON_LIVES_IN_EDGE = frozendict(
-    {
-        "name": "Person_LivesIn",
-        "abstract": False,
-        "customFields": {
-            "human_name_in": "Location where person lives",
-            "human_name_out": "Person",
+PERSON = {
+    "name": "Person",
+    "abstract": False,
+    "superClass": "Entity",
+    "properties": [
+        {
+            "name": "alias",
+            "type": PROPERTY_TYPE_EMBEDDED_SET_ID,
+            "linkedType": PROPERTY_TYPE_STRING_ID,
+            "defaultValue": "{}",
         },
-        "properties": [
-            {"name": "in", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Location",},
-            {"name": "out", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Person",},
-        ],
-        "superClass": ORIENTDB_BASE_EDGE_CLASS_NAME,
-    }
-)
+    ],
+}
+
+BABY = {"name": "Baby", "abstract": False, "superClass": "Person", "properties": []}
 
 
-BABY_LIVES_IN_EDGE = frozendict(
-    {
-        "name": "Baby_LivesIn",
-        "abstract": False,
-        "properties": [
-            {"name": "in", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Location",},
-            {"name": "out", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Baby",},
-        ],
-        "superClass": "Person_LivesIn",
-    }
-)
+DATA_POINT = {
+    "name": "DataPoint",
+    "abstract": True,
+    "properties": [
+        {
+            "name": "data_source",
+            "type": PROPERTY_TYPE_EMBEDDED_LIST_ID,
+            "linkedClass": "ExternalSource",
+            "defaultValue": "[]",
+        }
+    ],
+    "superClass": "V",
+}
 
-LOCATION = frozendict(
-    {
-        "name": "Location",
-        "abstract": False,
-        "superClasses": ["Entity"],
-        "properties": [{"name": "description", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+PERSON_LIVES_IN_EDGE = {
+    "name": "Person_LivesIn",
+    "abstract": False,
+    "customFields": {"human_name_in": "Location where person lives", "human_name_out": "Person",},
+    "properties": [
+        {"name": "in", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Location",},
+        {"name": "out", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Person",},
+    ],
+    "superClass": ORIENTDB_BASE_EDGE_CLASS_NAME,
+}
 
-CLASS_WITH_INVALID_PROPERTY_NAME = frozendict(
-    {
-        "name": "ClassWithInvalidPropertyName",
-        "abstract": False,
-        "superClasses": [ORIENTDB_BASE_VERTEX_CLASS_NAME],
-        "properties": [{"name": "$invalid_name", "type": PROPERTY_TYPE_STRING_ID}],
-    }
-)
+
+BABY_LIVES_IN_EDGE = {
+    "name": "Baby_LivesIn",
+    "abstract": False,
+    "properties": [
+        {"name": "in", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Location",},
+        {"name": "out", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Baby",},
+    ],
+    "superClass": "Person_LivesIn",
+}
+
+LOCATION = {
+    "name": "Location",
+    "abstract": False,
+    "superClasses": ["Entity"],
+    "properties": [{"name": "description", "type": PROPERTY_TYPE_STRING_ID,}],
+}
+
+CLASS_WITH_INVALID_PROPERTY_NAME = {
+    "name": "ClassWithInvalidPropertyName",
+    "abstract": False,
+    "superClasses": [ORIENTDB_BASE_VERTEX_CLASS_NAME],
+    "properties": [{"name": "$invalid_name", "type": PROPERTY_TYPE_STRING_ID}],
+}
 
 # We add arbitrary properties to the following classes to make the data as "real" as possible.
-ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = frozendict(
-    {
-        "name": "AbstractNonGraphClassWithNonVertexConcreteSubclass",
-        "abstract": True,
-        "superClasses": [],
-        "properties": [{"name": "arbitrary_property_1", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = {
+    "name": "AbstractNonGraphClassWithNonVertexConcreteSubclass",
+    "abstract": True,
+    "superClasses": [],
+    "properties": [{"name": "arbitrary_property_1", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
-ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = frozendict(
-    {
-        "name": "AbstractNonGraphClassWithOnlyVertexConcreteSubclasses",
-        "abstract": True,
-        "superClasses": [],
-        "properties": [{"name": "arbitrary_property_2", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = {
+    "name": "AbstractNonGraphClassWithOnlyVertexConcreteSubclasses",
+    "abstract": True,
+    "superClasses": [],
+    "properties": [{"name": "arbitrary_property_2", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
-CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = frozendict(
-    {
-        "name": "ConcreteNonGraphClassWithNonVertexConcreteSubclass",
-        "abstract": False,
-        "superClasses": [],
-        "properties": [{"name": "arbitrary_property_3", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = {
+    "name": "ConcreteNonGraphClassWithNonVertexConcreteSubclass",
+    "abstract": False,
+    "superClasses": [],
+    "properties": [{"name": "arbitrary_property_3", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
-CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = frozendict(
-    {
-        "name": "ConcreteNonGraphClassWithOnlyVertexConcreteSubclasses",
-        "abstract": False,
-        "superClasses": [],
-        "properties": [{"name": "arbitrary_property_4", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = {
+    "name": "ConcreteNonGraphClassWithOnlyVertexConcreteSubclasses",
+    "abstract": False,
+    "superClasses": [],
+    "properties": [{"name": "arbitrary_property_4", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
-ABSTRACT_NON_GRAPH_CLASS_WITH_NO_SUBCLASSES = frozendict(
-    {
-        "name": "AbstractNonGraphClassWithNoSubclasses",
-        "abstract": True,
-        "superClasses": [],
-        "properties": [{"name": "arbitrary_property_5", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+ABSTRACT_NON_GRAPH_CLASS_WITH_NO_SUBCLASSES = {
+    "name": "AbstractNonGraphClassWithNoSubclasses",
+    "abstract": True,
+    "superClasses": [],
+    "properties": [{"name": "arbitrary_property_5", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
-ARBITRARY_CONCRETE_VERTEX_CLASS = frozendict(
-    {
-        "name": "ArbitraryConcreteVertexClass",
-        "abstract": False,
-        "superClasses": [
-            ORIENTDB_BASE_VERTEX_CLASS_NAME,
-            ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
-            ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES["name"],
-            CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
-            CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES["name"],
-        ],
-        "properties": [{"name": "arbitrary_property_6", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+ARBITRARY_CONCRETE_VERTEX_CLASS = {
+    "name": "ArbitraryConcreteVertexClass",
+    "abstract": False,
+    "superClasses": [
+        ORIENTDB_BASE_VERTEX_CLASS_NAME,
+        ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
+        ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES["name"],
+        CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
+        CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES["name"],
+    ],
+    "properties": [{"name": "arbitrary_property_6", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
-ARBITRARY_CONCRETE_NON_GRAPH_CLASS = frozendict(
-    {
-        "name": "ArbitraryConcreteNonGraphClass",
-        "abstract": False,
-        "superClasses": [
-            ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
-            CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
-        ],
-        "properties": [{"name": "arbitrary_property_7", "type": PROPERTY_TYPE_STRING_ID,}],
-    }
-)
+ARBITRARY_CONCRETE_NON_GRAPH_CLASS = {
+    "name": "ArbitraryConcreteNonGraphClass",
+    "abstract": False,
+    "superClasses": [
+        ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
+        CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
+    ],
+    "properties": [{"name": "arbitrary_property_7", "type": PROPERTY_TYPE_STRING_ID,}],
+}
 
 
 class GraphqlSchemaGenerationTests(unittest.TestCase):
@@ -258,7 +225,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         name_property = schema_graph.get_element_by_class_name("Entity").properties["name"]
-        self.assertTrue(name_property.type.is_same_type(GraphQLString))
+        self.assertTrue(is_same_type(name_property.type, GraphQLString))
 
     def test_native_orientdb_collection_property(self):
         schema_data = [
@@ -268,7 +235,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         alias_property = schema_graph.get_element_by_class_name("Person").properties["alias"]
-        self.assertTrue(alias_property.type.is_same_type(GraphQLList(GraphQLString)))
+        self.assertTrue(is_same_type(alias_property.type, GraphQLList(GraphQLString)))
         self.assertEqual(alias_property.default, set())
 
     def test_class_collection_property(self):
@@ -282,7 +249,9 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             "data_source"
         ]
         self.assertTrue(
-            friends_property.type.is_same_type(GraphQLList(GraphQLObjectType("ExternalSource", {})))
+            is_same_type(
+                friends_property.type, GraphQLList(GraphQLObjectType("ExternalSource", {}))
+            )
         )
         self.assertEqual(friends_property.default, list())
 
@@ -344,14 +313,14 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertEqual(set(person_baby_union.types), {baby, person})
 
         # Assert that arbitrarily chosen inherited property is still correctly inherited
-        self.assertTrue(baby.fields["name"].type.is_same_type(GraphQLString))
+        self.assertTrue(is_same_type(baby.fields["name"].type, GraphQLString))
 
         # Assert that arbitrarily chosen edge is correctly represented on all ends
         location_list_type = GraphQLList(location)
         union_list_type = GraphQLList(person_baby_union)
-        self.assertTrue(person.fields["out_Person_LivesIn"].type.is_same_type(location_list_type))
-        self.assertTrue(baby.fields["out_Person_LivesIn"].type.is_same_type(location_list_type))
-        self.assertTrue(location.fields["in_Person_LivesIn"].type.is_same_type(union_list_type))
+        self.assertTrue(is_same_type(person.fields["out_Person_LivesIn"].type, location_list_type))
+        self.assertTrue(is_same_type(baby.fields["out_Person_LivesIn"].type, location_list_type))
+        self.assertTrue(is_same_type(location.fields["in_Person_LivesIn"].type, union_list_type))
 
     def test_filter_type_equivalences_with_no_edges(self):
         schema_data = [
@@ -419,7 +388,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         }
 
         graphql_schema, _ = get_graphql_schema_from_orientdb_schema_data(schema_data)
-        for name in six.iterkeys(graphql_schema.get_type_map()):
+        for name in six.iterkeys(graphql_schema.type_map):
             self.assertNotIn(name, names_of_non_graph_classes_to_ignore)
 
         non_graph_class_type = graphql_schema.get_type(

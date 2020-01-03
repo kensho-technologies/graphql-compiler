@@ -12,7 +12,7 @@ from sqlalchemy import (
     Table,
 )
 from sqlalchemy.dialects.mssql import TINYINT, dialect
-from sqlalchemy.types import Binary, Integer, LargeBinary, String
+from sqlalchemy.types import Integer, LargeBinary, String
 
 from ... import get_sqlalchemy_schema_info
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
@@ -57,7 +57,7 @@ def _get_test_vertex_name_to_table():
     table4 = Table(
         "Table4",
         metadata,
-        Column("primary_key_column_with_unsupported_type", Binary()),
+        Column("primary_key_column_with_unsupported_type", LargeBinary()),
         PrimaryKeyConstraint("primary_key_column_with_unsupported_type"),
     )
 

@@ -15,7 +15,15 @@ def compare_sorted_locations_list(
             second_location = sorted_locations[j]
             expected_comparison = i < j
             received_comparison = first_location < second_location
-            test_case.assertEqual(expected_comparison, received_comparison)
+            test_case.assertEqual(
+                expected_comparison,
+                received_comparison,
+                msg=(
+                    "{} < {}, expected result {} but got {}".format(
+                        first_location, second_location, expected_comparison, received_comparison
+                    )
+                ),
+            )
 
 
 class LocationTests(unittest.TestCase):

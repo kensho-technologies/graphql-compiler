@@ -10,6 +10,7 @@ import six
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
+from ..global_utils import is_same_type
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -64,7 +65,7 @@ def _deserialize_anonymous_json_argument(expected_type, value):
     }
 
     # Check for long integers, bypassing the GraphQLInt parser
-    if GraphQLInt.is_same_type(expected_type):
+    if is_same_type(GraphQLInt, expected_type):
         if isinstance(value, six.integer_types):
             return value
         elif isinstance(value, six.string_types):
@@ -79,7 +80,7 @@ def _deserialize_anonymous_json_argument(expected_type, value):
     # Check if the type of the value is correct
     correct_type = True
     expected_python_types = allowed_types_for_graphql_type[expected_type.name]
-    if isinstance(value, bool) and not GraphQLBoolean.is_same_type(expected_type):
+    if isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type):
         correct_type = False  # We explicitly disallow passing boolean values for non-boolean types
     if not isinstance(value, expected_python_types):
         correct_type = False
@@ -88,6 +89,11 @@ def _deserialize_anonymous_json_argument(expected_type, value):
             u"Unexpected type {}. Expected one of {}.".format(type(value), expected_python_types)
         )
 
+    # Parse the value. In most cases we can use the default GraphQL parser, but there are some
+    # special cases where we are more permissive than the default.
+    # By default, strings cannot be parsed to float.
+    if is_same_type(expected_type, GraphQLFloat):
+        return float(value)
     # Use the default GraphQL parser to parse the value
     return expected_type.parse_value(value)
 
@@ -128,7 +134,7 @@ def deserialize_json_argument(name, expected_type, value):
     """
     try:
         return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
-    except ValueError as e:
+    except (ValueError, TypeError) as e:
         raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
@@ -146,26 +152,26 @@ def validate_argument_type(name, expected_type, value):
         value: object that can be interpreted as being of that type
     """
     stripped_type = strip_non_null_from_type(expected_type)
-    if GraphQLString.is_same_type(stripped_type):
+    if is_same_type(GraphQLString, stripped_type):
         if not isinstance(value, six.string_types):
             _raise_invalid_type_error(name, "string", value)
-    elif GraphQLID.is_same_type(stripped_type):
+    elif is_same_type(GraphQLID, stripped_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
         if not isinstance(value, six.string_types):
             _raise_invalid_type_error(name, "string", value)
-    elif GraphQLFloat.is_same_type(stripped_type):
+    elif is_same_type(GraphQLFloat, stripped_type):
         if not isinstance(value, float):
             _raise_invalid_type_error(name, "float", value)
-    elif GraphQLInt.is_same_type(stripped_type):
+    elif is_same_type(GraphQLInt, stripped_type):
         # Special case: in Python, isinstance(True, int) returns True.
         # Safeguard against this with an explicit check against bool type.
         if isinstance(value, bool) or not isinstance(value, six.integer_types):
             _raise_invalid_type_error(name, "int", value)
-    elif GraphQLBoolean.is_same_type(stripped_type):
+    elif is_same_type(GraphQLBoolean, stripped_type):
         if not isinstance(value, bool):
             _raise_invalid_type_error(name, "bool", value)
-    elif GraphQLDecimal.is_same_type(stripped_type):
+    elif is_same_type(GraphQLDecimal, stripped_type):
         # Types we support are int, float, and Decimal, but not bool.
         # isinstance(True, int) returns True, so we explicitly forbid bool.
         if isinstance(value, bool):
@@ -175,7 +181,7 @@ def validate_argument_type(name, expected_type, value):
                 decimal.Decimal(value)
             except decimal.InvalidOperation as e:
                 raise GraphQLInvalidArgumentError(e)
-    elif GraphQLDate.is_same_type(stripped_type):
+    elif is_same_type(GraphQLDate, stripped_type):
         # Datetimes pass as instances of date. We want to explicitly only allow dates.
         if isinstance(value, datetime.datetime) or not isinstance(value, datetime.date):
             _raise_invalid_type_error(name, "date", value)
@@ -183,7 +189,7 @@ def validate_argument_type(name, expected_type, value):
             stripped_type.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
-    elif GraphQLDateTime.is_same_type(stripped_type):
+    elif is_same_type(GraphQLDateTime, stripped_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
             _raise_invalid_type_error(name, "datetime", value)
         try:

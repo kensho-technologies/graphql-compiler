@@ -9,6 +9,8 @@ class InputSchemaStrings(object):
           query: SchemaQuery
         }
 
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
         type Human {
           id: String
         }
@@ -101,7 +103,7 @@ class InputSchemaStrings(object):
           age: Int
         }
 
-        type Human implements Character, Creature {
+        type Human implements Character & Creature {
           id: String
           age: Int
         }
@@ -119,6 +121,8 @@ class InputSchemaStrings(object):
         schema {
           query: SchemaQuery
         }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         type Human {
           id: String
@@ -325,6 +329,8 @@ class InputSchemaStrings(object):
         schema {
           query: SchemaQuery
         }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         interface Individual {
           ID: String

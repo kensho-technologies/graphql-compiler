@@ -41,19 +41,20 @@ FilterDirective = GraphQLDirective(
             (
                 "op_name",
                 GraphQLArgument(
-                    type=GraphQLNonNull(GraphQLString),
+                    type_=GraphQLNonNull(GraphQLString),
                     description="Name of the filter operation to perform.",
                 ),
             ),
             (
                 "value",
                 GraphQLArgument(
-                    type=GraphQLList(GraphQLNonNull(GraphQLString)),
+                    type_=GraphQLList(GraphQLNonNull(GraphQLString)),
                     description="List of string operands for the operator.",
                 ),
             ),
         ]
     ),
+    is_repeatable=True,
     locations=[DirectiveLocation.FIELD, DirectiveLocation.INLINE_FRAGMENT,],
 )
 
@@ -70,7 +71,7 @@ TagDirective = GraphQLDirective(
             (
                 "tag_name",
                 GraphQLArgument(
-                    type=GraphQLNonNull(GraphQLString),
+                    type_=GraphQLNonNull(GraphQLString),
                     description="Name to apply to the given property field.",
                 ),
             ),
@@ -91,7 +92,7 @@ OutputDirective = GraphQLDirective(
             (
                 "out_name",
                 GraphQLArgument(
-                    type=GraphQLNonNull(GraphQLString),
+                    type_=GraphQLNonNull(GraphQLString),
                     description=(
                         "What to designate the output field generated from this property field."
                     ),
@@ -198,7 +199,7 @@ RecurseDirective = GraphQLDirective(
             (
                 "depth",
                 GraphQLArgument(
-                    type=GraphQLNonNull(GraphQLInt),
+                    type_=GraphQLNonNull(GraphQLInt),
                     description=(
                         "Recurse up to this many times on this edge. A depth of 1 produces "
                         "the current vertex and its immediate neighbors along the given edge."
@@ -210,6 +211,48 @@ RecurseDirective = GraphQLDirective(
     locations=[DirectiveLocation.FIELD,],
 )
 
+# TODO(selene): comments for the macro directives
+MacroEdgeDirective = GraphQLDirective(
+    name="macro_edge",
+    locations=[
+        # Used to mark edges that are defined via macros in the schema.
+        DirectiveLocation.FIELD_DEFINITION,
+    ],
+)
+
+
+MacroEdgeDefinitionDirective = GraphQLDirective(
+    name="macro_edge_definition",
+    args=OrderedDict(
+        [
+            (
+                "name",
+                GraphQLArgument(
+                    type_=GraphQLNonNull(GraphQLString), description="Name of the macro edge.",
+                ),
+            ),
+        ]
+    ),
+    locations=[DirectiveLocation.FIELD,],
+)
+
+
+MacroEdgeTargetDirective = GraphQLDirective(
+    name="macro_edge_target",
+    locations=[DirectiveLocation.FIELD, DirectiveLocation.INLINE_FRAGMENT,],
+)
+
+# TODO(selene): comment for the stitch directive
+StitchDirective = GraphQLDirective(
+    name="stitch",
+    args=OrderedDict(
+        [
+            ("source_field", GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",)),
+            ("sink_field", GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",),),
+        ]
+    ),
+    locations=[DirectiveLocation.FIELD_DEFINITION],
+)
 
 OUTBOUND_EDGE_FIELD_PREFIX = "out_"
 INBOUND_EDGE_FIELD_PREFIX = "in_"
@@ -318,6 +361,8 @@ DIRECTIVES = (
     OptionalDirective,
     RecurseDirective,
     FoldDirective,
+    MacroEdgeDirective,
+    StitchDirective,
 )
 
 

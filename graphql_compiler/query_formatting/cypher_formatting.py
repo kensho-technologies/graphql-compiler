@@ -10,6 +10,7 @@ import six
 from ..compiler import CYPHER_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
+from ..global_utils import is_same_type
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .representations import represent_float_as_str, type_check_and_str
 
@@ -71,9 +72,9 @@ def _safe_cypher_list(inner_type, argument_value):
 
 def _safe_cypher_argument(expected_type, argument_value):
     """Return a Cypher string representing the given argument value."""
-    if GraphQLString.is_same_type(expected_type):
+    if is_same_type(GraphQLString, expected_type):
         return _safe_cypher_string(argument_value)
-    elif GraphQLID.is_same_type(expected_type):
+    elif is_same_type(GraphQLID, expected_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
         if not isinstance(argument_value, six.string_types):
@@ -82,9 +83,9 @@ def _safe_cypher_argument(expected_type, argument_value):
             else:
                 argument_value = six.text_type(argument_value)
         return _safe_cypher_string(argument_value)
-    elif GraphQLFloat.is_same_type(expected_type):
+    elif is_same_type(GraphQLFloat, expected_type):
         return represent_float_as_str(argument_value)
-    elif GraphQLInt.is_same_type(expected_type):
+    elif is_same_type(GraphQLInt, expected_type):
         # Special case: in Python, isinstance(True, int) returns True.
         # Safeguard against this with an explicit check against bool type.
         if isinstance(argument_value, bool):
@@ -92,13 +93,13 @@ def _safe_cypher_argument(expected_type, argument_value):
                 u"Attempting to represent a non-int as an int: " u"{}".format(argument_value)
             )
         return type_check_and_str(int, argument_value)
-    elif GraphQLBoolean.is_same_type(expected_type):
+    elif is_same_type(GraphQLBoolean, expected_type):
         return type_check_and_str(bool, argument_value)
-    elif GraphQLDecimal.is_same_type(expected_type):
+    elif is_same_type(GraphQLDecimal, expected_type):
         return _safe_cypher_decimal(argument_value)
-    elif GraphQLDate.is_same_type(expected_type):
+    elif is_same_type(GraphQLDate, expected_type):
         return _safe_cypher_date_and_datetime(expected_type, (datetime.date,), argument_value)
-    elif GraphQLDateTime.is_same_type(expected_type):
+    elif is_same_type(GraphQLDateTime, expected_type):
         return _safe_cypher_date_and_datetime(
             expected_type, (datetime.datetime, arrow.Arrow), argument_value
         )
