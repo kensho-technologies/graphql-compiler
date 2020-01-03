@@ -63,7 +63,7 @@ setup(
         "sqlalchemy>=1.3.0,<2",
     ],
     extras_require={':python_version<"3.7"': ["dataclasses>=0.6"],},
-    classifiers=[
+g    classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Topic :: Database :: Front-Ends",
         "Topic :: Software Development :: Compilers",
