@@ -52,24 +52,24 @@ class SchemaInfo:
     # Be very careful with this option, as bad input here will
     # lead to incorrect output queries being generated.
     # *****
-    type_equivalence_hints: Dict[str, str]  # Optional
+    type_equivalence_hints: Optional[Dict[str, str]]  # Optional
 
     # ####
     # The fields below are required for SQL databases.
     # ####
     # Specifying the dialect for which we are compiling, if a dialect exists
     # e.g. sqlalchemy.dialects.mssql.dialect()
-    dialect: Dialect
+    dialect: Optional[Dialect]
     # dict mapping every GraphQL object type or interface type name in the schema to
     # a sqlalchemy table.
     # Column types that do not exist for this dialect are not allowed.
     # All tables are expected to have primary keys.
-    vertex_name_to_table: Dict[str, sqlalchemy.Table]
+    vertex_name_to_table: Optional[Dict[str, sqlalchemy.Table]]
     # dict mapping every GraphQL object type or interface type name in the schema to
     # dict mapping every vertex field name at that type to a DirectJoinDescriptor.
     # The tables the join is to be performed on are not specified.
     # They are inferred from the schema and the tables dictionary.
-    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]]
+    join_descriptors: Optional[Dict[str, Dict[str, DirectJoinDescriptor]]]
 
     # TODO: consider extending this to being able to support QueryPlanningSchemaInfo
 
@@ -77,34 +77,38 @@ class SchemaInfo:
     # e.g. it would be nice if folks could do graphql_compiler.match import create_match_schema_info
     # It would be a bit of a bigger refactor so I'd like to float this by first - please opine :)
     def create_match_schema_info(
-            self, schema: GraphQLSchema, type_equivalence_hints: Optional[str, str] = None
+        self, schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
     ) -> "SchemaInfo":
+        """Create a SchemaInfo object for a database using match."""
         return SchemaInfo(schema=schema, type_equivalence_hints=type_equivalence_hints)
 
     def create_gremlin_schema_info(
-            self, schema: GraphQLSchema, type_equivalence_hints: Optional[str, str] = None
+        self, schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
     ) -> "SchemaInfo":
+        """Create a SchemaInfo object for a database using germlin."""
         return SchemaInfo(schema=schema, type_equivalence_hints=type_equivalence_hints)
 
     def create_cypher_schema_info(
-            self, schema: GraphQLSchema, type_equivalence_hints: Optional[str, str] = None
+        self, schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
     ) -> "SchemaInfo":
+        """Create a SchemaInfo object for a database using cypher."""
         return SchemaInfo(schema=schema, type_equivalence_hints=type_equivalence_hints)
 
     def _create_sql_schema_info(
-            self,
-            dialect: Dialect,
-            schema: GraphQLSchema,
-            vertex_name_to_table: Dict[str, sqlalchemy.Table],
-            join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]],
-            type_equivalence_hints: Optional[str, str] = None
+        self,
+        dialect: Dialect,
+        schema: GraphQLSchema,
+        vertex_name_to_table: Dict[str, sqlalchemy.Table],
+        join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]],
+        type_equivalence_hints: Optional[Dict[str, str]] = None,
     ) -> "SchemaInfo":
+        """Create a SchemaInfo object for a database using a flavor of SQL."""
         return SchemaInfo(
-            dialect=postgresql_dialect,
+            dialect=dialect,
             schema=schema,
             vertex_name_to_table=vertex_name_to_table,
             join_descriptors=join_descriptors,
-            type_equivalence_hints=type_equivalence_hints
+            type_equivalence_hints=type_equivalence_hints,
         )
 
     create_postgresql_schema_info = partial(_create_sql_schema_info, postgresql_dialect)
