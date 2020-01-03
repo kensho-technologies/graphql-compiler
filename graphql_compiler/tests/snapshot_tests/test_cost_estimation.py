@@ -1462,7 +1462,8 @@ class IntegerIntervalTests(unittest.TestCase):
             datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.utc),
         ]
         for datetime_value in datetime_values:
-            int_value = convert_field_value_to_int(schema_info, 'Event', 'event_date', datetime_value)
+            int_value = convert_field_value_to_int(
+                schema_info, 'Event', 'event_date', datetime_value)
             recovered_datetime = convert_int_to_field_value(
                 schema_info, 'Event', 'event_date', int_value)
             self.assertAlmostEqual(0, (datetime_value - recovered_datetime).total_seconds())

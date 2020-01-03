@@ -24,7 +24,7 @@ from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_ty
 # UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
 # (represented as a natural number) is 0, and the maximal value is 2^128-1.
 MIN_UUID_INT = 0
-MAX_UUID_INT = 2**128 - 1
+MAX_UUID_INT = 2 ** 128 - 1
 
 
 DATETIME_1970 = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
@@ -32,12 +32,14 @@ DATETIME_1970 = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
 
 def field_supports_range_reasoning(schema_info, vertex_class, property_field):
     """Return whether range reasoning is supported. See module docstring for definition."""
-    return any((
-        is_uuid4_type(schema_info, vertex_class, property_field),
-        is_int_field_type(schema_info, vertex_class, property_field),
-        is_datetime_field_type(schema_info, vertex_class, property_field),
-        is_date_field_type(schema_info, vertex_class, property_field),
-    ))
+    return any(
+        (
+            is_uuid4_type(schema_info, vertex_class, property_field),
+            is_int_field_type(schema_info, vertex_class, property_field),
+            is_datetime_field_type(schema_info, vertex_class, property_field),
+            is_date_field_type(schema_info, vertex_class, property_field),
+        )
+    )
 
 
 def convert_int_to_field_value(schema_info, vertex_class, property_field, int_value):
@@ -66,18 +68,24 @@ def convert_int_to_field_value(schema_info, vertex_class, property_field, int_va
         return datetime.date.fromordinal(int_value)
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         if not MIN_UUID_INT <= int_value <= MAX_UUID_INT:
-            raise ValueError(u'Integer value {} could not be converted to UUID, as it'
-                             u' is not in the range of valid UUIDs {} - {}: {} {}'
-                             .format(int_value, MIN_UUID_INT, MAX_UUID_INT, vertex_class,
-                                     property_field))
+            raise ValueError(
+                u"Integer value {} could not be converted to UUID, as it"
+                u" is not in the range of valid UUIDs {} - {}: {} {}".format(
+                    int_value, MIN_UUID_INT, MAX_UUID_INT, vertex_class, property_field
+                )
+            )
 
         return str(UUID(int=int(int_value)))
     elif field_supports_range_reasoning(schema_info, vertex_class, property_field):
-        raise AssertionError(u'Could not represent int {} as {} {}, but should be able to.'
-                             .format(int_value, vertex_class, property_field))
+        raise AssertionError(
+            u"Could not represent int {} as {} {}, but should be able to.".format(
+                int_value, vertex_class, property_field
+            )
+        )
     else:
-        raise NotImplementedError(u'Could not represent int {} as {} {}.'
-                                  .format(int_value, vertex_class, property_field))
+        raise NotImplementedError(
+            u"Could not represent int {} as {} {}.".format(int_value, vertex_class, property_field)
+        )
 
 
 def convert_field_value_to_int(schema_info, vertex_class, property_field, value):
@@ -86,16 +94,25 @@ def convert_field_value_to_int(schema_info, vertex_class, property_field, value)
         return value
     if is_datetime_field_type(schema_info, vertex_class, property_field):
         if value.tzinfo != pytz.utc:
-            raise ValueError(u'Invalid datetime value {}. Expected utc timezone, got {}'
-                             .format(value, value.tzinfo))
-        return int(DATETIME_1970 / datetime.timedelta(microseconds=1))
+            raise ValueError(
+                u"Invalid datetime value {}. Expected utc timezone, got {}".format(
+                    value, value.tzinfo
+                )
+            )
+        return int((value - DATETIME_1970) / datetime.timedelta(microseconds=1))
     if is_date_field_type(schema_info, vertex_class, property_field):
         return value.toordinal()
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         return UUID(value).int
     elif field_supports_range_reasoning(schema_info, vertex_class, property_field):
-        raise AssertionError(u'Could not represent {} {} value {} as int, but should be able to'
-                             .format(vertex_class, property_field, value))
+        raise AssertionError(
+            u"Could not represent {} {} value {} as int, but should be able to".format(
+                vertex_class, property_field, value
+            )
+        )
     else:
-        raise NotImplementedError(u'Could not represent {} {} value {} as int.'
-                                  .format(vertex_class, property_field, value))
+        raise NotImplementedError(
+            u"Could not represent {} {} value {} as int.".format(
+                vertex_class, property_field, value
+            )
+        )
