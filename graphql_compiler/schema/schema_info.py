@@ -75,7 +75,7 @@ class SchemaInfo:
 
     # TODO: consider - maybe move this outside of the class for easy import for users?
     # e.g. it would be nice if folks could do graphql_compiler.match import create_match_schema_info
-    # Please opine :)
+    # It would be a bit of a bigger refactor so I'd like to float this by first - please opine :)
     def create_match_schema_info(
             self, schema: GraphQLSchema, type_equivalence_hints: Optional[str, str] = None
     ) -> "SchemaInfo":
