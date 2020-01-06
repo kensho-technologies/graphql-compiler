@@ -228,6 +228,8 @@ To learn more about the GraphQL project see:
 - :doc:`Code of Conduct <about/code_of_conduct>` for the contributor code of conduct.
 - :doc:`Changelog <about/changelog>` for a history of changes.
 - :doc:`FAQ <about/faq>` for a list of frequently asked questions.
+- :doc:`Execution Model <about/execution_model>` to learn more about the design principles guiding
+  the development of the compiler and the guarantees the compiler provides.
 
 .. toctree::
    :caption: About the GraphQL Compiler
@@ -237,3 +239,4 @@ To learn more about the GraphQL project see:
    Code of Conduct <about/code_of_conduct>
    Changelog <about/changelog>
    FAQ <about/faq>
+   Execution Model <about/execution_model>
