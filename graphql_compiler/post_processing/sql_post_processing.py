@@ -116,7 +116,13 @@ def post_process_mssql_folds(
                 if isinstance(expression, expressions.FoldedContextField):
                     for query_result in query_results:
                         xml_path_result = query_result[out_name]
-                        list_result = _mssql_xml_path_string_to_list(
-                            xml_path_result, expression.field_type.of_type
-                        )
+                        if isinstance(expression.field_type.of_type, GraphQLScalarType):
+                            list_result = _mssql_xml_path_string_to_list(
+                                xml_path_result, expression.field_type.of_type
+                            )
+                        else:
+                            raise NotImplementedError(
+                                u"Post processing folded fields with type {} is not yet "
+                                u"implemented.".format(expression.field_type.of_type)
+                            )
                         query_result[out_name] = list_result
