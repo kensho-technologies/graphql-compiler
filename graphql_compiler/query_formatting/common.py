@@ -10,7 +10,7 @@ import six
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
@@ -88,15 +88,8 @@ def _deserialize_anonymous_json_argument(expected_type, value):
             u"Unexpected type {}. Expected one of {}.".format(type(value), expected_python_types)
         )
 
-    name_to_custom_type = {graphql_type.name: graphql_type for graphql_type in CUSTOM_SCALAR_TYPES}
     # Use the default GraphQL parser to parse the value
-    if expected_type.name in name_to_custom_type:
-        # Since we cannot serialize the parse_value function of custom scalar types when
-        # serializing a schema, it is possible that the parse_value is incorrectly set. We must,
-        # therefore, use the parse_value function of the original scalar type definition.
-        return name_to_custom_type[expected_type.name].parse_value(value)
-    else:
-        return expected_type.parse_value(value)
+    return expected_type.parse_value(value)
 
 
 def deserialize_json_argument(name, expected_type, value):
@@ -187,14 +180,14 @@ def validate_argument_type(name, expected_type, value):
         if isinstance(value, datetime.datetime) or not isinstance(value, datetime.date):
             _raise_invalid_type_error(name, "date", value)
         try:
-            GraphQLDate.serialize(value)
+            stripped_type.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif GraphQLDateTime.is_same_type(stripped_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
             _raise_invalid_type_error(name, "datetime", value)
         try:
-            GraphQLDateTime.serialize(value)
+            stripped_type.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif isinstance(stripped_type, GraphQLList):

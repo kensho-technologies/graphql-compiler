@@ -1,7 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Safely represent arguments for MATCH-language GraphQL queries."""
+import datetime
 import json
 
+import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
@@ -28,20 +30,23 @@ def _safe_match_string(value):
     return json.dumps(value)
 
 
-def _safe_match_date(value):
-    """Represent date objects as MATCH strings."""
+def _safe_match_date_and_datetime(graphql_type, expected_python_types, value):
+    """Represent date and datetime objects as MATCH strings."""
+    # Python datetime.datetime is a subclass of datetime.date,
+    # but in this case, the two are not interchangeable.
+    # Rather than using isinstance, we will therefore check for exact type equality.
+    value_type = type(value)
+    if not any(value_type == x for x in expected_python_types):
+        raise GraphQLInvalidArgumentError(
+            u"Expected value to be exactly one of "
+            u"python types {}, but was {}: "
+            u"{}".format(expected_python_types, value_type, value)
+        )
+
+    # The serialize() method of GraphQLDate and GraphQLDateTime produces the correct
+    # ISO-8601 format that MATCH expects. We then simply represent it as a regular string.
     try:
-        serialized_value = GraphQLDate.serialize(value)
-    except ValueError as e:
-        raise GraphQLInvalidArgumentError(e)
-
-    return _safe_match_string(serialized_value)
-
-
-def _safe_match_datetime(value):
-    """Represent datetime objects as MATCH strings."""
-    try:
-        serialized_value = GraphQLDateTime.serialize(value)
+        serialized_value = graphql_type.serialize(value)
     except ValueError as e:
         raise GraphQLInvalidArgumentError(e)
 
@@ -101,9 +106,11 @@ def _safe_match_argument(expected_type, argument_value):
     elif GraphQLDecimal.is_same_type(expected_type):
         return _safe_match_decimal(argument_value)
     elif GraphQLDate.is_same_type(expected_type):
-        return _safe_match_date(argument_value)
+        return _safe_match_date_and_datetime(expected_type, (datetime.date,), argument_value)
     elif GraphQLDateTime.is_same_type(expected_type):
-        return _safe_match_datetime(argument_value)
+        return _safe_match_date_and_datetime(
+            expected_type, (datetime.datetime, arrow.Arrow), argument_value
+        )
     elif isinstance(expected_type, GraphQLList):
         return _safe_match_list(expected_type.of_type, argument_value)
     else:
