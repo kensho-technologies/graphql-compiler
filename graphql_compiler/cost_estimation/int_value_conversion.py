@@ -14,10 +14,12 @@ types, like string. When the need for other types arises, the precise interface 
 reasoning can be defined and implemented separately for each type.
 """
 import datetime
+from typing import Any
 from uuid import UUID
 
 import pytz
 
+from ..schema.schema_info import QueryPlanningSchemaInfo
 from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_type, is_uuid4_type
 
 
@@ -30,7 +32,9 @@ MAX_UUID_INT = 2 ** 128 - 1
 DATETIME_EPOCH_UTC = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
 
 
-def field_supports_range_reasoning(schema_info, vertex_class, property_field):
+def field_supports_range_reasoning(
+    schema_info: QueryPlanningSchemaInfo, vertex_class: str, property_field: str
+) -> bool:
     """Return whether range reasoning is supported. See module docstring for definition."""
     return (
         is_uuid4_type(schema_info, vertex_class, property_field)
@@ -40,7 +44,9 @@ def field_supports_range_reasoning(schema_info, vertex_class, property_field):
     )
 
 
-def convert_int_to_field_value(schema_info, vertex_class, property_field, int_value):
+def convert_int_to_field_value(
+    schema_info: QueryPlanningSchemaInfo, vertex_class: str, property_field: str, int_value: int
+) -> Any:
     """Return the given integer's corresponding property field value.
 
     See module docstring for details. The int_value is expected to be in the range of
@@ -87,7 +93,9 @@ def convert_int_to_field_value(schema_info, vertex_class, property_field, int_va
         )
 
 
-def convert_field_value_to_int(schema_info, vertex_class, property_field, value):
+def convert_field_value_to_int(
+    schema_info: QueryPlanningSchemaInfo, vertex_class: str, property_field: str, value: Any
+) -> int:
     """Return the integer representation of a property field value."""
     if is_int_field_type(schema_info, vertex_class, property_field):
         return value
