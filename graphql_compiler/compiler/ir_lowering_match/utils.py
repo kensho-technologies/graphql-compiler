@@ -126,10 +126,6 @@ class BetweenClause(Expression):
             upper_bound=self.upper_bound.to_match(),
         )
 
-    def to_gremlin(self):
-        """Must never be called."""
-        raise NotImplementedError()
-
 
 def filter_edge_field_non_existence(edge_expression):
     """Return an Expression that is True iff the specified edge (edge_expression) does not exist."""

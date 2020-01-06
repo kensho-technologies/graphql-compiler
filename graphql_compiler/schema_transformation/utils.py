@@ -3,10 +3,10 @@ from copy import copy
 import string
 
 from graphql import build_ast_schema
-from graphql.language.ast import Field, InlineFragment, Name
+from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
-from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
+from graphql.utilities.assert_valid_name import re_name
 from graphql.validation import validate
 import six
 
@@ -95,7 +95,7 @@ def check_type_name_is_valid(name):
     """
     if not isinstance(name, str):
         raise InvalidTypeNameError(u'Name "{}" is not a string.'.format(name))
-    if not COMPILED_NAME_PATTERN.match(name):
+    if not re_name.match(name):
         raise InvalidTypeNameError(u'"{}" is not a valid GraphQL name.'.format(name))
     if name.startswith("__"):
         raise InvalidTypeNameError(
@@ -113,7 +113,7 @@ def get_query_type_name(schema):
     Returns:
         str, name of the query type (e.g. RootSchemaQuery)
     """
-    return schema.get_query_type().name
+    return schema.query_type.name
 
 
 def get_scalar_names(schema):
@@ -129,7 +129,7 @@ def get_scalar_names(schema):
     Returns:
         Set[str], set of names of scalars used in the schema
     """
-    type_map = schema.get_type_map()
+    type_map = schema.type_map
     scalars = {
         type_name
         for type_name, type_object in six.iteritems(type_map)
@@ -174,7 +174,7 @@ def try_get_inline_fragment(selections):
     if selections is None:
         return None
     inline_fragments_in_selection = [
-        selection for selection in selections if isinstance(selection, InlineFragment)
+        selection for selection in selections if isinstance(selection, InlineFragmentNode)
     ]
     if len(inline_fragments_in_selection) == 0:
         return None
@@ -206,13 +206,13 @@ def get_copy_of_node_with_new_name(node, new_name):
     node_type = type(node).__name__
     allowed_types = frozenset(
         (
-            "EnumTypeDefinition",
-            "Field",
-            "FieldDefinition",
-            "InterfaceTypeDefinition",
-            "NamedType",
-            "ObjectTypeDefinition",
-            "UnionTypeDefinition",
+            "EnumTypeDefinitionNode",
+            "FieldNode",
+            "FieldDefinitionNode",
+            "InterfaceTypeDefinitionNode",
+            "NamedTypeNode",
+            "ObjectTypeDefinitionNode",
+            "UnionTypeDefinitionNode",
         )
     )
     if node_type not in allowed_types:
@@ -222,7 +222,7 @@ def get_copy_of_node_with_new_name(node, new_name):
             )
         )
     node_with_new_name = copy(node)  # shallow copy is enough
-    node_with_new_name.name = Name(value=new_name)
+    node_with_new_name.name = NameNode(value=new_name)
     return node_with_new_name
 
 
@@ -235,31 +235,31 @@ class CheckValidTypesAndNamesVisitor(Visitor):
 
     disallowed_types = frozenset(
         {  # types not supported in renaming or merging
-            "InputObjectTypeDefinition",
-            "TypeExtensionDefinition",
+            "InputObjectTypeDefinitionNode",
+            "ObjectTypeExtensionNode",
         }
     )
     unexpected_types = frozenset(
         {  # types not expected to be found in schema definition
-            "Field",
-            "FragmentDefinition",
-            "FragmentSpread",
-            "InlineFragment",
-            "ObjectField",
-            "ObjectValue",
-            "OperationDefinition",
-            "SelectionSet",
-            "Variable",
-            "VariableDefinition",
+            "FieldNode",
+            "FragmentDefinitionNode",
+            "FragmentSpreadNode",
+            "InlineFragmentNode",
+            "ObjectFieldNode",
+            "ObjectValueNode",
+            "OperationDefinitionNode",
+            "SelectionSetNode",
+            "VariableNode",
+            "VariableDefinitionNode",
         }
     )
     check_name_validity_types = frozenset(
         {  # nodes whose name need to be checked
-            "EnumTypeDefinition",
-            "InterfaceTypeDefinition",
-            "ObjectTypeDefinition",
-            "ScalarTypeDefinition",
-            "UnionTypeDefinition",
+            "EnumTypeDefinitionNode",
+            "InterfaceTypeDefinitionNode",
+            "ObjectTypeDefinitionNode",
+            "ScalarTypeDefinitionNode",
+            "UnionTypeDefinitionNode",
         }
     )
 
@@ -295,17 +295,17 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
         self.query_type = query_type
         self.in_query_type = False
 
-    def enter_ObjectTypeDefinition(self, node, *args):
+    def enter_object_type_definition(self, node, *args):
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_ObjectTypeDefinition(self, node, *args):
+    def leave_object_type_definition(self, node, *args):
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_FieldDefinition(self, node, *args):
+    def enter_field_definition(self, node, *args):
         """If inside the query type, check that the field and queried type names match.
 
         Raises:
@@ -340,16 +340,13 @@ def check_ast_schema_is_valid(ast):
           or if any query type field does not match the queried type.
         - InvalidTypeNameError if a type has a type name that is invalid or reserved
     """
-    try:
-        schema = build_ast_schema(ast)
-    except Exception as e:  # Can't be more specific -- see graphql/utils/build_ast_schema.py
-        raise SchemaStructureError(u"Input is not a valid schema. Message: {}".format(e))
+    schema = build_ast_schema(ast)
 
-    if schema.get_mutation_type() is not None:
+    if schema.mutation_type is not None:
         raise SchemaStructureError(
             u"Renaming schemas that contain mutations is currently not supported."
         )
-    if schema.get_subscription_type() is not None:
+    if schema.subscription_type is not None:
         raise SchemaStructureError(
             u"Renaming schemas that contain subscriptions is currently not supported."
         )
@@ -370,7 +367,7 @@ def is_property_field_ast(field):
     Returns:
         True if the selection is a property field, False if it's a vertex field.
     """
-    if isinstance(field, Field):
+    if isinstance(field, FieldNode):
         if (
             field.selection_set is None
             or field.selection_set.selections is None
@@ -397,7 +394,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         (FilterDirective.name, OutputDirective.name, OptionalDirective.name,)
     )
 
-    def enter_Directive(self, node, *args):
+    def enter_directive(self, node, *args):
         """Check that the directive is supported."""
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
@@ -405,7 +402,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                 u"supported.".format(node.name.value, self.supported_directives)
             )
 
-    def enter_SelectionSet(self, node, *args):
+    def enter_selection_set(self, node, *args):
         """Check selections are valid.
 
         If selections contains an InlineFragment, check that it is the only inline fragment in
@@ -415,12 +412,12 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
             node: SelectionSet
         """
         selections = node.selections
-        if len(selections) == 1 and isinstance(selections[0], InlineFragment):
+        if len(selections) == 1 and isinstance(selections[0], InlineFragmentNode):
             return
         else:
             seen_vertex_field = False  # Whether we're seen a vertex field
             for field in selections:
-                if isinstance(field, InlineFragment):
+                if isinstance(field, InlineFragmentNode):
                     raise GraphQLValidationError(
                         u"Inline fragments must be the only selection in scope. However, in "
                         u"selections {}, an InlineFragment coexists with other selections.".format(

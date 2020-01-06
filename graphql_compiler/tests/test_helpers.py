@@ -3,13 +3,13 @@
 from collections import namedtuple
 from pprint import pformat
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
-from graphql.utils.build_ast_schema import build_ast_schema
+from graphql.utilities.build_ast_schema import build_ast_schema
 from pyorient.orient import OrientDB
 import six
 import sqlalchemy
@@ -18,6 +18,7 @@ from sqlalchemy.dialects import mssql, postgresql
 from ..compiler.compiler_entities import BasicBlock
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..global_utils import is_same_type
 from ..macros import MacroRegistry, create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import (
@@ -57,21 +58,43 @@ SCHEMA_TEXT = """
         query: RootSchemaQuery
     }
 
-    directive @filter(op_name: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+    directive @filter(
+        \"\"\"Name of the filter operation to perform.\"\"\"
+        op_name: String!
 
-    directive @tag(tag_name: String!) on FIELD
+        \"\"\"List of string operands for the operator.\"\"\"
+        value: [String!]
+    ) repeatable on FIELD | INLINE_FRAGMENT
 
-    directive @output(out_name: String!) on FIELD
+    directive @tag(
+        \"\"\"Name to apply to the given property field.\"\"\"
+        tag_name: String!
+    ) on FIELD
+
+    directive @output(
+        \"\"\"What to designate the output field generated from this property field.\"\"\"
+        out_name: String!
+    ) on FIELD
 
     directive @output_source on FIELD
 
     directive @optional on FIELD
 
-    directive @recurse(depth: Int!) on FIELD
+    directive @recurse(
+        \"\"\"
+        Recurse up to this many times on this edge. A depth of 1 produces the current
+        vertex and its immediate neighbors along the given edge.
+        \"\"\"
+        depth: Int!
+    ) on FIELD
 
     directive @fold on FIELD
 
-    type Animal implements Entity, UniquelyIdentifiable {
+    directive @macro_edge on FIELD_DEFINITION
+
+    directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+    type Animal implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         birthday: Date
@@ -91,7 +114,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type BirthEvent implements Entity, UniquelyIdentifiable {
+    type BirthEvent implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -106,10 +129,31 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
+    \"\"\"
+    The `Date` scalar type represents day-accuracy date objects.Values are
+    serialized following the ISO-8601 datetime format specification, for example
+    "2017-03-21". The year, month and day fields must be included, and the format
+    followed exactly, or the behavior is undefined.
+    \"\"\"
     scalar Date
 
+    \"\"\"
+    The `DateTime` scalar type represents timezone-aware second-accuracy
+    timestamps.Values are serialized following the ISO-8601 datetime format
+    specification, for example "2017-03-21T12:34:56+00:00". All of these fields must
+    be included, including the seconds and the time zone, and the format followed
+    exactly, or the behavior is undefined.
+    \"\"\"
     scalar DateTime
 
+    \"\"\"
+    The `Decimal` scalar type is an arbitrary-precision decimal number object useful
+    for representing values that should never be rounded, such as currency amounts.
+    Values are allowed to be transported as either a native Decimal type, if the
+    underlying transport allows that, or serialized as strings in decimal format,
+    without thousands separators and using a "." as the decimal separator: for
+    example, "12345678.012345".
+    \"\"\"
     scalar Decimal
 
     interface Entity {
@@ -122,7 +166,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type Event implements Entity, UniquelyIdentifiable {
+    type Event implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -136,7 +180,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type FeedingEvent implements Entity, UniquelyIdentifiable {
+    type FeedingEvent implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -151,7 +195,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type Food implements Entity, UniquelyIdentifiable {
+    type Food implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -162,7 +206,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type FoodOrSpecies implements Entity, UniquelyIdentifiable {
+    type FoodOrSpecies implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -173,7 +217,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type Location implements Entity, UniquelyIdentifiable {
+    type Location implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -197,7 +241,7 @@ SCHEMA_TEXT = """
         UniquelyIdentifiable: [UniquelyIdentifiable]
     }
 
-    type Species implements Entity, UniquelyIdentifiable {
+    type Species implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -485,7 +529,7 @@ def compare_input_metadata(
         received_value = received[key]
 
         test_case.assertTrue(
-            expected_value.is_same_type(received_value),
+            is_same_type(expected_value, received_value),
             msg=u"{} != {}".format(str(expected_value), str(received_value)),
         )
 
@@ -507,13 +551,26 @@ def get_schema() -> GraphQLSchema:
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
     schema = get_schema()
-    return {
-        schema.get_type(key): schema.get_type(value)
-        for key, value in [
-            ("Event", "Union__BirthEvent__Event__FeedingEvent"),
-            ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),
-        ]
-    }
+    type_equivalence_hints: Dict[
+        Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
+    ] = {}
+    for key, value in [
+        ("Event", "Union__BirthEvent__Event__FeedingEvent"),
+        ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),
+    ]:
+        key_type = schema.get_type(key)
+        value_type = schema.get_type(value)
+        if (
+            key_type
+            and value_type
+            and (
+                isinstance(key_type, GraphQLInterfaceType)
+                or isinstance(key_type, GraphQLObjectType)
+            )
+            and isinstance(value_type, GraphQLUnionType)
+        ):
+            type_equivalence_hints[key_type] = value_type
+    return type_equivalence_hints
 
 
 def get_common_schema_info() -> CommonSchemaInfo:
@@ -526,7 +583,7 @@ def _get_schema_without_list_valued_property_fields() -> GraphQLSchema:
     schema = get_schema()
 
     types_with_fields = (GraphQLInterfaceType, GraphQLObjectType)
-    for type_name, graphql_type in six.iteritems(schema.get_type_map()):
+    for type_name, graphql_type in six.iteritems(schema.type_map):
         if isinstance(graphql_type, types_with_fields):
             if type_name != "RootSchemaQuery" and not type_name.startswith("__"):
                 fields_to_pop = []

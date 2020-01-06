@@ -145,7 +145,7 @@ def make_sqlalchemy_schema_info(
         # - do joins join on columns on which the (=) operator makes sense?
         # - do inherited columns have exactly the same type on the parent and child table?
         # - are all the column types available in this dialect?
-        for type_name, graphql_type in six.iteritems(schema.get_type_map()):
+        for type_name, graphql_type in six.iteritems(schema.type_map):
             if isinstance(graphql_type, types_to_map):
                 if type_name != "RootSchemaQuery" and not type_name.startswith("__"):
                     # Check existence of sqlalchemy table for this type

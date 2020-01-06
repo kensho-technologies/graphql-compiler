@@ -1,11 +1,17 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Tuple, Union
 from unittest import TestCase
 
-from graphql.type import GraphQLID
-from graphql.utils.schema_printer import print_schema
+from graphql.type import (
+    GraphQLID,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLObjectType,
+    GraphQLScalarType,
+)
+from graphql.utilities.schema_printer import print_schema
 from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
@@ -589,7 +595,9 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
-        class_to_field_type_overrides = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
+        class_to_field_type_overrides: Dict[str, Dict[str, GraphQLScalarType]] = {
+            "UniquelyIdentifiable": {"uuid": GraphQLID}
+        }
         schema, _ = generate_schema(
             self.orientdb_client,  # type: ignore  # from fixture
             class_to_field_type_overrides=class_to_field_type_overrides,
@@ -599,15 +607,24 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_override_field_types(self) -> None:
-        class_to_field_type_overrides = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
+        class_to_field_type_overrides: Dict[
+            str, Dict[str, Union[GraphQLList[Any], GraphQLNonNull[Any], GraphQLScalarType]]
+        ] = {"UniquelyIdentifiable": {"uuid": GraphQLID}}
         schema, _ = generate_schema(
             self.orientdb_client,  # type: ignore  # from fixture
             class_to_field_type_overrides=class_to_field_type_overrides,
         )
         # Since Animal implements the UniquelyIdentifiable interface and since we we overrode
         # UniquelyIdentifiable's uuid field to be of type GraphQLID when we generated the schema,
-        # then Animal's uuid field should also be of type GrapqhQLID.
-        self.assertEqual(schema.get_type("Animal").fields["uuid"].type, GraphQLID)
+        # then Animal's uuid field should also be of type GraphQLID.
+        animal_type = schema.get_type("Animal")
+        if animal_type and isinstance(animal_type, GraphQLObjectType):
+            self.assertEqual(animal_type.fields["uuid"].type, GraphQLID)
+        else:
+            raise AssertionError(
+                u'Expected "Animal" to be of type GraphQLObjectType, but was '
+                u"of type {}".format(type(animal_type))
+            )
 
     @integration_fixtures
     def test_include_admissible_non_graph_class(self) -> None:
@@ -621,7 +638,7 @@ class IntegrationTests(TestCase):
             self.orientdb_client,  # type: ignore  # from fixture
             hidden_classes={"Animal"},
         )
-        self.assertNotIn("Animal", schema.get_type_map())
+        self.assertNotIn("Animal", schema.type_map)
 
     @integration_fixtures
     def test_parsed_schema_element_custom_fields(self) -> None:

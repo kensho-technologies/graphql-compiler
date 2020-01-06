@@ -39,7 +39,6 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         bad_query = """{
             Animal @filter(value: ["$name"], op_name: "name_or_alias") {
                 uuid @filter(value: ["$max_uuid"], op_name: "<=")
-
                 out_Entity_Related {
                   ...on Species{
                       name @output(out_name: "related_species")
@@ -69,7 +68,6 @@ class GraphQLPrettyPrintTests(unittest.TestCase):
         bad_query = """{
             Animal @filter(value: ["$name"], unknown_arg: "value", op_name: "name_or_alias") {
                 uuid @filter(value: ["$max_uuid"], op_name: "<=")
-
                 out_Entity_Related {
                   ...on Species{
                       name @output(out_name: "related_species")

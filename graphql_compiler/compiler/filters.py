@@ -2,11 +2,12 @@
 from functools import partial, wraps
 
 from graphql import GraphQLInt, GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
-from graphql.language.ast import InlineFragment, ListValue
+from graphql.language.ast import InlineFragmentNode, ListValueNode
 from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..global_utils import is_same_type
 from ..schema import is_vertex_field_name
 from .helpers import (
     get_uniquely_named_objects_by_name,
@@ -121,7 +122,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         # in order to possibly raise an error with a better explanation.
         validate_runtime_argument_name(argument_name)
         existing_type = context["inputs"].get(argument_name, inferred_type)
-        if not inferred_type.is_same_type(existing_type):
+        if not is_same_type(inferred_type, existing_type):
             raise GraphQLCompilationError(
                 u"Incompatible types inferred for argument {}. "
                 u"The argument cannot simultaneously be "
@@ -148,7 +149,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         if location.field is None:
             raise AssertionError(u"Argument location is not a property field: {}".format(location))
 
-        if not inferred_type.is_same_type(tag_inferred_type):
+        if not is_same_type(inferred_type, tag_inferred_type):
             raise GraphQLCompilationError(
                 u"The inferred type of the matching @tag directive does "
                 u"not match the inferred required type for this filter: "
@@ -263,7 +264,7 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     Returns:
         a Filter basic block that performs the check
     """
-    if isinstance(filter_operation_info.field_ast, InlineFragment):
+    if isinstance(filter_operation_info.field_ast, InlineFragmentNode):
         raise AssertionError(
             u'Received InlineFragment AST node in "has_edge_degree" filter '
             u"handler. This should have been caught earlier: "
@@ -597,7 +598,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
+    if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
             u'Cannot apply "has_substring" to non-string ' u"type {}".format(filtered_field_type)
         )
@@ -643,7 +644,7 @@ def _process_ends_with_filter_directive(filter_operation_info, location, context
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
+    if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
             u'Cannot apply "ends_with" to non-string ' u"type {}".format(filtered_field_type)
         )
@@ -689,7 +690,7 @@ def _process_starts_with_filter_directive(filter_operation_info, location, conte
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
+    if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
             u'Cannot apply "starts_with" to non-string ' u"type {}".format(filtered_field_type)
         )
@@ -736,7 +737,7 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
 
     base_field_type = strip_non_null_from_type(filtered_field_type)
 
-    if base_field_type.is_same_type(GraphQLString):
+    if is_same_type(base_field_type, GraphQLString):
         raise GraphQLCompilationError(
             u'Cannot apply "contains" to non-list '
             u'type String. Consider using the "has_substring" '
@@ -948,7 +949,7 @@ def _get_filter_op_name_and_values(directive):
     else:
         # HACK(predrag): Workaround for graphql-core validation issue
         #                https://github.com/graphql-python/graphql-core/issues/97
-        if not isinstance(args["value"].value, ListValue):
+        if not isinstance(args["value"].value, ListValueNode):
             raise GraphQLValidationError(
                 u"Filter directive value was " u"not a list: {}".format(directive)
             )

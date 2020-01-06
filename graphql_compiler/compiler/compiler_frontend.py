@@ -68,7 +68,7 @@ from graphql import (
     GraphQLObjectType,
     GraphQLUnionType,
 )
-from graphql.language.ast import Field, InlineFragment
+from graphql.language.ast import FieldNode, InlineFragmentNode
 
 from . import blocks, expressions
 from ..ast_manipulation import (
@@ -78,6 +78,7 @@ from ..ast_manipulation import (
     safe_parse_graphql,
 )
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..global_utils import is_same_type
 from ..schema import COUNT_META_FIELD_NAME, is_vertex_field_name
 from .context_helpers import (
     get_context_fold_info,
@@ -157,7 +158,7 @@ class OutputMetadata(namedtuple("OutputMetadata", ("type", "optional"))):
         """Check another OutputMetadata object for equality against this one."""
         # Unfortunately, GraphQL types don't have an equality operator defined,
         # and instead have this "is_same_type" function. Hence, we have to override equality here.
-        return self.type.is_same_type(other.type) and self.optional == other.optional
+        return is_same_type(self.type, other.type) and self.optional == other.optional
 
     def __ne__(self, other):
         """Check another OutputMetadata object for non-equality against this one."""
@@ -192,7 +193,7 @@ def _get_fields(ast):
     seen_field_names = set()
     switched_to_vertices = False  # Ensures that all property fields are before all vertex fields.
     for field_ast in ast.selection_set.selections:
-        if not isinstance(field_ast, Field):
+        if not isinstance(field_ast, FieldNode):
             # We are getting Fields only, ignore everything else.
             continue
 
@@ -238,7 +239,7 @@ def _get_inline_fragment(ast):
     fragments = [
         ast_node
         for ast_node in ast.selection_set.selections
-        if isinstance(ast_node, InlineFragment)
+        if isinstance(ast_node, InlineFragmentNode)
     ]
 
     if not fragments:
@@ -712,11 +713,11 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     # No coercion is necessary if coercing to the current type of the scope,
     # or if the scope is of union type, to the base type of the union as defined by
     # the type_equivalence_hints compilation parameter.
-    is_same_type_as_scope = current_schema_type.is_same_type(coerces_to_type_obj)
+    is_same_type_as_scope = is_same_type(current_schema_type, coerces_to_type_obj)
     equivalent_union_type = context["type_equivalence_hints"].get(coerces_to_type_obj, None)
-    is_base_type_of_union = isinstance(
-        current_schema_type, GraphQLUnionType
-    ) and current_schema_type.is_same_type(equivalent_union_type)
+    is_base_type_of_union = isinstance(current_schema_type, GraphQLUnionType) and is_same_type(
+        current_schema_type, equivalent_union_type
+    )
 
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
@@ -881,7 +882,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
 
     # Validation passed, so the base_start_type must exist as a field of the root query.
-    current_schema_type = get_field_type_from_schema(schema.get_query_type(), base_start_type)
+    current_schema_type = get_field_type_from_schema(schema.query_type, base_start_type)
 
     # Allow list types at the query root in the schema.
     if isinstance(current_schema_type, GraphQLList):

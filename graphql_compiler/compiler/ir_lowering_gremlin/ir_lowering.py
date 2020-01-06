@@ -13,6 +13,7 @@ from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionTy
 import six
 
 from ...exceptions import GraphQLCompilationError
+from ...global_utils import is_same_type
 from ...schema import GraphQLDate, GraphQLDateTime
 from ..blocks import Backtrack, CoerceType, Filter, GlobalOperationsStart, MarkLocation, Traverse
 from ..compiler_entities import Expression
@@ -182,7 +183,7 @@ class GremlinFoldedContextField(Expression):
                     u"Outputting list-valued fields in a @fold context is currently not supported: "
                     u"{} {}".format(self.fold_scope_location, bare_field_type.of_type)
                 )
-        elif GraphQLInt.is_same_type(bare_field_type):
+        elif is_same_type(GraphQLInt, bare_field_type):
             # This needs to be implemented for @fold _x_count support.
             raise NotImplementedError()
         else:
@@ -259,9 +260,9 @@ class GremlinFoldedContextField(Expression):
 
         maybe_format = ""
         inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if GraphQLDate.is_same_type(inner_type):
+        if is_same_type(GraphQLDate, inner_type):
             maybe_format = '.format("' + STANDARD_DATE_FORMAT + '")'
-        elif GraphQLDateTime.is_same_type(inner_type):
+        elif is_same_type(GraphQLDateTime, inner_type):
             maybe_format = '.format("' + STANDARD_DATETIME_FORMAT + '")'
 
         template_data = {

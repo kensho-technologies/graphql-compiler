@@ -465,7 +465,7 @@ class EmitCypherTests(unittest.TestCase):
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=schema.get_type(base_name_location.field),
+            type=schema.get_type("Animal"),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
@@ -508,7 +508,7 @@ class EmitCypherTests(unittest.TestCase):
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=schema.get_type(base_name_location.field),
+            type=schema.get_type("Animal"),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
@@ -519,7 +519,7 @@ class EmitCypherTests(unittest.TestCase):
         child_name_location = child_location.navigate_to_field("name")
         child_location_info = LocationInfo(
             parent_location=base_location,
-            type=schema.get_type(child_name_location.field),
+            type=schema.get_type("BirthEvent"),
             coerced_from_type=None,
             optional_scopes_depth=1,
             recursive_scopes_depth=0,
@@ -531,7 +531,7 @@ class EmitCypherTests(unittest.TestCase):
             MarkLocation(base_location),
             Traverse("out", "Animal_BornAt"),
             CoerceType(
-                {"BornAt"}
+                {"BirthEvent"}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             Filter(
                 BinaryComposition(
@@ -539,8 +539,8 @@ class EmitCypherTests(unittest.TestCase):
                     # see compiler.ir_lowering_cypher's replace_local_fields_with_context_fields
                     # method LocalField(u"name", GraphQLString) gets replaced with the
                     # child_location field "name"
-                    ContextField(child_location.navigate_to_field(u"name"), GraphQLString),
-                    ContextField(base_location.navigate_to_field(u"name"), GraphQLString),
+                    ContextField(child_name_location, GraphQLString),
+                    ContextField(base_name_location, GraphQLString),
                 )
             ),
             MarkLocation(child_location),
@@ -558,7 +558,7 @@ class EmitCypherTests(unittest.TestCase):
 
         expected_cypher = """
             MATCH (Animal___1:Animal)
-            MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
+            MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BirthEvent)
               WHERE (Animal__out_Animal_BornAt___1.name = Animal___1.name)
             RETURN
               Animal___1.name AS `animal_name`
@@ -575,11 +575,10 @@ class EmitCypherTests(unittest.TestCase):
         #     }
         # }'''
         base_location = Location(("Animal",))
-        base_name_location = base_location.navigate_to_field("name")
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=schema.get_type(base_name_location.field),
+            type=schema.get_type("Animal"),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
@@ -590,7 +589,7 @@ class EmitCypherTests(unittest.TestCase):
         child_name_location = child_location.navigate_to_field("name")
         child_location_info = LocationInfo(
             parent_location=base_location,
-            type=child_name_location.field,
+            type=schema.get_type("BirthEvent"),
             coerced_from_type=None,
             optional_scopes_depth=1,
             recursive_scopes_depth=0,
@@ -602,7 +601,7 @@ class EmitCypherTests(unittest.TestCase):
             MarkLocation(base_location),
             Traverse("out", "Animal_BornAt", optional=True),
             CoerceType(
-                {"BornAt"}
+                {"BirthEvent"}
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             MarkLocation(child_location),
             Backtrack(base_location, optional=True),
@@ -636,7 +635,7 @@ class EmitCypherTests(unittest.TestCase):
 
         expected_cypher = """
             MATCH (Animal___1:Animal)
-            OPTIONAL MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BornAt)
+            OPTIONAL MATCH (Animal___1)-[:Animal_BornAt]->(Animal__out_Animal_BornAt___1:BirthEvent)
             RETURN
                 (CASE WHEN (Animal__out_Animal_BornAt___1 IS NOT null)
                 THEN Animal__out_Animal_BornAt___1.name ELSE null END) AS `bornat_name`
@@ -656,7 +655,7 @@ class EmitCypherTests(unittest.TestCase):
         schema = get_schema()
         base_location_info = LocationInfo(
             parent_location=None,
-            type=schema.get_type(base_event_date_location.field),
+            type=schema.get_type("BirthEvent"),
             coerced_from_type=None,
             optional_scopes_depth=0,
             recursive_scopes_depth=0,
