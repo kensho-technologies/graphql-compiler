@@ -69,12 +69,11 @@ Once the dev environment is prepared, you can run the tests, from the root repos
    py.test graphql_compiler/tests
 
 Some snapshot and integration tests take longer to setup, run, and
-teardown. These can be optionally skipped during development by running
-the tests with the :code:`--skip-slow` flag:
+teardown. These can be optionally skipped during development by running:
 
 .. code:: bash
 
-   py.test graphql_compiler/tests --skip-slow
+   py.test -m 'no-slow'
 
 If you run into any issues, please consult the TROUBLESHOOTING.md file.
 If you encounter and resolve an issue that is not already part of the
