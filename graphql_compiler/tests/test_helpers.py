@@ -572,7 +572,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
         "BirthEvent": sqlalchemy.Table(
             "BirthEvent",
             sqlalchemy_metadata,
-            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=True),
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column("uuid", uuid_type, primary_key=True),
             sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False),
