@@ -67,15 +67,15 @@ def convert_int_to_field_value(
     """
     if is_int_field_type(schema_info, vertex_class, property_field):
         return int_value
-    if is_datetime_field_type(schema_info, vertex_class, property_field):
+    elif is_datetime_field_type(schema_info, vertex_class, property_field):
         return DATETIME_EPOCH_UTC + datetime.timedelta(microseconds=int_value)
-    if is_date_field_type(schema_info, vertex_class, property_field):
+    elif is_date_field_type(schema_info, vertex_class, property_field):
         return datetime.date.fromordinal(int_value)
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         if not MIN_UUID_INT <= int_value <= MAX_UUID_INT:
             raise AssertionError(
-                u"Integer value {} could not be converted to UUID, as it"
-                u" is not in the range of valid UUIDs {} - {}: {} {}".format(
+                u"Integer value {} could not be converted to UUID, as it "
+                u"is not in the range of valid UUIDs {} - {}: {} {}".format(
                     int_value, MIN_UUID_INT, MAX_UUID_INT, vertex_class, property_field
                 )
             )
@@ -99,15 +99,11 @@ def convert_field_value_to_int(
     """Return the integer representation of a property field value."""
     if is_int_field_type(schema_info, vertex_class, property_field):
         return value
-    if is_datetime_field_type(schema_info, vertex_class, property_field):
-        if value.tzinfo != pytz.utc:
-            raise ValueError(
-                u"Invalid datetime value {}. Expected utc timezone, got {}".format(
-                    value, value.tzinfo
-                )
-            )
-        return int((value - DATETIME_EPOCH_UTC) // datetime.timedelta(microseconds=1))
-    if is_date_field_type(schema_info, vertex_class, property_field):
+    elif is_datetime_field_type(schema_info, vertex_class, property_field):
+        return (value.astimezone(pytz.utc) - DATETIME_EPOCH_UTC) // datetime.timedelta(
+            microseconds=1
+        )
+    elif is_date_field_type(schema_info, vertex_class, property_field):
         return value.toordinal()
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         return UUID(value).int
