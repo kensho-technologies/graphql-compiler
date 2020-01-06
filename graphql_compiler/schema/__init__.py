@@ -298,7 +298,7 @@ def _serialize_datetime(value):
     # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
     # interchangeable. Rather than using isinstance, we will therefore check for exact type
     # equality.
-    if type(value) not in (datetime, arrow.Arrow):
+    if type(value) not in {datetime, arrow.Arrow}:
         raise ValueError(
             u"Expected argument to be a python datetime object. "
             u"Got {} of type {} instead.".format(value, type(value))
