@@ -595,7 +595,7 @@ class IntegrationTests(TestCase):
         {
             BirthEvent {
                 uuid @output(out_name: "uuid")
-                event_date @filter(op_name: "=", value: ["$date_time"])
+                event_date @filter(op_name: "=", value: ["$event_date"])
             }
         }
         """

@@ -75,10 +75,12 @@ def get_integration_data():
         "BirthEvent": (
             {
                 "uuid": uuids["B1"],
+                "name": "birth_event_1",
                 "event_date": datetime.datetime(2000, 1, 1, 1, 1, 1),
             },
             {
                 "uuid": uuids["B2"],
+                "name": "birth_event_2",
                 "event_date": datetime.datetime(2000, 1, 1, 1, 1, 2),
             },
         )
@@ -139,7 +141,7 @@ def _write_orient_equality(field_name, field_value):
 
     field_value_representation = repr(field_value)
     if isinstance(field_value, datetime.date):
-        field_value_representation = 'DATE("' + field_value.isoformat() + ' 00:00:00")'
+        field_value_representation = 'DATE("' + field_value.strftime("%Y-%m-%d %H:%M:%S") + '")'
     template = "{} = {}"
     return template.format(field_name, field_value_representation)
 
