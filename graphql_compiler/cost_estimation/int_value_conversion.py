@@ -98,7 +98,7 @@ def convert_field_value_to_int(schema_info, vertex_class, property_field, value)
                     value, value.tzinfo
                 )
             )
-        return int((value - DATETIME_EPOCH_UTC) / datetime.timedelta(microseconds=1))
+        return int((value - DATETIME_EPOCH_UTC) // datetime.timedelta(microseconds=1))
     if is_date_field_type(schema_info, vertex_class, property_field):
         return value.toordinal()
     elif is_uuid4_type(schema_info, vertex_class, property_field):
