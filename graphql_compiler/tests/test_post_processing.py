@@ -2,6 +2,9 @@
 import datetime
 from unittest import TestCase
 
+from graphql import GraphQLList, GraphQLString
+
+from ..compiler.compiler_frontend import OutputMetadata
 from ..post_processing.sql_post_processing import post_process_mssql_folds
 from .test_helpers import get_sqlalchemy_schema_info
 
@@ -28,7 +31,7 @@ class MssqlXmlPathTests(TestCase):
 
     def test_convert_basic(self):
         """Test basic XML path encoding (only pipe separations) is correctly decoded."""
-        query_output = [{"child_names": "Animal 1|Animal 2|Animal 3|",}]
+        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|",}]
         graphql_query = """{
             Animal {
                 in_Animal_ParentOf @fold{
@@ -37,9 +40,13 @@ class MssqlXmlPathTests(TestCase):
             }
         }"""
 
-        expected_result = [{"child_names": ["Animal 1", "Animal 2", "Animal 3", "",]}]
+        expected_result = [{"child_names": ["Animal 1", "Animal 2", "", "Animal 3", "",]}]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        expected_output_metadata = {
+            "child_names": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
+        }
+
+        post_process_mssql_folds(graphql_query, query_output, expected_output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_covert_none_result(self):
@@ -161,7 +168,7 @@ class MssqlXmlPathTests(TestCase):
         post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
         self.assertEqual(query_output, expected_result)
 
-    def test_convert_basic_datetime(self):
+    def test_convert_basic_date(self):
         """Test basic XML path encoding for datetimes is correctly decoded."""
         query_output = [{"child_birthdays": "2020-01-01|2000-02-29|~"}]
         graphql_query = """{
@@ -191,6 +198,7 @@ class MssqlXmlPathTests(TestCase):
                 "parent_names": "",
             }
         ]
+        # Note that multiple outputs inside a fold are not yet implemented.
         graphql_query = """{
             Animal {
                 in_Animal_ParentOf @fold{

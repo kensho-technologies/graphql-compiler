@@ -8,7 +8,7 @@ from graphql import GraphQLScalarType
 from graphql_compiler.compiler import blocks, expressions
 
 from ..backend import sql_backend
-from ..compiler.compiler_frontend import graphql_to_ir
+from ..compiler.compiler_frontend import graphql_to_ir, OutputMetadata
 from ..schema.schema_info import SQLAlchemySchemaInfo
 
 
@@ -31,7 +31,7 @@ def _mssql_xml_path_string_to_list(
     # Split the XML path result on "|".
     list_result: Sequence[Optional[str]] = xml_path_result.split("|")
 
-    # Convert "~" to None.
+    # Convert "~" to None. Note that this must be done before "^n" -> "~".
     list_result = [None if result == "~" else result for result in list_result]
 
     # Convert "^d" to "|".
@@ -44,7 +44,8 @@ def _mssql_xml_path_string_to_list(
         result.replace("^n", "~") if result is not None else None for result in list_result
     ]
 
-    # Convert "^e" to "^".
+    # Convert "^e" to "^". Note that this must be done after the caret escaped characters i.e.
+    # after "^n" -> "~" and "^d" -> "|".
     list_result = [
         result.replace("^e", "^") if result is not None else None for result in list_result
     ]
@@ -61,7 +62,8 @@ def _mssql_xml_path_string_to_list(
         else:
             new_list_result.append(None)
 
-    # Convert "&amp;" to "&", "&gt;" to ">", "&lt;" to "<".
+    # Convert "&amp;" to "&", "&gt;" to ">", "&lt;" to "<". Note that the ampersand conversion
+    # must be done after the ampersand escaped HEX values.
     list_result = [
         html.unescape(result) if result is not None else None for result in new_list_result
     ]
@@ -75,8 +77,60 @@ def _mssql_xml_path_string_to_list(
     return list_result_to_return
 
 
+# def post_process_mssql_folds(
+#     schema_info: SQLAlchemySchemaInfo, graphql_query: str, query_results: List[Dict[str, Any]]
+# ) -> None:
+#     r"""Convert XML PATH fold results from a string to a list of the appropriate type.
+#
+#     See _get_xml_path_clause in graphql_compiler/compiler/emit_sql.py for an in-depth description
+#     of the encoding process.
+#
+#     Post-processing steps:
+#         1. split on "|",
+#         2. convert "~" to None
+#         3. convert caret escaped characters (excluding "^" itself)
+#             i.e. "^d" (delimiter) to "|" and "^n" (null) to "~"
+#         4. with caret escaped characters removed, convert "^e" to "^"
+#         5. convert ampersand escaped characters (excluding "&" itself)
+#             i.e. "&gt;" to ">", "&lt;" to "<" and "&#xHEX;" to "\xHEX"
+#         6. with ampersand escaped characters removed, convert "&amp;" to "&"
+#
+#     Args:
+#         schema_info: SQLAlchemySchemaInfo, schema the query was run on
+#         graphql_query: str, a GraphQL query
+#         query_results: Dict[str, Any], results from graphql_query being run with schema_info,
+#                        mutated in place
+#
+#     """
+#     # Get the internal representation of the query.
+#     ir_and_metadata = graphql_to_ir(
+#         schema_info.schema,
+#         graphql_query,
+#         type_equivalence_hints=schema_info.type_equivalence_hints,
+#     )
+#     lowered_ir_blocks = sql_backend.lower_func(schema_info, ir_and_metadata)
+#
+#     # Loop through ir_blocks; for all ConstructResult for FoldedContextFields, look up string result
+#     # in query_results and update to a list.
+#     for block in lowered_ir_blocks.ir_blocks:
+#         if isinstance(block, blocks.ConstructResult):
+#             for out_name, expression in block.fields.items():
+#                 if isinstance(expression, expressions.FoldedContextField):
+#                     for query_result in query_results:
+#                         xml_path_result = query_result[out_name]
+#                         if isinstance(expression.field_type.of_type, GraphQLScalarType):
+#                             list_result = _mssql_xml_path_string_to_list(
+#                                 xml_path_result, expression.field_type.of_type
+#                             )
+#                         else:
+#                             raise NotImplementedError(
+#                                 u"Post processing folded fields with type {} is not yet "
+#                                 u"implemented.".format(expression.field_type.of_type)
+#                             )
+#                         query_result[out_name] = list_result
+
 def post_process_mssql_folds(
-    schema_info: SQLAlchemySchemaInfo, graphql_query: str, query_results: List[Dict[str, Any]]
+        query_results: List[Dict[str, Any]], output_metadata: Dict[str, OutputMetadata]
 ) -> None:
     r"""Convert XML PATH fold results from a string to a list of the appropriate type.
 
@@ -94,35 +148,16 @@ def post_process_mssql_folds(
         6. with ampersand escaped characters removed, convert "&amp;" to "&"
 
     Args:
-        schema_info: SQLAlchemySchemaInfo, schema the query was run on
-        graphql_query: str, a GraphQL query
         query_results: Dict[str, Any], results from graphql_query being run with schema_info,
                        mutated in place
+        output_metadata: Dict[str, OutputMetadata] TODO
 
     """
-    # Get the internal representation of the query.
-    ir_and_metadata = graphql_to_ir(
-        schema_info.schema,
-        graphql_query,
-        type_equivalence_hints=schema_info.type_equivalence_hints,
-    )
-    lowered_ir_blocks = sql_backend.lower_func(schema_info, ir_and_metadata)
-
-    # Loop through ir_blocks; for all ConstructResult for FoldedContextFields, look up string result
-    # in query_results and update to a list.
-    for block in lowered_ir_blocks.ir_blocks:
-        if isinstance(block, blocks.ConstructResult):
-            for out_name, expression in block.fields.items():
-                if isinstance(expression, expressions.FoldedContextField):
-                    for query_result in query_results:
-                        xml_path_result = query_result[out_name]
-                        if isinstance(expression.field_type.of_type, GraphQLScalarType):
-                            list_result = _mssql_xml_path_string_to_list(
-                                xml_path_result, expression.field_type.of_type
-                            )
-                        else:
-                            raise NotImplementedError(
-                                u"Post processing folded fields with type {} is not yet "
-                                u"implemented.".format(expression.field_type.of_type)
-                            )
-                        query_result[out_name] = list_result
+    for out_name in output_metadata.keys():
+        # if out_name is a folded output do this:
+        for query_result in query_results:
+            xml_path_result = query_result[out_name]
+            list_result = _mssql_xml_path_string_to_list(
+                xml_path_result, output_metadata[out_name].type.of_type
+            )
+            query_result[out_name] = list_result
