@@ -1458,11 +1458,12 @@ class IntegerIntervalTests(unittest.TestCase):
         )
 
         datetime_values = [
-            datetime(2000, 1, 1, tzinfo=pytz.utc),
-            datetime(3000, 1, 1, tzinfo=pytz.utc),
+            datetime(2000, 1, 1),
+            datetime(3000, 1, 1, tzinfo=None),
             datetime(1000, 1, 1, tzinfo=pytz.utc),
             datetime(1, 1, 1, tzinfo=pytz.utc),
             datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.utc),
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("GMT")),
         ]
         for datetime_value in datetime_values:
             int_value = convert_field_value_to_int(
@@ -1471,17 +1472,7 @@ class IntegerIntervalTests(unittest.TestCase):
             recovered_datetime = convert_int_to_field_value(
                 schema_info, "Event", "event_date", int_value
             )
-            self.assertAlmostEqual(0, (datetime_value - recovered_datetime).total_seconds())
-
-        invalid_datetime_values = [
-            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=None),
-            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("GMT")),
-        ]
-        for datetime_value in invalid_datetime_values:
-            with self.assertRaises(Exception):
-                int_value = convert_field_value_to_int(
-                    schema_info, "Event", "event_date", datetime_value
-                )
+            self.assertAlmostEqual(0, (datetime_value.astimezone(pytz.utc) - recovered_datetime).total_seconds())
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_int_value_conversion_date(self):
