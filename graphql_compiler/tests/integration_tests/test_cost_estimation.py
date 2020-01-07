@@ -42,7 +42,7 @@ def _make_schema_info_and_estimate_cardinality(
     return estimate_query_result_cardinality(schema_info, graphql_input, args)
 
 
-# The following TestCase class uses the 'integration_orientdb_client' fixture
+# The following TestCase class uses the 'snapshot_orientdb_client' fixture
 # which pylint does not recognize as a class member.
 # pylint: disable=no-member
 @pytest.mark.slow
@@ -50,7 +50,7 @@ class CostEstimationTests(unittest.TestCase):
     """Test the cost estimation module using standard input data when possible."""
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_root_count(self) -> None:
         """Ensure we correctly estimate the cardinality of the query root."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -69,7 +69,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_traverse(self) -> None:
         """Ensure we correctly estimate cardinality over edges."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -90,7 +90,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_fragment(self) -> None:
         """Ensure we correctly adjust for fragments."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -113,7 +113,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_complex_traverse(self) -> None:
         """Ensure we correctly handle more complicated arrangements of traversals."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -159,7 +159,7 @@ class CostEstimationTests(unittest.TestCase):
         )
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_traversal_provided_both_statistics(self) -> None:
         """Test type coercion provided both class_counts and vertex_edge_vertex_counts."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -187,7 +187,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * (2.0 / 3.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_traversal_with_no_results(self) -> None:
         """Test type coercion where no results should be expected."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -215,7 +215,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 0.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_traversal_in_inbound_direction_provided_both_statistics(self) -> None:
         """Test traversal in inbound direction provided multiple statistics."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -243,7 +243,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (2.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_traversals_with_different_statistics_combination(self) -> None:
         """Test two traversals, where one has vertex_edge_vertex counts and the other doesn't."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -279,7 +279,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * (2.0 / 3.0) * (11.0 / 19.0) * (13.0 / 19.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_optional(self) -> None:
         """Ensure we handle an optional edge correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -314,7 +314,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_optional_and_traverse(self) -> None:
         """Ensure traversals inside optionals are handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -370,7 +370,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * (23.0 / 11.0) * (7.0 / 11.0) * (17.0 / 13.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_fold(self) -> None:
         """Ensure we handle an folded edge correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -401,7 +401,7 @@ class CostEstimationTests(unittest.TestCase):
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_fold_and_traverse(self) -> None:
         """Ensure traversals inside folds are handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -456,7 +456,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * (23.0 / 11.0) * (7.0 / 11.0) * (17.0 / 13.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_recurse(self) -> None:
         """Ensure we handle recursion correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -484,7 +484,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_recurse_and_traverse(self) -> None:
         """Ensure we handle traversals inside recurses correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -517,7 +517,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1) * (13.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_single_filter(self) -> None:
         """Ensure we handle filters correctly."""
         # TODO: eventually, we should ensure other fractional/absolute selectivies work.
@@ -545,7 +545,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_traverse_and_filter(self) -> None:
         """Ensure we filters work correctly below the root location."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -585,7 +585,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 3.0 * 1.0 * (7.0 / 17.0) * (11.0 / 17.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_multiple_filters(self) -> None:
         """Ensure we handle multiple filters correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -615,7 +615,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_inequality_filters_on_uuid(self) -> None:
         """Ensure we handle inequality filters on UUIDs correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -644,7 +644,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 32.0 * (1.0 / 2.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_optional_and_filter(self) -> None:
         """Test an optional and filter on the same Location."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -686,7 +686,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0 * (11.0 / 7.0) * (6.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_optional_then_filter(self) -> None:
         """Test a filter within an optional scope."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -729,7 +729,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_fold_and_filter(self) -> None:
         """Test an fold and filter on the same Location."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -771,7 +771,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0 * (11.0 / 7.0) * (6.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_fold_then_filter(self) -> None:
         """Test a filter within an fold scope."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -814,7 +814,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 5.0 * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_recurse_and_filter(self) -> None:
         """Test a filter that immediately follows a recursed edge."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -849,7 +849,7 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * 1.0 * (13.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_recurse_then_filter(self) -> None:
         """Test a filter that immediately follows a recursed edge."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -961,7 +961,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=2.0)
         self.assertEqual(expected_selectivity, _combine_filter_selectivities(selectivities))
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_equals_filter_selectivity(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         classname = "Animal"
@@ -1031,7 +1031,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_in_collection_filter_selectivity(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         classname = "Animal"
@@ -1098,7 +1098,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
         self.assertEqual(expected_selectivity, selectivity)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_inequality_filters_on_uuid(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -1179,7 +1179,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_counts = 0.0
         self.assertAlmostEqual(expected_counts, result_counts)
 
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_inequality_filters_on_int(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)

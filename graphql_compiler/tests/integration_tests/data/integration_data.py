@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 import datetime
 import string
 

@@ -17,7 +17,7 @@ from graphql_compiler.schema_generation.graphql_schema import get_graphql_schema
 from graphql_compiler.tests.test_helpers import generate_schema_graph
 
 
-# The following TestCase class uses the 'integration_orientdb_client' fixture
+# The following TestCase class uses the 'snapshot_orientdb_client' fixture
 # which pylint does not recognize as a class member.
 # pylint: disable=no-member
 @pytest.mark.slow
@@ -53,7 +53,7 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_plan, pagination_plan)
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
-    @pytest.mark.usefixtures("integration_orientdb_client")
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_basic_pagination(self) -> None:
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture

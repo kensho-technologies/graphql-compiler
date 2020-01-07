@@ -32,7 +32,7 @@ REDISGRAPH_BACKENDS = {
 }
 
 # TODO: Add integration tests for all supported backends.
-BACKENDS_TO_TEST = [
+BACKENDS_WITH_INTEGRATION_TESTS = [
     ORIENTDB,
     MSSQL,
     NEO4J,

@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 from collections import namedtuple
 from urllib.parse import quote_plus
 
