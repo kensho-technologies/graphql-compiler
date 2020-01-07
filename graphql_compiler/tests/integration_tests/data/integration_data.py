@@ -1,25 +1,14 @@
-# Copyright 2018-present Kensho Technologies, LLC.
 import datetime
-from glob import glob
-from os import path
 import string
 
-from funcy import retry
-from redisgraph import Edge, Node
 import six
-from sqlalchemy import create_engine, text
-from sqlalchemy.schema import CreateSchema
+from redisgraph import Node, Edge
 
-from ...global_utils import merge_non_overlapping_dicts
-from ..integration_tests.integration_backend_config import (
-    EXPLICIT_DB_BACKENDS,
-    SQL_BACKEND_TO_CONNECTION_STRING,
-    SqlTestBackend,
-)
-from ..test_helpers import get_sqlalchemy_schema_info
+from graphql_compiler.global_utils import merge_non_overlapping_dicts
+from graphql_compiler.tests.test_helpers import get_sqlalchemy_schema_info
 
 
-def get_integration_data():
+def get_standard_integration_data():
     """Get the small integration data set.
 
     Returns:
@@ -92,12 +81,65 @@ def get_integration_data():
     return vertex_values, edge_values, uuid_to_class_name
 
 
-def generate_orient_snapshot_data(client):
-    """Create OrientDB test DB from the SQL commands file for snapshot testing."""
-    project_root = path.dirname(path.abspath(__file__))
-    sql_files = glob(path.join(project_root, "snapshot_data/*.sql"))
+def generate_neo4j_integration_data(client):
+    """Create Neo4j test DB from the standard integration data."""
+    vertex_values, edge_values, _ = get_standard_integration_data()
+    with client.driver.session() as session:
+        session.run("match (n) detach delete n")
+        for vertex_name, vertices in six.iteritems(vertex_values):
+            _validate_name(vertex_name)
+            for vertex_props in vertices:
+                for key in vertex_props:
+                    _validate_name(key)
+                command = "create (:{} {{{}}})".format(
+                    vertex_name, ", ".join("{}: ${}".format(key, key) for key in vertex_props)
+                )
+                session.run(command, vertex_props)
+    with client.driver.session() as session:
+        for edge_name, edges in six.iteritems(edge_values):
+            _validate_name(edge_name)
+            for edge_spec in edges:
+                command = (
+                    """
+                    match (a {uuid: $from_uuid}), (b {uuid: $to_uuid})
+                    create (a)-[:"""
+                    + edge_name
+                    + "]->(b)"
+                )
+                args = {
+                    "from_uuid": edge_spec["from_uuid"],
+                    "to_uuid": edge_spec["to_uuid"],
+                }
+                session.run(command, args)
 
-    _load_sql_files_to_orient_client(client, sql_files)
+
+def generate_orient_integration_data(client):
+    """Create OrientDB test DB from the standard integration data."""
+    vertex_values, edge_values, uuid_to_class_name = get_standard_integration_data()
+    for vertex_name, vertices in six.iteritems(vertex_values):
+        for vertex_props in vertices:
+            _validate_name(vertex_name)
+            command = "CREATE VERTEX {} SET ".format(vertex_name) + ", ".join(
+                _write_orient_equality(key, value) for key, value in six.iteritems(vertex_props)
+            )
+            client.command(command)
+    for edge_name, edges in six.iteritems(edge_values):
+        for edge_spec in edges:
+            from_classname = uuid_to_class_name[edge_spec["from_uuid"]]
+            to_classname = uuid_to_class_name[edge_spec["to_uuid"]]
+            _validate_name(from_classname)
+            _validate_name(to_classname)
+            vertex_template = "SELECT FROM {} WHERE {}"
+            from_selection = vertex_template.format(
+                from_classname, _write_orient_equality("uuid", edge_spec["from_uuid"])
+            )
+            to_selection = vertex_template.format(
+                from_classname, _write_orient_equality("uuid", edge_spec["to_uuid"])
+            )
+            command = "CREATE EDGE {} FROM ({}) TO ({})".format(
+                edge_name, from_selection, to_selection
+            )
+            client.command(command)
 
 
 def _validate_name(name):
@@ -132,70 +174,22 @@ def _write_orient_equality(field_name, field_value):
     return template.format(field_name, field_value_representation)
 
 
-def generate_orient_integration_data(client):
-    """Create OrientDB test DB from the standard integration data."""
-    vertex_values, edge_values, uuid_to_class_name = get_integration_data()
-    for vertex_name, vertices in six.iteritems(vertex_values):
-        for vertex_props in vertices:
-            _validate_name(vertex_name)
-            command = "CREATE VERTEX {} SET ".format(vertex_name) + ", ".join(
-                _write_orient_equality(key, value) for key, value in six.iteritems(vertex_props)
-            )
-            client.command(command)
-    for edge_name, edges in six.iteritems(edge_values):
-        for edge_spec in edges:
-            from_classname = uuid_to_class_name[edge_spec["from_uuid"]]
-            to_classname = uuid_to_class_name[edge_spec["to_uuid"]]
-            _validate_name(from_classname)
-            _validate_name(to_classname)
-            vertex_template = "SELECT FROM {} WHERE {}"
-            from_selection = vertex_template.format(
-                from_classname, _write_orient_equality("uuid", edge_spec["from_uuid"])
-            )
-            to_selection = vertex_template.format(
-                from_classname, _write_orient_equality("uuid", edge_spec["to_uuid"])
-            )
-            command = "CREATE EDGE {} FROM ({}) TO ({})".format(
-                edge_name, from_selection, to_selection
-            )
-            client.command(command)
+def _load_sql_files_to_orient_client(client, sql_files):
+    """Load list of supplied SQL files into the supplied OrientDB client."""
+    for filepath in sql_files:
+        with open(filepath) as f:
+            for command in f.readlines():
+                sanitized_command = command.strip()
+                if len(sanitized_command) == 0 or sanitized_command[0] == "#":
+                    # comment or empty line, ignore
+                    continue
 
-
-def generate_neo4j_integration_data(client):
-    """Create Neo4j test DB from the standard integration data."""
-    vertex_values, edge_values, _ = get_integration_data()
-    with client.driver.session() as session:
-        session.run("match (n) detach delete n")
-        for vertex_name, vertices in six.iteritems(vertex_values):
-            _validate_name(vertex_name)
-            for vertex_props in vertices:
-                for key in vertex_props:
-                    _validate_name(key)
-                command = "create (:{} {{{}}})".format(
-                    vertex_name, ", ".join("{}: ${}".format(key, key) for key in vertex_props)
-                )
-                session.run(command, vertex_props)
-    with client.driver.session() as session:
-        for edge_name, edges in six.iteritems(edge_values):
-            _validate_name(edge_name)
-            for edge_spec in edges:
-                command = (
-                    """
-                    match (a {uuid: $from_uuid}), (b {uuid: $to_uuid})
-                    create (a)-[:"""
-                    + edge_name
-                    + "]->(b)"
-                )
-                args = {
-                    "from_uuid": edge_spec["from_uuid"],
-                    "to_uuid": edge_spec["to_uuid"],
-                }
-                session.run(command, args)
+                client.command(sanitized_command)
 
 
 def generate_redisgraph_integration_data(client):
     """Create Redisgraph test DB from the standard integration data."""
-    vertex_values, edge_values, _ = get_integration_data()
+    vertex_values, edge_values, _ = get_standard_integration_data()
     client.query("create (n)")
     client.query("match (n) delete n")
     uuid_to_node = {}
@@ -224,85 +218,10 @@ def generate_redisgraph_integration_data(client):
     client.commit()
 
 
-def _load_sql_files_to_orient_client(client, sql_files):
-    """Load list of supplied SQL files into the supplied OrientDB client."""
-    for filepath in sql_files:
-        with open(filepath) as f:
-            for command in f.readlines():
-                sanitized_command = command.strip()
-                if len(sanitized_command) == 0 or sanitized_command[0] == "#":
-                    # comment or empty line, ignore
-                    continue
-
-                client.command(sanitized_command)
-
-
-@retry(tries=1, timeout=1)  # pylint: disable=no-value-for-parameter
-def init_sql_integration_test_backends():
-    """Connect to and open transaction on each SQL DB under test."""
-    sql_test_backends = {}
-    for backend_name, base_connection_string in six.iteritems(SQL_BACKEND_TO_CONNECTION_STRING):
-        engine = create_engine(base_connection_string)
-        # safely create the test DATABASE for all SQL backends except sqlite
-        # sqlite's in-memory database does not need to be explicitly created/dropped.
-        if backend_name in EXPLICIT_DB_BACKENDS:
-            # Drop databases if they exist
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("DROP DATABASE IF EXISTS db_1;")
-            )
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("DROP DATABASE IF EXISTS db_2;")
-            )
-
-            # create the test databases
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("CREATE DATABASE db_1;")
-            )
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("CREATE DATABASE db_2;")
-            )
-
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_1;"))
-            # create the test schemas in db_1
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
-
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_2;"))
-            # create the test schemas in db_2
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
-
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE master;"))
-
-        sql_test_backend = SqlTestBackend(engine, base_connection_string)
-        sql_test_backends[backend_name] = sql_test_backend
-    return sql_test_backends
-
-
-def tear_down_integration_test_backends(sql_test_backends):
-    """Rollback backends' transactions to wipe test data and to close the active connections."""
-    for backend_name, sql_test_backend in six.iteritems(sql_test_backends):
-        if backend_name not in EXPLICIT_DB_BACKENDS:
-            continue
-        # explicitly release engine resources, specifically to disconnect from active DB
-        # some backends including Postgres do no not allow an in use DB to be dropped
-        sql_test_backend.engine.dispose()
-        # connect to base server, not explicit DB, so DB can be dropped
-        engine = create_engine(sql_test_backend.base_connection_string)
-        # set execution options to AUTOCOMMIT so that the DB drop is not performed in a transaction
-        # as this is not allowed on some SQL backends
-        engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-            text("DROP DATABASE IF EXISTS db_1;")
-        )
-        engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-            text("DROP DATABASE IF EXISTS db_2;")
-        )
-
-
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
     sql_schema_info = get_sqlalchemy_schema_info()
-    vertex_values, edge_values, uuid_to_class_name = get_integration_data()
+    vertex_values, edge_values, uuid_to_class_name = get_standard_integration_data()
 
     # Represent all edges as foreign keys
     uuid_to_foreign_key_values = {}

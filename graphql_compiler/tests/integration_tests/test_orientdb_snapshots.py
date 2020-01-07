@@ -10,11 +10,11 @@ import pytest
 import six
 from snapshottest import TestCase
 
-from .. import test_input_data
-from ... import graphql_to_match
-from ...schema.schema_info import CommonSchemaInfo
-from ..test_helpers import get_schema
-from ..test_input_data import CommonTestData
+from graphql_compiler.tests import test_input_data
+from graphql_compiler import graphql_to_match
+from graphql_compiler.schema.schema_info import CommonSchemaInfo
+from graphql_compiler.tests.test_helpers import get_schema
+from graphql_compiler.tests.test_input_data import CommonTestData
 
 
 def convert_decimals_to_strings(

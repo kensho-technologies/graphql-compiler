@@ -4,20 +4,21 @@ from funcy import retry
 import pytest
 import six
 
-from .test_data_tools.data_tool import (
-    generate_neo4j_integration_data,
-    generate_orient_integration_data,
-    generate_orient_snapshot_data,
-    generate_redisgraph_integration_data,
-    generate_sql_integration_data,
+from graphql_compiler.tests.integration_tests.clients.sql_clients import (
     init_sql_integration_test_backends,
-    tear_down_integration_test_backends,
-)
-from .test_data_tools.neo4j_graph import get_test_neo4j_graph
-from .test_data_tools.orientdb_graph import get_test_orientdb_graph
-from .test_data_tools.redisgraph_graph import get_test_redisgraph_graph
-from .test_data_tools.schema import load_schema
-
+    tear_down_integration_test_backends)
+from graphql_compiler.tests.integration_tests.clients.neo4j_graph import (get_test_neo4j_graph)
+from graphql_compiler.tests.integration_tests.data.integration_data import \
+    (generate_neo4j_integration_data, generate_orient_integration_data,
+     generate_redisgraph_integration_data,
+     generate_sql_integration_data)
+from graphql_compiler.tests.integration_tests.data.orientdb_snapshot_data import \
+    generate_orient_snapshot_data
+from graphql_compiler.tests.integration_tests.clients.orientdb_graph import (
+    get_test_orientdb_graph,
+    load_schema)
+from graphql_compiler.tests.integration_tests.clients.redisgraph_graph import \
+    (get_test_redisgraph_graph)
 
 GRAPH_NAME = "animals"  # Name for integration test database
 

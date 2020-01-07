@@ -16,6 +16,7 @@ from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
+from graphql_compiler.tests.integration_tests.backends import BACKENDS_TO_TEST
 from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
@@ -25,28 +26,19 @@ from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
-from .integration_backend_config import (
+from .backends import (
     MATCH_BACKENDS,
     NEO4J_BACKENDS,
     REDISGRAPH_BACKENDS,
     SQL_BACKENDS,
 )
-from .integration_test_helpers import (
+from .helpers import (
     compile_and_run_match_query,
     compile_and_run_neo4j_query,
     compile_and_run_redisgraph_query,
     compile_and_run_sql_query,
     sort_db_results,
 )
-
-
-all_backends_list = [
-    test_backend.ORIENTDB,
-    test_backend.MSSQL,
-    test_backend.NEO4J,
-    test_backend.REDISGRAPH,
-]
-
 
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.
@@ -72,7 +64,7 @@ def use_all_backends(except_backends: Tuple[str, ...] = ()) -> Callable:
         function that expands tests for each non-excluded backend.
     """
     non_excluded_backends = [
-        backend for backend in all_backends_list if backend not in except_backends
+        backend for backend in BACKENDS_TO_TEST if backend not in except_backends
     ]
     # parameterized.expand() takes in a list of test parameters (in this case, backend strings
     # specifying which backends to use for the test) and auto-generates a test function for each
