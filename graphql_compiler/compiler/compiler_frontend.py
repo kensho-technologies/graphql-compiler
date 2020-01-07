@@ -153,12 +153,17 @@ def _construct_location_stack_entry(location, num_traverses):
 # - type: a GraphQL type object, like String or Integer, describing the type of that output value
 # - optional: boolean, whether the output is part of an optional traversal and
 #             could therefore have a value of null because it did not exist
-class OutputMetadata(namedtuple("OutputMetadata", ("type", "optional"))):
+# - folded: boolean, whether the output is within a fold scope
+class OutputMetadata(namedtuple("OutputMetadata", ("type", "optional", "folded"))):
     def __eq__(self, other):
         """Check another OutputMetadata object for equality against this one."""
         # Unfortunately, GraphQL types don't have an equality operator defined,
         # and instead have this "is_same_type" function. Hence, we have to override equality here.
-        return is_same_type(self.type, other.type) and self.optional == other.optional
+        return (
+            is_same_type(self.type, other.type) and
+            self.optional == other.optional and
+            self.folded == other.folded
+        )
 
     def __ne__(self, other):
         """Check another OutputMetadata object for non-equality against this one."""
@@ -964,7 +969,9 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Based on the outputs context data, add an output step and construct the output metadata.
     basic_blocks.append(_compile_output_step(query_metadata_table))
     output_metadata = {
-        name: OutputMetadata(type=info.type, optional=info.optional)
+        name: OutputMetadata(type=info.type, optional=info.optional, folded=True)
+        if isinstance(info.location, FoldScopeLocation)
+        else OutputMetadata(type=info.type, optional=info.optional, folded=False)
         for name, info in query_metadata_table.outputs
     }
 

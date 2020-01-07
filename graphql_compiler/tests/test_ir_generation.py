@@ -296,7 +296,7 @@ class IrGenerationTests(unittest.TestCase):
                 base_location: "Animal",
             }
             expected_output_metadata = {
-                "animal_name": OutputMetadata(type=GraphQLString, optional=False),
+                "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
             }
             expected_input_metadata = {
                 "wanted": GraphQLString,
