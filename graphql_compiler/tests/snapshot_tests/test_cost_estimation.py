@@ -1472,7 +1472,9 @@ class IntegerIntervalTests(unittest.TestCase):
             recovered_datetime = convert_int_to_field_value(
                 schema_info, "Event", "event_date", int_value
             )
-            self.assertAlmostEqual(0, (datetime_value.astimezone(pytz.utc) - recovered_datetime).total_seconds())
+            self.assertAlmostEqual(
+                0, (datetime_value.astimezone(pytz.utc) - recovered_datetime).total_seconds()
+            )
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_int_value_conversion_date(self):
