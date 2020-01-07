@@ -3,6 +3,7 @@ from typing import Callable
 
 from neo4j import GraphDatabase
 
+
 NEO4J_SERVER = "localhost"
 NEO4J_PORT = 7687
 NEO4J_USER = "neo4j"

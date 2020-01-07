@@ -1,8 +1,9 @@
 from glob import glob
 from os import path
 
-from graphql_compiler.tests.integration_tests.data.integration_data import \
-    _load_sql_files_to_orient_client
+from graphql_compiler.tests.integration_tests.data.integration_data import (
+    _load_sql_files_to_orient_client,
+)
 
 
 def generate_orient_snapshot_data(client):

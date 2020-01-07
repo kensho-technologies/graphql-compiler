@@ -1,8 +1,8 @@
 import datetime
 import string
 
+from redisgraph import Edge, Node
 import six
-from redisgraph import Node, Edge
 
 from graphql_compiler.global_utils import merge_non_overlapping_dicts
 from graphql_compiler.tests.test_helpers import get_sqlalchemy_schema_info

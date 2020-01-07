@@ -4,6 +4,7 @@ from typing import Callable
 import redis
 from redisgraph import Graph
 
+
 REDISGRAPH_SERVER = "localhost"
 REDISGRAPH_PORT = 6379
 

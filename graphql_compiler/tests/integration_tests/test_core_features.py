@@ -17,6 +17,7 @@ import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
 from graphql_compiler.tests.integration_tests.backends import BACKENDS_TO_TEST
+
 from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
@@ -26,12 +27,7 @@ from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
 from ...tests import test_backend
 from ...tests.test_helpers import generate_schema, generate_schema_graph
 from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
-from .backends import (
-    MATCH_BACKENDS,
-    NEO4J_BACKENDS,
-    REDISGRAPH_BACKENDS,
-    SQL_BACKENDS,
-)
+from .backends import MATCH_BACKENDS, NEO4J_BACKENDS, REDISGRAPH_BACKENDS, SQL_BACKENDS
 from .helpers import (
     compile_and_run_match_query,
     compile_and_run_neo4j_query,
@@ -39,6 +35,7 @@ from .helpers import (
     compile_and_run_sql_query,
     sort_db_results,
 )
+
 
 # Store the typical fixtures required for an integration tests.
 # Individual tests can supply the full @pytest.mark.usefixtures to override if necessary.

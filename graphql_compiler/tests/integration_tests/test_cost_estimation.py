@@ -5,7 +5,6 @@ import unittest
 
 import pytest
 
-from graphql_compiler.tests import test_input_data
 from graphql_compiler.compiler.metadata import FilterInfo
 from graphql_compiler.cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from graphql_compiler.cost_estimation.filter_selectivity_utils import (
@@ -22,6 +21,7 @@ from graphql_compiler.cost_estimation.statistics import LocalStatistics, Statist
 from graphql_compiler.schema.schema_info import QueryPlanningSchemaInfo
 from graphql_compiler.schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from graphql_compiler.schema_generation.schema_graph import SchemaGraph
+from graphql_compiler.tests import test_input_data
 from graphql_compiler.tests.test_helpers import generate_schema_graph
 
 
