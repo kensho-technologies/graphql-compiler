@@ -1840,8 +1840,12 @@ def fold_on_two_output_variables() -> CommonTestData:  # noqa: D103
 
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
-        "child_color_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "child_names_list": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
+        "child_color_list": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -2175,8 +2179,12 @@ def fold_date_and_datetime_fields() -> CommonTestData:  # noqa: D103
     }"""
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "child_birthdays_list": OutputMetadata(type=GraphQLList(GraphQLDate), optional=False, folded=True),
-        "fed_at_datetimes_list": OutputMetadata(type=GraphQLList(GraphQLDateTime), optional=False, folded=True),
+        "child_birthdays_list": OutputMetadata(
+            type=GraphQLList(GraphQLDate), optional=False, folded=True
+        ),
+        "fed_at_datetimes_list": OutputMetadata(
+            type=GraphQLList(GraphQLDateTime), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -2204,7 +2212,9 @@ def coercion_to_union_base_type_inside_fold() -> CommonTestData:  # noqa: D103
     type_equivalence_hints = {"Event": "Union__BirthEvent__Event__FeedingEvent"}
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "important_events": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "important_events": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -2231,7 +2241,9 @@ def no_op_coercion_inside_fold() -> CommonTestData:  # noqa: D103
     type_equivalence_hints = {"Event": "Union__BirthEvent__Event__FeedingEvent"}
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "related_entities": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "related_entities": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -2288,7 +2300,9 @@ def filter_within_fold_scope() -> CommonTestData:  # noqa: D103
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "child_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
-        "child_descriptions": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "child_descriptions": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata = {
         "desired": GraphQLString,
@@ -2341,7 +2355,9 @@ def coercion_on_interface_within_fold_scope() -> CommonTestData:  # noqa: D103
     }"""
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "related_animals": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "related_animals": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -2370,7 +2386,9 @@ def coercion_on_interface_within_fold_traversal() -> CommonTestData:  # noqa: D1
     }"""
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "related_animal_species": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "related_animal_species": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -2395,7 +2413,9 @@ def coercion_on_union_within_fold_scope() -> CommonTestData:  # noqa: D103
     }"""
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "birth_events": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "birth_events": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -2423,8 +2443,12 @@ def coercion_filters_and_multiple_outputs_within_fold_scope() -> CommonTestData:
     }"""
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "related_animals": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
-        "related_birthdays": OutputMetadata(type=GraphQLList(GraphQLDate), optional=False, folded=True),
+        "related_animals": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
+        "related_birthdays": OutputMetadata(
+            type=GraphQLList(GraphQLDate), optional=False, folded=True
+        ),
     }
     expected_input_metadata = {
         "substring": GraphQLString,
@@ -2457,8 +2481,12 @@ def coercion_filters_and_multiple_outputs_within_fold_traversal() -> CommonTestD
     }"""
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
-        "related_animals": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
-        "related_birthdays": OutputMetadata(type=GraphQLList(GraphQLDate), optional=False, folded=True),
+        "related_animals": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
+        "related_birthdays": OutputMetadata(
+            type=GraphQLList(GraphQLDate), optional=False, folded=True
+        ),
     }
     expected_input_metadata = {
         "substring": GraphQLString,
@@ -3031,7 +3059,9 @@ def optional_and_fold() -> CommonTestData:  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "parent_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
-        "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "child_names_list": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -3058,7 +3088,9 @@ def fold_and_optional() -> CommonTestData:  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "parent_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
-        "child_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "child_names_list": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -3089,7 +3121,9 @@ def optional_traversal_and_fold_traversal() -> CommonTestData:  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "grandparent_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
-        "grandchild_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "grandchild_names_list": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -3120,7 +3154,9 @@ def fold_traversal_and_optional_traversal() -> CommonTestData:  # noqa: D103
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "grandparent_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
-        "grandchild_names_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+        "grandchild_names_list": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
     }
     expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
 
@@ -3252,7 +3288,9 @@ def complex_nested_optionals() -> CommonTestData:  # noqa: D103
         "grandchild_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
         "grandchild_species": OutputMetadata(type=GraphQLString, optional=True, folded=False),
         "grandchild_relation_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
-        "grandchild_relation_species": OutputMetadata(type=GraphQLString, optional=True, folded=False),
+        "grandchild_relation_species": OutputMetadata(
+            type=GraphQLString, optional=True, folded=False
+        ),
         "parent_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
         "grandparent_name": OutputMetadata(type=GraphQLString, optional=True, folded=False),
         "grandparent_species": OutputMetadata(type=GraphQLString, optional=True, folded=False),

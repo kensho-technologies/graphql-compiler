@@ -160,9 +160,9 @@ class OutputMetadata(namedtuple("OutputMetadata", ("type", "optional", "folded")
         # Unfortunately, GraphQL types don't have an equality operator defined,
         # and instead have this "is_same_type" function. Hence, we have to override equality here.
         return (
-            is_same_type(self.type, other.type) and
-            self.optional == other.optional and
-            self.folded == other.folded
+            is_same_type(self.type, other.type)
+            and self.optional == other.optional
+            and self.folded == other.folded
         )
 
     def __ne__(self, other):
