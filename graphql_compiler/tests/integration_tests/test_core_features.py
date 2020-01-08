@@ -408,9 +408,7 @@ class IntegrationTests(TestCase):
         #                       - Our Neo4j backend would find all different paths that use each
         #                         edge at most once, and duplicate the result for each one.
         for graphql_query, expected_results in queries:
-            self.assertResultsEqual(
-                graphql_query, parameters, test_backend.MSSQL, expected_results
-            )
+            self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
     @use_all_backends(
         except_backends=(
