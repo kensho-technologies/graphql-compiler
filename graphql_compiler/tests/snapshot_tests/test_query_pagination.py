@@ -15,6 +15,7 @@ from ...query_pagination.pagination_planning import (
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
+from ...exceptions import GraphQLPaginationError
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -51,6 +52,65 @@ class QueryPaginationTests(unittest.TestCase):
         pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan([VertexPartition(("Animal",), "uuid", number_of_pages)])
         self.assertEqual(expected_plan, pagination_plan)
+
+    def test_pagination_planning_on_int(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(class_counts, field_quantiles={
+            ("Species", "limbs"): list(range(100))
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        # Check that the paginator generates a plan paginating on an int field
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }"""
+        number_of_pages = 10
+        query_ast = safe_parse_graphql(query)
+        pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        expected_plan = PaginationPlan([VertexPartition(("Species",), "limbs", number_of_pages)])
+        self.assertEqual(expected_plan, pagination_plan)
+
+    def test_pagination_planning_on_int_error(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        # Check that the paginator detects a lack of quantile data for Species.limbs
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }"""
+        number_of_pages = 10
+        query_ast = safe_parse_graphql(query)
+        with self.assertRaises(GraphQLPaginationError):
+            get_pagination_plan(schema_info, query_ast, number_of_pages)
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures("snapshot_orientdb_client")
