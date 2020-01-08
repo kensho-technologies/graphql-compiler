@@ -10,11 +10,10 @@ from graphql import GraphQLList, parse
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
 from graphql.utilities.build_ast_schema import build_ast_schema
+from pyorient.orient import OrientDB
 import six
 import sqlalchemy
 from sqlalchemy.dialects import mssql, postgresql
-
-from pyorient.orient import OrientDB
 
 from ..compiler.compiler_entities import BasicBlock
 from ..compiler.subclass import compute_subclass_sets

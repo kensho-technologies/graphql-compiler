@@ -5,10 +5,9 @@ from typing import Any, Dict, FrozenSet, Tuple, Union
 
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
+from pyorient.orient import OrientDB
 import pytest
 import six
-
-from pyorient.orient import OrientDB
 from snapshottest import TestCase
 
 from .. import test_input_data

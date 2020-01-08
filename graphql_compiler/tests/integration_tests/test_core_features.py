@@ -12,10 +12,9 @@ from graphql.type import (
     GraphQLScalarType,
 )
 from graphql.utilities.schema_printer import print_schema
+from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
-
-from parameterized import parameterized
 
 from . import backends as test_backends
 from ...schema.schema_info import CommonSchemaInfo
@@ -409,12 +408,14 @@ class IntegrationTests(TestCase):
         #                       - Our Neo4j backend would find all different paths that use each
         #                         edge at most once, and duplicate the result for each one.
         for graphql_query, expected_results in queries:
-            self.assertResultsEqual(graphql_query, parameters, test_backends.MSSQL, expected_results)
+            self.assertResultsEqual(
+                graphql_query, parameters, test_backends.MSSQL, expected_results
+            )
 
     @use_all_backends(
         except_backends=(
-                test_backends.MSSQL,  # Not implemented yet
-                test_backends.REDISGRAPH,  # Not implemented yet
+            test_backends.MSSQL,  # Not implemented yet
+            test_backends.REDISGRAPH,  # Not implemented yet
         )
     )
     @integration_fixtures

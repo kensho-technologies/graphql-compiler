@@ -2,11 +2,10 @@
 from decimal import Decimal
 from typing import Any, Dict, List, Tuple, TypeVar, Union
 
-import six
-from sqlalchemy.engine.base import Engine
-
 from pyorient.orient import OrientDB
 from redisgraph.client import Graph
+import six
+from sqlalchemy.engine.base import Engine
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher

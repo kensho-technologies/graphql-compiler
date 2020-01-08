@@ -2,9 +2,8 @@
 import datetime
 import string
 
-import six
-
 from redisgraph import Edge, Node
+import six
 
 from ....global_utils import merge_non_overlapping_dicts
 from ...test_helpers import get_sqlalchemy_schema_info
