@@ -59,13 +59,14 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from collections import namedtuple
+from typing import Dict, List, NamedTuple
 
 from graphql import (
     GraphQLInt,
     GraphQLInterfaceType,
     GraphQLList,
     GraphQLObjectType,
+    GraphQLType,
     GraphQLUnionType,
 )
 from graphql.language.ast import FieldNode, InlineFragmentNode
@@ -80,6 +81,7 @@ from ..ast_manipulation import (
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..global_utils import is_same_type
 from ..schema import COUNT_META_FIELD_NAME, is_vertex_field_name
+from .compiler_entities import BasicBlock
 from .context_helpers import (
     get_context_fold_info,
     get_optional_scope_or_none,
@@ -127,34 +129,23 @@ from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo,
 from .validation import validate_schema_and_query_ast
 
 
-# LocationStackEntry contains the following:
-# - location: Location object corresponding to an inserted MarkLocation block
-# - num_traverses: Int counter for the number of traverses inserted after the last MarkLocation
-#                  (corresponding Location stored in `location`)
-LocationStackEntry = namedtuple("LocationStackEntry", ("location", "num_traverses"))
+class OutputMetadata(NamedTuple):
+    """Metadata about a query's outputs.
 
+    Containing the following members:
+        type: GraphQL type object, such as GraphQLString or GraphQLInt, describing the type of the
+              output value.
+        optional: boolean, whether the output is part of an optional traversal, which would allow a
+                  value of null.
+        folded: boolean, whether the output is within a fold scope. Note that the "type" is expected
+                to be a GraphQLList unless the output field is an _x_count, in which case the type
+                must be GraphQLInt.
+    """
 
-def _construct_location_stack_entry(location, num_traverses):
-    """Return a LocationStackEntry namedtuple with the specified parameters."""
-    if not isinstance(num_traverses, int) or num_traverses < 0:
-        raise AssertionError(
-            u"Attempted to create a LocationStackEntry namedtuple with an invalid "
-            u'value for "num_traverses" {}. This is not allowed.'.format(num_traverses)
-        )
-    if not isinstance(location, Location):
-        raise AssertionError(
-            u"Attempted to create a LocationStackEntry namedtuple with an invalid "
-            u'value for "location" {}. This is not allowed.'.format(location)
-        )
-    return LocationStackEntry(location=location, num_traverses=num_traverses)
+    type: GraphQLType
+    optional: bool
+    folded: bool
 
-
-# The OutputMetadata will have the following types for its members:
-# - type: a GraphQL type object, like String or Integer, describing the type of that output value
-# - optional: boolean, whether the output is part of an optional traversal and
-#             could therefore have a value of null because it did not exist
-# - folded: boolean, whether the output is within a fold scope
-class OutputMetadata(namedtuple("OutputMetadata", ("type", "optional", "folded"))):
     def __eq__(self, other):
         """Check another OutputMetadata object for equality against this one."""
         # Unfortunately, GraphQL types don't have an equality operator defined,
@@ -170,9 +161,21 @@ class OutputMetadata(namedtuple("OutputMetadata", ("type", "optional", "folded")
         return not self.__eq__(other)
 
 
-IrAndMetadata = namedtuple(
-    "IrAndMetadata", ("ir_blocks", "input_metadata", "output_metadata", "query_metadata_table",)
-)
+class IrAndMetadata(NamedTuple):
+    """Internal representation (IR) and metadata for a schema/query.
+
+    Contains the following members:
+        ir_blocks: List[BasicBlock], a list of IR basic block objects describing a query
+        input_metadata: Dict[str, GraphQLType], mapping
+                        expected input parameters -> inferred GraphQL type
+        output_metadata: Dict[str, OutputMetadata], mapping output name -> output metadata
+        query_metadata_table: QueryMetadataTable, describing location metadata
+    """
+
+    ir_blocks: List[BasicBlock]
+    input_metadata: Dict[str, GraphQLType]
+    output_metadata: Dict[str, OutputMetadata]
+    query_metadata_table: QueryMetadataTable
 
 
 def _get_fields(ast):
@@ -876,12 +879,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         type_equivalence_hints: optional dict of GraphQL type to equivalent GraphQL union
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - location_types: a dict of location objects -> GraphQL type objects at that location
-        - coerced_locations: a set of location objects indicating where type coercions have happened
+        IrAndMetadata for the given schema/AST
     """
     base_ast = get_only_selection_from_ast(ast, GraphQLCompilationError)
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
@@ -966,14 +964,48 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Add any filters that apply to the global query scope.
     basic_blocks.extend(context["global_filters"])
 
-    # Based on the outputs context data, add an output step and construct the output metadata.
+    # Based on the outputs context data, add an output step.
     basic_blocks.append(_compile_output_step(query_metadata_table))
-    output_metadata = {
-        name: OutputMetadata(type=info.type, optional=info.optional, folded=True)
-        if isinstance(info.location, FoldScopeLocation)
-        else OutputMetadata(type=info.type, optional=info.optional, folded=False)
-        for name, info in query_metadata_table.outputs
-    }
+
+    # Construct the output metadata, ensuring that all folded outputs have a valid type
+    # (GraphQLInt for _x_count, GraphQLList for all other folded outputs) and that _x_count is only
+    # output within a fold scope.
+    output_metadata = {}
+    for name, info in query_metadata_table.outputs:
+        # Ensure _x_count is within a fold scope.
+        if info.location.field == COUNT_META_FIELD_NAME and not isinstance(
+            info.location, FoldScopeLocation
+        ):
+            raise AssertionError(
+                u"Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
+            )
+        # Ensure folded outputs have valid type.
+        if isinstance(info.location, FoldScopeLocation):
+            # Ensure _x_count is a GraphQLInt.
+            if info.location.field == COUNT_META_FIELD_NAME and not is_same_type(
+                info.type, GraphQLInt
+            ):
+                raise AssertionError(
+                    u"Invalid output: received {} with type {}, but {} must always be of "
+                    u"type GraphQLInt".format(
+                        COUNT_META_FIELD_NAME, info.type, COUNT_META_FIELD_NAME
+                    )
+                )
+            # Ensure all other folded outputs are GraphQLList.
+            elif info.location.field != COUNT_META_FIELD_NAME and not isinstance(
+                info.type, GraphQLList
+            ):
+                raise AssertionError(
+                    u"Invalid output: non-{} folded output must have type "
+                    u"GraphQLList. Received type {} for folded output "
+                    u"{}.".format(COUNT_META_FIELD_NAME, info.type, name)
+                )
+        # Construct output metadata.
+        output_metadata[name] = OutputMetadata(
+            type=info.type,
+            optional=info.optional,
+            folded=isinstance(info.location, FoldScopeLocation),
+        )
 
     return IrAndMetadata(
         ir_blocks=basic_blocks,
@@ -1065,11 +1097,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - query_metadata_table: a QueryMetadataTable object containing location metadata
+        IrAndMetadata for the given schema/AST
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
@@ -1113,11 +1141,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - query_metadata_table: a QueryMetadataTable object containing location metadata
+        IrAndMetadata for the given schema/graphql_string
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
