@@ -1,9 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
 from typing import NamedTuple, Tuple
 
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
-from ..cost_estimation.helpers import is_int_field_type, is_uuid4_type
+from ..cost_estimation.helpers import is_uuid4_type
 from ..cost_estimation.int_value_conversion import field_supports_range_reasoning
 from ..exceptions import GraphQLError, GraphQLPaginationError
 
@@ -47,7 +46,7 @@ def get_pagination_plan(schema_info, query_ast, number_of_pages):
 
     pagination_field = schema_info.pagination_keys.get(pagination_node.name.value)
     if pagination_field is None:
-        raise PaginationError(
+        raise GraphQLPaginationError(
             u"Cannot paginate because no pagination field is specified "
             u"on the query root. The pagination planner is not good "
             u"enough to consider other vertices."
@@ -73,7 +72,7 @@ def get_pagination_plan(schema_info, query_ast, number_of_pages):
                     pagination_node.name.value,
                     pagination_field,
                     len(quantiles),
-                    quantile_requirement_factor * number_of_pages,
+                    QUANTILE_REQUIREMENT_FACTOR * number_of_pages,
                     number_of_pages,
                 )
             )
