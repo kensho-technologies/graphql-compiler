@@ -5,16 +5,16 @@ from typing import Any, Dict, FrozenSet, Tuple, Union
 
 from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
-from pyorient.orient import OrientDB
 import pytest
 import six
-from snapshottest import TestCase
 
 from graphql_compiler import graphql_to_match
 from graphql_compiler.schema.schema_info import CommonSchemaInfo
 from graphql_compiler.tests import test_input_data
 from graphql_compiler.tests.test_helpers import get_schema
 from graphql_compiler.tests.test_input_data import CommonTestData
+from pyorient.orient import OrientDB
+from snapshottest import TestCase
 
 
 def convert_decimals_to_strings(

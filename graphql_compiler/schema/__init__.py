@@ -277,9 +277,13 @@ def _unused_function(*args, **kwargs):
 
 def _serialize_date(value):
     """Serialize a Date object to its proper ISO-8601 representation."""
-    if not isinstance(value, date):
+    # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
+    # interchangeable. Rather than using isinstance, we will therefore check for exact type
+    # equality.
+    if type(value) != date:
         raise ValueError(
-            u"The received object was not a date: " u"{} {}".format(type(value), value)
+            u"Expected argument to be a python date object. "
+            u"Got {} of type {} instead.".format(value, type(value))
         )
     return value.isoformat()
 
@@ -291,9 +295,13 @@ def _parse_date_value(value):
 
 def _serialize_datetime(value):
     """Serialize a DateTime object to its proper ISO-8601 representation."""
-    if not isinstance(value, (datetime, arrow.Arrow)):
+    # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
+    # interchangeable. Rather than using isinstance, we will therefore check for exact type
+    # equality.
+    if type(value) not in {datetime, arrow.Arrow}:
         raise ValueError(
-            u"The received object was not a datetime: " u"{} {}".format(type(value), value)
+            u"Expected argument to be a python datetime object. "
+            u"Got {} of type {} instead.".format(value, type(value))
         )
     return value.isoformat()
 

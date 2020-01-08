@@ -2,11 +2,11 @@
 import datetime
 import string
 
-from redisgraph import Edge, Node
 import six
 
 from graphql_compiler.global_utils import merge_non_overlapping_dicts
 from graphql_compiler.tests.test_helpers import get_sqlalchemy_schema_info
+from redisgraph import Edge, Node
 
 
 def get_standard_integration_data():

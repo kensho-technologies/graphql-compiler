@@ -206,11 +206,13 @@ Advanced Features
 
 To learn more about the advanced features in the GraphQL compiler see:
 
-- :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
+- :doc:`Macro System <advanced_features/macro_system>` to learn how to write "macro edges",
   which allow users to define new edges that become part of the GraphQL schema, using existing
   edges as building blocks.
-- :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
+- :doc:`Schema Graph <advanced_features/schema_graph>` for an utility that makes it
   easy to explore the schema of a database, including the databases indexes.
+- :doc:`Additional Tools <advanced_features/additional_tools>` for a list of additional tools
+  included in the package, including a query pretty printer.
 
 .. toctree::
    :caption: Advanced Features
@@ -218,6 +220,7 @@ To learn more about the advanced features in the GraphQL compiler see:
 
    Macro System <advanced_features/macro_system>
    Schema Graph <advanced_features/schema_graph>
+   Additional Tools <advanced_features/additional_tools>
 
 About the GraphQL Compiler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

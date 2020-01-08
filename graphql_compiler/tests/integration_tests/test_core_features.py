@@ -12,9 +12,10 @@ from graphql.type import (
     GraphQLScalarType,
 )
 from graphql.utilities.schema_printer import print_schema
-from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
+
+from parameterized import parameterized
 
 from . import backends
 from ...schema.schema_info import CommonSchemaInfo

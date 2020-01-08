@@ -10,10 +10,11 @@ from graphql import GraphQLList, parse
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
 from graphql.utilities.build_ast_schema import build_ast_schema
-from pyorient.orient import OrientDB
 import six
 import sqlalchemy
 from sqlalchemy.dialects import mssql, postgresql
+
+from pyorient.orient import OrientDB
 
 from ..compiler.compiler_entities import BasicBlock
 from ..compiler.subclass import compute_subclass_sets
@@ -22,7 +23,6 @@ from ..global_utils import is_same_type
 from ..macros import MacroRegistry, create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import (
-    CUSTOM_SCALAR_TYPES,
     ClassToFieldTypeOverridesType,
     GraphQLSchemaFieldType,
     TypeEquivalenceHintsType,
@@ -41,7 +41,6 @@ from ..schema_generation.orientdb.utils import (
     ORIENTDB_SCHEMA_RECORDS_QUERY,
 )
 from ..schema_generation.schema_graph import SchemaGraph
-from ..schema_generation.utils import amend_custom_scalar_types
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -547,7 +546,6 @@ def get_schema() -> GraphQLSchema:
     """Get a schema object for testing."""
     ast = parse(SCHEMA_TEXT)
     schema = build_ast_schema(ast)
-    amend_custom_scalar_types(schema, CUSTOM_SCALAR_TYPES)  # Mutates the schema.
     return schema
 
 

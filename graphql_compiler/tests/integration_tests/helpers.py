@@ -2,13 +2,13 @@
 from decimal import Decimal
 from typing import Any, Dict, List, Tuple, TypeVar, Union
 
-from pyorient.orient import OrientDB
-from redisgraph.client import Graph
 import six
 from sqlalchemy.engine.base import Engine
 
 from graphql_compiler.schema.schema_info import SQLAlchemySchemaInfo
 from graphql_compiler.tests.integration_tests.clients.neo4j_graph import Neo4jClient
+from pyorient.orient import OrientDB
+from redisgraph.client import Graph
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
