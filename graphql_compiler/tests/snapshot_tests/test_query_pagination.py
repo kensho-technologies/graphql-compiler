@@ -10,7 +10,7 @@ from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     PaginationPlan,
     VertexPartition,
-    try_get_pagination_plan,
+    get_pagination_plan,
 )
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -48,8 +48,8 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
-        pagination_plan = try_get_pagination_plan(schema_info, query_ast, number_of_pages)
-        expected_plan = PaginationPlan([VertexPartition(("Animal",), number_of_pages)])
+        pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        expected_plan = PaginationPlan([VertexPartition(("Animal",), "uuid", number_of_pages)])
         self.assertEqual(expected_plan, pagination_plan)
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.

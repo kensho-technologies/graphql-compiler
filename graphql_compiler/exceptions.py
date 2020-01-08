@@ -33,3 +33,7 @@ class GraphQLInvalidArgumentError(GraphQLError):
     - expected arguments may be missing;
     - an argument may be of incorrect type (e.g. expected an int but received a string).
     """
+
+
+class GraphQLPaginationError(GraphQLError):
+    """Exception raised when the pagination planner was unable to find a plan."""
