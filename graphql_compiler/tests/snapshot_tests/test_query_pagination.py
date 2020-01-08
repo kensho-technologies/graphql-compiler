@@ -50,7 +50,7 @@ class QueryPaginationTests(unittest.TestCase):
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
         pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
-        expected_plan = PaginationPlan([VertexPartition(("Animal",), "uuid", number_of_pages)])
+        expected_plan = PaginationPlan((VertexPartition(("Animal",), "uuid", number_of_pages),))
         self.assertEqual(expected_plan, pagination_plan)
 
     def test_pagination_planning_on_int(self) -> None:
@@ -81,7 +81,7 @@ class QueryPaginationTests(unittest.TestCase):
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
         pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
-        expected_plan = PaginationPlan([VertexPartition(("Species",), "limbs", number_of_pages)])
+        expected_plan = PaginationPlan((VertexPartition(("Species",), "limbs", number_of_pages),))
         self.assertEqual(expected_plan, pagination_plan)
 
     def test_pagination_planning_on_int_error(self) -> None:

@@ -89,5 +89,5 @@ def get_pagination_plan(schema_info, query_ast, number_of_pages):
         )
 
     return PaginationPlan(
-        [VertexPartition((pagination_node.name.value,), pagination_field, number_of_pages)]
+        (VertexPartition((pagination_node.name.value,), pagination_field, number_of_pages),)
     )
