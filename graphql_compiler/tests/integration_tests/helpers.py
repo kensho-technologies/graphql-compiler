@@ -5,8 +5,8 @@ from typing import Any, Dict, List, Tuple, TypeVar, Union
 import six
 from sqlalchemy.engine.base import Engine
 
-from graphql_compiler.schema.schema_info import SQLAlchemySchemaInfo
-from graphql_compiler.tests.integration_tests.clients.neo4j_graph import Neo4jClient
+from ...schema.schema_info import SQLAlchemySchemaInfo
+from ..integration_tests.clients.neo4j_graph import Neo4jClient
 from pyorient.orient import OrientDB
 from redisgraph.client import Graph
 

@@ -8,11 +8,11 @@ from graphql.type.schema import GraphQLSchema
 import pytest
 import six
 
-from graphql_compiler import graphql_to_match
-from graphql_compiler.schema.schema_info import CommonSchemaInfo
-from graphql_compiler.tests import test_input_data
-from graphql_compiler.tests.test_helpers import get_schema
-from graphql_compiler.tests.test_input_data import CommonTestData
+from ... import graphql_to_match
+from ...schema.schema_info import CommonSchemaInfo
+from .. import test_input_data
+from ..test_helpers import get_schema
+from ..test_input_data import CommonTestData
 from pyorient.orient import OrientDB
 from snapshottest import TestCase
 
