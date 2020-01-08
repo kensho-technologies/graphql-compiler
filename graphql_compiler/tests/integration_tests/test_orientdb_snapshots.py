@@ -8,13 +8,14 @@ from graphql.type.schema import GraphQLSchema
 import pytest
 import six
 
-from ... import graphql_to_match
-from ...schema.schema_info import CommonSchemaInfo
-from .. import test_input_data
-from ..test_helpers import get_schema
-from ..test_input_data import CommonTestData
 from pyorient.orient import OrientDB
 from snapshottest import TestCase
+
+from .. import test_input_data
+from ... import graphql_to_match
+from ...schema.schema_info import CommonSchemaInfo
+from ..test_helpers import get_schema
+from ..test_input_data import CommonTestData
 
 
 def convert_decimals_to_strings(

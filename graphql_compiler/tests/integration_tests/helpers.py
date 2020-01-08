@@ -5,14 +5,13 @@ from typing import Any, Dict, List, Tuple, TypeVar, Union
 import six
 from sqlalchemy.engine.base import Engine
 
-from ...schema.schema_info import SQLAlchemySchemaInfo
-from ..integration_tests.clients.neo4j_graph import Neo4jClient
 from pyorient.orient import OrientDB
 from redisgraph.client import Graph
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
-from ...schema.schema_info import CommonSchemaInfo
+from ...schema.schema_info import CommonSchemaInfo, SQLAlchemySchemaInfo
+from ..integration_tests.clients.neo4j_graph import Neo4jClient
 
 
 T = TypeVar("T")

@@ -1,12 +1,13 @@
-# Copyright 2020-present Kensho Technologies, LLC.
+# Copyright 2018-present Kensho Technologies, LLC.
 import datetime
 import string
 
 import six
 
-from graphql_compiler.global_utils import merge_non_overlapping_dicts
-from graphql_compiler.tests.test_helpers import get_sqlalchemy_schema_info
 from redisgraph import Edge, Node
+
+from ....global_utils import merge_non_overlapping_dicts
+from ...test_helpers import get_sqlalchemy_schema_info
 
 
 def get_standard_integration_data():
