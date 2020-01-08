@@ -401,6 +401,7 @@ def get_integer_interval_for_filters_on_field(
     field_name: str,
     parameters: Dict[str, Any],
 ) -> IntegerInterval:
+    """Get the interval of possible values on this field, constrained by its inequality filters."""
     interval = _create_integer_interval(None, None)
     for filter_info in filters_on_field:
         if filter_info.op_name in INEQUALITY_OPERATORS:
