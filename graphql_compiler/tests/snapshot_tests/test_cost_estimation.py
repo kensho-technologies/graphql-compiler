@@ -1312,6 +1312,43 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_counts = 32.0 * (1.0 / 3.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_inequality_filters_on_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics(
+            dict(),
+            field_quantiles={
+                ("Event", "event_date"): [
+                    datetime(2019, 3, 1, tzinfo=pytz.utc),
+                    datetime(2019, 6, 1, tzinfo=pytz.utc),
+                    datetime(2019, 8, 1, tzinfo=pytz.utc),
+                    datetime(2019, 9, 1, tzinfo=pytz.utc),
+                ],
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        # Test <= filter in the middle
+        filter_info_list = [
+            FilterInfo(fields=("event_date",), op_name="<=", args=("$event_date_upper",))
+        ]
+        params = {"event_date_upper": datetime(2019, 7, 1)}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, "Event", 32.0
+        )
+        expected_counts = 32.0 * (1.5 / 3.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
 
 # pylint: enable=no-member
 
