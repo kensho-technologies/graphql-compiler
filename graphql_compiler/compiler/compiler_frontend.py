@@ -59,7 +59,7 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from typing import Dict, Generator, List, NamedTuple, Tuple
+from typing import Dict, List, NamedTuple
 
 from graphql import (
     GraphQLInt,
@@ -865,48 +865,59 @@ def _validate_all_tags_are_used(metadata):
         )
 
 
-def _validate_output_types(outputs: Generator[Tuple[str, OutputInfo], None, None]):
-    """Ensure output types are valid.
+def _validate_and_create_output_metadata(
+    output_name: str, output_info: OutputInfo
+) -> OutputMetadata:
+    """Create a new OutputMetadata object after validating the output type.
 
-    Checks that _x_count output is within a fold scope, and that its type is GraphQLInt.
-    Checks that all other outputs within a fold scope have GraphQLList as their type.
+    Checks the following before creating a new OutputMetadata object:
+        - _x_count output is within a fold scope and has type GraphQLInt
+        - all other outputs within a fold scope have type GraphQLList
 
     Args:
-        outputs: generator producing (output names, OutputInfo) tuples describing a query's outputs
+        output_name: name of the output specified in a query
+        output_info: information about the output
+
+    Returns:
+        OutputMetadata containing metadata about the output
 
     Raises:
         AssertionError if an invalid output type is found
-
     """
-    for name, info in outputs:
-        # Ensure _x_count is within a fold scope.
-        if info.location.field == COUNT_META_FIELD_NAME and not isinstance(
-            info.location, FoldScopeLocation
+    # Ensure _x_count is within a fold scope.
+    if output_info.location.field == COUNT_META_FIELD_NAME and not isinstance(
+        output_info.location, FoldScopeLocation
+    ):
+        raise AssertionError(
+            u"Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
+        )
+    # Ensure folded outputs have valid type.
+    if isinstance(output_info.location, FoldScopeLocation):
+        # Ensure _x_count is a GraphQLInt.
+        if output_info.location.field == COUNT_META_FIELD_NAME and not is_same_type(
+            output_info.type, GraphQLInt
         ):
             raise AssertionError(
-                u"Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
+                u"Invalid output: received {} with type {}, but {} must always be of "
+                u"type GraphQLInt".format(
+                    COUNT_META_FIELD_NAME, output_info.type, COUNT_META_FIELD_NAME
+                )
             )
-        # Ensure folded outputs have valid type.
-        if isinstance(info.location, FoldScopeLocation):
-            # Ensure _x_count is a GraphQLInt.
-            if info.location.field == COUNT_META_FIELD_NAME and not is_same_type(
-                info.type, GraphQLInt
-            ):
-                raise AssertionError(
-                    u"Invalid output: received {} with type {}, but {} must always be of "
-                    u"type GraphQLInt".format(
-                        COUNT_META_FIELD_NAME, info.type, COUNT_META_FIELD_NAME
-                    )
-                )
-            # Ensure all other folded outputs are GraphQLList.
-            elif info.location.field != COUNT_META_FIELD_NAME and not isinstance(
-                info.type, GraphQLList
-            ):
-                raise AssertionError(
-                    u"Invalid output: non-{} folded output must have type "
-                    u"GraphQLList. Received type {} for folded output "
-                    u"{}.".format(COUNT_META_FIELD_NAME, info.type, name)
-                )
+        # Ensure all other folded outputs are GraphQLList.
+        elif output_info.location.field != COUNT_META_FIELD_NAME and not isinstance(
+            output_info.type, GraphQLList
+        ):
+            raise AssertionError(
+                u"Invalid output: non-{} folded output must have type "
+                u"GraphQLList. Received type {} for folded output "
+                u"{}.".format(COUNT_META_FIELD_NAME, output_info.type, output_name)
+            )
+
+    return OutputMetadata(
+        type=output_info.type,
+        optional=output_info.optional,
+        folded=isinstance(output_info.location, FoldScopeLocation),
+    )
 
 
 def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
@@ -1008,13 +1019,8 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     basic_blocks.append(_compile_output_step(query_metadata_table))
 
     # Construct the output metadata, ensuring that all folded outputs have a valid type.
-    _validate_output_types(query_metadata_table.outputs)
     output_metadata = {
-        name: OutputMetadata(
-            type=info.type,
-            optional=info.optional,
-            folded=isinstance(info.location, FoldScopeLocation),
-        )
+        name: _validate_and_create_output_metadata(name, info)
         for name, info in query_metadata_table.outputs
     }
 
