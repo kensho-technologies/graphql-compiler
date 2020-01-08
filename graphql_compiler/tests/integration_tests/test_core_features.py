@@ -17,7 +17,7 @@ from sqlalchemy import Column, Integer, MetaData, String, Table
 
 from parameterized import parameterized
 
-from . import backends
+from . import backends as test_backends
 from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
@@ -60,7 +60,7 @@ def use_all_backends(except_backends: Tuple[str, ...] = ()) -> Callable:
     """
     non_excluded_backends = [
         backend
-        for backend in backends.BACKENDS_WITH_INTEGRATION_TESTS
+        for backend in test_backends.BACKENDS_WITH_INTEGRATION_TESTS
         if backend not in except_backends
     ]
     # parameterized.expand() takes in a list of test parameters (in this case, backend strings
@@ -117,20 +117,20 @@ class IntegrationTests(TestCase):
         # Mypy doesn't like our decorator magic, we have to manually ignore the type checks
         # on all the properties that we magically added via the integration testing decorator.
         common_schema_info = CommonSchemaInfo(cls.schema, None)  # type: ignore
-        if backend_name in backends.SQL_BACKENDS:
+        if backend_name in test_backends.SQL_BACKENDS:
             engine = cls.sql_backend_name_to_engine[backend_name]  # type: ignore
             results = compile_and_run_sql_query(
                 cls.sql_schema_info, graphql_query, parameters, engine  # type: ignore
             )
-        elif backend_name in backends.MATCH_BACKENDS:
+        elif backend_name in test_backends.MATCH_BACKENDS:
             results = compile_and_run_match_query(
                 common_schema_info, graphql_query, parameters, cls.orientdb_client  # type: ignore
             )
-        elif backend_name in backends.NEO4J_BACKENDS:
+        elif backend_name in test_backends.NEO4J_BACKENDS:
             results = compile_and_run_neo4j_query(
                 common_schema_info, graphql_query, parameters, cls.neo4j_client  # type: ignore
             )
-        elif backend_name in backends.REDISGRAPH_BACKENDS:
+        elif backend_name in test_backends.REDISGRAPH_BACKENDS:
             results = compile_and_run_redisgraph_query(
                 common_schema_info, graphql_query, parameters, cls.redisgraph_client  # type: ignore
             )
@@ -161,7 +161,7 @@ class IntegrationTests(TestCase):
     # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
     # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
-    @use_all_backends(except_backends=(backends.NEO4J, backends.REDISGRAPH))
+    @use_all_backends(except_backends=(test_backends.NEO4J, test_backends.REDISGRAPH))
     @integration_fixtures
     def test_simple_filter(self, backend_name: str) -> None:
         graphql_query = """
@@ -198,14 +198,14 @@ class IntegrationTests(TestCase):
         }
         expected_results: List[Dict[str, Any]] = []
 
-        self.assertResultsEqual(graphql_query, parameters, backends.ORIENTDB, expected_results)
+        self.assertResultsEqual(graphql_query, parameters, test_backends.ORIENTDB, expected_results)
 
     # Redisgraph doesn't support lists so in_collection doesn't make sense. [0]
     # Cypher doesn't support Decimals (both Neo4j [1] and RedisGraph [2])
     # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
     # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
-    @use_all_backends(except_backends=(backends.REDISGRAPH, backends.NEO4J))
+    @use_all_backends(except_backends=(test_backends.REDISGRAPH, test_backends.NEO4J))
     @integration_fixtures
     def test_two_filters(self, backend_name: str) -> None:
         graphql_query = """
@@ -231,7 +231,7 @@ class IntegrationTests(TestCase):
 
     # RedisGraph doesn't support string function CONTAINS
     # https://oss.redislabs.com/redisgraph/cypher_support/#string-operators
-    @use_all_backends(except_backends=(backends.REDISGRAPH,))
+    @use_all_backends(except_backends=(test_backends.REDISGRAPH,))
     @integration_fixtures
     def test_has_substring_precedence(self, backend_name: str) -> None:
         graphql_query = """
@@ -409,12 +409,12 @@ class IntegrationTests(TestCase):
         #                       - Our Neo4j backend would find all different paths that use each
         #                         edge at most once, and duplicate the result for each one.
         for graphql_query, expected_results in queries:
-            self.assertResultsEqual(graphql_query, parameters, backends.MSSQL, expected_results)
+            self.assertResultsEqual(graphql_query, parameters, test_backends.MSSQL, expected_results)
 
     @use_all_backends(
         except_backends=(
-            backends.MSSQL,  # Not implemented yet
-            backends.REDISGRAPH,  # Not implemented yet
+                test_backends.MSSQL,  # Not implemented yet
+                test_backends.REDISGRAPH,  # Not implemented yet
         )
     )
     @integration_fixtures
@@ -488,7 +488,7 @@ class IntegrationTests(TestCase):
             self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     @use_all_backends(
-        except_backends=(backends.REDISGRAPH,)  # TODO(bojanserafimov): Resolve syntax error
+        except_backends=(test_backends.REDISGRAPH,)  # TODO(bojanserafimov): Resolve syntax error
     )
     @integration_fixtures
     def test_optional_basic(self, backend_name: str) -> None:
@@ -563,7 +563,7 @@ class IntegrationTests(TestCase):
             self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     # RedisGraph doesn't support temporal types, so Date types aren't supported.
-    @use_all_backends(except_backends=(backends.REDISGRAPH,))
+    @use_all_backends(except_backends=(test_backends.REDISGRAPH,))
     @integration_fixtures
     def test_filter_on_date(self, backend_name: str) -> None:
         graphql_query = """
@@ -638,7 +638,7 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_sqlalchemy_fast_reflect(self) -> None:
-        engine = self.sql_backend_name_to_engine[backends.MSSQL]  # type: ignore  # from fixture
+        engine = self.sql_backend_name_to_engine[test_backends.MSSQL]  # type: ignore  # from fixture
 
         table_without_primary_key = Table(
             "TableWithoutPrimaryKey",
