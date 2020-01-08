@@ -6,6 +6,7 @@ import pytest
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
+from ...exceptions import GraphQLPaginationError
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     PaginationPlan,
@@ -15,7 +16,6 @@ from ...query_pagination.pagination_planning import (
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
-from ...exceptions import GraphQLPaginationError
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -60,9 +60,9 @@ class QueryPaginationTests(unittest.TestCase):
         uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
         class_counts = {"Species": 1000}
-        statistics = LocalStatistics(class_counts, field_quantiles={
-            ("Species", "limbs"): list(range(100))
-        })
+        statistics = LocalStatistics(
+            class_counts, field_quantiles={("Species", "limbs"): list(range(100))}
+        )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
             type_equivalence_hints=type_equivalence_hints,
