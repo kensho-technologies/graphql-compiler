@@ -59,7 +59,7 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from typing import Dict, List, NamedTuple
+from typing import Dict, Generator, List, NamedTuple, Tuple
 
 from graphql import (
     GraphQLInt,
@@ -130,20 +130,17 @@ from .validation import validate_schema_and_query_ast
 
 
 class OutputMetadata(NamedTuple):
-    """Metadata about a query's outputs.
+    """Metadata about a query's outputs."""
 
-    Containing the following members:
-        type: GraphQL type object, such as GraphQLString or GraphQLInt, describing the type of the
-              output value.
-        optional: boolean, whether the output is part of an optional traversal, which would allow a
-                  value of null.
-        folded: boolean, whether the output is within a fold scope. Note that the "type" is expected
-                to be a GraphQLList unless the output field is an _x_count, in which case the type
-                must be GraphQLInt.
-    """
-
+    # The type of the output value.
     type: GraphQLType
+
+    # Whether the output is part of an optional traversal, which would allow a value of null.
     optional: bool
+
+    # Whether the output is within a fold scope. Note that if the output is within a fold scope,
+    # the `type` is expected to be a GraphQLList unless the output field is an _x_count,
+    # in which case the type must be GraphQLInt.
     folded: bool
 
     def __eq__(self, other):
@@ -162,19 +159,18 @@ class OutputMetadata(NamedTuple):
 
 
 class IrAndMetadata(NamedTuple):
-    """Internal representation (IR) and metadata for a schema/query.
+    """Internal representation (IR) and metadata for a particular schema and query combination."""
 
-    Contains the following members:
-        ir_blocks: List[BasicBlock], a list of IR basic block objects describing a query
-        input_metadata: Dict[str, GraphQLType], mapping
-                        expected input parameters -> inferred GraphQL type
-        output_metadata: Dict[str, OutputMetadata], mapping output name -> output metadata
-        query_metadata_table: QueryMetadataTable, describing location metadata
-    """
-
+    # List of basic block objects describing the query.
     ir_blocks: List[BasicBlock]
+
+    # Mapping of expected input parameters -> inferred GraphQL type.
     input_metadata: Dict[str, GraphQLType]
+
+    # Mapping output name -> output metadata.
     output_metadata: Dict[str, OutputMetadata]
+
+    # Describing the location metadata.
     query_metadata_table: QueryMetadataTable
 
 
@@ -869,6 +865,50 @@ def _validate_all_tags_are_used(metadata):
         )
 
 
+def _validate_output_types(outputs: Generator[Tuple[str, OutputInfo], None, None]):
+    """Ensure output types are valid.
+
+    Checks that _x_count output is within a fold scope, and that its type is GraphQLInt.
+    Checks that all other outputs within a fold scope have GraphQLList as their type.
+
+    Args:
+        outputs: generator producing (output names, OutputInfo) tuples describing a query's outputs
+
+    Raises:
+        AssertionError if an invalid output type is found
+
+    """
+    for name, info in outputs:
+        # Ensure _x_count is within a fold scope.
+        if info.location.field == COUNT_META_FIELD_NAME and not isinstance(
+            info.location, FoldScopeLocation
+        ):
+            raise AssertionError(
+                u"Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
+            )
+        # Ensure folded outputs have valid type.
+        if isinstance(info.location, FoldScopeLocation):
+            # Ensure _x_count is a GraphQLInt.
+            if info.location.field == COUNT_META_FIELD_NAME and not is_same_type(
+                info.type, GraphQLInt
+            ):
+                raise AssertionError(
+                    u"Invalid output: received {} with type {}, but {} must always be of "
+                    u"type GraphQLInt".format(
+                        COUNT_META_FIELD_NAME, info.type, COUNT_META_FIELD_NAME
+                    )
+                )
+            # Ensure all other folded outputs are GraphQLList.
+            elif info.location.field != COUNT_META_FIELD_NAME and not isinstance(
+                info.type, GraphQLList
+            ):
+                raise AssertionError(
+                    u"Invalid output: non-{} folded output must have type "
+                    u"GraphQLList. Received type {} for folded output "
+                    u"{}.".format(COUNT_META_FIELD_NAME, info.type, name)
+                )
+
+
 def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     """Compile a full GraphQL abstract syntax tree (AST) to intermediate representation.
 
@@ -879,7 +919,7 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         type_equivalence_hints: optional dict of GraphQL type to equivalent GraphQL union
 
     Returns:
-        IrAndMetadata for the given schema/AST
+        IrAndMetadata for the given schema and AST
     """
     base_ast = get_only_selection_from_ast(ast, GraphQLCompilationError)
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
@@ -967,45 +1007,16 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Based on the outputs context data, add an output step.
     basic_blocks.append(_compile_output_step(query_metadata_table))
 
-    # Construct the output metadata, ensuring that all folded outputs have a valid type
-    # (GraphQLInt for _x_count, GraphQLList for all other folded outputs) and that _x_count is only
-    # output within a fold scope.
-    output_metadata = {}
-    for name, info in query_metadata_table.outputs:
-        # Ensure _x_count is within a fold scope.
-        if info.location.field == COUNT_META_FIELD_NAME and not isinstance(
-            info.location, FoldScopeLocation
-        ):
-            raise AssertionError(
-                u"Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
-            )
-        # Ensure folded outputs have valid type.
-        if isinstance(info.location, FoldScopeLocation):
-            # Ensure _x_count is a GraphQLInt.
-            if info.location.field == COUNT_META_FIELD_NAME and not is_same_type(
-                info.type, GraphQLInt
-            ):
-                raise AssertionError(
-                    u"Invalid output: received {} with type {}, but {} must always be of "
-                    u"type GraphQLInt".format(
-                        COUNT_META_FIELD_NAME, info.type, COUNT_META_FIELD_NAME
-                    )
-                )
-            # Ensure all other folded outputs are GraphQLList.
-            elif info.location.field != COUNT_META_FIELD_NAME and not isinstance(
-                info.type, GraphQLList
-            ):
-                raise AssertionError(
-                    u"Invalid output: non-{} folded output must have type "
-                    u"GraphQLList. Received type {} for folded output "
-                    u"{}.".format(COUNT_META_FIELD_NAME, info.type, name)
-                )
-        # Construct output metadata.
-        output_metadata[name] = OutputMetadata(
+    # Construct the output metadata, ensuring that all folded outputs have a valid type.
+    _validate_output_types(query_metadata_table.outputs)
+    output_metadata = {
+        name: OutputMetadata(
             type=info.type,
             optional=info.optional,
             folded=isinstance(info.location, FoldScopeLocation),
         )
+        for name, info in query_metadata_table.outputs
+    }
 
     return IrAndMetadata(
         ir_blocks=basic_blocks,
@@ -1097,7 +1108,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata for the given schema/AST
+        IrAndMetadata for the given schema and AST
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
@@ -1141,7 +1152,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata for the given schema/graphql_string
+        IrAndMetadata for the given schema and graphql_string
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
