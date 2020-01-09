@@ -2,9 +2,10 @@
 import datetime
 from unittest import TestCase
 
+from dateutil.tz import tzutc
 from graphql import GraphQLList, GraphQLString
 
-from graphql_compiler import GraphQLDate, GraphQLDecimal
+from graphql_compiler import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 from ..compiler.compiler_frontend import OutputMetadata
 from ..post_processing.sql_post_processing import post_process_mssql_folds
@@ -234,6 +235,37 @@ class MssqlXmlPathTests(TestCase):
 
         expected_result = [
             {"child_birthdays": [datetime.date(2020, 1, 1), datetime.date(2000, 2, 29), None],}
+        ]
+
+        post_process_mssql_folds(query_output, output_metadata)
+        self.assertEqual(query_output, expected_result)
+
+    def test_convert_basic_datetime(self):
+        """Test basic XML path encoding for datetimes is correctly decoded.
+
+        {
+            Animal {
+                in_Animal_ParentOf @fold{
+                    datetime_field @output(out_name: "child_datetime_fields")
+                }
+            }
+        }
+        """
+        query_output = [{"child_datetime_fields": "2020-01-01T05:45:00Z|2000-02-29T13:02:27Z|~"}]
+        output_metadata = {
+            "child_datetime_fields": OutputMetadata(
+                type=GraphQLList(GraphQLDateTime), optional=False, folded=True
+            )
+        }
+
+        expected_result = [
+            {
+                "child_datetime_fields": [
+                    datetime.datetime(2020, 1, 1, 5, 45, tzinfo=tzutc()),
+                    datetime.datetime(2000, 2, 29, 13, 2, 27, tzinfo=tzutc()),
+                    None,
+                ],
+            }
         ]
 
         post_process_mssql_folds(query_output, output_metadata)
