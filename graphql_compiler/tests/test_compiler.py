@@ -440,7 +440,7 @@ class CompilerTests(unittest.TestCase):
             }
 
             expected_output_metadata = {
-                "animal_name": OutputMetadata(type=GraphQLString, optional=False),
+                "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
             }
             expected_input_metadata = {
                 "wanted": GraphQLString,
@@ -3339,7 +3339,7 @@ class CompilerTests(unittest.TestCase):
         expected_cypher = SKIP_TEST
 
         expected_output_metadata = {
-            "animal_name": OutputMetadata(type=GraphQLString, optional=False),
+            "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {
             "wanted": GraphQLString,
@@ -3392,7 +3392,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         """
         expected_output_metadata = {
-            "animal_name": OutputMetadata(type=GraphQLString, optional=False),
+            "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {}
 
@@ -3483,7 +3483,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         """
         expected_output_metadata = {
-            "animal_name": OutputMetadata(type=GraphQLString, optional=False),
+            "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {}
 
@@ -4209,7 +4209,7 @@ class CompilerTests(unittest.TestCase):
             ])}
         """
         expected_output_metadata = {
-            "related_event": OutputMetadata(type=GraphQLString, optional=False),
+            "related_event": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {}
 
@@ -4348,9 +4348,9 @@ class CompilerTests(unittest.TestCase):
             ])}
         """
         expected_output_metadata = {
-            "child_uuid": OutputMetadata(type=GraphQLID, optional=True),
-            "event_uuid": OutputMetadata(type=GraphQLID, optional=True),
-            "species_uuid": OutputMetadata(type=GraphQLID, optional=True),
+            "child_uuid": OutputMetadata(type=GraphQLID, optional=True, folded=False),
+            "event_uuid": OutputMetadata(type=GraphQLID, optional=True, folded=False),
+            "species_uuid": OutputMetadata(type=GraphQLID, optional=True, folded=False),
         }
         expected_input_metadata = {
             "uuid": GraphQLID,

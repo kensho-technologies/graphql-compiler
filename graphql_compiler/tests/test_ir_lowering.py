@@ -937,7 +937,7 @@ class MatchIrLoweringTests(unittest.TestCase):
 
         schema_info = get_common_schema_info()
         input_metadata = {}
-        output_metadata = {"name": OutputMetadata(type=GraphQLString, optional=False)}
+        output_metadata = {"name": OutputMetadata(type=GraphQLString, optional=False, folded=False)}
         ir = IrAndMetadata(ir_blocks, input_metadata, output_metadata, query_metadata_table)
         final_query = ir_lowering_match.lower_ir(schema_info, ir)
 
