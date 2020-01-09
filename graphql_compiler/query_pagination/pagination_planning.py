@@ -31,6 +31,7 @@ class NotEnoughQuantiles(PaginationWarning):
                 vertex_name, field_name, current_resolution, desired_resolution
             )
         )
+        self.vertex_name = vertex_name
         self.field_name = field_name
         self.current_resolution = current_resolution
         self.desired_resolution = desired_resolution
