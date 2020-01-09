@@ -6,9 +6,9 @@ import pytest
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
-from ...exceptions import GraphQLPaginationError
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
+    NotEnoughQuantiles,
     PaginationPlan,
     VertexPartition,
     get_pagination_plan,
@@ -25,6 +25,7 @@ from ..test_helpers import generate_schema_graph
 class QueryPaginationTests(unittest.TestCase):
     """Test the query pagination module."""
 
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_planning_basic(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -49,10 +50,13 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
-        pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan((VertexPartition(("Animal",), "uuid", number_of_pages),))
+        expected_warnings = []
+        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_planning_on_int(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -80,10 +84,13 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
-        pagination_plan = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan((VertexPartition(("Species",), "limbs", number_of_pages),))
+        expected_warnings = []
+        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_planning_on_int_error(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -109,8 +116,11 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
-        with self.assertRaises(GraphQLPaginationError):
-            get_pagination_plan(schema_info, query_ast, number_of_pages)
+        pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        expected_plan = PaginationPlan(tuple())
+        expected_warnings = [NotEnoughQuantiles("Species", "limbs", 0, 51)]
+        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
+        self.assertEqual(expected_plan, pagination_plan)
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.
     @pytest.mark.usefixtures("snapshot_orientdb_client")

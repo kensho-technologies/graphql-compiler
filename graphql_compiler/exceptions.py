@@ -36,4 +36,4 @@ class GraphQLInvalidArgumentError(GraphQLError):
 
 
 class GraphQLPaginationError(GraphQLError):
-    """Exception raised when the pagination planner was unable to find a plan."""
+    """Exception raised when the pagination planner was unable to find a good plan."""
