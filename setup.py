@@ -62,6 +62,7 @@ setup(
         "six>=1.10.0",
         "sqlalchemy>=1.3.0,<2",
     ],
+    extras_require={':python_version<"3.7"': ["dataclasses>=0.6"],},
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Topic :: Database :: Front-Ends",
