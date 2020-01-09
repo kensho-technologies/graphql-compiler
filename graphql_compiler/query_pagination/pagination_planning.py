@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from dataclasses import dataclass
 from typing import List, NamedTuple, Tuple
 
-from dataclasses import dataclass
 from graphql import DocumentNode
 
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
@@ -76,7 +76,7 @@ def get_num_pages_generated_by_plan(plan: PaginationPlan) -> int:
 def get_pagination_plan(
     schema_info: QueryPlanningSchemaInfo, query_ast: DocumentNode, number_of_pages: int
 ) -> Tuple[PaginationPlan, List[PaginationAdvisory]]:
-    """Make a best-effort PaginationPlan and advise on how to improve statistics
+    """Make a best-effort PaginationPlan and advise on how to improve statistics.
 
     Might paginate to fewer than the desired number of pages if no good pagination plan
     is found. This can happen when there's not enough data, or when the planner is not

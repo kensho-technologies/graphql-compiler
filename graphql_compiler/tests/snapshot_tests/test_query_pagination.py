@@ -9,8 +9,8 @@ from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
-    PaginationPlan,
     PaginationAdvisory,
+    PaginationPlan,
     VertexPartition,
     get_pagination_plan,
 )
