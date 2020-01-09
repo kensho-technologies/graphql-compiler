@@ -6,7 +6,7 @@ from graphql import DocumentNode
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
 from ..cost_estimation.helpers import is_uuid4_type
 from ..cost_estimation.int_value_conversion import field_supports_range_reasoning
-from ..exceptions import GraphQLError, GraphQLPaginationError
+from ..exceptions import GraphQLError
 from ..schema.schema_info import QueryPlanningSchemaInfo
 
 
@@ -29,8 +29,8 @@ class NotEnoughQuantiles(PaginationWarning):
     def __init__(self, vertex_name, field_name, current_resolution, desired_resolution):
         """Initialize a NotEnoughQuantiles PaginationWarning."""
         super(NotEnoughQuantiles, self).__init__(
-            "Pagination would have been more successful if more quantiles were provided"
-            "For {}.{}. Currently there is {}, ideally there should be {}".format(
+            "Pagination would have been more successful if more quantiles were provided "
+            "for {}.{}. Currently there are {}, ideally there should be {}".format(
                 vertex_name, field_name, current_resolution, desired_resolution
             )
         )
@@ -41,7 +41,7 @@ class NotEnoughQuantiles(PaginationWarning):
 
 
 class VertexPartition(NamedTuple):
-    """The intent to split the query at a certain vertex into a certain number of pages."""
+    """Plan to split the query at a certain vertex into a certain number of pages."""
 
     # field names leading to the vertex to be split
     query_path: Tuple[str, ...]
@@ -54,7 +54,7 @@ class VertexPartition(NamedTuple):
 
 
 class PaginationPlan(NamedTuple):
-    """The intent to split the query with a combination of VertexPartitions."""
+    """Plan to split the query with a combination of VertexPartitions."""
 
     vertex_partitions: Tuple[VertexPartition, ...]
 
@@ -64,13 +64,19 @@ def get_pagination_plan(
 ) -> Tuple[PaginationPlan, List[PaginationWarning]]:
     """Make a PaginationPlan for the given query and number of desired pages if possible.
 
-    Raises GraphQLPaginationError if the statistics object is misconfigured.
-
     Might paginate to fewer than the desired number of pages if no good pagination plan
-    is found. In that case it will return along with the result a PaginationWarning
-    that indicates why the pagination was not successful.
+    is found. This can happen when there's not enough data, or when the planner is not
+    smart enough to find a good plan. In that case it will return along with the result
+    a PaginationWarning that indicates why the pagination was not successful.
     """
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
+
+    if number_of_pages <= 0:
+        raise AssertionError(
+            u"The number of pages should be at least 1: {}".format(number_of_pages)
+        )
+    elif number_of_pages == 1:
+        return PaginationPlan(tuple()), []
 
     # Select the root node as the only vertex to paginate on.
     # TODO(bojanserafimov): Make a better pagination plan. Selecting the root is not
@@ -143,7 +149,7 @@ def get_pagination_plan(
             .fields[pagination_field]
             .type.name
         )
-        raise GraphQLPaginationError(
+        raise AssertionError(
             u"Cannot paginate on {}.{} because pagination on {} is not supported ".format(
                 pagination_node.name.value, pagination_field, type_name
             )
