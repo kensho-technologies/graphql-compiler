@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from typing import Any, Dict
+from typing import Any, Dict, List
 import unittest
 
 import pytest
@@ -10,6 +10,7 @@ from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     NotEnoughQuantiles,
     PaginationPlan,
+    PaginationWarning,
     VertexPartition,
     get_pagination_plan,
 )
@@ -52,7 +53,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan((VertexPartition(("Animal",), "uuid", number_of_pages),))
-        expected_warnings = []
+        expected_warnings: List[PaginationWarning] = []
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
@@ -86,7 +87,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan((VertexPartition(("Species",), "limbs", number_of_pages),))
-        expected_warnings = []
+        expected_warnings: List[PaginationWarning] = []
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 

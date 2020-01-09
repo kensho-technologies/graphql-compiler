@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from typing import NamedTuple, Tuple
+from typing import List, NamedTuple, Tuple
 
 from graphql import DocumentNode
 
@@ -12,11 +12,13 @@ from ..schema.schema_info import QueryPlanningSchemaInfo
 
 class PaginationWarning(object):
     def __init__(self, message):
+        """Initialize a PaginationWarning with a custom message."""
         self.message = message
 
 
 class PaginationFieldNotSpecified(PaginationWarning):
     def __init__(self, vertex_name):
+        """Initialize a PaginationFieldNotSpecified PaginationWarning."""
         super(PaginationFieldNotSpecified, self).__init__(
             "Pagination field not specified for vertex {}".format(vertex_name)
         )
@@ -25,6 +27,7 @@ class PaginationFieldNotSpecified(PaginationWarning):
 
 class NotEnoughQuantiles(PaginationWarning):
     def __init__(self, vertex_name, field_name, current_resolution, desired_resolution):
+        """Initialize a NotEnoughQuantiles PaginationWarning."""
         super(NotEnoughQuantiles, self).__init__(
             "Pagination would have been more successful if more quantiles were provided"
             "For {}.{}. Currently there is {}, ideally there should be {}".format(
@@ -51,7 +54,7 @@ class VertexPartition(NamedTuple):
 
 
 class PaginationPlan(NamedTuple):
-    """The intent to split the query with a combination of VertexPartitions"""
+    """The intent to split the query with a combination of VertexPartitions."""
 
     vertex_partitions: Tuple[VertexPartition, ...]
 
