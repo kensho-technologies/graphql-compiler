@@ -4,6 +4,8 @@ from unittest import TestCase
 
 from graphql import GraphQLList, GraphQLString
 
+from graphql_compiler import GraphQLDate, GraphQLDecimal
+
 from ..compiler.compiler_frontend import OutputMetadata
 from ..post_processing.sql_post_processing import post_process_mssql_folds
 from .test_helpers import get_sqlalchemy_schema_info
@@ -14,59 +16,84 @@ class MssqlXmlPathTests(TestCase):
         self.mssql_schema_info = get_sqlalchemy_schema_info(dialect="mssql")
 
     def test_convert_empty_string(self):
-        """Test empty list is correctly decoded."""
-        query_output = [{"child_names": "",}]
-        graphql_query = """{
-                    Animal {
-                        in_Animal_ParentOf @fold{
-                            name @output(out_name: "child_names")
-                        }
-                    }
-                }"""
+        """Test empty list is correctly decoded.
 
-        expected_result = [{"child_names": []}]
-
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
-        self.assertEqual(query_output, expected_result)
-
-    def test_convert_basic(self):
-        """Test basic XML path encoding (only pipe separations) is correctly decoded."""
-        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|",}]
-        graphql_query = """{
+        {
             Animal {
                 in_Animal_ParentOf @fold{
                     name @output(out_name: "child_names")
                 }
             }
-        }"""
+        }
+        """
+        query_output = [{"child_names": "",}]
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
+        expected_result = [{"child_names": []}]
+
+        post_process_mssql_folds(query_output, output_metadata)
+        self.assertEqual(query_output, expected_result)
+
+    def test_convert_basic(self):
+        """Test basic XML path encoding (only pipe separations) is correctly decoded.
+
+        {
+            Animal {
+                in_Animal_ParentOf @fold{
+                    name @output(out_name: "child_names")
+                }
+            }
+        }
+        """
+        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|",}]
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
 
         expected_result = [{"child_names": ["Animal 1", "Animal 2", "", "Animal 3", "",]}]
 
-        expected_output_metadata = {
-            "child_names": OutputMetadata(type=GraphQLList(GraphQLString), optional=False),
-        }
-
-        post_process_mssql_folds(graphql_query, query_output, expected_output_metadata)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_covert_none_result(self):
-        """Test "~" is properly decoded to None."""
+        """Test "~" is properly decoded to None.
+
+        {
+            Animal {
+                in_Animal_ParentOf @fold{
+                    name @output(out_name: "child_names")
+                }
+            }
+        }
+        """
         query_output = [{"child_names": "~|Animal 1|~",}]
-        graphql_query = """{
-                    Animal {
-                        in_Animal_ParentOf @fold{
-                            name @output(out_name: "child_names")
-                        }
-                    }
-                }"""
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
 
         expected_result = [{"child_names": [None, "Animal 1", None,]}]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_convert_caret_encodings(self):
-        """Test pipe, tilde, and carets are correctly decoded."""
+        """Test pipe, tilde, and carets are correctly decoded.
+
+        {
+            Animal {
+                in_Animal_ParentOf @fold{
+                    name @output(out_name: "child_names")
+                }
+            }
+        }
+        """
         query_output = [
             {
                 "child_names": "name with a ^e (caret)|"
@@ -75,13 +102,11 @@ class MssqlXmlPathTests(TestCase):
                 "^emany^e^dcaret^nescaped^n^n^dname^e",
             }
         ]
-        graphql_query = """{
-                    Animal {
-                        in_Animal_ParentOf @fold{
-                            name @output(out_name: "child_names")
-                        }
-                    }
-                }"""
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
 
         expected_result = [
             {
@@ -94,11 +119,20 @@ class MssqlXmlPathTests(TestCase):
             }
         ]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_convert_ampersand_encodings(self):
-        """Test ampersand, less than, and greater than are correctly decoded."""
+        """Test ampersand, less than, and greater than are correctly decoded.
+
+        {
+            Animal {
+                in_Animal_ParentOf @fold{
+                    name @output(out_name: "child_names")
+                }
+            }
+        }
+        """
         query_output = [
             {
                 "child_names": "name with a &amp; (ampersand)|"
@@ -107,13 +141,11 @@ class MssqlXmlPathTests(TestCase):
                 "&amp;many&amp;&gt;ampersand&lt;escaped&lt;&lt;&gt;name&amp;",
             }
         ]
-        graphql_query = """{
-                            Animal {
-                                in_Animal_ParentOf @fold{
-                                    name @output(out_name: "child_names")
-                                }
-                            }
-                        }"""
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
 
         expected_result = [
             {
@@ -126,80 +158,92 @@ class MssqlXmlPathTests(TestCase):
             }
         ]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_convert_hex_encodings(self):
-        """Test HTML hex encodings are properly decoded."""
+        """Test HTML hex encodings are properly decoded.
+
+        {
+            Animal {
+                in_Animal_ParentOf @fold{
+                    name @output(out_name: "child_names")
+                }
+            }
+        }
+        """
         query_output = [
             {
                 "child_names": "name with a &#x06; (acknowledge)|"
                 "&#x0B;many&#x06;hex&#x0F;&#x07;name&#x08;",
             }
         ]
-        graphql_query = """{
-                                    Animal {
-                                        in_Animal_ParentOf @fold{
-                                            name @output(out_name: "child_names")
-                                        }
-                                    }
-                                }"""
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
 
         expected_result = [
             {"child_names": ["name with a \x06 (acknowledge)", "\x0Bmany\x06hex\x0F\x07name\x08",]}
         ]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_convert_basic_decimal(self):
-        """Test basic XML path encoding for decimals is correctly decoded."""
-        query_output = [{"child_net_worths": "500|1000|400|~",}]
-        graphql_query = """{
+        """Test basic XML path encoding for decimals is correctly decoded.
+
+        {
             Animal {
                 in_Animal_ParentOf @fold{
                     net_worth @output(out_name: "child_net_worths")
                 }
             }
-        }"""
+        }
+        """
+        query_output = [{"child_net_worths": "500|1000|400|~",}]
+        output_metadata = {
+            "child_net_worths": OutputMetadata(
+                type=GraphQLList(GraphQLDecimal), optional=False, folded=True
+            )
+        }
 
         expected_result = [{"child_net_worths": [500, 1000, 400, None,],}]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_convert_basic_date(self):
-        """Test basic XML path encoding for datetimes is correctly decoded."""
-        query_output = [{"child_birthdays": "2020-01-01|2000-02-29|~"}]
-        graphql_query = """{
+        """Test basic XML path encoding for datetimes is correctly decoded.
+
+        {
             Animal {
                 in_Animal_ParentOf @fold{
                     birthday @output(out_name: "child_birthdays")
                 }
             }
-        }"""
+        }
+        """
+        query_output = [{"child_birthdays": "2020-01-01|2000-02-29|~"}]
+        output_metadata = {
+            "child_birthdays": OutputMetadata(
+                type=GraphQLList(GraphQLDate), optional=False, folded=True
+            )
+        }
 
         expected_result = [
             {"child_birthdays": [datetime.date(2020, 1, 1), datetime.date(2000, 2, 29), None],}
         ]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
     def test_convert_complex(self):
-        """Test multiple folds, outputs, and types are correctly decoded."""
-        query_output = [
-            {
-                "child_birthdays": "2020-01-01|2000-02-29|~",
-                "child_net_worths": "200|~|321",
-                "child_names": "^ecomplex&amp;^d^nname&#x06;|~|simple name",
-                "parent_birthdays": "",
-                "parent_net_worths": "",
-                "parent_names": "",
-            }
-        ]
-        # Note that multiple outputs inside a fold are not yet implemented.
-        graphql_query = """{
+        """Test multiple folds, outputs, and types are correctly decoded.
+
+        Note that multiple outputs inside a fold are not yet implemented.
+        {
             Animal {
                 in_Animal_ParentOf @fold{
                     birthday @output(out_name: "child_birthdays")
@@ -212,7 +256,38 @@ class MssqlXmlPathTests(TestCase):
                     name @output(out_name: "parent_names")
                 }
             }
-        }"""
+        }
+        """
+        query_output = [
+            {
+                "child_birthdays": "2020-01-01|2000-02-29|~",
+                "child_net_worths": "200|~|321",
+                "child_names": "^ecomplex&amp;^d^nname&#x06;|~|simple name",
+                "parent_birthdays": "",
+                "parent_net_worths": "",
+                "parent_names": "",
+            }
+        ]
+        output_metadata = {
+            "child_birthdays": OutputMetadata(
+                type=GraphQLList(GraphQLDate), optional=False, folded=True
+            ),
+            "child_net_worths": OutputMetadata(
+                type=GraphQLList(GraphQLDecimal), optional=False, folded=True
+            ),
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+            "parent_birthdays": OutputMetadata(
+                type=GraphQLList(GraphQLDate), optional=False, folded=True
+            ),
+            "parent_net_worths": OutputMetadata(
+                type=GraphQLList(GraphQLDecimal), optional=False, folded=True
+            ),
+            "parent_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
 
         expected_result = [
             {
@@ -225,5 +300,5 @@ class MssqlXmlPathTests(TestCase):
             }
         ]
 
-        post_process_mssql_folds(self.mssql_schema_info, graphql_query, query_output)
+        post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
