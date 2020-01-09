@@ -50,7 +50,7 @@ def _get_stronger_lower_bound(
 
 
 def _get_stronger_upper_bound(
-    lower_bound_a: Optional[IntervalDomain], lower_bound_b: Optional[IntervalDomain]
+    upper_bound_a: Optional[IntervalDomain], upper_bound_b: Optional[IntervalDomain]
 ) -> Optional[IntervalDomain]:
     """Return the smaller bound of the two given upper bounds."""
     stronger_upper_bound = None
