@@ -289,6 +289,7 @@ def _get_selectivity_fraction_of_interval(
         lower_bound_quantile = bisect.bisect_left(proper_quantiles, interval.lower_bound)
         upper_bound_quantile = bisect.bisect_left(proper_quantiles, interval.upper_bound)
         if lower_bound_quantile == upper_bound_quantile:
+            # Average distance between two random points on a unit line segment:
             # https://math.stackexchange.com/questions/195245/
             interval_size = 1.0 / 3.0
         else:

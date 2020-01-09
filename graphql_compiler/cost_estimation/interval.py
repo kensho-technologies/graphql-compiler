@@ -9,7 +9,7 @@ class Interval(Generic[IntervalDomain]):
     def __init__(
         self, lower_bound: Optional[IntervalDomain], upper_bound: Optional[IntervalDomain]
     ) -> None:
-        """Initialize an interval. A value of None means unbounded."""
+        """Initialize an endpoint-inclusive interval. A value of None means unbounded."""
         self.lower_bound: Optional[IntervalDomain] = lower_bound
         self.upper_bound: Optional[IntervalDomain] = upper_bound
 
@@ -34,20 +34,10 @@ def measure_interval(interval: Interval[int]) -> Optional[int]:
     return interval.upper_bound - interval.lower_bound + 1
 
 
-def _get_stronger_lower_bound(lower_bound_a, lower_bound_b):
-    """Return the larger bound of the two given lower bounds.
-
-    Args:
-        lower_bound_a: int or None, describing one of the lower bounds. If the bound does not exist,
-                       the argument value should be None.
-        lower_bound_b: int or None, describing one of the lower bounds. If the bound does not exist,
-                       the argument value should be None.
-
-    Returns:
-        - int, the larger of the two lower bounds, if one or more lower bounds have an integer
-          value.
-        - None if both lower bounds have a value of None.
-    """
+def _get_stronger_lower_bound(
+    lower_bound_a: Optional[IntervalDomain], lower_bound_b: Optional[Intervaldomain]
+) -> Optional[IntervalDomain]:
+    """Return the larger bound of the two given lower bounds."""
     stronger_lower_bound = None
     if lower_bound_a is not None and lower_bound_b is not None:
         stronger_lower_bound = max(lower_bound_a, lower_bound_b)
@@ -59,20 +49,10 @@ def _get_stronger_lower_bound(lower_bound_a, lower_bound_b):
     return stronger_lower_bound
 
 
-def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
-    """Return the smaller bound of the two given upper bounds.
-
-    Args:
-        upper_bound_a: int or None, describing one of the upper bounds. If the bound does not exist,
-                       the argument value should be None.
-        upper_bound_b: int or None, describing one of the upper bounds. If the bound does not exist,
-                       the argument value should be None.
-
-    Returns:
-        - int, the smaller of the two upper bounds, if one or more upper bounds have an integer
-          value.
-        - None if both upper bounds have a value of None.
-    """
+def _get_stronger_upper_bound(
+    lower_bound_a: Optional[IntervalDomain], lower_bound_b: Optional[Intervaldomain]
+) -> Optional[IntervalDomain]:
+    """Return the smaller bound of the two given upper bounds."""
     stronger_upper_bound = None
     if upper_bound_a is not None and upper_bound_b is not None:
         stronger_upper_bound = min(upper_bound_a, upper_bound_b)
@@ -84,8 +64,10 @@ def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
     return stronger_upper_bound
 
 
-def intersect_intervals(interval_a, interval_b):
-    """Return the intersection of two IntegerIntervals."""
+def intersect_intervals(
+    interval_a: Interval[IntervalDomain], interval_b: Interval[IntervalDomain]
+) -> Interval[IntervalDomain]:
+    """Return the intersection of two Intervals."""
     strong_lower_bound = _get_stronger_lower_bound(interval_a.lower_bound, interval_b.lower_bound)
     strong_upper_bound = _get_stronger_upper_bound(interval_a.upper_bound, interval_b.upper_bound)
     return Interval(strong_lower_bound, strong_upper_bound)
