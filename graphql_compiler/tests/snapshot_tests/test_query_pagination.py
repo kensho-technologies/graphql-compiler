@@ -8,9 +8,9 @@ from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
-    NotEnoughQuantiles,
+    InsufficientQuantiles,
     PaginationPlan,
-    PaginationWarning,
+    PaginationAdvisory,
     VertexPartition,
     get_pagination_plan,
 )
@@ -53,7 +53,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan((VertexPartition(("Animal",), "uuid", number_of_pages),))
-        expected_warnings: List[PaginationWarning] = []
+        expected_warnings: List[PaginationAdvisory] = []
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
@@ -87,7 +87,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan((VertexPartition(("Species",), "limbs", number_of_pages),))
-        expected_warnings: List[PaginationWarning] = []
+        expected_warnings: List[PaginationAdvisory] = []
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
@@ -119,7 +119,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan(tuple())
-        expected_warnings = [NotEnoughQuantiles("Species", "limbs", 0, 51)]
+        expected_warnings = [InsufficientQuantiles("Species", "limbs", 0, 51)]
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
