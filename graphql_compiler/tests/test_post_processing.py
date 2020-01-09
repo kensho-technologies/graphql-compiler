@@ -215,7 +215,7 @@ class MssqlXmlPathTests(TestCase):
         self.assertEqual(query_output, expected_result)
 
     def test_convert_basic_date(self):
-        """Test basic XML path encoding for datetimes is correctly decoded.
+        """Test basic XML path encoding for dates is correctly decoded.
 
         {
             Animal {
