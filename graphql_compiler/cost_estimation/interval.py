@@ -35,7 +35,7 @@ def measure_interval(interval: Interval[int]) -> Optional[int]:
 
 
 def _get_stronger_lower_bound(
-    lower_bound_a: Optional[IntervalDomain], lower_bound_b: Optional[Intervaldomain]
+    lower_bound_a: Optional[IntervalDomain], lower_bound_b: Optional[IntervalDomain]
 ) -> Optional[IntervalDomain]:
     """Return the larger bound of the two given lower bounds."""
     stronger_lower_bound = None
@@ -50,7 +50,7 @@ def _get_stronger_lower_bound(
 
 
 def _get_stronger_upper_bound(
-    lower_bound_a: Optional[IntervalDomain], lower_bound_b: Optional[Intervaldomain]
+    lower_bound_a: Optional[IntervalDomain], lower_bound_b: Optional[IntervalDomain]
 ) -> Optional[IntervalDomain]:
     """Return the smaller bound of the two given upper bounds."""
     stronger_upper_bound = None
