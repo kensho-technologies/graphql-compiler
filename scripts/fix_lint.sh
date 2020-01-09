@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Copyright 2018-present Kensho Technologies, LLC.
+# Copyright 2020-present Kensho Technologies, LLC.
 
 # Assert script is running inside pipenv shell
 if [[ "$VIRTUAL_ENV" == "" ]]
