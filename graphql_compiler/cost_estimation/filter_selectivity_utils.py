@@ -89,7 +89,7 @@ def _create_integer_interval(lower_bound, upper_bound):
                      If the bound does not exist, the argument value should be None.
 
     Returns:
-        - Integer namedtuple, describing the non-empty interval of integers between the two
+        - Interval namedtuple, describing the non-empty interval of integers between the two
           bounds.
         - None if the interval defined by the bounds is empty.
     """
@@ -185,7 +185,7 @@ def _get_query_interval_of_binary_integer_inequality_filter(
         filter_operator: str, describing the binary inequality filter operation being performed.
 
     Returns:
-        - Integer namedtuple, non-empty interval of int values that pass through the filter.
+        - Interval namedtuple, non-empty interval of int values that pass through the filter.
         - None if the interval is empty.
 
     Raises:
