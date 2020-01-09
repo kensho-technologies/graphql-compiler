@@ -57,7 +57,7 @@ class PaginationPlan(NamedTuple):
 
 def get_pagination_plan(
     schema_info: QueryPlanningSchemaInfo, query_ast: DocumentNode, number_of_pages: int
-):
+) -> Tuple[PaginationPlan, List[PaginationWarning]]:
     """Make a PaginationPlan for the given query and number of desired pages if possible.
 
     Raises GraphQLPaginationError if the statistics object is misconfigured.
