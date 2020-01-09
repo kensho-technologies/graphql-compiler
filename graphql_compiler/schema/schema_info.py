@@ -127,9 +127,7 @@ class SQLSpecificSchemaInfo:
 
 @dataclass
 class SQLSchemaInfo:
-    # TODO: consider making a class per flavor? Please opine!
-    #       Pros: every flavor has its dedicated suite of classes / functions
-    #       Cons: redundant code + maintenance
+    # If the flavors start diverging in their attributes, consider making a class per flavor.
     generic_schema_info: GenericSchemaInfo
     sql_specific_info: SQLSpecificSchemaInfo
 
