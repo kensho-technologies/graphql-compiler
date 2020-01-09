@@ -19,7 +19,7 @@ shopt -s globstar nullglob
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 # Print each command
-set -o xtrace
+set -x
 
 black .
 isort --recursive .
