@@ -76,12 +76,12 @@ def get_num_pages_generated_by_plan(plan: PaginationPlan) -> int:
 def get_pagination_plan(
     schema_info: QueryPlanningSchemaInfo, query_ast: DocumentNode, number_of_pages: int
 ) -> Tuple[PaginationPlan, List[PaginationAdvisory]]:
-    """Make a PaginationPlan for the given query and number of desired pages if possible.
+    """Make a best-effort PaginationPlan and advise on how to improve statistics
 
     Might paginate to fewer than the desired number of pages if no good pagination plan
     is found. This can happen when there's not enough data, or when the planner is not
     smart enough to find a good plan. In that case it will return along with the result
-    a PaginationAdvisory that indicates why the pagination was not successful.
+    a list of PaginationAdvisorys that indicate why the pagination was not successful.
     """
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
 
@@ -161,13 +161,10 @@ def get_pagination_plan(
                 [],
             )
     else:
-        type_name = (
-            schema_info.schema.get_type(pagination_node.name.value)
-            .fields[pagination_field]
-            .type.name
-        )
+        vertex_type = schema_info.schema.get_type(pagination_node.name.value)
+        field_type_name = vertex_type.fields[pagination_field].type.name
         raise AssertionError(
             u"Cannot paginate on {}.{} because pagination on {} is not supported ".format(
-                pagination_node.name.value, pagination_field, type_name
+                pagination_node.name.value, pagination_field, field_type_name
             )
         )
