@@ -104,10 +104,9 @@ def create_cypher_schema_info(
 
 @dataclass
 class SQLSpecificSchemaInfo:
-    # TODO: consider a different name for this class
     """Schema information specific to SQL databases."""
 
-    # Specifying the dialect for which we are compiling, if a dialect exists
+    # Specifying the dialect for which we are compiling
     # e.g. sqlalchemy.dialects.mssql.dialect()
     dialect: Dialect
     # dict mapping every GraphQL object type or interface type name in the schema to
@@ -121,8 +120,6 @@ class SQLSpecificSchemaInfo:
     # The tables the join is to be performed on are not specified.
     # They are inferred from the schema and the tables dictionary.
     join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]]
-
-    # TODO: consider extending this to being able to support QueryPlanningSchemaInfo?
 
 
 @dataclass
