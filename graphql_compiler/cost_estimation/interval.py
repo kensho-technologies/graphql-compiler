@@ -14,7 +14,7 @@ class Interval(Generic[IntervalDomain]):
         self.upper_bound: Optional[IntervalDomain] = upper_bound
 
     def is_empty(self) -> bool:
-        """Return whether the interval is empty"""
+        """Return whether the interval is empty."""
         if self.lower_bound is None or self.upper_bound is None:
             return False
         return self.lower_bound > self.upper_bound
@@ -27,6 +27,7 @@ class Interval(Generic[IntervalDomain]):
 
 
 def measure_interval(interval: Interval[int]) -> Optional[int]:
+    """Return the size of the integer interval."""
     if interval.lower_bound is None or interval.upper_bound is None:
         return None
     if interval.is_empty():
