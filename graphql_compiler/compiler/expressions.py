@@ -1,7 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import operator as python_operator
+from typing import Any, Callable, Dict, FrozenSet, Generic, List, Tuple, Type, TypeVar, Union
 
 from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
+from graphql.type.definition import GraphQLOutputType
 import six
 import sqlalchemy
 from sqlalchemy import bindparam, sql
@@ -18,7 +20,7 @@ from ..schema import (
     GraphQLDate,
     GraphQLDateTime,
 )
-from .compiler_entities import Expression
+from .compiler_entities import AliasesDictType, AliasType, Expression
 from .helpers import (
     STANDARD_DATE_FORMAT,
     STANDARD_DATETIME_FORMAT,
@@ -49,10 +51,17 @@ RESERVED_MATCH_KEYWORDS = frozenset(
 )
 
 
-def make_replacement_visitor(find_expression, replace_expression):
+ExpressionT = TypeVar("ExpressionT", bound=Expression)
+ReplacementExpressionT = TypeVar("ReplacementExpressionT", bound=Expression)
+ReplacementT = Union[ExpressionT, ReplacementExpressionT]
+
+
+def make_replacement_visitor(
+    find_expression: Expression, replace_expression: ReplacementExpressionT
+) -> Callable[[ExpressionT], ReplacementT]:
     """Return a visitor function that replaces every instance of one expression with another one."""
 
-    def visitor_fn(expression):
+    def visitor_fn(expression: ExpressionT) -> ReplacementT:
         """Return the replacement if this expression matches the expression we're looking for."""
         if expression == find_expression:
             return replace_expression
@@ -62,10 +71,13 @@ def make_replacement_visitor(find_expression, replace_expression):
     return visitor_fn
 
 
-def make_type_replacement_visitor(find_types, replacement_func):
+def make_type_replacement_visitor(
+    find_types: Union[Type[Expression], Tuple[Type[Expression], ...]],
+    replacement_func: Callable[[ExpressionT], ReplacementT],
+) -> Callable[[ExpressionT], ReplacementT]:
     """Return a visitor function that replaces expressions of a given type with new expressions."""
 
-    def visitor_fn(expression):
+    def visitor_fn(expression: ExpressionT) -> ReplacementT:
         """Return a replacement expression if the original expression is of the correct type."""
         if isinstance(expression, find_types):
             return replacement_func(expression)
@@ -75,7 +87,10 @@ def make_type_replacement_visitor(find_types, replacement_func):
     return visitor_fn
 
 
-class Literal(Expression):
+ValueT = TypeVar("ValueT")
+
+
+class Literal(Generic[ValueT], Expression):
     """A literal, such as a boolean value, null, or a fixed string value.
 
     We have to be extra careful with string literals -- for ease of escaping, we use
@@ -88,13 +103,13 @@ class Literal(Expression):
 
     __slots__ = ("value",)
 
-    def __init__(self, value):
+    def __init__(self, value: ValueT) -> None:
         """Construct a new Literal object with the given value."""
         super(Literal, self).__init__(value)
         self.value = value
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the Literal is correctly representable."""
         # Literals representing boolean values or None are correctly representable and supported.
         if self.value is None or self.value is True or self.value is False:
@@ -119,7 +134,7 @@ class Literal(Expression):
 
         raise GraphQLCompilationError(u"Cannot represent literal: {}".format(self.value))
 
-    def _to_output_code(self):
+    def _to_output_code(self) -> str:
         """Return a unicode object with the Gremlin/MATCH/Cypher representation of this Literal."""
         # All supported Literal objects serialize to identical strings
         # in all of Gremlin, Cypher, and MATCH.
@@ -150,7 +165,7 @@ class Literal(Expression):
     to_match = _to_output_code
     to_cypher = _to_output_code
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return the value."""
         self.validate()
         return self.value
@@ -159,7 +174,7 @@ class Literal(Expression):
 NullLiteral = Literal(None)
 TrueLiteral = Literal(True)
 FalseLiteral = Literal(False)
-EmptyListLiteral = Literal([])
+EmptyListLiteral: Literal[List[Any]] = Literal([])
 ZeroLiteral = Literal(0)
 
 
@@ -168,7 +183,7 @@ class Variable(Expression):
 
     __slots__ = ("variable_name", "inferred_type")
 
-    def __init__(self, variable_name, inferred_type):
+    def __init__(self, variable_name: str, inferred_type: GraphQLOutputType) -> None:
         """Construct a new Variable object for the given variable name.
 
         Args:
@@ -185,7 +200,7 @@ class Variable(Expression):
         self.inferred_type = inferred_type
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the Variable is correctly representable."""
         # Get the first letter, or empty string if it doesn't exist.
         if not self.variable_name.startswith(u"$"):
@@ -223,7 +238,7 @@ class Variable(Expression):
                     u"Variable objects: {}".format(self.inferred_type)
                 )
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this Variable."""
         self.validate()
 
@@ -244,7 +259,7 @@ class Variable(Expression):
         else:
             return match_variable_name
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
@@ -258,7 +273,7 @@ class Variable(Expression):
         else:
             return six.text_type(self.variable_name)
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Return a unicode object with the Cypher representation of this expression."""
         # Cypher has built-in support for variable expansion, so we'll just emit a variable
         # definition and rely on Cypher to insert the value.
@@ -278,14 +293,14 @@ class Variable(Expression):
         # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
         return u"{}".format(self.variable_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy BindParameter."""
         self.validate()
 
         is_list = isinstance(self.inferred_type, GraphQLList)
         return bindparam(self.variable_name[1:], expanding=is_list)
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
         # the equality operator, we have to override equality and call is_same_type() here.
@@ -295,7 +310,7 @@ class Variable(Expression):
             and is_same_type(self.inferred_type, other.inferred_type)
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
@@ -305,7 +320,7 @@ class LocalField(Expression):
 
     __slots__ = ("field_name", "field_type")
 
-    def __init__(self, field_name, field_type):
+    def __init__(self, field_name: str, field_type: GraphQLOutputType) -> None:
         """Construct a new LocalField object that references a field at the current position.
 
         Args:
@@ -320,17 +335,17 @@ class LocalField(Expression):
         self.field_type = field_type
         self.validate()
 
-    def get_local_object_gremlin_name(self):
+    def get_local_object_gremlin_name(self) -> str:
         """Return the Gremlin name of the local object whose field is being produced."""
         return u"it"
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the LocalField is correctly representable."""
         validate_safe_or_special_string(self.field_name)
         if self.field_type is not None and not is_graphql_type(self.field_type):
             raise ValueError(u'Invalid value {} of "field_type": {}'.format(self.field_type, self))
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this LocalField."""
         self.validate()
 
@@ -345,7 +360,7 @@ class LocalField(Expression):
 
         return six.text_type(self.field_name)
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
@@ -368,7 +383,7 @@ class LocalField(Expression):
         else:
             return u"{}.{}".format(local_object_name, self.field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy Column picked from the current_alias."""
         self.validate()
 
@@ -386,7 +401,7 @@ class LocalField(Expression):
 
         return current_alias.c[self.field_name]
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
             u"LocalField is not used as part of the query emission process in "
@@ -399,7 +414,7 @@ class GlobalContextField(Expression):
 
     __slots__ = ("location", "field_type")
 
-    def __init__(self, location, field_type):
+    def __init__(self, location: Location, field_type: GraphQLOutputType) -> None:
         """Construct a new GlobalContextField object that references a field at a given location.
 
         Args:
@@ -413,7 +428,7 @@ class GlobalContextField(Expression):
         self.field_type = field_type
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the GlobalContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
@@ -428,11 +443,11 @@ class GlobalContextField(Expression):
         if not is_graphql_type(self.field_type):
             raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this GlobalContextField."""
         self.validate()
 
-        mark_name, field_name = self.location.get_location_name()
+        mark_name, field_name = self.location.get_location_at_field_name()
         if field_name == TYPENAME_META_FIELD_NAME:
             field_name = "@class"
         # Meta fields are special cases; assume all meta fields are not implemented unless
@@ -446,14 +461,14 @@ class GlobalContextField(Expression):
 
         return u"%s.%s" % (mark_name, field_name)
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
             u"GlobalContextField is only used for the WHERE statement in "
             u"MATCH, so this is a bug. This function should not be called."
         )
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
             u"GlobalContextField is not used as part of the query emission "
@@ -461,7 +476,7 @@ class GlobalContextField(Expression):
             u"should not be called."
         )
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
         if isinstance(self.field_type, GraphQLList):
@@ -491,7 +506,7 @@ class ContextField(Expression):
 
     __slots__ = ("location", "field_type")
 
-    def __init__(self, location, field_type):
+    def __init__(self, location: Location, field_type: GraphQLOutputType) -> None:
         """Construct a new ContextField object that references a field from the global context.
 
         Args:
@@ -509,7 +524,7 @@ class ContextField(Expression):
         self.field_type = field_type
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the ContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
@@ -521,7 +536,7 @@ class ContextField(Expression):
         if not is_graphql_type(self.field_type):
             raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this ContextField."""
         self.validate()
 
@@ -543,7 +558,7 @@ class ContextField(Expression):
             validate_safe_or_special_string(field_name)
             return u"$matched.%s.%s" % (mark_name, field_name)
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
@@ -571,7 +586,7 @@ class ContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
@@ -587,7 +602,7 @@ class ContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
 
@@ -616,7 +631,7 @@ class OutputContextField(Expression):
 
     __slots__ = ("location", "field_type")
 
-    def __init__(self, location, field_type):
+    def __init__(self, location: Location, field_type: GraphQLOutputType) -> None:
         """Construct a new OutputContextField object for the field at the given location.
 
         Args:
@@ -632,7 +647,7 @@ class OutputContextField(Expression):
         self.field_type = field_type
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the OutputContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
@@ -663,11 +678,11 @@ class OutputContextField(Expression):
                     u"OutputContextField objects: {}".format(self.field_type)
                 )
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
 
-        mark_name, field_name = self.location.get_location_name()
+        mark_name, field_name = self.location.get_location_at_field_name()
         if field_name == TYPENAME_META_FIELD_NAME:
             field_name = "@class"
         # Meta fields are special cases; assume all meta fields are not implemented unless
@@ -687,11 +702,11 @@ class OutputContextField(Expression):
         else:
             return u"%s.%s" % (mark_name, field_name)
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
-        mark_name, field_name = self.location.get_location_name()
+        mark_name, field_name = self.location.get_location_at_field_name()
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
@@ -720,11 +735,11 @@ class OutputContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name, format=format_value)
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
-        mark_name, field_name = self.location.get_location_name()
+        mark_name, field_name = self.location.get_location_at_field_name()
         validate_safe_string(mark_name)
         validate_safe_string(field_name)
 
@@ -732,8 +747,8 @@ class OutputContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
-        """Return a sqlalchemy Column picked from the appropriate alias."""
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
+        """Return a SQLAlchemy Column picked from the appropriate alias."""
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(
                 u"The SQL backend does not support lists. Cannot "
@@ -748,7 +763,7 @@ class OutputContextField(Expression):
 
         return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
         # the equality operator, we have to override equality and call is_same_type() here.
@@ -758,7 +773,7 @@ class OutputContextField(Expression):
             and is_same_type(self.field_type, other.field_type)
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
@@ -768,7 +783,9 @@ class FoldedContextField(Expression):
 
     __slots__ = ("fold_scope_location", "field_type")
 
-    def __init__(self, fold_scope_location, field_type):
+    def __init__(
+        self, fold_scope_location: FoldScopeLocation, field_type: GraphQLList[GraphQLOutputType]
+    ) -> None:
         """Construct a new FoldedContextField object for this folded field.
 
         Args:
@@ -785,7 +802,7 @@ class FoldedContextField(Expression):
         self.field_type = field_type
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the FoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(
@@ -825,11 +842,11 @@ class FoldedContextField(Expression):
                     u"{} {}".format(self.fold_scope_location, self.field_type.of_type)
                 )
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
 
-        mark_name, field_name = self.fold_scope_location.get_location_name()
+        mark_name, field_name = self.fold_scope_location.get_location_at_field_name()
         validate_safe_string(mark_name)
 
         template = u"$%(mark_name)s.%(field_name)s"
@@ -854,14 +871,14 @@ class FoldedContextField(Expression):
 
         return template % template_data
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
             u"FoldedContextField are not used during the query emission process "
             u"in Gremlin, so this is a bug. This function should not be called."
         )
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
@@ -878,8 +895,14 @@ class FoldedContextField(Expression):
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy Column picked from the appropriate alias."""
+        if self.fold_scope_location.field is None:
+            raise AssertionError(
+                u"Unreachable code reached, expected a location at a field "
+                u"but got {}: {}".format(self.fold_scope_location, self)
+            )
+
         # _x_count is a special case that has already been coalesced to 0.
         # _x_count's intermediate output name is always fold_output__x_count
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
@@ -925,7 +948,7 @@ class FoldedContextField(Expression):
                 u"PostgreSQL, dialect was set to {}".format(dialect.name)
             )
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         """Return True if the given object is equal to this one, and False otherwise."""
         # Since this object has a GraphQL type as a variable, which doesn't implement
         # the equality operator, we have to override equality and call is_same_type() here.
@@ -935,7 +958,7 @@ class FoldedContextField(Expression):
             and is_same_type(self.field_type, other.field_type)
         )
 
-    def __ne__(self, other):
+    def __ne__(self, other: Any) -> bool:
         """Check another object for non-equality against this one."""
         return not self.__eq__(other)
 
@@ -945,7 +968,7 @@ class FoldCountContextField(Expression):
 
     __slots__ = ("fold_scope_location",)
 
-    def __init__(self, fold_scope_location):
+    def __init__(self, fold_scope_location: FoldScopeLocation) -> None:
         """Construct a new FoldCountContextField object for this fold.
 
         Args:
@@ -958,7 +981,7 @@ class FoldCountContextField(Expression):
         self.fold_scope_location = fold_scope_location
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the FoldCountContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(
@@ -973,7 +996,7 @@ class FoldCountContextField(Expression):
                 u"FoldCountContextField object: {} {}".format(self.fold_scope_location, self)
             )
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
 
@@ -986,15 +1009,15 @@ class FoldCountContextField(Expression):
         }
         return template % template_data
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Not supported yet."""
         raise NotImplementedError()
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Not supported yet."""
         raise NotImplementedError()
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a SQLAlchemy column of a coalesced COUNT(*) from a folded subquery."""
         # _x_count's intermediate output name is always fold_output__x_count
         return aliases[
@@ -1010,7 +1033,7 @@ class ContextFieldExistence(Expression):
 
     __slots__ = ("location",)
 
-    def __init__(self, location):
+    def __init__(self, location: Location) -> None:
         """Construct a new ContextFieldExistence object for a vertex field from the global context.
 
         Args:
@@ -1023,7 +1046,7 @@ class ContextFieldExistence(Expression):
         self.location = location
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the ContextFieldExistence is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
@@ -1038,24 +1061,24 @@ class ContextFieldExistence(Expression):
                 u"but found a field: {}".format(self.location)
             )
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u"ContextFieldExistence.to_match() was called: {}".format(self))
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u"ContextFieldExistence.to_gremlin() was called: {}".format(self))
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u"ContextFieldExistence.to_cypher() was called: {}".format(self))
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
         raise AssertionError(u"ContextFieldExistence.to_sql() was called: {}".format(self))
 
 
-def _validate_operator_name(operator, supported_operators):
+def _validate_operator_name(operator: str, supported_operators: FrozenSet[str]) -> None:
     """Ensure the named operator is valid and supported."""
     if not isinstance(operator, six.text_type):
         raise TypeError(
@@ -1075,13 +1098,13 @@ class UnaryTransformation(Expression):
 
     __slots__ = ("operator", "inner_expression")
 
-    def __init__(self, operator, inner_expression):
+    def __init__(self, operator: str, inner_expression: Expression) -> None:
         """Construct a UnaryExpression that modifies the given inner expression."""
         super(UnaryTransformation, self).__init__(operator, inner_expression)
         self.operator = operator
         self.inner_expression = inner_expression
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the UnaryTransformation is correctly representable."""
         _validate_operator_name(self.operator, UnaryTransformation.SUPPORTED_OPERATORS)
 
@@ -1092,7 +1115,7 @@ class UnaryTransformation(Expression):
                 )
             )
 
-    def visit_and_update(self, visitor_fn):
+    def visit_and_update(self, visitor_fn: Callable[[Expression], ExpressionT]) -> ExpressionT:
         """Create an updated version (if needed) of UnaryTransformation via the visitor pattern."""
         new_inner = self.inner_expression.visit_and_update(visitor_fn)
 
@@ -1101,7 +1124,7 @@ class UnaryTransformation(Expression):
         else:
             return visitor_fn(self)
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this UnaryTransformation."""
         self.validate()
 
@@ -1121,7 +1144,7 @@ class UnaryTransformation(Expression):
         }
         return template % args
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         translation_table = {
             u"size": u"count()",
@@ -1139,11 +1162,11 @@ class UnaryTransformation(Expression):
         }
         return template.format(**args)
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Not implemented yet."""
         raise NotImplementedError()
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Not implemented yet."""
         raise NotImplementedError(u"Unary operators are not implemented in the SQL backend.")
 
@@ -1175,7 +1198,7 @@ class BinaryComposition(Expression):
 
     __slots__ = ("operator", "left", "right")
 
-    def __init__(self, operator, left, right):
+    def __init__(self, operator: str, left: Expression, right: Expression) -> None:
         """Construct an expression that connects two expressions with an operator.
 
         Args:
@@ -1192,7 +1215,7 @@ class BinaryComposition(Expression):
         self.right = right
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the BinaryComposition is correctly representable."""
         _validate_operator_name(self.operator, BinaryComposition.SUPPORTED_OPERATORS)
 
@@ -1210,7 +1233,7 @@ class BinaryComposition(Expression):
                 )
             )
 
-    def visit_and_update(self, visitor_fn):
+    def visit_and_update(self, visitor_fn: Callable[[Expression], ExpressionT]) -> ExpressionT:
         """Create an updated version (if needed) of BinaryComposition via the visitor pattern."""
         new_left = self.left.visit_and_update(visitor_fn)
         new_right = self.right.visit_and_update(visitor_fn)
@@ -1220,7 +1243,7 @@ class BinaryComposition(Expression):
         else:
             return visitor_fn(self)
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this BinaryComposition."""
         self.validate()
 
@@ -1231,6 +1254,8 @@ class BinaryComposition(Expression):
         intersects_operator_format = "(%(operator)s(%(left)s, %(right)s).asList().size() > 0)"
         negated_regular_operator_format = "(NOT (%(left)s %(operator)s %(right)s))"
         # pylint: enable=unused-variable
+
+        translation_table: Dict[str, Union[Tuple[str, str], Tuple[None, None]]]
 
         # Comparing null to a value does not make sense.
         if self.left == NullLiteral:
@@ -1268,16 +1293,14 @@ class BinaryComposition(Expression):
             }
 
         match_operator, format_spec = translation_table.get(self.operator, (None, None))
-        if not match_operator:
-            raise AssertionError(
-                u"Unrecognized operator used: " u"{} {}".format(self.operator, self)
-            )
+        if not match_operator or not format_spec:
+            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec % dict(
             operator=match_operator, left=self.left.to_match(), right=self.right.to_match()
         )
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
@@ -1311,16 +1334,14 @@ class BinaryComposition(Expression):
         }
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
-        if not gremlin_operator:
-            raise AssertionError(
-                u"Unrecognized operator used: " u"{} {}".format(self.operator, self)
-            )
+        if not gremlin_operator or not format_spec:
+            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec.format(
             operator=gremlin_operator, left=self.left.to_gremlin(), right=self.right.to_gremlin()
         )
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
@@ -1361,16 +1382,14 @@ class BinaryComposition(Expression):
             }
 
         cypher_operator, format_spec = translation_table.get(self.operator, (None, None))
-        if not cypher_operator:
-            raise AssertionError(
-                u"Unrecognized operator used: " u"{} {}".format(self.operator, self)
-            )
+        if not cypher_operator or not format_spec:
+            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec.format(
             operator=cypher_operator, left=self.left.to_cypher(), right=self.right.to_cypher()
         )
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy BinaryExpression representing this BinaryComposition."""
         self.validate()
 
@@ -1407,7 +1426,7 @@ class TernaryConditional(Expression):
 
     __slots__ = ("predicate", "if_true", "if_false")
 
-    def __init__(self, predicate, if_true, if_false):
+    def __init__(self, predicate: Expression, if_true: Expression, if_false: Expression) -> None:
         """Construct an expression that evaluates a predicate and returns one of two results.
 
         Args:
@@ -1424,7 +1443,7 @@ class TernaryConditional(Expression):
         self.if_false = if_false
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the TernaryConditional is correctly representable."""
         if not isinstance(self.predicate, Expression):
             raise TypeError(
@@ -1445,7 +1464,7 @@ class TernaryConditional(Expression):
                 )
             )
 
-    def visit_and_update(self, visitor_fn):
+    def visit_and_update(self, visitor_fn: Callable[[Expression], ExpressionT]) -> ExpressionT:
         """Create an updated version (if needed) of TernaryConditional via the visitor pattern."""
         new_predicate = self.predicate.visit_and_update(visitor_fn)
         new_if_true = self.if_true.visit_and_update(visitor_fn)
@@ -1462,7 +1481,7 @@ class TernaryConditional(Expression):
         else:
             return visitor_fn(self)
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this TernaryConditional."""
         self.validate()
 
@@ -1470,7 +1489,7 @@ class TernaryConditional(Expression):
         # emitting MATCH code for TernaryConditional that contains another TernaryConditional
         # anywhere within the predicate expression. This is because the predicate expression
         # must be surrounded in quotes, and it is unclear whether nested/escaped quotes would work.
-        def visitor_fn(expression):
+        def visitor_fn(expression: ExpressionT) -> ExpressionT:
             """Visitor function that ensures the predicate does not contain TernaryConditionals."""
             if isinstance(expression, TernaryConditional):
                 raise ValueError(
@@ -1497,7 +1516,7 @@ class TernaryConditional(Expression):
             if_false=self.if_false.to_match(),
         )
 
-    def to_gremlin(self):
+    def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
@@ -1507,7 +1526,7 @@ class TernaryConditional(Expression):
             if_false=self.if_false.to_gremlin(),
         )
 
-    def to_cypher(self):
+    def to_cypher(self) -> str:
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
@@ -1517,7 +1536,7 @@ class TernaryConditional(Expression):
             if_false=self.if_false.to_cypher(),
         )
 
-    def to_sql(self, dialect, aliases, current_alias):
+    def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy Case representing this TernaryConditional."""
         self.validate()
         sql_predicate = self.predicate.to_sql(dialect, aliases, current_alias)
