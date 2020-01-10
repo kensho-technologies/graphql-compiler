@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, NamedTuple, Tuple
+from typing import List, Tuple
 
 from graphql import DocumentNode
 
