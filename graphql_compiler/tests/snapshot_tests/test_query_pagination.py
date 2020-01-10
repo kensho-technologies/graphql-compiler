@@ -86,7 +86,9 @@ class QueryPaginationTests(unittest.TestCase):
         number_of_pages = 10
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
-        expected_plan = PaginationPlan((VertexPartitionPlan(("Species",), "limbs", number_of_pages),))
+        expected_plan = PaginationPlan(
+            (VertexPartitionPlan(("Species",), "limbs", number_of_pages),)
+        )
         expected_warnings: List[PaginationAdvisory] = []
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)

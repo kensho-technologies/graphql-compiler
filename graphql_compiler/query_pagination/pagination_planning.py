@@ -89,7 +89,9 @@ def get_pagination_plan(
 
     if number_of_pages <= 0:
         raise AssertionError(
-            u"The number of pages should be at least 1: {}".format(number_of_pages)
+            u"The number of pages should be at least 1, but {} were requested.".format(
+                number_of_pages
+            )
         )
     elif number_of_pages == 1:
         return PaginationPlan(tuple()), []
