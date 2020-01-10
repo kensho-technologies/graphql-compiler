@@ -103,8 +103,30 @@ def create_cypher_schema_info(
 
 
 @dataclass
-class SQLSpecificSchemaInfo:
-    """Schema information specific to SQL databases."""
+class BackendSpecificSchemaInfo:
+    """
+    Common base class to be used by all backend-specific schema info classes.
+
+    This helps hide that the data actually lives one nesting level deeper.
+    """
+    generic_schema_info: GenericSchemaInfo
+
+    @property
+    def schema(self):
+        return self.generic_schema_info.schema
+
+    @property
+    def type_equivalence_hints(self):
+        return self.generic_schema_info.type_equivalence_hints
+
+
+@dataclass
+class SQLSchemaInfo(BackendSpecificSchemaInfo):
+    """
+    Schema information specific to SQL databases.
+
+    If the flavors start diverging in their attributes, consider making a class per flavor.
+    """
 
     # Specifying the dialect for which we are compiling
     # e.g. sqlalchemy.dialects.mssql.dialect()
@@ -122,13 +144,6 @@ class SQLSpecificSchemaInfo:
     join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]]
 
 
-@dataclass
-class SQLSchemaInfo:
-    # If the flavors start diverging in their attributes, consider making a class per flavor.
-    generic_schema_info: GenericSchemaInfo
-    sql_specific_info: SQLSpecificSchemaInfo
-
-
 def _create_sql_schema_info(
     dialect: Dialect,
     schema: GraphQLSchema,
@@ -140,14 +155,12 @@ def _create_sql_schema_info(
     generic_schema_info = GenericSchemaInfo(
         schema=schema, type_equivalence_hints=type_equivalence_hints
     )
-    sql_specific_info = SQLSpecificSchemaInfo(
+
+    return SQLSchemaInfo(
+        generic_schema_info=generic_schema_info,
         dialect=dialect,
         vertex_name_to_table=vertex_name_to_table,
         join_descriptors=join_descriptors,
-    )
-
-    return SQLSchemaInfo(
-        generic_schema_info=generic_schema_info, sql_specific_info=sql_specific_info,
     )
 
 
