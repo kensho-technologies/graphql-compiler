@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, NamedTuple, Tuple
 
 from graphql import DocumentNode
@@ -13,37 +13,37 @@ from ..schema.schema_info import QueryPlanningSchemaInfo
 
 @dataclass
 class PaginationAdvisory(object):
-    def __init__(self, message):
-        """Initialize a PaginationAdvisory with a custom message."""
-        self.message = message
+    message: str
 
 
 @dataclass
 class PaginationFieldNotSpecified(PaginationAdvisory):
-    def __init__(self, vertex_name):
-        """Initialize a PaginationFieldNotSpecified PaginationAdvisory."""
-        super(PaginationFieldNotSpecified, self).__init__(
+    vertex_name: str
+    message: str = field(init=False)
+
+    def __post_init__(self):
+        self.message = (
             "Specifying a pagination field for vertex {} in the QueryPlanningSchemaInfo "
             "would have made this vertex eligible for pagination, and enabled a better "
-            "pagination plan.".format(vertex_name)
+            "pagination plan.".format(self.vertex_name)
         )
-        self.vertex_name = vertex_name
 
 
 @dataclass
 class InsufficientQuantiles(PaginationAdvisory):
-    def __init__(self, vertex_name, field_name, current_resolution, desired_resolution):
-        """Initialize a InsufficientQuantiles PaginationAdvisory."""
-        super(InsufficientQuantiles, self).__init__(
+    vertex_name: str
+    field_name: str
+    current_resolution: int
+    desired_resolution: int
+    message: str = field(init=False)
+
+    def __post_init__(self):
+        self.message = (
             "Pagination would have been more successful if more quantiles were provided "
             "for {}.{}. Currently there are {}, ideally there should be {}".format(
-                vertex_name, field_name, current_resolution, desired_resolution
+                self.vertex_name, self.field_name, self.current_resolution, self.desired_resolution
             )
         )
-        self.vertex_name = vertex_name
-        self.field_name = field_name
-        self.current_resolution = current_resolution
-        self.desired_resolution = desired_resolution
 
 
 class VertexPartition(NamedTuple):
