@@ -1,4 +1,5 @@
 # Copyright 2020-present Kensho Technologies, LLC.
+from dataclasses import dataclass
 import datetime
 from typing import Generic, Optional, TypeVar
 
@@ -6,13 +7,11 @@ from typing import Generic, Optional, TypeVar
 IntervalDomain = TypeVar("IntervalDomain", int, str, datetime.date, datetime.datetime)
 
 
+@dataclass(eq=False, frozen=True)
 class Interval(Generic[IntervalDomain]):
-    def __init__(
-        self, lower_bound: Optional[IntervalDomain], upper_bound: Optional[IntervalDomain]
-    ) -> None:
-        """Initialize an endpoint-inclusive interval. A value of None means unbounded."""
-        self.lower_bound: Optional[IntervalDomain] = lower_bound
-        self.upper_bound: Optional[IntervalDomain] = upper_bound
+    """Interval of IntervalDomain values. The ends are inclusive."""
+    lower_bound: Optional[IntervalDomain]
+    upper_bound: Optional[IntervalDomain]
 
     def is_empty(self) -> bool:
         """Return whether the interval is empty."""
