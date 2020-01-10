@@ -48,7 +48,7 @@ class InsufficientQuantiles(PaginationAdvisory):
         )
 
 
-class VertexPartition(NamedTuple):
+class VertexPartitionPlan(NamedTuple):
     """Plan to split the query at a certain vertex into a certain number of pages."""
 
     # field names leading to the vertex to be split
@@ -62,9 +62,9 @@ class VertexPartition(NamedTuple):
 
 
 class PaginationPlan(NamedTuple):
-    """Plan to split the query with a combination of VertexPartitions."""
+    """Plan to split the query with a combination of VertexPartitionPlans."""
 
-    vertex_partitions: Tuple[VertexPartition, ...]
+    vertex_partitions: Tuple[VertexPartitionPlan, ...]
 
 
 def get_num_pages_generated_by_plan(plan: PaginationPlan) -> int:
@@ -109,7 +109,7 @@ def get_pagination_plan(
     if is_uuid4_type(schema_info, pagination_node, pagination_field):
         return (
             PaginationPlan(
-                (VertexPartition((pagination_node,), pagination_field, number_of_pages),)
+                (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
             ),
             [],
         )
@@ -136,7 +136,7 @@ def get_pagination_plan(
         elif len(quantiles) - 1 < number_of_pages:
             return (
                 PaginationPlan(
-                    (VertexPartition((pagination_node,), pagination_field, len(quantiles) - 1),)
+                    (VertexPartitionPlan((pagination_node,), pagination_field, len(quantiles) - 1),)
                 ),
                 [
                     InsufficientQuantiles(
@@ -147,7 +147,7 @@ def get_pagination_plan(
         elif len(quantiles) < ideal_quantile_resolution:
             return (
                 PaginationPlan(
-                    (VertexPartition((pagination_node,), pagination_field, number_of_pages),)
+                    (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
                 ),
                 [
                     InsufficientQuantiles(
@@ -158,7 +158,7 @@ def get_pagination_plan(
         else:
             return (
                 PaginationPlan(
-                    (VertexPartition((pagination_node,), pagination_field, number_of_pages),)
+                    (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
                 ),
                 [],
             )
