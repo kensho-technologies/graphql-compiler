@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 
-from frozendict import frozendict
 import six
 
 
@@ -102,8 +101,11 @@ class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
 
     def __init__(
-        self, class_counts, vertex_edge_vertex_counts=None,
-        distinct_field_values_counts=None, field_quantiles=None
+        self,
+        class_counts,
+        vertex_edge_vertex_counts=None,
+        distinct_field_values_counts=None,
+        field_quantiles=None,
     ):
         """Initialize statistics with the given data.
 
@@ -125,6 +127,8 @@ class LocalStatistics(Statistics):
                              element is a value greater than or equal to i/N of all present
                              values. The number N can be different for each entry. N has to be at
                              least 2 for every entry present in the dict.
+            TODO(bojanserafimov): Enforce a canonical representation for quantile values. Datetimes
+                                  should be in utc, decimals should have type float, etc.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
@@ -136,19 +140,23 @@ class LocalStatistics(Statistics):
         # Validate arguments
         for vertex_name, quantile_list in six.iteritems(field_quantiles):
             if len(quantile_list) < 2:
-                raise AssertionError(u'The number of quantiles should be at least 2. Vertex '
-                                     u'{} has {}.'.format(vertex_name, len(quantile_list)))
+                raise AssertionError(
+                    u"The number of quantiles should be at least 2. Vertex "
+                    u"{} has {}.".format(vertex_name, len(quantile_list))
+                )
 
-        self._class_counts = frozendict(class_counts)
-        self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
-        self._distinct_field_values_counts = frozendict(distinct_field_values_counts)
-        self._field_quantiles = frozendict(field_quantiles)
+        self._class_counts = class_counts
+        self._vertex_edge_vertex_counts = vertex_edge_vertex_counts
+        self._distinct_field_values_counts = distinct_field_values_counts
+        self._field_quantiles = field_quantiles
 
     def get_class_count(self, class_name):
         """See base class."""
         if class_name not in self._class_counts:
-            raise AssertionError(u'Class count statistic is required, but entry not found for: '
-                                 u'{}'.format(class_name))
+            raise AssertionError(
+                u"Class count statistic is required, but entry not found for: "
+                u"{}".format(class_name)
+            )
         return self._class_counts[class_name]
 
     def get_vertex_edge_vertex_count(

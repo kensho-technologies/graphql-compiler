@@ -4,10 +4,15 @@ from itertools import chain
 import warnings
 
 from graphql.type import (
-    GraphQLField, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLScalarType,
-    GraphQLSchema, GraphQLUnionType
+    GraphQLField,
+    GraphQLInterfaceType,
+    GraphQLList,
+    GraphQLObjectType,
+    GraphQLScalarType,
+    GraphQLSchema,
+    GraphQLUnionType,
 )
-from graphql.utils.assert_valid_name import COMPILED_NAME_PATTERN
+from graphql.utilities.assert_valid_name import re_name
 import six
 
 from ..compiler.helpers import strip_non_null_from_type
@@ -55,8 +60,9 @@ def _get_inherited_field_types(class_to_field_type_overrides, schema_graph):
     return inherited_field_type_overrides
 
 
-def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
-                                                               schema_graph):
+def _validate_overriden_fields_are_not_defined_in_superclasses(
+    class_to_field_type_overrides, schema_graph
+):
     """Assert that the fields we want to override are not defined in superclasses."""
     for class_name, field_type_overrides in six.iteritems(class_to_field_type_overrides):
         for superclass_name in schema_graph.get_superclass_set(class_name):
@@ -66,45 +72,56 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_ty
                     if field_name in superclass.properties:
                         raise AssertionError(
                             u'Attempting to override field "{}" from class "{}", but the field is '
-                            u'defined in superclass "{}"'
-                            .format(field_name, class_name, superclass_name))
+                            u'defined in superclass "{}"'.format(
+                                field_name, class_name, superclass_name
+                            )
+                        )
 
 
 def _get_union_type_name(type_names_to_union):
     """Construct a unique union type name based on the type names being unioned."""
     if not type_names_to_union:
-        raise AssertionError(u'Expected a non-empty list of type names to union, received: '
-                             u'{}'.format(type_names_to_union))
-    return u'Union__' + u'__'.join(sorted(type_names_to_union))
+        raise AssertionError(
+            u"Expected a non-empty list of type names to union, received: "
+            u"{}".format(type_names_to_union)
+        )
+    return u"Union__" + u"__".join(sorted(type_names_to_union))
 
 
-def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hidden_classes,
-                          cls_name):
+def _get_fields_for_class(
+    schema_graph, graphql_types, field_type_overrides, hidden_classes, cls_name
+):
     """Return a dict from field name to GraphQL field type, for the specified graph class."""
     properties = schema_graph.get_element_by_class_name(cls_name).properties
 
     # Add leaf GraphQL fields (class properties).
     all_properties = {}
     for property_name, property_obj in six.iteritems(properties):
-        if COMPILED_NAME_PATTERN.match(property_name):
+        if re_name.match(property_name):
             all_properties[property_name] = property_obj.type
         else:
-            warnings.warn(u'Ignoring property {} of class {} with invalid name. '
-                          u'Property names must match /{}/.'
-                          .format(property_name, cls_name, COMPILED_NAME_PATTERN))
+            warnings.warn(
+                u"Ignoring property {} of class {} with invalid name. "
+                u"Property names must match /{}/.".format(property_name, cls_name, re_name)
+            )
 
     collections_of_non_graphql_scalars = {
         property_name
         for property_name, graphql_type in six.iteritems(all_properties)
-        if (isinstance(strip_non_null_from_type(graphql_type), GraphQLList) and
-            not isinstance(strip_non_null_from_type(graphql_type.of_type), GraphQLScalarType))
+        if (
+            isinstance(strip_non_null_from_type(graphql_type), GraphQLList)
+            and not isinstance(strip_non_null_from_type(graphql_type.of_type), GraphQLScalarType)
+        )
     }
 
     if len(collections_of_non_graphql_scalars) > 0:
-        warnings.warn('The fields {} of class {} were ignored since they are GraphQLLists of '
-                      'non-GraphQLScalarTypes. GraphQLLists of non-GraphQLScalarTypes are not '
-                      'currently supported in the GraphQLSchema.'
-                      .format(collections_of_non_graphql_scalars, cls_name))
+        warnings.warn(
+            "The fields {} of class {} were ignored since they are GraphQLLists of "
+            "non-GraphQLScalarTypes. GraphQLLists of non-GraphQLScalarTypes are not "
+            "currently supported in the GraphQLSchema.".format(
+                collections_of_non_graphql_scalars, cls_name
+            )
+        )
 
     # Filter collections of non-GraphQLScalarTypes. They are currently not supported.
     result = {
@@ -116,13 +133,17 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
     # Add edge GraphQL fields.
     schema_element = schema_graph.get_element_by_class_name(cls_name)
     outbound_edges = (
-        ('out_{}'.format(out_edge_name),
-         schema_graph.get_element_by_class_name(out_edge_name).base_out_connection)
+        (
+            "out_{}".format(out_edge_name),
+            schema_graph.get_element_by_class_name(out_edge_name).base_out_connection,
+        )
         for out_edge_name in schema_element.out_connections
     )
     inbound_edges = (
-        ('in_{}'.format(in_edge_name),
-         schema_graph.get_element_by_class_name(in_edge_name).base_in_connection)
+        (
+            "in_{}".format(in_edge_name),
+            schema_graph.get_element_by_class_name(in_edge_name).base_in_connection,
+        )
         for in_edge_name in schema_element.in_connections
     )
     for field_name, to_type_name in chain(outbound_edges, inbound_edges):
@@ -138,9 +159,7 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
             # union type. This is because GraphQL fragments cannot be applied on concrete
             # types, and GraphQL does not support inheritance of concrete types.
             type_names_to_union = [
-                subclass
-                for subclass in subclasses
-                if subclass not in hidden_classes
+                subclass for subclass in subclasses if subclass not in hidden_classes
             ]
             if type_names_to_union:
                 edge_endpoint_type_name = _get_union_type_name(type_names_to_union)
@@ -156,26 +175,43 @@ def _get_fields_for_class(schema_graph, graphql_types, field_type_overrides, hid
 
     for field_name, field_type in six.iteritems(field_type_overrides):
         if field_name not in result:
-            raise AssertionError(u'Attempting to override field "{}" from class "{}", but the '
-                                 u'class does not contain said field'.format(field_name, cls_name))
+            raise AssertionError(
+                u'Attempting to override field "{}" from class "{}", but the '
+                u"class does not contain said field".format(field_name, cls_name)
+            )
         else:
             result[field_name] = field_type
 
     return result
 
 
-def _create_field_specification(schema_graph, graphql_types, field_type_overrides,
-                                hidden_classes, cls_name):
+def _create_field_specification(
+    schema_graph, graphql_types, field_type_overrides, hidden_classes, cls_name
+):
     """Return a function that specifies the fields present on the given type."""
+
     def field_maker_func():
         """Create and return the fields for the given GraphQL type."""
         result = EXTENDED_META_FIELD_DEFINITIONS.copy()
-        result.update(OrderedDict([
-            (name, GraphQLField(value))
-            for name, value in sorted(six.iteritems(_get_fields_for_class(
-                schema_graph, graphql_types, field_type_overrides, hidden_classes, cls_name)),
-                key=lambda x: x[0])
-        ]))
+        result.update(
+            OrderedDict(
+                [
+                    (name, GraphQLField(value))
+                    for name, value in sorted(
+                        six.iteritems(
+                            _get_fields_for_class(
+                                schema_graph,
+                                graphql_types,
+                                field_type_overrides,
+                                hidden_classes,
+                                cls_name,
+                            )
+                        ),
+                        key=lambda x: x[0],
+                    )
+                ]
+            )
+        )
         return result
 
     return field_maker_func
@@ -183,6 +219,7 @@ def _create_field_specification(schema_graph, graphql_types, field_type_override
 
 def _create_interface_specification(schema_graph, graphql_types, hidden_classes, cls_name):
     """Return a function that specifies the interfaces implemented by the given type."""
+
     def interface_spec():
         """Return a list of GraphQL interface types implemented by the type named 'cls_name'."""
         abstract_superclass_set = []
@@ -195,11 +232,7 @@ def _create_interface_specification(schema_graph, graphql_types, hidden_classes,
                     else:
                         abstract_superclass_set.append(superclass_name)
 
-        return [
-            graphql_types[x]
-            for x in abstract_superclass_set
-            if x not in hidden_classes
-        ]
+        return [graphql_types[x] for x in abstract_superclass_set if x not in hidden_classes]
 
     return interface_spec
 
@@ -220,8 +253,9 @@ def _create_union_types_specification(schema_graph, graphql_types, hidden_classe
     return types_spec
 
 
-def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overrides=None,
-                                         hidden_classes=None):
+def get_graphql_schema_from_schema_graph(
+    schema_graph, class_to_field_type_overrides=None, hidden_classes=None
+):
     """Return a GraphQL schema object corresponding to the schema of the given schema graph.
 
     Args:
@@ -241,13 +275,15 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     if hidden_classes is None:
         hidden_classes = set()
 
-    _validate_overriden_fields_are_not_defined_in_superclasses(class_to_field_type_overrides,
-                                                               schema_graph)
+    _validate_overriden_fields_are_not_defined_in_superclasses(
+        class_to_field_type_overrides, schema_graph
+    )
 
     # The field types of subclasses must also be overridden.
     # Remember that the result returned by get_subclass_set(class_name) includes class_name itself.
-    inherited_field_type_overrides = _get_inherited_field_types(class_to_field_type_overrides,
-                                                                schema_graph)
+    inherited_field_type_overrides = _get_inherited_field_types(
+        class_to_field_type_overrides, schema_graph
+    )
 
     graphql_types = OrderedDict()
     type_equivalence_hints = OrderedDict()
@@ -275,31 +311,36 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
         # are not closures. Instead, call a function with 'cls_name' as an argument,
         # and have that function construct and return the required lambda.
         field_specification_lambda = _create_field_specification(
-            schema_graph, graphql_types, field_type_overrides, hidden_classes, vertex_cls_name)
+            schema_graph, graphql_types, field_type_overrides, hidden_classes, vertex_cls_name
+        )
 
         # Abstract classes are interfaces, concrete classes are object types.
         current_graphql_type = None
         if vertex_cls.abstract:
             # "fields" is a kwarg in the interface constructor, even though
             # it's a positional arg in the object type constructor.
-            current_graphql_type = GraphQLInterfaceType(vertex_cls_name,
-                                                        fields=field_specification_lambda)
+            current_graphql_type = GraphQLInterfaceType(
+                vertex_cls_name, fields=field_specification_lambda
+            )
         else:
             # For similar reasons as the field_specification_lambda,
             # we need to create an interface specification lambda function that
             # specifies the interfaces implemented by this type.
             interface_specification_lambda = _create_interface_specification(
-                schema_graph, graphql_types, hidden_classes, vertex_cls_name)
+                schema_graph, graphql_types, hidden_classes, vertex_cls_name
+            )
 
             # N.B.: Ignore the "is_type_of" argument below, it is simply a circumvention of
             #       a sanity check inside the GraphQL library. The library assumes that we'll use
             #       its execution system, so it complains that we don't provide a means to
             #       differentiate between different implementations of the same interface.
             #       We don't care, because we compile the GraphQL query to a database query.
-            current_graphql_type = GraphQLObjectType(vertex_cls_name,
-                                                     field_specification_lambda,
-                                                     interfaces=interface_specification_lambda,
-                                                     is_type_of=lambda: None)
+            current_graphql_type = GraphQLObjectType(
+                vertex_cls_name,
+                field_specification_lambda,
+                interfaces=interface_specification_lambda,
+                is_type_of=lambda: None,
+            )
 
         graphql_types[vertex_cls_name] = current_graphql_type
 
@@ -319,7 +360,8 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
             # we need to create a union type specification lambda function that specifies
             # the types that this union type is composed of.
             type_specification_lambda = _create_union_types_specification(
-                schema_graph, graphql_types, hidden_classes, vertex_cls_name)
+                schema_graph, graphql_types, hidden_classes, vertex_cls_name
+            )
 
             union_type = GraphQLUnionType(union_type_name, types=type_specification_lambda)
             graphql_types[union_type_name] = union_type
@@ -339,23 +381,35 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
                 inherited_field_type_overrides.setdefault(non_graph_cls_name, dict())
                 field_type_overrides = inherited_field_type_overrides[non_graph_cls_name]
                 field_specification_lambda = _create_field_specification(
-                    schema_graph, graphql_types, field_type_overrides, hidden_classes,
-                    non_graph_cls_name)
-                graphql_type = GraphQLInterfaceType(non_graph_cls_name,
-                                                    fields=field_specification_lambda)
+                    schema_graph,
+                    graphql_types,
+                    field_type_overrides,
+                    hidden_classes,
+                    non_graph_cls_name,
+                )
+                graphql_type = GraphQLInterfaceType(
+                    non_graph_cls_name, fields=field_specification_lambda
+                )
                 graphql_types[non_graph_cls_name] = graphql_type
 
     if not graphql_types:
-        raise EmptySchemaError(u'After evaluating all subclasses of V, we were not able to find '
-                               u'visible schema data to import into the GraphQL schema object')
+        raise EmptySchemaError(
+            u"After evaluating all subclasses of V, we were not able to find "
+            u"visible schema data to import into the GraphQL schema object"
+        )
 
     # Create the root query GraphQL type. Consists of all non-union classes, i.e.
     # all non-abstract classes (as GraphQL types) and all abstract classes (as GraphQL interfaces).
-    RootSchemaQuery = GraphQLObjectType('RootSchemaQuery', OrderedDict([
-        (name, GraphQLField(GraphQLList(value)))
-        for name, value in sorted(six.iteritems(graphql_types), key=lambda x: x[0])
-        if not isinstance(value, GraphQLUnionType)
-    ]))
+    RootSchemaQuery = GraphQLObjectType(
+        "RootSchemaQuery",
+        OrderedDict(
+            [
+                (name, GraphQLField(GraphQLList(value)))
+                for name, value in sorted(six.iteritems(graphql_types), key=lambda x: x[0])
+                if not isinstance(value, GraphQLUnionType)
+            ]
+        ),
+    )
 
     schema = GraphQLSchema(RootSchemaQuery, directives=DIRECTIVES)
 
@@ -363,5 +417,4 @@ def get_graphql_schema_from_schema_graph(schema_graph, class_to_field_type_overr
     # searching through the fields of the RootSchemaQuery. Since union types can only appear in the
     # fields of other types as edges, union types with no in or out edges will not appear in the
     # schema. Therefore, we remove these unions and their keys from the type equivalence hints.
-    return schema, _get_referenced_type_equivalences(graphql_types,
-                                                     type_equivalence_hints)
+    return schema, _get_referenced_type_equivalences(graphql_types, type_equivalence_hints)

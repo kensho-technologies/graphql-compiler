@@ -83,6 +83,8 @@ In the snippet above the are two pieces of schema info:
 - :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
   (see :doc:`schema types <language_specification/schema_types>` for more info).
 
+When compiling, these will need to be bundled in a :code:`CommonSchemaInfo` object.
+
 Besides representing the database schema, a GraphQL schema includes other metadata such as a list
 of custom scalar types used by the compiler. We'll talk more about this metadata in
 :doc:`schema types <language_specification/schema_types>`. For now let's focus on how a database
@@ -204,11 +206,13 @@ Advanced Features
 
 To learn more about the advanced features in the GraphQL compiler see:
 
-- :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
+- :doc:`Macro System <advanced_features/macro_system>` to learn how to write "macro edges",
   which allow users to define new edges that become part of the GraphQL schema, using existing
   edges as building blocks.
-- :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
+- :doc:`Schema Graph <advanced_features/schema_graph>` for an utility that makes it
   easy to explore the schema of a database, including the databases indexes.
+- :doc:`Additional Tools <advanced_features/additional_tools>` for a list of additional tools
+  included in the package, including a query pretty printer.
 
 .. toctree::
    :caption: Advanced Features
@@ -216,6 +220,7 @@ To learn more about the advanced features in the GraphQL compiler see:
 
    Macro System <advanced_features/macro_system>
    Schema Graph <advanced_features/schema_graph>
+   Additional Tools <advanced_features/additional_tools>
 
 About the GraphQL Compiler
 ~~~~~~~~~~~~~~~~~~~~~~~~~~

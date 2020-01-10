@@ -3,13 +3,19 @@ from sqlalchemy import PrimaryKeyConstraint, UniqueConstraint
 
 from ...global_utils import merge_non_overlapping_dicts
 from ..schema_graph import (
-    EdgeType, IndexDefinition, InheritanceStructure, PropertyDescriptor, SchemaGraph, VertexType,
-    link_schema_elements
+    EdgeType,
+    IndexDefinition,
+    InheritanceStructure,
+    PropertyDescriptor,
+    SchemaGraph,
+    VertexType,
+    link_schema_elements,
 )
 from .edge_descriptors import validate_edge_descriptors
 from .scalar_type_mapper import try_get_graphql_scalar_type
 from .utils import (
-    validate_that_tables_belong_to_the_same_metadata_object, validate_that_tables_have_primary_keys
+    validate_that_tables_belong_to_the_same_metadata_object,
+    validate_that_tables_have_primary_keys,
 )
 
 
@@ -68,9 +74,14 @@ def _get_vertex_type_from_sqlalchemy_table(vertex_name, table):
 
 def _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor):
     """Return the EdgeType corresponding to a direct SQL edge."""
-    return EdgeType(edge_name, False, {}, {},
-                    base_in_connection=direct_edge_descriptor.from_vertex,
-                    base_out_connection=direct_edge_descriptor.to_vertex)
+    return EdgeType(
+        edge_name,
+        False,
+        {},
+        {},
+        base_in_connection=direct_edge_descriptor.from_vertex,
+        base_out_connection=direct_edge_descriptor.to_vertex,
+    )
 
 
 def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
@@ -96,7 +107,8 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
             # primary key indexes in table.indexes. Therefore, we use the PrimaryKeyConstraint
             # to create the IndexDefinition.
             index_definition = _build_unique_index_definition(
-                vertex_name, primary_key_constraint.columns, False)
+                vertex_name, primary_key_constraint.columns, False
+            )
             if _is_vertex_type_index_representable(index_definition, vertex_type):
                 index_definitions.add(index_definition)
 
@@ -114,7 +126,8 @@ def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
             # unique indexes. However, other backends, e.g. mssql, do not. Therefore, we set
             # ignore_nulls=True to indicate that the backend may have duplicate nulls.
             index_definition = _build_unique_index_definition(
-                vertex_name, unique_constraint.columns, True)
+                vertex_name, unique_constraint.columns, True
+            )
             if _is_vertex_type_index_representable(index_definition, vertex_type):
                 index_definitions.add(index_definition)
 
@@ -129,7 +142,7 @@ def _build_unique_index_definition(vertex_name, columns, ignore_nulls):
         fields=frozenset(column.name for column in columns),
         unique=True,
         ordered=False,
-        ignore_nulls=ignore_nulls
+        ignore_nulls=ignore_nulls,
     )
 
 

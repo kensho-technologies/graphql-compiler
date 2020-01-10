@@ -13,16 +13,25 @@ from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionTy
 import six
 
 from ...exceptions import GraphQLCompilationError
+from ...global_utils import is_same_type
 from ...schema import GraphQLDate, GraphQLDateTime
 from ..blocks import Backtrack, CoerceType, Filter, GlobalOperationsStart, MarkLocation, Traverse
 from ..compiler_entities import Expression
 from ..expressions import (
-    BinaryComposition, FoldedContextField, Literal, LocalField, NullLiteral,
-    make_type_replacement_visitor
+    BinaryComposition,
+    FoldedContextField,
+    Literal,
+    LocalField,
+    NullLiteral,
+    make_type_replacement_visitor,
 )
 from ..helpers import (
-    STANDARD_DATE_FORMAT, STANDARD_DATETIME_FORMAT, FoldScopeLocation,
-    get_only_element_from_collection, strip_non_null_from_type, validate_safe_string
+    STANDARD_DATE_FORMAT,
+    STANDARD_DATETIME_FORMAT,
+    FoldScopeLocation,
+    get_only_element_from_collection,
+    strip_non_null_from_type,
+    validate_safe_string,
 )
 from ..ir_lowering_common.common import extract_folds_from_ir_blocks
 
@@ -31,6 +40,7 @@ from ..ir_lowering_common.common import extract_folds_from_ir_blocks
 # Optimization / lowering passes #
 ##################################
 
+
 def lower_coerce_type_block_type_data(ir_blocks, type_equivalence_hints):
     """Rewrite CoerceType blocks to explicitly state which types are allowed in the coercion."""
     allowed_key_type_spec = (GraphQLInterfaceType, GraphQLObjectType)
@@ -38,13 +48,17 @@ def lower_coerce_type_block_type_data(ir_blocks, type_equivalence_hints):
 
     # Validate that the type_equivalence_hints parameter has correct types.
     for key, value in six.iteritems(type_equivalence_hints):
-        if (not isinstance(key, allowed_key_type_spec) or
-                not isinstance(value, allowed_value_type_spec)):
-            msg = (u'Invalid type equivalence hints received! Hint {} ({}) -> {} ({}) '
-                   u'was unexpected, expected a hint in the form '
-                   u'GraphQLInterfaceType -> GraphQLUnionType or '
-                   u'GraphQLObjectType -> GraphQLUnionType'.format(key.name, str(type(key)),
-                                                                   value.name, str(type(value))))
+        if not isinstance(key, allowed_key_type_spec) or not isinstance(
+            value, allowed_value_type_spec
+        ):
+            msg = (
+                u"Invalid type equivalence hints received! Hint {} ({}) -> {} ({}) "
+                u"was unexpected, expected a hint in the form "
+                u"GraphQLInterfaceType -> GraphQLUnionType or "
+                u"GraphQLObjectType -> GraphQLUnionType".format(
+                    key.name, str(type(key)), value.name, str(type(value))
+                )
+            )
             raise GraphQLCompilationError(msg)
 
     # CoerceType blocks only know the name of the type to which they coerce,
@@ -76,9 +90,7 @@ def lower_coerce_type_blocks(ir_blocks):
         new_block = block
         if isinstance(block, CoerceType):
             predicate = BinaryComposition(
-                u'contains',
-                Literal(list(block.target_class)),
-                LocalField('@class', GraphQLString)
+                u"contains", Literal(list(block.target_class)), LocalField("@class", GraphQLString)
             )
             new_block = Filter(predicate)
 
@@ -108,18 +120,21 @@ def rewrite_filters_in_optional_blocks(ir_blocks):
     for block in ir_blocks:
         new_block = block
         if isinstance(block, CoerceType):
-            raise AssertionError(u'Found a CoerceType block after all such blocks should have been '
-                                 u'lowered to Filter blocks: {}'.format(ir_blocks))
+            raise AssertionError(
+                u"Found a CoerceType block after all such blocks should have been "
+                u"lowered to Filter blocks: {}".format(ir_blocks)
+            )
         elif isinstance(block, Traverse) and block.optional:
             optional_context_depth += 1
         elif isinstance(block, Backtrack) and block.optional:
             optional_context_depth -= 1
             if optional_context_depth < 0:
-                raise AssertionError(u'Reached negative optional context depth for blocks: '
-                                     u'{}'.format(ir_blocks))
+                raise AssertionError(
+                    u"Reached negative optional context depth for blocks: " u"{}".format(ir_blocks)
+                )
         elif isinstance(block, Filter) and optional_context_depth > 0:
-            null_check = BinaryComposition(u'=', LocalField('@this', None), NullLiteral)
-            new_block = Filter(BinaryComposition(u'||', null_check, block.predicate))
+            null_check = BinaryComposition(u"=", LocalField("@this", None), NullLiteral)
+            new_block = Filter(BinaryComposition(u"||", null_check, block.predicate))
         else:
             pass
 
@@ -134,7 +149,8 @@ class GremlinFoldedContextField(Expression):
     def __init__(self, fold_scope_location, folded_ir_blocks, field_type):
         """Create a new GremlinFoldedContextField."""
         super(GremlinFoldedContextField, self).__init__(
-            fold_scope_location, folded_ir_blocks, field_type)
+            fold_scope_location, folded_ir_blocks, field_type
+        )
         self.fold_scope_location = fold_scope_location
         self.folded_ir_blocks = folded_ir_blocks
         self.field_type = field_type
@@ -143,30 +159,38 @@ class GremlinFoldedContextField(Expression):
     def validate(self):
         """Validate that the GremlinFoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
-            raise TypeError(u'Expected FoldScopeLocation fold_scope_location, got: {} {}'.format(
-                type(self.fold_scope_location), self.fold_scope_location))
+            raise TypeError(
+                u"Expected FoldScopeLocation fold_scope_location, got: {} {}".format(
+                    type(self.fold_scope_location), self.fold_scope_location
+                )
+            )
 
         allowed_block_types = (GremlinFoldedFilter, GremlinFoldedTraverse, Backtrack)
         for block in self.folded_ir_blocks:
             if not isinstance(block, allowed_block_types):
                 raise AssertionError(
-                    u'Found invalid block of type {} in folded_ir_blocks: {} '
-                    u'Allowed types are {}.'
-                    .format(type(block), self.folded_ir_blocks, allowed_block_types))
+                    u"Found invalid block of type {} in folded_ir_blocks: {} "
+                    u"Allowed types are {}.".format(
+                        type(block), self.folded_ir_blocks, allowed_block_types
+                    )
+                )
 
         bare_field_type = strip_non_null_from_type(self.field_type)
         if isinstance(bare_field_type, GraphQLList):
             inner_type = strip_non_null_from_type(bare_field_type.of_type)
             if isinstance(inner_type, GraphQLList):
                 raise GraphQLCompilationError(
-                    u'Outputting list-valued fields in a @fold context is currently not supported: '
-                    u'{} {}'.format(self.fold_scope_location, bare_field_type.of_type))
-        elif GraphQLInt.is_same_type(bare_field_type):
+                    u"Outputting list-valued fields in a @fold context is currently not supported: "
+                    u"{} {}".format(self.fold_scope_location, bare_field_type.of_type)
+                )
+        elif is_same_type(GraphQLInt, bare_field_type):
             # This needs to be implemented for @fold _x_count support.
             raise NotImplementedError()
         else:
-            raise ValueError(u'Invalid value of "field_type", expected a (possibly non-null) '
-                             u'list or int type but got: {}'.format(self.field_type))
+            raise ValueError(
+                u'Invalid value of "field_type", expected a (possibly non-null) '
+                u"list or int type but got: {}".format(self.field_type)
+            )
 
     def to_match(self):
         """Must never be called."""
@@ -179,8 +203,8 @@ class GremlinFoldedContextField(Expression):
         validate_safe_string(edge_name)
 
         inverse_direction_table = {
-            'out': 'in',
-            'in': 'out',
+            "out": "in",
+            "in": "out",
         }
         inverse_direction = inverse_direction_table[edge_direction]
 
@@ -201,13 +225,13 @@ class GremlinFoldedContextField(Expression):
             #     )
             # )
             template = (
-                u'((m.{base_location_name}.{direction}_{edge_name} == null) ? [] : ('
-                u'm.{base_location_name}.{direction}_{edge_name}.collect{{'
-                u'entry -> entry.{inverse_direction}V.next().{field_name}{maybe_format}'
-                u'}}'
-                u'))'
+                u"((m.{base_location_name}.{direction}_{edge_name} == null) ? [] : ("
+                u"m.{base_location_name}.{direction}_{edge_name}.collect{{"
+                u"entry -> entry.{inverse_direction}V.next().{field_name}{maybe_format}"
+                u"}}"
+                u"))"
             )
-            filter_and_traverse_data = ''
+            filter_and_traverse_data = ""
         else:
             # There is filtering or type coercions in this @fold scope.
             #
@@ -222,32 +246,33 @@ class GremlinFoldedContextField(Expression):
             #     )
             # )
             template = (
-                u'((m.{base_location_name}.{direction}_{edge_name} == null) ? [] : ('
-                u'm.{base_location_name}.{direction}_{edge_name}.collect{{'
-                u'entry -> entry.{inverse_direction}V.next()'
-                u'}}'
-                u'.{filters_and_traverses}'
-                u'.collect{{entry -> entry.{field_name}{maybe_format}}}'
-                u'))'
+                u"((m.{base_location_name}.{direction}_{edge_name} == null) ? [] : ("
+                u"m.{base_location_name}.{direction}_{edge_name}.collect{{"
+                u"entry -> entry.{inverse_direction}V.next()"
+                u"}}"
+                u".{filters_and_traverses}"
+                u".collect{{entry -> entry.{field_name}{maybe_format}}}"
+                u"))"
             )
-            filter_and_traverse_data = u'.'.join(block.to_gremlin()
-                                                 for block in self.folded_ir_blocks)
+            filter_and_traverse_data = u".".join(
+                block.to_gremlin() for block in self.folded_ir_blocks
+            )
 
-        maybe_format = ''
+        maybe_format = ""
         inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if GraphQLDate.is_same_type(inner_type):
+        if is_same_type(GraphQLDate, inner_type):
             maybe_format = '.format("' + STANDARD_DATE_FORMAT + '")'
-        elif GraphQLDateTime.is_same_type(inner_type):
+        elif is_same_type(GraphQLDateTime, inner_type):
             maybe_format = '.format("' + STANDARD_DATETIME_FORMAT + '")'
 
         template_data = {
-            'base_location_name': base_location_name,
-            'direction': edge_direction,
-            'edge_name': edge_name,
-            'field_name': field_name,
-            'inverse_direction': inverse_direction,
-            'maybe_format': maybe_format,
-            'filters_and_traverses': filter_and_traverse_data,
+            "base_location_name": base_location_name,
+            "direction": edge_direction,
+            "edge_name": edge_name,
+            "field_name": field_name,
+            "inverse_direction": inverse_direction,
+            "maybe_format": maybe_format,
+            "filters_and_traverses": filter_and_traverse_data,
         }
         return template.format(**template_data)
 
@@ -258,7 +283,7 @@ class GremlinFoldedFilter(Filter):
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
         self.validate()
-        return u'findAll{{entry -> {}}}'.format(self.predicate.to_gremlin())
+        return u"findAll{{entry -> {}}}".format(self.predicate.to_gremlin())
 
 
 class GremlinFoldedTraverse(Traverse):
@@ -270,20 +295,23 @@ class GremlinFoldedTraverse(Traverse):
         if isinstance(traverse_block, Traverse):
             return cls(traverse_block.direction, traverse_block.edge_name)
         else:
-            raise AssertionError(u'Tried to initialize an instance of GremlinFoldedTraverse '
-                                 u'with block of type {}'.format(type(traverse_block)))
+            raise AssertionError(
+                u"Tried to initialize an instance of GremlinFoldedTraverse "
+                u"with block of type {}".format(type(traverse_block))
+            )
 
     def to_gremlin(self):
         """Return a unicode object with the Gremlin representation of this block."""
         self.validate()
         template_data = {
-            'direction': self.direction,
-            'edge_name': self.edge_name,
-            'inverse_direction': 'in' if self.direction == 'out' else 'out'
+            "direction": self.direction,
+            "edge_name": self.edge_name,
+            "inverse_direction": "in" if self.direction == "out" else "out",
         }
-        return (u'collectMany{{entry -> entry.{direction}_{edge_name}'
-                u'.collect{{edge -> edge.{inverse_direction}V.next()}}}}'
-                .format(**template_data))
+        return (
+            u"collectMany{{entry -> entry.{direction}_{edge_name}"
+            u".collect{{edge -> edge.{inverse_direction}V.next()}}}}".format(**template_data)
+        )
 
 
 class GremlinFoldedLocalField(LocalField):
@@ -291,7 +319,7 @@ class GremlinFoldedLocalField(LocalField):
 
     def get_local_object_gremlin_name(self):
         """Return the Gremlin name of the local object whose field is being produced."""
-        return u'entry'
+        return u"entry"
 
 
 def _convert_folded_blocks(folded_ir_blocks):
@@ -318,8 +346,10 @@ def _convert_folded_blocks(folded_ir_blocks):
             # since they do not produce any Gremlin output code inside folds.
             continue
         else:
-            raise AssertionError(u'Found an unexpected IR block in the folded IR blocks: '
-                                 u'{} {} {}'.format(type(block), block, folded_ir_blocks))
+            raise AssertionError(
+                u"Found an unexpected IR block in the folded IR blocks: "
+                u"{} {} {}".format(type(block), block, folded_ir_blocks)
+            )
 
         new_folded_ir_blocks.append(new_block)
 
@@ -331,8 +361,10 @@ def lower_folded_outputs_and_context_fields(ir_blocks):
     folds, remaining_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
 
     if not remaining_ir_blocks:
-        raise AssertionError(u'Expected at least one non-folded block to remain: {} {} '
-                             u'{}'.format(folds, remaining_ir_blocks, ir_blocks))
+        raise AssertionError(
+            u"Expected at least one non-folded block to remain: {} {} "
+            u"{}".format(folds, remaining_ir_blocks, ir_blocks)
+        )
 
     # Turn folded Filter blocks into GremlinFoldedFilter blocks.
     converted_folds = {
@@ -346,8 +378,10 @@ def lower_folded_outputs_and_context_fields(ir_blocks):
         base_fold_location_name = folded_context_field.fold_scope_location.get_location_name()[0]
         folded_ir_blocks = converted_folds[base_fold_location_name]
         return GremlinFoldedContextField(
-            folded_context_field.fold_scope_location, folded_ir_blocks,
-            folded_context_field.field_type)
+            folded_context_field.fold_scope_location,
+            folded_ir_blocks,
+            folded_context_field.field_type,
+        )
 
     visitor_fn = make_type_replacement_visitor(FoldedContextField, rewriter_fn)
 

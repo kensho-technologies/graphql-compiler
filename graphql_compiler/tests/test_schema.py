@@ -3,10 +3,11 @@
 from collections import OrderedDict
 from datetime import date, datetime
 from decimal import Decimal
+import re
 import unittest
 
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
-from graphql.utils.schema_printer import print_schema
+from graphql.utilities.schema_printer import print_schema
 import pytz
 import six
 
@@ -21,34 +22,43 @@ class SchemaTests(unittest.TestCase):
         # string representation, which is standardized GraphQL and has to contain all their info.
         def _get_directives_in_string_form(directives):
             """Return a set of directives in their string form, from the native directive type."""
-            fake_query_type = GraphQLObjectType('Query',
-                                                fields={'foo': GraphQLField(GraphQLString)})
+            fake_query_type = GraphQLObjectType(
+                "Query", fields={"foo": GraphQLField(GraphQLString)}
+            )
             fake_schema = GraphQLSchema(fake_query_type, directives=directives)
 
-            schema_lines = [
-                line.strip()
-                for line in print_schema(fake_schema).split('\n')
+            # Split schema on double line breaks where the following character is not a space.
+            # It is not possible to simply split on double line breaks because print_schema puts a
+            # double line break between GraphQLArguments. The not space character is retained and
+            # reattached to the rest of the line.
+            split_schema_lines = [
+                line.strip() for line in re.split("\n\n([^ ])", print_schema(fake_schema))
             ]
 
-            return {
-                line
-                for line in schema_lines
-                if line.startswith('directive')
-            }
+            # Reattach the delimiter's character to the rest of the line. The first line does
+            # not have a separated character from regular expression splitting.
+            schema_lines = [split_schema_lines[0]] + [
+                delimiter_character + line
+                for delimiter_character, line in zip(
+                    split_schema_lines[1::2], split_schema_lines[2::2]
+                )
+            ]
 
-        test_directives = _get_directives_in_string_form(get_schema().get_directives())
+            return {line for line in schema_lines if line.startswith("directive")}
+
+        test_directives = _get_directives_in_string_form(get_schema().directives)
         actual_directives = _get_directives_in_string_form(schema.DIRECTIVES)
         self.assertEqual(test_directives, actual_directives)
 
     def test_decimal_serialization_and_parsing(self):
         test_data = {
-            '0': Decimal(0),
-            '123': Decimal(123),
-            '-234': Decimal(-234),
-            '-12345678.01234567': Decimal('-12345678.01234567'),
-            '12345678.01234567': Decimal('12345678.01234567'),
-            'Infinity': Decimal('Infinity'),
-            '-Infinity': Decimal('-Infinity'),
+            "0": Decimal(0),
+            "123": Decimal(123),
+            "-234": Decimal(-234),
+            "-12345678.01234567": Decimal("-12345678.01234567"),
+            "12345678.01234567": Decimal("12345678.01234567"),
+            "Infinity": Decimal("Infinity"),
+            "-Infinity": Decimal("-Infinity"),
         }
 
         for serialized_decimal, decimal_obj in six.iteritems(test_data):
@@ -57,9 +67,9 @@ class SchemaTests(unittest.TestCase):
 
     def test_date_serialization_and_parsing(self):
         test_data = {
-            '2017-01-01': date(2017, 1, 1),
-            '2008-02-29': date(2008, 2, 29),
-            '1991-12-31': date(1991, 12, 31),
+            "2017-01-01": date(2017, 1, 1),
+            "2008-02-29": date(2008, 2, 29),
+            "1991-12-31": date(1991, 12, 31),
         }
 
         for iso_date, date_obj in six.iteritems(test_data):
@@ -67,27 +77,27 @@ class SchemaTests(unittest.TestCase):
             self.assertEqual(date_obj, schema.GraphQLDate.parse_value(iso_date))
 
     def test_datetime_serialization_and_parsing(self):
-        eastern_us_tz = pytz.timezone('US/Eastern')
-        central_eu_tz = pytz.timezone('Europe/Amsterdam')
+        eastern_us_tz = pytz.timezone("US/Eastern")
+        central_eu_tz = pytz.timezone("Europe/Amsterdam")
 
         test_data = {
             # Timezone offsets.
             # N.B.: See the link below to understand why we use localize() to set the time zone.
             # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
-            '2017-01-01T00:00:00+00:00': datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
-            '2017-01-01T00:00:00+01:00': central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
-            '2017-01-01T00:00:00-05:00': eastern_us_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
-
+            "2017-01-01T00:00:00+00:00": datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
+            "2017-01-01T00:00:00+01:00": central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
+            "2017-01-01T00:00:00-05:00": eastern_us_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
             # Leap day.
-            '2008-02-29T22:34:56+00:00': datetime(2008, 2, 29, 22, 34, 56, tzinfo=pytz.utc),
-
+            "2008-02-29T22:34:56+00:00": datetime(2008, 2, 29, 22, 34, 56, tzinfo=pytz.utc),
             # High numbers in all positions, except year and timezone.
-            '1991-12-31T23:59:59+00:00': datetime(1991, 12, 31, 23, 59, 59, tzinfo=pytz.utc),
+            "1991-12-31T23:59:59+00:00": datetime(1991, 12, 31, 23, 59, 59, tzinfo=pytz.utc),
         }
 
         # Special case: a "Z" suffix == "00:00" timezone
-        self.assertEqual(datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
-                         schema.GraphQLDateTime.parse_value('2017-01-01T00:00:00Z'))
+        self.assertEqual(
+            datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
+            schema.GraphQLDateTime.parse_value("2017-01-01T00:00:00Z"),
+        )
 
         for iso_datetime, datetime_obj in six.iteritems(test_data):
             self.assertEqual(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
@@ -95,19 +105,20 @@ class SchemaTests(unittest.TestCase):
 
     def test_meta_fields_from_constant(self):
         fields = schema.EXTENDED_META_FIELD_DEFINITIONS.copy()
-        fields.update(OrderedDict((
-            ('foo', GraphQLField(GraphQLString)),
-            ('bar', GraphQLField(GraphQLInt)),
-        )))
-        graphql_type = GraphQLObjectType('MyType', fields)
+        fields.update(
+            OrderedDict((("foo", GraphQLField(GraphQLString)), ("bar", GraphQLField(GraphQLInt)),))
+        )
+        graphql_type = GraphQLObjectType("MyType", fields)
         custom_schema = GraphQLSchema(graphql_type, directives=schema.DIRECTIVES)
 
         # Ensure that stringifying and parsing this schema works just fine.
         printed_schema = print_schema(custom_schema)
-        expected_type_definition = '''\
+        expected_type_definition = """\
 type MyType {
     _x_count: Int
     foo: String
     bar: Int
-}'''.replace('    ', '  ')  # 2 space indentation instead of 4 spaces
+}""".replace(
+            "    ", "  "
+        )  # 2 space indentation instead of 4 spaces
         self.assertIn(expected_type_definition, printed_schema)

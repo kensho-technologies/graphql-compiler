@@ -5,7 +5,10 @@ from graphql import build_ast_schema, parse
 import six
 
 from ...schema_transformation.merge_schemas import (
-    CrossSchemaEdgeDescriptor, FieldReference, MergedSchemaDescriptor, merge_schemas
+    CrossSchemaEdgeDescriptor,
+    FieldReference,
+    MergedSchemaDescriptor,
+    merge_schemas,
 )
 from ...schema_transformation.rename_schema import rename_schema
 from ..test_helpers import SCHEMA_TEXT
@@ -15,11 +18,11 @@ basic_schema = parse(SCHEMA_TEXT)
 
 
 basic_renamed_schema = rename_schema(
-    basic_schema, {'Animal': 'NewAnimal', 'Entity': 'NewEntity', 'BirthEvent': 'NewBirthEvent'}
+    basic_schema, {"Animal": "NewAnimal", "Entity": "NewEntity", "BirthEvent": "NewBirthEvent"}
 )
 
 
-basic_additional_schema = '''
+basic_additional_schema = """
 schema {
   query: SchemaQuery
 }
@@ -33,26 +36,19 @@ type Creature {
 type SchemaQuery {
   Creature: Creature
 }
-'''
+"""
 
 
 basic_merged_schema = merge_schemas(
-    OrderedDict([
-        ('first', basic_schema),
-        ('second', parse(basic_additional_schema)),
-    ]),
+    OrderedDict([("first", basic_schema), ("second", parse(basic_additional_schema)),]),
     [
         CrossSchemaEdgeDescriptor(
-            edge_name='Animal_Creature',
+            edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id='first',
-                type_name='Animal',
-                field_name='uuid',
+                schema_id="first", type_name="Animal", field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
-                schema_id='second',
-                type_name='Creature',
-                field_name='id'
+                schema_id="second", type_name="Creature", field_name="id"
             ),
             out_edge_only=False,
         ),
@@ -60,7 +56,7 @@ basic_merged_schema = merge_schemas(
 )
 
 
-interface_additional_schema = '''
+interface_additional_schema = """
 schema {
   query: SchemaQuery
 }
@@ -87,26 +83,19 @@ type SchemaQuery {
   Cat: Cat
   Dog: Dog
 }
-'''
+"""
 
 
 interface_merged_schema = merge_schemas(
-    OrderedDict([
-        ('first', basic_schema),
-        ('second', parse(interface_additional_schema)),
-    ]),
+    OrderedDict([("first", basic_schema), ("second", parse(interface_additional_schema)),]),
     [
         CrossSchemaEdgeDescriptor(
-            edge_name='Animal_Creature',
+            edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id='first',
-                type_name='Animal',
-                field_name='uuid',
+                schema_id="first", type_name="Animal", field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
-                schema_id='second',
-                type_name='Creature',
-                field_name='id'
+                schema_id="second", type_name="Creature", field_name="id"
             ),
             out_edge_only=False,
         ),
@@ -127,7 +116,7 @@ def _get_type_equivalence_hints(schema_id_to_ast, type_equivalence_hints_names):
     name_to_type = {}
     for ast in six.itervalues(schema_id_to_ast):
         schema = build_ast_schema(ast)
-        name_to_type.update(schema.get_type_map())
+        name_to_type.update(schema.type_map)
     type_equivalence_hints = {}
     for object_type_name, union_type_name in six.iteritems(type_equivalence_hints_names):
         object_type = name_to_type[object_type_name]
@@ -136,7 +125,7 @@ def _get_type_equivalence_hints(schema_id_to_ast, type_equivalence_hints_names):
     return type_equivalence_hints
 
 
-union_additional_schema = '''
+union_additional_schema = """
 schema {
   query: SchemaQuery
 }
@@ -157,38 +146,33 @@ type SchemaQuery {
   Creature: Creature
   Cat: Cat
 }
-'''
+"""
 
 
-union_schema_id_to_ast = OrderedDict([
-    ('first', basic_schema),
-    ('second', parse(union_additional_schema)),
-])
+union_schema_id_to_ast = OrderedDict(
+    [("first", basic_schema), ("second", parse(union_additional_schema)),]
+)
 
 
 union_merged_schema = merge_schemas(
     union_schema_id_to_ast,
     [
         CrossSchemaEdgeDescriptor(
-            edge_name='Animal_Creature',
+            edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id='first',
-                type_name='Animal',
-                field_name='uuid',
+                schema_id="first", type_name="Animal", field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
-                schema_id='second',
-                type_name='Creature',
-                field_name='id'
+                schema_id="second", type_name="Creature", field_name="id"
             ),
             out_edge_only=False,
         ),
     ],
-    _get_type_equivalence_hints(union_schema_id_to_ast, {'Creature': 'CreatureOrCat'})
+    _get_type_equivalence_hints(union_schema_id_to_ast, {"Creature": "CreatureOrCat"}),
 )
 
 
-third_additional_schema = '''
+third_additional_schema = """
 schema {
   query: SchemaQuery
 }
@@ -201,41 +185,35 @@ type Critter {
 type SchemaQuery {
   Critter: Critter
 }
-'''
+"""
 
 
 three_merged_schema = merge_schemas(
-    OrderedDict([
-        ('first', basic_schema),
-        ('second', parse(basic_additional_schema)),
-        ('third', parse(third_additional_schema)),
-    ]),
+    OrderedDict(
+        [
+            ("first", basic_schema),
+            ("second", parse(basic_additional_schema)),
+            ("third", parse(third_additional_schema)),
+        ]
+    ),
     [
         CrossSchemaEdgeDescriptor(
-            edge_name='Animal_Creature',
+            edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id='first',
-                type_name='Animal',
-                field_name='uuid',
+                schema_id="first", type_name="Animal", field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
-                schema_id='second',
-                type_name='Creature',
-                field_name='id'
+                schema_id="second", type_name="Creature", field_name="id"
             ),
             out_edge_only=False,
         ),
         CrossSchemaEdgeDescriptor(
-            edge_name='Animal_Critter',
+            edge_name="Animal_Critter",
             outbound_field_reference=FieldReference(
-                schema_id='first',
-                type_name='Animal',
-                field_name='uuid',
+                schema_id="first", type_name="Animal", field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
-                schema_id='third',
-                type_name='Critter',
-                field_name='ID'
+                schema_id="third", type_name="Critter", field_name="ID"
             ),
             out_edge_only=False,
         ),
@@ -243,7 +221,7 @@ three_merged_schema = merge_schemas(
 )
 
 
-stitch_arguments_flipped_schema_str = '''
+stitch_arguments_flipped_schema_str = """
 schema {
   query: SchemaQuery
 }
@@ -265,12 +243,14 @@ type SchemaQuery {
   Creature: Creature
 }
 
+directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
 directive @output(out_name: String!) on FIELD
-'''
+"""
 
 
 stitch_arguments_flipped_schema = MergedSchemaDescriptor(
     schema_ast=parse(stitch_arguments_flipped_schema_str),
     schema=build_ast_schema(parse(stitch_arguments_flipped_schema_str)),
-    type_name_to_schema_id={'Animal': 'first', 'Creature': 'second'},
+    type_name_to_schema_id={"Animal": "first", "Creature": "second"},
 )

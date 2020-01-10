@@ -4,8 +4,16 @@ from copy import copy
 
 from graphql import print_ast
 from graphql.language.ast import (
-    Argument, Directive, Document, Field, InlineFragment, ListValue, Name, OperationDefinition,
-    SelectionSet, StringValue
+    ArgumentNode,
+    DirectiveNode,
+    DocumentNode,
+    FieldNode,
+    InlineFragmentNode,
+    ListValueNode,
+    NameNode,
+    OperationDefinitionNode,
+    SelectionSetNode,
+    StringValueNode,
 )
 
 from ..ast_manipulation import get_only_query_definition
@@ -14,31 +22,34 @@ from ..schema import FilterDirective, OutputDirective
 
 
 SubQueryPlan = namedtuple(
-    'SubQueryPlan', (
-        'query_ast',  # Document, representing a piece of the overall query with directives added
-        'schema_id',  # str, identifying the schema that this query piece targets
-        'parent_query_plan',  # SubQueryPlan, the query that the current query depends on
-        'child_query_plans',  # List[SubQueryPlan], the queries that depend on the current query
-    )
+    "SubQueryPlan",
+    (
+        "query_ast",  # Document, representing a piece of the overall query with directives added
+        "schema_id",  # str, identifying the schema that this query piece targets
+        "parent_query_plan",  # SubQueryPlan, the query that the current query depends on
+        "child_query_plans",  # List[SubQueryPlan], the queries that depend on the current query
+    ),
 )
 
 
 OutputJoinDescriptor = namedtuple(
-    'OutputJoinDescriptor', (
-        'output_names',  # Tuple[str, str], (parent output name, child output name)
+    "OutputJoinDescriptor",
+    (
+        "output_names",  # Tuple[str, str], (parent output name, child output name)
         # May be expanded to have more attributes, e.g. is_optional, describing how the join
         # should be made
-    )
+    ),
 )
 
 
 QueryPlanDescriptor = namedtuple(
-    'QueryPlanDescriptor', (
-        'root_sub_query_plan',  # SubQueryPlan
-        'intermediate_output_names',  # frozenset[str], names of outputs to be removed at the end
-        'output_join_descriptors',
+    "QueryPlanDescriptor",
+    (
+        "root_sub_query_plan",  # SubQueryPlan
+        "intermediate_output_names",  # frozenset[str], names of outputs to be removed at the end
+        "output_join_descriptors",
         # List[OutputJoinDescriptor], describing which outputs should be joined and how
-    )
+    ),
 )
 
 
@@ -108,7 +119,9 @@ def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descr
             child_sub_query_node.query_ast, GraphQLValidationError
         )
         child_query_type_with_filter = _add_filter_at_field_with_output(
-            child_query_type, child_out_name, parent_out_name
+            child_query_type,
+            child_out_name,
+            parent_out_name
             # @filter's local variable is named the same as the out_name of the parent's @output
         )
         if child_query_type is child_query_type_with_filter:
@@ -117,9 +130,7 @@ def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descr
                 u'AST "{}".'.format(child_out_name, child_query_type)
             )
         else:
-            new_child_query_ast = Document(
-                definitions=[child_query_type_with_filter]
-            )
+            new_child_query_ast = DocumentNode(definitions=[child_query_type_with_filter])
 
         # Create new SubQueryPlan for child
         child_sub_query_plan = SubQueryPlan(
@@ -161,22 +172,19 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
         with an @filter added at the specified field if such a field is found. If no changes
         were made, this is the same object as the input
     """
-    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+    if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
             u'Input AST is of type "{}", which should not be a selection.'
-            u''.format(type(ast).__name__)
+            u"".format(type(ast).__name__)
         )
 
-    if isinstance(ast, Field):
+    if isinstance(ast, FieldNode):
         # Check whether this field has the expected directive, if so, modify and return
-        if (
-            ast.directives is not None and
-            any(
-                _is_output_directive_with_name(directive, field_out_name)
-                for directive in ast.directives
-            )
+        if ast.directives is not None and any(
+            _is_output_directive_with_name(directive, field_out_name)
+            for directive in ast.directives
         ):
-            new_directives = copy(ast.directives)
+            new_directives = list(ast.directives)
             new_directives.append(_get_in_collection_filter_directive(input_filter_name))
             new_ast = copy(ast)
             new_ast.directives = new_directives
@@ -207,7 +215,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
 
     if made_changes:
         new_ast = copy(ast)
-        new_ast.selection_set = SelectionSet(selections=new_selections)
+        new_ast.selection_set = SelectionSetNode(selections=new_selections)
         return new_ast
     else:
         return ast
@@ -215,30 +223,25 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
 
 def _is_output_directive_with_name(directive, out_name):
     """Return whether or not the input is an @output directive with the desired out_name."""
-    if not isinstance(directive, Directive):
+    if not isinstance(directive, DirectiveNode):
         raise AssertionError(u'Input "{}" is not a directive.'.format(directive))
     return (
-        directive.name.value == OutputDirective.name and
-        directive.arguments[0].value.value == out_name
+        directive.name.value == OutputDirective.name
+        and directive.arguments[0].value.value == out_name
     )
 
 
 def _get_in_collection_filter_directive(input_filter_name):
     """Create a @filter directive with in_collecion operation and the desired variable name."""
-    return Directive(
-        name=Name(value=FilterDirective.name),
+    return DirectiveNode(
+        name=NameNode(value=FilterDirective.name),
         arguments=[
-            Argument(
-                name=Name(value='op_name'),
-                value=StringValue(value='in_collection'),
+            ArgumentNode(
+                name=NameNode(value="op_name"), value=StringValueNode(value="in_collection"),
             ),
-            Argument(
-                name=Name(value='value'),
-                value=ListValue(
-                    values=[
-                        StringValue(value=u'$' + input_filter_name),
-                    ],
-                ),
+            ArgumentNode(
+                name=NameNode(value="value"),
+                value=ListValueNode(values=[StringValueNode(value=u"$" + input_filter_name),],),
             ),
         ],
     )
@@ -246,28 +249,29 @@ def _get_in_collection_filter_directive(input_filter_name):
 
 def print_query_plan(query_plan_descriptor, indentation_depth=4):
     """Return a string describing query plan."""
-    query_plan_strings = [u'']
+    query_plan_strings = [u""]
     plan_and_depth = _get_plan_and_depth_in_dfs_order(query_plan_descriptor.root_sub_query_plan)
 
     for query_plan, depth in plan_and_depth:
-        line_separation = u'\n' + u' ' * indentation_depth * depth
+        line_separation = u"\n" + u" " * indentation_depth * depth
         query_plan_strings.append(line_separation)
 
         query_str = u'Execute in schema named "{}":\n'.format(query_plan.schema_id)
         query_str += print_ast(query_plan.query_ast)
-        query_str = query_str.replace(u'\n', line_separation)
+        query_str = query_str.replace(u"\n", line_separation)
         query_plan_strings.append(query_str)
 
-    query_plan_strings.append(u'\n\nJoin together outputs as follows: ')
+    query_plan_strings.append(u"\n\nJoin together outputs as follows: ")
     query_plan_strings.append(str(query_plan_descriptor.output_join_descriptors))
-    query_plan_strings.append(u'\n\nRemove the following outputs at the end: ')
-    query_plan_strings.append(str(query_plan_descriptor.intermediate_output_names) + u'\n')
+    query_plan_strings.append(u"\n\nRemove the following outputs at the end: ")
+    query_plan_strings.append(str(query_plan_descriptor.intermediate_output_names) + u"\n")
 
-    return ''.join(query_plan_strings)
+    return "".join(query_plan_strings)
 
 
 def _get_plan_and_depth_in_dfs_order(query_plan):
     """Return a list of topologically sorted (query plan, depth) tuples."""
+
     def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
         plan_and_depth_in_dfs_order = [(query_plan, depth)]
         for child_query_plan in query_plan.child_query_plans:
@@ -275,4 +279,5 @@ def _get_plan_and_depth_in_dfs_order(query_plan):
                 _get_plan_and_depth_in_dfs_order_helper(child_query_plan, depth + 1)
             )
         return plan_and_depth_in_dfs_order
+
     return _get_plan_and_depth_in_dfs_order_helper(query_plan, 0)

@@ -6,18 +6,23 @@ from graphql.language.visitor import Visitor, visit
 import six
 
 from .utils import (
-    SchemaNameConflictError, check_ast_schema_is_valid, check_type_name_is_valid,
-    get_copy_of_node_with_new_name, get_query_type_name, get_scalar_names
+    SchemaNameConflictError,
+    check_ast_schema_is_valid,
+    check_type_name_is_valid,
+    get_copy_of_node_with_new_name,
+    get_query_type_name,
+    get_scalar_names,
 )
 
 
 RenamedSchemaDescriptor = namedtuple(
-    'RenamedSchemaDescriptor', (
-        'schema_ast',  # Document, AST representing the renamed schema
-        'schema',  # GraphQLSchema, representing the same schema as schema_ast
-        'reverse_name_map',  # Dict[str, str], renamed type/query type field name to original name
+    "RenamedSchemaDescriptor",
+    (
+        "schema_ast",  # Document, AST representing the renamed schema
+        "schema",  # GraphQLSchema, representing the same schema as schema_ast
+        "reverse_name_map",  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
-    )
+    ),
 )
 
 
@@ -70,7 +75,6 @@ def rename_schema(ast, renamings):
 
     # Rename query type fields
     ast = _rename_query_type_fields(ast, renamings, query_type)
-
     return RenamedSchemaDescriptor(
         schema_ast=ast,
         schema=build_ast_schema(ast),
@@ -115,13 +119,13 @@ def _rename_query_type_fields(ast, renamings, query_type):
     The input AST will not be modified.
 
     Args:
-        ast: Document, the schema that we're returning a modified version of
+        ast: DocumentNode, the schema that we're returning a modified version of
         renamings: Dict[str, str], mapping original field name to renamed name. If a name
                    does not appear in the dict, it will be unchanged
         query_type: string, name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
-        Document, representing the modified version of the input schema AST
+        DocumentNode, representing the modified version of the input schema AST
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
@@ -131,46 +135,56 @@ def _rename_query_type_fields(ast, renamings, query_type):
 class RenameSchemaTypesVisitor(Visitor):
     """Traverse a Document AST, editing the names of nodes."""
 
-    noop_types = frozenset({
-        'Argument',
-        'BooleanValue',
-        'Directive',
-        'DirectiveDefinition',
-        'Document',
-        'EnumValue',
-        'EnumValueDefinition',
-        'Field',
-        'FieldDefinition',
-        'FloatValue',
-        'FragmentDefinition',
-        'FragmentSpread',
-        'InlineFragment',
-        'InputObjectTypeDefinition',
-        'InputValueDefinition',
-        'IntValue',
-        'ListType',
-        'ListValue',
-        'Name',
-        'NonNullType',
-        'ObjectField',
-        'ObjectValue',
-        'OperationDefinition',
-        'OperationTypeDefinition',
-        'ScalarTypeDefinition',
-        'SchemaDefinition',
-        'SelectionSet',
-        'StringValue',
-        'TypeExtensionDefinition',
-        'Variable',
-        'VariableDefinition',
-    })
-    rename_types = frozenset({
-        'EnumTypeDefinition',
-        'InterfaceTypeDefinition',
-        'NamedType',
-        'ObjectTypeDefinition',
-        'UnionTypeDefinition',
-    })
+    noop_types = frozenset(
+        {
+            "ArgumentNode",
+            "BooleanValueNode",
+            "DirectiveNode",
+            "DirectiveDefinitionNode",
+            "DocumentNode",
+            "EnumValueNode",
+            "EnumValueDefinitionNode",
+            "FieldNode",
+            "FieldDefinitionNode",
+            "FloatValueNode",
+            "FragmentDefinitionNode",
+            "FragmentSpreadNode",
+            "InlineFragmentNode",
+            "InputObjectTypeDefinitionNode",
+            "InputValueDefinitionNode",
+            "IntValueNode",
+            "ListTypeNode",
+            "ListValueNode",
+            "NameNode",
+            "NonNullTypeNode",
+            "ObjectFieldNode",
+            "ObjectValueNode",
+            "OperationDefinitionNode",
+            "OperationTypeDefinitionNode",
+            "ScalarTypeDefinitionNode",
+            "SchemaDefinitionNode",
+            "SelectionSetNode",
+            "StringValueNode",
+            "VariableNode",
+            "VariableDefinitionNode",
+            "SchemaExtensionNode",
+            "InterfaceTypeExtensionNode",
+            "UnionTypeExtensionNode",
+            "EnumTypeExtensionNode",
+            "ObjectTypeExtensionNode",
+            "InputObjectTypeExtensionNode",
+            "ScalarTypeExtensionNode",
+        }
+    )
+    rename_types = frozenset(
+        {
+            "EnumTypeDefinitionNode",
+            "InterfaceTypeDefinitionNode",
+            "NamedTypeNode",
+            "ObjectTypeDefinitionNode",
+            "UnionTypeDefinitionNode",
+        }
+    )
 
     def __init__(self, renamings, query_type, scalar_types):
         """Create a visitor for renaming types in a schema AST.
@@ -188,7 +202,7 @@ class RenameSchemaTypesVisitor(Visitor):
         # reverse_name_map contains all types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
-        self.builtin_types = frozenset({'String', 'Int', 'Float', 'Boolean', 'ID'})
+        self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
     def _rename_name_and_add_to_record(self, node):
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
@@ -198,9 +212,10 @@ class RenameSchemaTypesVisitor(Visitor):
         The input node will not be modified. reverse_name_map may be modified.
 
         Args:
-            node: EnumTypeDefinition, InterfaceTypeDefinition, NamedTuple, ObjectTypeDefinition,
-                  or UnionTypeDefinition. An object representing an AST component, containing a
-                  .name attribute corresponding to an AST node of type Name.
+            node: EnumTypeDefinitionNode, InterfaceTypeDefinitionNode, NamedTypeNode,
+                  ObjectTypeDefinitionNode, or UnionTypeDefinitionNode. An object representing an
+                  AST component, containing a .name attribute corresponding to an AST node of type
+                  NameNode.
 
         Returns:
             Node object, identical to the input node, except with possibly a new name. If the
@@ -220,8 +235,8 @@ class RenameSchemaTypesVisitor(Visitor):
         check_type_name_is_valid(new_name_string)
 
         if (
-            new_name_string in self.reverse_name_map and
-            self.reverse_name_map[new_name_string] != name_string
+            new_name_string in self.reverse_name_map
+            and self.reverse_name_map[new_name_string] != name_string
         ):
             raise SchemaNameConflictError(
                 u'"{}" and "{}" are both renamed to "{}"'.format(
@@ -277,17 +292,17 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         self.renamings = renamings
         self.query_type = query_type
 
-    def enter_ObjectTypeDefinition(self, node, *args):
+    def enter_object_type_definition(self, node, *args):
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_ObjectTypeDefinition(self, node, key, parent, path, ancestors):
+    def leave_object_type_definition(self, node, key, parent, path, ancestors):
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_FieldDefinition(self, node, *args):
+    def enter_field_definition(self, node, *args):
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
