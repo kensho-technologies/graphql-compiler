@@ -71,13 +71,13 @@ def _convert_uuid_string_to_int(uuid_string):
 
 
 def _get_query_interval_of_binary_integer_inequality_filter(
-    parameter_values: List[int], filter_operator: str
+    filter_operator: str, parameter_value: int
 ) -> Interval[int]:
     """Return interval of values passing through a binary integer inequality filter.
 
     Args:
-        parameter_values: the parameters for the inequality filter.
         filter_operator: the binary inequality filter operation being performed.
+        parameter_value: the one and only parameter value given to the filter
 
     Returns:
          interval of values that pass through the filter.
@@ -85,15 +85,8 @@ def _get_query_interval_of_binary_integer_inequality_filter(
     Raises:
         ValueError if the number of parameter values is not exactly one.
     """
-    if len(parameter_values) != 1:
-        raise ValueError(
-            u"Binary inequality filter should have "
-            u"exactly one parameter value: {} {}".format(parameter_values, filter_operator)
-        )
-
     lower_bound, upper_bound = None, None
 
-    parameter_value = parameter_values[0]
     if filter_operator == ">":
         lower_bound = parameter_value + 1
     elif filter_operator == ">=":
@@ -112,13 +105,14 @@ def _get_query_interval_of_binary_integer_inequality_filter(
 
 
 def _get_query_interval_of_ternary_integer_inequality_filter(
-    parameter_values: List[int], filter_operator: str
+    filter_operator: str, parameter_value_1: int, parameter_value_2: int
 ) -> Interval[int]:
     """Return interval of values passing through a ternary integer inequality filter.
 
     Args:
-        parameter_values: the parameters for the inequality filter.
         filter_operator: the ternary inequality filter operation being performed.
+        parameter_value_1: the first parameter value given to the filter
+        parameter_value_2: the second parameter value given to the filter
 
     Returns:
         interval of values that pass through the filter.
@@ -126,17 +120,11 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
     Raises:
         ValueError if the number of parameter values is not exactly two.
     """
-    if len(parameter_values) != 2:
-        raise ValueError(
-            u"Ternary inequality filter should have "
-            u"exactly two parameter values: {} {}".format(parameter_values, filter_operator)
-        )
-
     lower_bound, upper_bound = None, None
 
     if filter_operator == "between":
-        lower_bound = parameter_values[0]
-        upper_bound = parameter_values[1]
+        lower_bound = parameter_value_1
+        upper_bound = parameter_value_2
     else:
         raise AssertionError(
             u"Cost estimator found unsupported "
@@ -160,11 +148,11 @@ def _get_query_interval_of_integer_inequality_filter(
     """
     if len(parameter_values) == 1:
         query_interval = _get_query_interval_of_binary_integer_inequality_filter(
-            parameter_values, filter_operator
+            filter_operator, parameter_values[0]
         )
     elif len(parameter_values) == 2:
         query_interval = _get_query_interval_of_ternary_integer_inequality_filter(
-            parameter_values, filter_operator
+            filter_operator, parameter_values[0], parameter_values[1]
         )
     else:
         raise AssertionError(
