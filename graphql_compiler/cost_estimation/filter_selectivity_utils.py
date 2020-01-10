@@ -73,14 +73,14 @@ def _convert_uuid_string_to_int(uuid_string):
 def _get_query_interval_of_binary_integer_inequality_filter(
     parameter_values: List[int], filter_operator: str
 ) -> Interval[int]:
-    """Return Interval[int] of values passing through a binary integer inequality filter.
+    """Return interval of values passing through a binary integer inequality filter.
 
     Args:
-        parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the binary inequality filter operation being performed.
+        parameter_values: the parameters for the inequality filter.
+        filter_operator: the binary inequality filter operation being performed.
 
     Returns:
-         Interval[int] of values that pass through the filter.
+         interval of values that pass through the filter.
 
     Raises:
         ValueError if the number of parameter values is not exactly one.
@@ -114,14 +114,14 @@ def _get_query_interval_of_binary_integer_inequality_filter(
 def _get_query_interval_of_ternary_integer_inequality_filter(
     parameter_values: List[int], filter_operator: str
 ) -> Interval[int]:
-    """Return Interval[int] of values passing through a ternary integer inequality filter.
+    """Return interval of values passing through a ternary integer inequality filter.
 
     Args:
-        parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the ternary inequality filter operation being performed.
+        parameter_values: the parameters for the inequality filter.
+        filter_operator: the ternary inequality filter operation being performed.
 
     Returns:
-        Integer[int] interval of values that pass through the filter.
+        interval of values that pass through the filter.
 
     Raises:
         ValueError if the number of parameter values is not exactly two.
@@ -149,14 +149,14 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
 def _get_query_interval_of_integer_inequality_filter(
     parameter_values: List[int], filter_operator: str
 ) -> Interval[int]:
-    """Return Interval[int] of values passing through a given integer inequality filter.
+    """Return interval of values passing through a given integer inequality filter.
 
     Args:
-        parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the inequality filter operation being performed.
+        parameter_values: the parameters for the inequality filter.
+        filter_operator: the inequality filter operation being performed.
 
     Returns:
-        Interval[int] of values that pass through the filter.
+        interval of values that pass through the filter.
     """
     if len(parameter_values) == 1:
         query_interval = _get_query_interval_of_binary_integer_inequality_filter(
