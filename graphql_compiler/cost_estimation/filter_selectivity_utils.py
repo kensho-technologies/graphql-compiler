@@ -11,7 +11,7 @@ import six
 
 from ..compiler.helpers import get_parameter_name
 from .helpers import is_int_field_type, is_uuid4_type
-from .interval import Interval, IntervalDomain, intersect_intervals, measure_int_interval
+from .interval import Interval, IntervalDomain, intersect_int_intervals, measure_int_interval
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -347,7 +347,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     filter_interval = _get_query_interval_of_integer_inequality_filter(
                         parameter_values, filter_info.op_name
                     )
-                    interval = intersect_intervals(interval, filter_interval)
+                    interval = intersect_int_intervals(interval, filter_interval)
 
             if interval is None:
                 selectivity_at_field = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=0.0)
@@ -355,7 +355,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 # uuid4 fields are uniformly distributed, so we simply divide the fraction of
                 # the domain queried with the size of the domain.
                 domain_interval = Interval[int](MIN_UUID_INT, MAX_UUID_INT)
-                interval = intersect_intervals(interval, domain_interval)
+                interval = intersect_int_intervals(interval, domain_interval)
                 fraction_of_domain_queried = float(
                     measure_int_interval(interval)
                 ) / measure_int_interval(domain_interval)

@@ -66,9 +66,7 @@ def _get_stronger_upper_bound(
     return stronger_upper_bound
 
 
-def intersect_intervals(
-    interval_a: Interval[IntervalDomain], interval_b: Interval[IntervalDomain]
-) -> Interval[IntervalDomain]:
+def intersect_int_intervals(interval_a: Interval[int], interval_b: Interval[int]) -> Interval[int]:
     """Return the intersection of two Intervals."""
     strong_lower_bound = _get_stronger_lower_bound(interval_a.lower_bound, interval_b.lower_bound)
     strong_upper_bound = _get_stronger_upper_bound(interval_a.upper_bound, interval_b.upper_bound)
