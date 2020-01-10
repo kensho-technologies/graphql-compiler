@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import List, Tuple
+from typing import Tuple
 
 from graphql import DocumentNode
 
@@ -68,7 +68,7 @@ class PaginationPlan:
     vertex_partitions: Tuple[VertexPartitionPlan, ...]
 
 
-def get_num_pages_generated_by_plan(plan: PaginationPlan) -> int:
+def get_plan_page_count(plan: PaginationPlan) -> int:
     """Return the number of pages that a PaginationPlan would generate."""
     number_of_pages = 0
     for vertex_partition in plan.vertex_partitions:
@@ -78,7 +78,7 @@ def get_num_pages_generated_by_plan(plan: PaginationPlan) -> int:
 
 def get_pagination_plan(
     schema_info: QueryPlanningSchemaInfo, query_ast: DocumentNode, number_of_pages: int
-) -> Tuple[PaginationPlan, List[PaginationAdvisory]]:
+) -> Tuple[PaginationPlan, Tuple[PaginationAdvisory, ...]]:
     """Make a best-effort PaginationPlan and advise on how to improve statistics.
 
     Might paginate to fewer than the desired number of pages if no good pagination plan
@@ -95,7 +95,7 @@ def get_pagination_plan(
             )
         )
     elif number_of_pages == 1:
-        return PaginationPlan(tuple()), []
+        return PaginationPlan(tuple()), tuple()
 
     # Select the root node as the only vertex to paginate on.
     # TODO(bojanserafimov): Make a better pagination plan. Selecting the root is not
@@ -107,14 +107,14 @@ def get_pagination_plan(
 
     pagination_field = schema_info.pagination_keys.get(pagination_node)
     if pagination_field is None:
-        return PaginationPlan(tuple()), [PaginationFieldNotSpecified(pagination_node)]
+        return PaginationPlan(tuple()), (PaginationFieldNotSpecified(pagination_node),)
 
     if is_uuid4_type(schema_info, pagination_node, pagination_field):
         return (
             PaginationPlan(
                 (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
             ),
-            [],
+            tuple(),
         )
     elif field_supports_range_reasoning(schema_info, pagination_node, pagination_field):
         quantiles = schema_info.statistics.get_field_quantiles(pagination_node, pagination_field)
@@ -127,43 +127,45 @@ def get_pagination_plan(
         ideal_min_num_quantiles_per_page = 5
         ideal_quantile_resolution = ideal_min_num_quantiles_per_page * number_of_pages + 1
 
+        # Construct the best plan we can with the quantiles available, and suggest any data
+        # improvements that can be made by returning PaginationAdvisories.
         if quantiles is None:
             return (
                 PaginationPlan(tuple()),
-                [
+                (
                     InsufficientQuantiles(
                         pagination_node, pagination_field, 0, ideal_quantile_resolution
-                    )
-                ],
+                    ),
+                ),
             )
         elif len(quantiles) - 1 < number_of_pages:
             return (
                 PaginationPlan(
                     (VertexPartitionPlan((pagination_node,), pagination_field, len(quantiles) - 1),)
                 ),
-                [
+                (
                     InsufficientQuantiles(
                         pagination_node, pagination_field, len(quantiles), ideal_quantile_resolution
-                    )
-                ],
+                    ),
+                ),
             )
         elif len(quantiles) < ideal_quantile_resolution:
             return (
                 PaginationPlan(
                     (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
                 ),
-                [
+                (
                     InsufficientQuantiles(
                         pagination_node, pagination_field, len(quantiles), ideal_quantile_resolution
-                    )
-                ],
+                    ),
+                ),
             )
         else:
             return (
                 PaginationPlan(
                     (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
                 ),
-                [],
+                tuple(),
             )
     else:
         vertex_type = schema_info.schema.get_type(pagination_node.name.value)

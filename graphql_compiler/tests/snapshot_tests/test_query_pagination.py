@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from typing import Any, Dict, List
+from typing import Any, Dict, Tuple
 import unittest
 
 import pytest
@@ -53,7 +53,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan((VertexPartitionPlan(("Animal",), "uuid", number_of_pages),))
-        expected_warnings: List[PaginationAdvisory] = []
+        expected_warnings: Tuple[PaginationAdvisory, ...] = tuple()
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
@@ -89,7 +89,7 @@ class QueryPaginationTests(unittest.TestCase):
         expected_plan = PaginationPlan(
             (VertexPartitionPlan(("Species",), "limbs", number_of_pages),)
         )
-        expected_warnings: List[PaginationAdvisory] = []
+        expected_warnings: Tuple[PaginationAdvisory, ...] = ()
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
@@ -121,7 +121,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
         expected_plan = PaginationPlan(tuple())
-        expected_warnings = [InsufficientQuantiles("Species", "limbs", 0, 51)]
+        expected_warnings = (InsufficientQuantiles("Species", "limbs", 0, 51),)
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
