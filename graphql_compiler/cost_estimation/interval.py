@@ -10,6 +10,7 @@ IntervalDomain = TypeVar("IntervalDomain", int, str, datetime.date, datetime.dat
 @dataclass(eq=False, frozen=True)
 class Interval(Generic[IntervalDomain]):
     """Interval of IntervalDomain values. The ends are inclusive."""
+
     lower_bound: Optional[IntervalDomain]
     upper_bound: Optional[IntervalDomain]
 
