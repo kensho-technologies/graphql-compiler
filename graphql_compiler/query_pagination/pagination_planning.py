@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from abc import ABC
 from dataclasses import dataclass, field
 from typing import List, NamedTuple, Tuple
 
@@ -12,14 +13,13 @@ from ..schema.schema_info import QueryPlanningSchemaInfo
 
 
 @dataclass
-class PaginationAdvisory(object):
-    message: str
+class PaginationAdvisory(ABC):
+    message: str = field(init=False)
 
 
 @dataclass
 class PaginationFieldNotSpecified(PaginationAdvisory):
     vertex_name: str
-    message: str = field(init=False)
 
     def __post_init__(self):
         """Initialize a human-readable message."""
@@ -36,7 +36,6 @@ class InsufficientQuantiles(PaginationAdvisory):
     field_name: str
     current_resolution: int
     desired_resolution: int
-    message: str = field(init=False)
 
     def __post_init__(self):
         """Initialize a human-readable message."""
@@ -48,7 +47,8 @@ class InsufficientQuantiles(PaginationAdvisory):
         )
 
 
-class VertexPartitionPlan(NamedTuple):
+@dataclass(frozen=True)
+class VertexPartitionPlan:
     """Plan to split the query at a certain vertex into a certain number of pages."""
 
     # field names leading to the vertex to be split
@@ -61,7 +61,8 @@ class VertexPartitionPlan(NamedTuple):
     number_of_splits: int
 
 
-class PaginationPlan(NamedTuple):
+@dataclass(frozen=True)
+class PaginationPlan:
     """Plan to split the query with a combination of VertexPartitionPlans."""
 
     vertex_partitions: Tuple[VertexPartitionPlan, ...]
