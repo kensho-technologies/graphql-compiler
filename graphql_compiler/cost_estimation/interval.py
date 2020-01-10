@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 import datetime
 from typing import Generic, Optional, TypeVar
 
