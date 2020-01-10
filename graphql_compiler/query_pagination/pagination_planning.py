@@ -22,6 +22,7 @@ class PaginationFieldNotSpecified(PaginationAdvisory):
     message: str = field(init=False)
 
     def __post_init__(self):
+        """Initialize a human-readable message."""
         self.message = (
             "Specifying a pagination field for vertex {} in the QueryPlanningSchemaInfo "
             "would have made this vertex eligible for pagination, and enabled a better "
@@ -38,6 +39,7 @@ class InsufficientQuantiles(PaginationAdvisory):
     message: str = field(init=False)
 
     def __post_init__(self):
+        """Initialize a human-readable message."""
         self.message = (
             "Pagination would have been more successful if more quantiles were provided "
             "for {}.{}. Currently there are {}, ideally there should be {}".format(
