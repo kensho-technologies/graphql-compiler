@@ -11,7 +11,7 @@ import six
 
 from ..compiler.helpers import get_parameter_name
 from .helpers import is_int_field_type, is_uuid4_type
-from .interval import Interval, IntervalDomain, intersect_intervals, measure_interval
+from .interval import Interval, IntervalDomain, intersect_intervals, measure_int_interval
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -247,7 +247,7 @@ def _combine_filter_selectivities(selectivities):
 
 def _get_selectivity_fraction_of_interval(
     interval: Interval[IntervalDomain], quantiles: List[IntervalDomain]
-):
+) -> float:
     """Get the fraction of values contained in an interval.
 
     We ignore the interval endpoint values, and only consider the quantile they
@@ -267,7 +267,7 @@ def _get_selectivity_fraction_of_interval(
         float, the fraction of the values contained in the interval.
     """
     if interval.is_empty():
-        return 0
+        return 0.0
 
     if len(quantiles) < 2:
         raise AssertionError(u"Need at least 2 quantiles: {}".format(len(quantiles)))
@@ -356,9 +356,9 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 # the domain queried with the size of the domain.
                 domain_interval = Interval[int](MIN_UUID_INT, MAX_UUID_INT)
                 interval = intersect_intervals(interval, domain_interval)
-                fraction_of_domain_queried = float(measure_interval(interval)) / measure_interval(
-                    domain_interval
-                )
+                fraction_of_domain_queried = float(
+                    measure_int_interval(interval)
+                ) / measure_int_interval(domain_interval)
                 selectivity = Selectivity(
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried
                 )

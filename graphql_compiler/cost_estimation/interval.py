@@ -27,7 +27,7 @@ class Interval(Generic[IntervalDomain]):
         return self.lower_bound == other.lower_bound and self.upper_bound == other.upper_bound
 
 
-def measure_interval(interval: Interval[int]) -> Optional[int]:
+def measure_int_interval(interval: Interval[int]) -> Optional[int]:
     """Return the size of the integer interval."""
     if interval.lower_bound is None or interval.upper_bound is None:
         return None
