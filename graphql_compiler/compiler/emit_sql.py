@@ -171,7 +171,7 @@ def compile_xmlpath(element, compiler, **kw):
 
 
 def _get_xml_path_clause(output_column, predicate_expression):
-    r"""Produce an MSSQL-style XML PATH-based aggregation subquery.
+    """Produce an MSSQL-style XML PATH-based aggregation subquery.
 
     XML PATH clause aggregates the values of the output_column from the output vertex
     properly encoded to ensure that we can reconstruct a list of the original values
@@ -182,22 +182,13 @@ def _get_xml_path_clause(output_column, predicate_expression):
     entries are delimited using '|'.
 
     All occurrences of '^', '~', and '|' in the original string values are
-    replaced with '^e' (escape), '^n' (null), and '^d' (delimiter), resp.
+    replaced with '^e' (escape), '^n' (null), and '^d' (delimiter), respectively.
 
     Undoing the encoding above, as well as the XML reference entity encoding performed
     by the XML PATH statement, is deferred to post-processing when the list is retrieved
-    from the string representation produced by the subquery.
-
-    Post-processing must split on '|', convert '~' to None, and undo both the encoding above
-    and the XML reference entity encoding auto performed by XML PATH. In particular, undo
-    '^d' -> '|', '^e' -> '^', '^n' -> '~', '&amp;' -> '&', '&gt;' -> '>', '&lt;' -> '<',
-    '&#xHEX;' -> '\xHEX'. For example, any string containing the
-    "ack acknowledge ctrl-f character", represented by hexadecimal 0x6, will be converted to
-    a string containing the HTML sequence "&#x6;" This conversion can be undone with
-    chr(int("6", 16)) to convert the sequence above to the character '\x06'. Any sequence
-    matching &#x([A-Za-z0-9]+); can be converted to the proper unicode character
-    representation likewise. The remaining XML post processing can be done with
-    https://docs.python.org/3/library/html.html#html.unescape
+    from the string representation produced by the subquery. See post_process_mssql_folds
+    in graphql_compiler/post_processing/sql_post_processing.py for more information of
+    post-processing the results.
 
     Joining from the preceding vertex to the correct output vertex
     is performed with the WHERE clause. This is contrasted with PostgreSQL subqueries,
