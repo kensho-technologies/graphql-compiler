@@ -114,7 +114,8 @@ If the style guides differ on a convention, the PEP 8 style guide is preferred.
 Additionally, any contributions must pass the linter :code:`scripts/lint.sh`
 when executed from a pipenv shell (i.e. after running :code:`pipenv shell`).
 To run the linter on changed files only, commit your changes and run
-:code:`scripts/lint.sh --diff`.
+:code:`scripts/lint.sh --diff`. Some linters can automatically fix errors.
+Use :code:`scripts/fix_lint.sh` to run the automatic fixes.
 
 Finally, all python files in the repository must display the copyright
 of the project, to protect the terms of the license. Please make sure

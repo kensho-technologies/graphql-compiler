@@ -308,7 +308,11 @@ def _serialize_datetime(value):
 
 def _parse_datetime_value(value):
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
-    return arrow.get(value, "YYYY-MM-DDTHH:mm:ssZZ").datetime
+    # attempt to parse with microsecond information
+    try:
+        return arrow.get(value, "YYYY-MM-DDTHH:mm:ss.SZZ").datetime
+    except arrow.parser.ParserMatchError:
+        return arrow.get(value, "YYYY-MM-DDTHH:mm:ssZZ").datetime
 
 
 GraphQLDate = GraphQLScalarType(

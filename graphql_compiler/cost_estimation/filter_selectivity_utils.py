@@ -19,6 +19,7 @@ from .int_value_conversion import (
     convert_int_to_field_value,
     field_supports_range_reasoning,
 )
+from .interval import Interval, IntervalDomain, intersect_int_intervals, measure_int_interval
 
 
 # The Selectivity represents the selectivity of a filter or a set of filters
@@ -28,17 +29,6 @@ Selectivity = namedtuple(
         "kind",  # string, the kind of selectivity, either absolute or fractional
         "value",  # float, either the maximum number of absolute results that pass the filter or the
         # fraction of results that pass the filter
-    ),
-)
-
-# IntegerInterval is used to denote a continuous non-empty interval of integers.
-IntegerInterval = namedtuple(
-    "IntegerInterval",
-    (
-        "lower_bound",  # int or None, inclusive lower bound of integers in the interval.
-        # Intervals that do not have a lower bound denote this by using None.
-        "upper_bound",  # int or None, inclusive upper bound of integers in the interval.
-        # Intervals that do not have an upper bound denote this by using None.
     ),
 )
 
@@ -78,125 +68,23 @@ def _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
     return False
 
 
-def _create_integer_interval(lower_bound, upper_bound):
-    """Return IntegerInterval for the given bounds, or None if the interval is empty.
+def _get_query_interval_of_binary_integer_inequality_filter(
+    filter_operator: str, parameter_value: int
+) -> Interval[int]:
+    """Return interval of values passing through a binary integer inequality filter.
 
     Args:
-        lower_bound: int or None, describing the inclusive lower bound of the integer interval.
-                     If the bound does not exist, the argument value should be None.
-        upper_bound: int or None, describing the inclusive upper bound of the integer interval.
-                     If the bound does not exist, the argument value should be None.
+        filter_operator: the binary inequality filter operation being performed.
+        parameter_value: the one and only parameter value given to the filter
 
     Returns:
-        - IntegerInterval namedtuple, describing the non-empty interval of integers between the two
-          bounds.
-        - None if the interval defined by the bounds is empty.
-    """
-    # If the lower bound is greater than the upper bound, then the interval is empty, which we
-    # indicate by returning None.
-    if lower_bound is not None and upper_bound is not None and lower_bound > upper_bound:
-        interval = None
-    else:
-        interval = IntegerInterval(lower_bound, upper_bound)
-
-    return interval
-
-
-def _get_stronger_lower_bound(lower_bound_a, lower_bound_b):
-    """Return the larger bound of the two given lower bounds.
-
-    Args:
-        lower_bound_a: int or None, describing one of the lower bounds. If the bound does not exist,
-                       the argument value should be None.
-        lower_bound_b: int or None, describing one of the lower bounds. If the bound does not exist,
-                       the argument value should be None.
-
-    Returns:
-        - int, the larger of the two lower bounds, if one or more lower bounds have an integer
-          value.
-        - None if both lower bounds have a value of None.
-    """
-    stronger_lower_bound = None
-    if lower_bound_a is not None and lower_bound_b is not None:
-        stronger_lower_bound = max(lower_bound_a, lower_bound_b)
-    elif lower_bound_a is not None:
-        stronger_lower_bound = lower_bound_a
-    elif lower_bound_b is not None:
-        stronger_lower_bound = lower_bound_b
-
-    return stronger_lower_bound
-
-
-def _get_stronger_upper_bound(upper_bound_a, upper_bound_b):
-    """Return the smaller bound of the two given upper bounds.
-
-    Args:
-        upper_bound_a: int or None, describing one of the upper bounds. If the bound does not exist,
-                       the argument value should be None.
-        upper_bound_b: int or None, describing one of the upper bounds. If the bound does not exist,
-                       the argument value should be None.
-
-    Returns:
-        - int, the smaller of the two upper bounds, if one or more upper bounds have an integer
-          value.
-        - None if both upper bounds have a value of None.
-    """
-    stronger_upper_bound = None
-    if upper_bound_a is not None and upper_bound_b is not None:
-        stronger_upper_bound = min(upper_bound_a, upper_bound_b)
-    elif upper_bound_a is not None:
-        stronger_upper_bound = upper_bound_a
-    elif upper_bound_b is not None:
-        stronger_upper_bound = upper_bound_b
-
-    return stronger_upper_bound
-
-
-def _get_intersection_of_intervals(interval_a, interval_b):
-    """Return the intersection of two IntegerIntervals, or None if the intervals are disjoint.
-
-    Args:
-        interval_a: None or IntegerInterval namedtuple. None means empty interval.
-        interval_b: None or IntegerInterval namedtuple. None means empty interval.
-
-    Returns:
-        - IntegerInterval namedtuple, intersection of the two given IntegerIntervals, if the
-          intersection is not empty.
-        - None otherwise.
-    """
-    if interval_a is None or interval_b is None:
-        return None
-
-    strong_lower_bound = _get_stronger_lower_bound(interval_a.lower_bound, interval_b.lower_bound)
-    strong_upper_bound = _get_stronger_upper_bound(interval_a.upper_bound, interval_b.upper_bound)
-
-    intersection = _create_integer_interval(strong_lower_bound, strong_upper_bound)
-    return intersection
-
-
-def _get_query_interval_of_binary_integer_inequality_filter(parameter_values, filter_operator):
-    """Return IntegerInterval or None of values passing through a binary integer inequality filter.
-
-    Args:
-        parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the binary inequality filter operation being performed.
-
-    Returns:
-        - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
-        - None if the interval is empty.
+         interval of values that pass through the filter.
 
     Raises:
         ValueError if the number of parameter values is not exactly one.
     """
-    if len(parameter_values) != 1:
-        raise ValueError(
-            u"Binary inequality filter should have "
-            u"exactly one parameter value: {} {}".format(parameter_values, filter_operator)
-        )
-
     lower_bound, upper_bound = None, None
 
-    parameter_value = parameter_values[0]
     if filter_operator == ">":
         lower_bound = parameter_value + 1
     elif filter_operator == ">=":
@@ -211,63 +99,58 @@ def _get_query_interval_of_binary_integer_inequality_filter(parameter_values, fi
             u"binary integer inequality operator {}.".format(filter_operator)
         )
 
-    query_interval = _create_integer_interval(lower_bound, upper_bound)
-    return query_interval
+    return Interval[int](lower_bound, upper_bound)
 
 
-def _get_query_interval_of_ternary_integer_inequality_filter(parameter_values, filter_operator):
-    """Return IntegerInterval or None of values passing through a ternary integer inequality filter.
+def _get_query_interval_of_ternary_integer_inequality_filter(
+    filter_operator: str, parameter_value_1: int, parameter_value_2: int
+) -> Interval[int]:
+    """Return interval of values passing through a ternary integer inequality filter.
 
     Args:
-        parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the ternary inequality filter operation being performed.
+        filter_operator: the ternary inequality filter operation being performed.
+        parameter_value_1: the first parameter value given to the filter
+        parameter_value_2: the second parameter value given to the filter
 
     Returns:
-        - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
-        - None if the interval is empty.
+        interval of values that pass through the filter.
 
     Raises:
         ValueError if the number of parameter values is not exactly two.
     """
-    if len(parameter_values) != 2:
-        raise ValueError(
-            u"Ternary inequality filter should have "
-            u"exactly two parameter values: {} {}".format(parameter_values, filter_operator)
-        )
-
     lower_bound, upper_bound = None, None
 
     if filter_operator == "between":
-        lower_bound = parameter_values[0]
-        upper_bound = parameter_values[1]
+        lower_bound = parameter_value_1
+        upper_bound = parameter_value_2
     else:
         raise AssertionError(
             u"Cost estimator found unsupported "
             u"ternary integer inequality operator {}.".format(filter_operator)
         )
 
-    query_interval = _create_integer_interval(lower_bound, upper_bound)
-    return query_interval
+    return Interval[int](lower_bound, upper_bound)
 
 
-def _get_query_interval_of_integer_inequality_filter(parameter_values, filter_operator):
-    """Return IntegerInterval or None of values passing through a given integer inequality filter.
+def _get_query_interval_of_integer_inequality_filter(
+    parameter_values: List[int], filter_operator: str
+) -> Interval[int]:
+    """Return interval of values passing through a given integer inequality filter.
 
     Args:
-        parameter_values: List[int], describing the parameters for the inequality filter.
-        filter_operator: str, describing the inequality filter operation being performed.
+        parameter_values: the parameters for the inequality filter.
+        filter_operator: the inequality filter operation being performed.
 
     Returns:
-        - IntegerInterval namedtuple, non-empty interval of values that pass through the filter.
-        - None if the interval is empty.
+        interval of values that pass through the filter.
     """
     if len(parameter_values) == 1:
         query_interval = _get_query_interval_of_binary_integer_inequality_filter(
-            parameter_values, filter_operator
+            filter_operator, parameter_values[0]
         )
     elif len(parameter_values) == 2:
         query_interval = _get_query_interval_of_ternary_integer_inequality_filter(
-            parameter_values, filter_operator
+            filter_operator, parameter_values[0], parameter_values[1]
         )
     else:
         raise AssertionError(
@@ -348,7 +231,9 @@ def _combine_filter_selectivities(selectivities):
     return Selectivity(kind=combined_selectivity_kind, value=combined_selectivity_value)
 
 
-def _get_selectivity_fraction_of_interval(interval, quantiles):
+def _get_selectivity_fraction_of_interval(
+    interval: Interval[IntervalDomain], quantiles: List[IntervalDomain]
+) -> float:
     """Get the fraction of values contained in an interval.
 
     We ignore the interval endpoint values, and only consider the quantile they
@@ -357,9 +242,9 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
     of the whole domain.
 
     Args:
-        interval: IntegerInterval defining the range of values
-        quantiles: a sorted list of N values separating the values of the field into N-1
-                   groups of almost equal size. The first element of the list is the
+        interval: Interval[T] defining the range of values
+        quantiles: a sorted list of N values of type T separating the values of the field
+                   into N-1 groups of almost equal size. The first element of the list is the
                    smallest known value, and the last element is the largest known value.
                    The i-th element is a value greater than or equal to i/N of all present values.
                    N has to be at least 2.
@@ -367,6 +252,9 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
     Returns:
         float, the fraction of the values contained in the interval.
     """
+    if interval.is_empty():
+        return 0.0
+
     if len(quantiles) < 2:
         raise AssertionError(u"Need at least 2 quantiles: {}".format(len(quantiles)))
     # Since we can't be sure the minimum observed value is the
@@ -374,21 +262,22 @@ def _get_selectivity_fraction_of_interval(interval, quantiles):
     # of the first quantile. That's why we drop the minimum and
     # maximum observed values from the quantile list.
     proper_quantiles = quantiles[1:-1]
-    domain_interval_size = len(proper_quantiles) + 1
+    domain_interval_size = float(len(proper_quantiles) + 1)
     if interval.lower_bound is None and interval.upper_bound is None:
         interval_size = domain_interval_size
     elif interval.lower_bound is None:
         upper_bound_quantile = bisect.bisect_left(proper_quantiles, interval.upper_bound)
-        interval_size = 0.5 + upper_bound_quantile
+        interval_size = 0.5 + float(upper_bound_quantile)
     elif interval.upper_bound is None:
         lower_bound_quantile = bisect.bisect_left(proper_quantiles, interval.lower_bound)
-        interval_size = 0.5 + len(proper_quantiles) - lower_bound_quantile
+        interval_size = 0.5 + float(len(proper_quantiles) - lower_bound_quantile)
     else:
         lower_bound_quantile = bisect.bisect_left(proper_quantiles, interval.lower_bound)
         upper_bound_quantile = bisect.bisect_left(proper_quantiles, interval.upper_bound)
         if lower_bound_quantile == upper_bound_quantile:
+            # Average distance between two random points on a unit line segment:
             # https://math.stackexchange.com/questions/195245/
-            interval_size = 1.0 / 3
+            interval_size = 1.0 / 3.0
         else:
             interval_size = upper_bound_quantile - lower_bound_quantile
     return float(interval_size) / domain_interval_size
@@ -400,9 +289,9 @@ def get_integer_interval_for_filters_on_field(
     location_name: str,
     field_name: str,
     parameters: Dict[str, Any],
-) -> IntegerInterval:
+) -> Interval[int]:
     """Get the interval of possible values on this field, constrained by its inequality filters."""
-    interval = _create_integer_interval(None, None)
+    interval = Interval[int](None, None)
     for filter_info in filters_on_field:
         if filter_info.op_name in INEQUALITY_OPERATORS:
             parameter_values = [
@@ -418,7 +307,7 @@ def get_integer_interval_for_filters_on_field(
             filter_interval = _get_query_interval_of_integer_inequality_filter(
                 parameter_values, filter_info.op_name
             )
-            interval = _get_intersection_of_intervals(interval, filter_interval)
+            interval = intersect_int_intervals(interval, filter_interval)
     return interval
 
 
@@ -449,7 +338,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
     selectivities = []
     for field_name, filters_on_field in six.iteritems(single_field_filters):
         selectivity_at_field = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
-        interval = _create_integer_interval(None, None)
+        interval = Interval[int](None, None)
 
         # Process inequality filters
         if field_supports_range_reasoning(schema_info, location_name, field_name):
@@ -462,11 +351,11 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
             elif is_uuid4_type(schema_info, location_name, field_name):
                 # uuid4 fields are uniformly distributed, so we simply divide the fraction of
                 # the domain queried with the size of the domain.
-                domain_interval = _create_integer_interval(MIN_UUID_INT, MAX_UUID_INT)
-                domain_interval_size = domain_interval.upper_bound - domain_interval.lower_bound + 1
-                interval = _get_intersection_of_intervals(interval, domain_interval)
-                interval_size = interval.upper_bound - interval.lower_bound + 1
-                fraction_of_domain_queried = float(interval_size) / domain_interval_size
+                domain_interval = Interval[int](MIN_UUID_INT, MAX_UUID_INT)
+                interval = intersect_int_intervals(interval, domain_interval)
+                fraction_of_domain_queried = float(
+                    measure_int_interval(interval)
+                ) / measure_int_interval(domain_interval)
                 selectivity = Selectivity(
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried
                 )
@@ -475,8 +364,6 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 )
             else:
                 # Get value interval
-                # HACK(bojanserafimov): Abuse of IntegerInterval spec. Constructed with non-interval
-                #                       endpoints. The type should be renamed to allow this usage.
                 lower_bound, upper_bound = None, None
                 if interval.lower_bound is not None:
                     lower_bound = convert_int_to_field_value(
@@ -486,7 +373,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     upper_bound = convert_int_to_field_value(
                         schema_info, location_name, field_name, interval.upper_bound
                     )
-                value_interval = _create_integer_interval(lower_bound, upper_bound)
+                value_interval = Interval[int](lower_bound, upper_bound)
 
                 # Compute selectivity
                 quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
