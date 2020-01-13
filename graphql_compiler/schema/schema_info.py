@@ -58,8 +58,26 @@ class GenericSchemaInfo:
 
 
 @dataclass
-class MatchSchemaInfo:
+class GenericSchemaInfoOnly:
+    """
+    Use this if a SchemaInfo class only contains GenericSchemaInfo.
+
+    Provides convenience methods.
+    """
     generic_schema_info: GenericSchemaInfo
+
+    @property
+    def schema(self) -> GraphQLSchema:
+        return self.generic_schema_info.schema
+
+    @property
+    def type_equivalence_hints(self) -> Optional[Dict[str, str]]:
+        return self.generic_schema_info.type_equivalence_hints
+
+
+@dataclass
+class MatchSchemaInfo(GenericSchemaInfoOnly):
+    pass
 
 
 def create_match_schema_info(
@@ -73,8 +91,8 @@ def create_match_schema_info(
 
 
 @dataclass
-class GremlinSchemaInfo:
-    generic_schema_info: GenericSchemaInfo
+class GremlinSchemaInfo(GenericSchemaInfoOnly):
+    pass
 
 
 def create_gremlin_schema_info(
@@ -88,8 +106,8 @@ def create_gremlin_schema_info(
 
 
 @dataclass
-class CypherSchemaInfo:
-    generic_schema_info: GenericSchemaInfo
+class CypherSchemaInfo(GenericSchemaInfoOnly):
+    pass
 
 
 def create_cypher_schema_info(
