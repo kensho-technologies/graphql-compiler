@@ -54,7 +54,7 @@ class GenericSchemaInfo:
     # lead to incorrect output queries being generated.
     # *****
     # TODO: make sure we are treating empty dict the same as None
-    type_equivalence_hints: Optional[Dict[str, str]]  # Optional
+    type_equivalence_hints: Optional[Dict[str, str]]
 
 
 @dataclass
@@ -112,11 +112,11 @@ class BackendSpecificSchemaInfo:
     generic_schema_info: GenericSchemaInfo
 
     @property
-    def schema(self):
+    def schema(self) -> GraphQLSchema:
         return self.generic_schema_info.schema
 
     @property
-    def type_equivalence_hints(self):
+    def type_equivalence_hints(self) -> Optional[Dict[str, str]]:
         return self.generic_schema_info.type_equivalence_hints
 
 
