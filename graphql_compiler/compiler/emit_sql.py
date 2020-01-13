@@ -15,7 +15,7 @@ from sqlalchemy.sql.functions import func
 
 from . import blocks
 from ..schema import COUNT_META_FIELD_NAME
-from .expressions import BinaryComposition, ContextField
+from .expressions import ContextField, Expression
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
 
@@ -113,17 +113,20 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
     return used_columns
 
 
-def _find_tagged_parameters(expression_from_filter):
+def _find_tagged_parameters(expression_from_filter: Expression) -> bool:
     """Return True if the expression contains a ContextField (i.e. a tagged parameter)."""
-    if isinstance(expression_from_filter, ContextField):
-        return True
+    has_context_fields = False
 
-    elif isinstance(expression_from_filter, BinaryComposition):
-        for subexpression in (expression_from_filter.left, expression_from_filter.right):
-            if _find_tagged_parameters(subexpression):
-                return True
+    def visitor_fn(expression_to_visit: Expression) -> Expression:
+        """Update has_context_fields if a ContextField is found."""
+        nonlocal has_context_fields
+        if isinstance(expression_to_visit, ContextField):
+            has_context_fields = True
+        return expression_to_visit
 
-    return False
+    expression_from_filter.visit_and_update(visitor_fn)
+
+    return has_context_fields
 
 
 def _find_folded_fields(ir):
