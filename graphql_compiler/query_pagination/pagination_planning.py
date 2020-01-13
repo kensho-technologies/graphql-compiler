@@ -127,46 +127,39 @@ def get_pagination_plan(
         ideal_min_num_quantiles_per_page = 5
         ideal_quantile_resolution = ideal_min_num_quantiles_per_page * number_of_pages + 1
 
-        # Construct the best plan we can with the quantiles available, and suggest any data
-        # improvements that can be made by returning PaginationAdvisories.
+        # Ideally, we paginate into the desired number of pages.
+        page_capacity = number_of_pages
         if quantiles is None:
-            return (
-                PaginationPlan(tuple()),
-                (
-                    InsufficientQuantiles(
-                        pagination_node, pagination_field, 0, ideal_quantile_resolution
-                    ),
-                ),
-            )
+            # If there's no quantiles, we don't paginate. We could try to assume an uniform
+            # value distribution and make some pagination plan with more than 1 page, but
+            # the cost estimator would need to match the behavior and assume uniform value
+            # distribution when estimating the selectivity of range filters.
+            page_capacity = 1
         elif len(quantiles) - 1 < number_of_pages:
-            return (
-                PaginationPlan(
-                    (VertexPartitionPlan((pagination_node,), pagination_field, len(quantiles) - 1),)
-                ),
-                (
-                    InsufficientQuantiles(
-                        pagination_node, pagination_field, len(quantiles), ideal_quantile_resolution
-                    ),
-                ),
-            )
-        elif len(quantiles) < ideal_quantile_resolution:
-            return (
-                PaginationPlan(
-                    (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
-                ),
-                (
-                    InsufficientQuantiles(
-                        pagination_node, pagination_field, len(quantiles), ideal_quantile_resolution
-                    ),
+            # If we have some quantiles but not enough, we generate a page for each chunk
+            # of values separated by the quantiles.
+            page_capacity = len(quantiles) - 1
+
+        # If we have less than the ideal number of quantiles, we request for more.
+        advisories: Tuple[PaginationAdvisory, ...] = tuple()
+        if quantiles is None or len(quantiles) < ideal_quantile_resolution:
+            current_quantile_resolution = 0 if quantiles is None else len(quantiles)
+            advisories = (
+                InsufficientQuantiles(
+                    pagination_node,
+                    pagination_field,
+                    current_quantile_resolution,
+                    ideal_quantile_resolution,
                 ),
             )
-        else:
-            return (
-                PaginationPlan(
-                    (VertexPartitionPlan((pagination_node,), pagination_field, number_of_pages),)
-                ),
-                tuple(),
-            )
+
+        # Construct and return the plan and advisories.
+        plan = PaginationPlan(
+            (VertexPartitionPlan((pagination_node,), pagination_field, page_capacity),)
+        )
+        if page_capacity == 1:
+            plan = PaginationPlan(tuple())
+        return plan, advisories
     else:
         vertex_type = schema_info.schema.get_type(pagination_node.name.value)
         field_type_name = vertex_type.fields[pagination_field].type.name
