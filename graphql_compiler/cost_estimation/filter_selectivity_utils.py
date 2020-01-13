@@ -373,7 +373,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                     upper_bound = convert_int_to_field_value(
                         schema_info, location_name, field_name, interval.upper_bound
                     )
-                value_interval = Interval[int](lower_bound, upper_bound)
+                value_interval = Interval(lower_bound, upper_bound)
 
                 # Compute selectivity
                 quantiles = schema_info.statistics.get_field_quantiles(location_name, field_name)
