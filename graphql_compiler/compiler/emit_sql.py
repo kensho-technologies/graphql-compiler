@@ -15,9 +15,8 @@ from sqlalchemy.sql.functions import func
 
 from . import blocks
 from ..schema import COUNT_META_FIELD_NAME
-from .expressions import BinaryComposition, FoldedContextField
+from .expressions import BinaryComposition, ContextField
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
-from .ir_lowering_sql import ContextColumn
 
 
 # Some reserved column names used in emitted SQL queries
@@ -115,38 +114,16 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
 
 
 def _find_tagged_parameters(expression_from_filter):
-    """Return True if the expression contains a ContextColumn (i.e. a tagged parameter)."""
-    if isinstance(expression_from_filter, ContextColumn):
+    """Return True if the expression contains a ContextField (i.e. a tagged parameter)."""
+    if isinstance(expression_from_filter, ContextField):
         return True
 
     elif isinstance(expression_from_filter, BinaryComposition):
         for subexpression in (expression_from_filter.left, expression_from_filter.right):
-            return _find_tagged_parameters(subexpression)
+            if _find_tagged_parameters(subexpression):
+                return True
 
     return False
-
-
-def _find_x_count_used_in_global_filter(expression_from_global_filter):
-    """Recursively find fold_scope_location and fold_path of _x_counts used in global filters."""
-    # For FoldContextField expressions, determine if the corresponding field is an _x_count.
-    if (
-        isinstance(expression_from_global_filter, FoldedContextField)
-        and expression_from_global_filter.fold_scope_location.field == COUNT_META_FIELD_NAME
-    ):
-        fold_scope_location = expression_from_global_filter.fold_scope_location
-        fold_path = fold_scope_location.fold_path
-        return fold_scope_location, fold_path
-
-    # For BinaryComposition expressions, check the left and right sides.
-    elif isinstance(expression_from_global_filter, BinaryComposition):
-        for subexpression in (
-            expression_from_global_filter.left,
-            expression_from_global_filter.right,
-        ):
-            return _find_x_count_used_in_global_filter(subexpression)
-
-    # If no instance of _x_count is found return Nones.
-    return None, None
 
 
 def _find_folded_fields(ir):
@@ -158,18 +135,14 @@ def _find_folded_fields(ir):
             fold_path = output_info.location.fold_path
             folded_fields.setdefault(fold_path, set()).add(output_info.location)
 
-    # Add _x_count, if used as a filter.
-    global_operation_start = False
-    for block in ir.ir_blocks:
-        # _x_count filters only occur after encountering a GlobalOperationStart block.
-        if isinstance(block, blocks.GlobalOperationsStart):
-            global_operation_start = True
-        # Check the left and right side of Filter predicates to see if _x_count is involved.
-        if global_operation_start and isinstance(block, blocks.Filter):
-            for subexpression in (block.predicate.left, block.predicate.right):
-                fold_scope_location, fold_path = _find_x_count_used_in_global_filter(subexpression)
-                if fold_scope_location and fold_path:
-                    folded_fields.setdefault(fold_path, set()).add(fold_scope_location)
+    # Add _x_count, if used as a Filter at any Location.
+    for location, _ in ir.query_metadata_table.registered_locations:
+        for location_filter in ir.query_metadata_table.get_filter_infos(location):
+            for field in location_filter.fields:
+                if field == COUNT_META_FIELD_NAME:
+                    folded_fields.setdefault(location.fold_path, set()).add(
+                        location.navigate_to_field(field)
+                    )
 
     return folded_fields
 
@@ -891,7 +864,7 @@ class CompilationState(object):
         if self._current_fold is not None:
             if _find_tagged_parameters(predicate):
                 raise NotImplementedError(
-                    u"Filtering with a tagged parameter in a fold scope " u"is not implemented yet."
+                    u"Filtering with a tagged parameter in a fold scope is not implemented yet."
                 )
             self._current_fold.add_filter(predicate, self._aliases)
 
