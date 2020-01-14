@@ -95,7 +95,7 @@ def get_best_vertex_partition_plan(
         )
 
     # Ideally, we paginate into the desired number of pages, and don't advise for any changes.
-    # These two values are mutated in the code below if this vertex is not ideal in any way.
+    # These two variables are updated in the code below if this vertex is not ideal in any way.
     page_capacity = number_of_pages
     advisories: Tuple[PaginationAdvisory, ...] = tuple()
     if is_uuid4_type(schema_info, pagination_node, pagination_field):
