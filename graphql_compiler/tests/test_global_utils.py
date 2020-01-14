@@ -8,10 +8,13 @@ class GlobalUtilsTests(unittest.TestCase):
     """Test the global_utils module."""
 
     def test_generate_new_name(self):
-        taken_names = ["animal_0", "animal_1"]
+        taken_names = ["bird", "plane", "plane_0"]
 
         new_name = generate_new_name("animal", taken_names)
         self.assertEqual("animal", new_name)
 
-        new_name = generate_new_name("animal_0", taken_names)
-        self.assertTrue(new_name not in taken_names)
+        new_name = generate_new_name("bird", taken_names)
+        self.assertEqual("bird_0", new_name)
+
+        new_name = generate_new_name("plane", taken_names)
+        self.assertEqual("plane_1", new_name)
