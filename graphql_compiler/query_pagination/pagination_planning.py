@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Tuple, Optional
+from typing import Optional, Tuple
 
 from graphql import DocumentNode
 
@@ -76,10 +76,10 @@ def get_plan_page_count(plan: PaginationPlan) -> int:
     return number_of_pages
 
 
-def get_pagination_capacity(
+def get_best_vertex_partition_plan(
     schema_info: QueryPlanningSchemaInfo, pagination_node: str, number_of_pages: int
-):
-    """Get the pagination capacity of a node, and suggest how it can be improved to meet demand."""
+) -> Tuple[Optional[VertexPartitionPlan], Tuple[PaginationAdvisory, ...]]:
+    """Get the best available VertexPartitionPlan on this node or None if no plan exists."""
     pagination_field = schema_info.pagination_keys.get(pagination_node)
     if pagination_field is None:
         return None, (PaginationFieldNotSpecified(pagination_node),)
@@ -127,18 +127,19 @@ def get_pagination_capacity(
                 ),
             )
     else:
-        vertex_type = schema_info.schema.get_type(pagination_node.name.value)
+        # Specifying an unsupported pagination_field is a compiler bug
+        vertex_type = schema_info.schema.get_type(pagination_node)
         field_type_name = vertex_type.fields[pagination_field].type.name
         raise AssertionError(
             u"Cannot paginate on {}.{} because pagination on {} is not supported ".format(
-                pagination_node.name.value, pagination_field, field_type_name
+                pagination_node, pagination_field, field_type_name
             )
         )
 
     # Construct and return the plan and advisories.
-    plan = (VertexPartitionPlan((pagination_node,), pagination_field, page_capacity),)
     if page_capacity <= 1:
-        plan = None
+        return None, advisories
+    plan = VertexPartitionPlan((pagination_node,), pagination_field, page_capacity)
     return plan, advisories
 
 
@@ -169,12 +170,15 @@ def get_pagination_plan(
     #                       - The root node has no pagination_key
     #                       - The root node has a unique index
     #                       - There are only a few different vertices at the root
+    #                         that this query select.
+    #                       - The class count of the root is lower than the page count
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
-    vertex_partition_plan, advisories = get_pagination_capacity(
-        schema_info, pagination_node, number_of_pages)
+    vertex_partition_plan, advisories = get_best_vertex_partition_plan(
+        schema_info, pagination_node, number_of_pages
+    )
 
     if vertex_partition_plan is None:
         return PaginationPlan(tuple(),), advisories
     else:
-        return PaginationPlan(vertex_partition_plan,), advisories
+        return PaginationPlan((vertex_partition_plan,)), advisories
