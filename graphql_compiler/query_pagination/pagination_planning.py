@@ -122,7 +122,7 @@ def get_best_vertex_partition_plan(
         elif len(quantiles) - 1 < number_of_pages:
             # If we have some quantiles but not enough, we generate a page for each chunk
             # of values separated by the quantiles. N quantiles split the domain into N - 1 chunks:
-            # the 0% and 100% quantiles capture the min and max values in the domain, and the 
+            # the 0% and 100% quantiles capture the min and max values in the domain, and the
             # remaining N - 2 describe the distribution in between.
             page_capacity = len(quantiles) - 1
 
