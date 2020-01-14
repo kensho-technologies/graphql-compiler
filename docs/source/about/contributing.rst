@@ -66,14 +66,14 @@ Once the dev environment is prepared, you can run the tests, from the root repos
    pipenv sync --dev
    pipenv shell
 
-   py.test graphql_compiler/tests
+   pytest graphql_compiler/tests
 
 Some snapshot and integration tests take longer to setup, run, and
 teardown. These can be optionally skipped during development by running:
 
 .. code:: bash
 
-   py.test -m 'no-slow'
+   pytest -m 'no-slow'
 
 If you run into any issues, please consult the :ref:`troubleshooting guide <troubleshooting>`.
 If you encounter and resolve an issue that is not already part of the
@@ -86,8 +86,8 @@ fashion by decorating with the :code:`@pytest.mark.slow` flag.
 Code of Conduct
 ---------------
 
-This project adheres to the Contributor Covenant `code of
-conduct <CODE_OF_CONDUCT.md>`__. By participating, you are expected to
+This project adheres to the Contributor Covenant :doc:`code of
+conduct <code_of_conduct>`. By participating, you are expected to
 uphold this code. Please report unacceptable behavior at
 graphql-compiler-maintainer@kensho.com.
 
