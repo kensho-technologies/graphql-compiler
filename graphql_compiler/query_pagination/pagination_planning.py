@@ -159,10 +159,6 @@ def get_pagination_plan(
     objects that indicate why the desired pagination was not possible. Each PaginationAdvisory
     states the necessary step that may be taken to avoid it in the future.
 
-    If the returned plan has fewer than the desired number of pages and no advisories are returned
-    then this vertex is inherently not a good vertex to paginate on, and the caller of this
-    function should consider other vertices for pagination.
-
     Args:
         schema_info: query planning information, including quantile statistics for pagination
         query_ast: GraphQL AST node describing the query being paginated
