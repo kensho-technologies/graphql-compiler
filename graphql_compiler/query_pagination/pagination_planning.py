@@ -95,7 +95,7 @@ def get_best_vertex_partition_plan(
         )
 
     # Ideally, we paginate into the desired number of pages, and don't advise for any changes.
-    # These two values are mutated in the code below if this vertex is not ideal in any way.
+    # These two variables are updated in the code below if this vertex is not ideal in any way.
     page_capacity = number_of_pages
     advisories: Tuple[PaginationAdvisory, ...] = tuple()
     if is_uuid4_type(schema_info, pagination_node, pagination_field):
@@ -114,17 +114,19 @@ def get_best_vertex_partition_plan(
 
         quantiles = schema_info.statistics.get_field_quantiles(pagination_node, pagination_field)
         if quantiles is None:
-            # If there's no quantiles, we don't paginate. We could try to assume an uniform
+            # If there are no quantiles, we don't paginate. We could try to assume an uniform
             # value distribution and make some pagination plan with more than 1 page, but
             # the cost estimator would need to match the behavior and assume uniform value
             # distribution when estimating the selectivity of range filters.
             page_capacity = 1
         elif len(quantiles) - 1 < number_of_pages:
             # If we have some quantiles but not enough, we generate a page for each chunk
-            # of values separated by the quantiles.
+            # of values separated by the quantiles. N quantiles split the domain into N - 1 chunks:
+            # the 0% and 100% quantiles capture the min and max values in the domain, and the 
+            # remaining N - 2 describe the distribution in between.
             page_capacity = len(quantiles) - 1
 
-        # If we have less than the ideal number of quantiles, we request for more.
+        # If we have fewer than the ideal number of quantiles, we advise creating more.
         if quantiles is None or len(quantiles) < ideal_quantile_resolution:
             current_quantile_resolution = 0 if quantiles is None else len(quantiles)
             advisories = (
@@ -160,6 +162,15 @@ def get_pagination_plan(
     with the desired number of pages. For example, if there's only one instance of Foo, trying
     to split it into 10 pages does not make sense. In this case, no advisory is returned. It is
     the task of the caller of this function to consider other vertices for pagination.
+
+    Args:
+        schema_info: query planning information, including quantile statistics for pagination
+        query_ast: GraphQL AST node describing the query being paginated
+        number_of_pages: desired number of pages to attempt to paginate the query into
+
+    Returns:
+        tuple including a best-effort pagination plan together with a tuple of advisories describing
+        any ways in which the pagination plan was less than ideal and how to resolve them
     """
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
 
