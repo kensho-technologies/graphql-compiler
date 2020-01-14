@@ -15,7 +15,7 @@ from sqlalchemy.sql.functions import func
 
 from . import blocks
 from ..schema import COUNT_META_FIELD_NAME
-from .expressions import FoldedContextField
+from .expressions import ContextField, Expression
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
 
@@ -113,6 +113,22 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
     return used_columns
 
 
+def _find_tagged_parameters(expression_from_filter: Expression) -> bool:
+    """Return True if the expression contains a ContextField (i.e. a tagged parameter)."""
+    has_context_fields = False
+
+    def visitor_fn(expression_to_visit: Expression) -> Expression:
+        """Update has_context_fields if a ContextField is found."""
+        nonlocal has_context_fields
+        if isinstance(expression_to_visit, ContextField):
+            has_context_fields = True
+        return expression_to_visit
+
+    expression_from_filter.visit_and_update(visitor_fn)
+
+    return has_context_fields
+
+
 def _find_folded_fields(ir):
     """For each fold path, find folded fields (outputs and metafields used in filters)."""
     folded_fields = {}
@@ -122,22 +138,14 @@ def _find_folded_fields(ir):
             fold_path = output_info.location.fold_path
             folded_fields.setdefault(fold_path, set()).add(output_info.location)
 
-    # Add _x_count, if used as a filter.
-    global_operation_start = False
-    for block in ir.ir_blocks:
-        # _x_count filters only occur after encountering a GlobalOperationStart block.
-        if isinstance(block, blocks.GlobalOperationsStart):
-            global_operation_start = True
-        # Check the left and right side of Filter predicates to see if _x_count is involved.
-        if global_operation_start and isinstance(block, blocks.Filter):
-            for subexpression in (block.predicate.left, block.predicate.right):
-                if (
-                    isinstance(subexpression, FoldedContextField)
-                    and subexpression.fold_scope_location.field == COUNT_META_FIELD_NAME
-                ):
-                    fold_scope_location = subexpression.fold_scope_location
-                    fold_path = fold_scope_location.fold_path
-                    folded_fields.setdefault(fold_path, set()).add(fold_scope_location)
+    # Add _x_count, if used as a Filter at any Location.
+    for location, _ in ir.query_metadata_table.registered_locations:
+        for location_filter in ir.query_metadata_table.get_filter_infos(location):
+            for field in location_filter.fields:
+                if field == COUNT_META_FIELD_NAME:
+                    folded_fields.setdefault(location.fold_path, set()).add(
+                        location.navigate_to_field(field)
+                    )
 
     return folded_fields
 
@@ -857,6 +865,10 @@ class CompilationState(object):
         # regular fields i.e. non-_x_count fields. Filtering on _x_count will use the COUNT(*)
         # output from the folded subquery and apply the filter in the global WHERE clause.
         if self._current_fold is not None:
+            if _find_tagged_parameters(predicate):
+                raise NotImplementedError(
+                    u"Filtering with a tagged parameter in a fold scope is not implemented yet."
+                )
             self._current_fold.add_filter(predicate, self._aliases)
 
         # Otherwise, add the filter to the compilation state. Note that this is for filters outside
