@@ -154,6 +154,15 @@ def get_pagination_plan(
     is found. This can happen when there's not enough data, or when the planner is not
     smart enough to find a good plan. In that case it will return along with the result
     a list of PaginationAdvisorys that indicate why the pagination was not successful.
+
+    Args:
+        schema_info: query planning information, including quantile statistics for pagination
+        query_ast: GraphQL AST node describing the query being paginated
+        number_of_pages: desired number of pages to attempt to paginate the query into
+
+    Returns:
+        tuple including a best-effort pagination plan together with a tuple of advisories describing
+        any ways in which the pagination plan was less than ideal and how to resolve them
     """
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
 
