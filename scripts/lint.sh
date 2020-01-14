@@ -28,9 +28,12 @@ done
 # Make sure the current working directory for this script is the root directory.
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
-# Get into the graphql-compiler virtualenv. "pipenv shell" returns exit code 1 if already there,
-# which doesn't matter to us so we avoid crashing the script by adding "|| true".
-pipenv shell || true
+# Assert script is running inside pipenv shell
+if [[ "$VIRTUAL_ENV" == "" ]]
+then
+    echo "Please run pipenv shell first"
+    exit 1
+fi
 
 # Get all python files or directories that need to be linted.
 lintable_locations="."
