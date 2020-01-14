@@ -84,6 +84,16 @@ def get_best_vertex_partition_plan(
     if pagination_field is None:
         return None, (PaginationFieldNotSpecified(pagination_node),)
 
+    # Specifying an unsupported pagination_field is a compiler bug
+    if not field_supports_range_reasoning(schema_info, pagination_node, pagination_field):
+        vertex_type = schema_info.schema.get_type(pagination_node)
+        field_type_name = vertex_type.fields[pagination_field].type.name
+        raise AssertionError(
+            u"Cannot paginate on {}.{} because pagination on {} is not supported ".format(
+                pagination_node, pagination_field, field_type_name
+            )
+        )
+
     # Ideally, we paginate into the desired number of pages, and don't advise for any changes.
     # These two values are mutated in the code below if this vertex is not ideal in any way.
     page_capacity = number_of_pages
@@ -93,7 +103,7 @@ def get_best_vertex_partition_plan(
         # there are values.
         class_count = schema_info.statistics.get_class_count(pagination_node)
         page_capacity = min(page_capacity, class_count)
-    elif field_supports_range_reasoning(schema_info, pagination_node, pagination_field):
+    else:
         # If the ratio len(quantiles) // number_of_pages is N, then the largest page is
         # expected to be (N + 1) / N times larger than the smallest page. This is because
         # if we assume that quantiles divide the domain into equal chunks, some pages will
@@ -125,15 +135,6 @@ def get_best_vertex_partition_plan(
                     ideal_quantile_resolution,
                 ),
             )
-    else:
-        # Specifying an unsupported pagination_field is a compiler bug
-        vertex_type = schema_info.schema.get_type(pagination_node)
-        field_type_name = vertex_type.fields[pagination_field].type.name
-        raise AssertionError(
-            u"Cannot paginate on {}.{} because pagination on {} is not supported ".format(
-                pagination_node, pagination_field, field_type_name
-            )
-        )
 
     # Construct and return the plan and advisories.
     if page_capacity <= 1:
