@@ -3,6 +3,7 @@ import unittest
 
 from ..global_utils import find_new_name
 
+
 class QueryPaginationTests(unittest.TestCase):
     """Test the global_utils module"""
 
