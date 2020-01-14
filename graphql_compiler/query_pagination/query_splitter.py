@@ -1,10 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from graphql_compiler.query_pagination.parameter_generator import (
-    generate_parameters_for_parameterized_query,
-)
-from graphql_compiler.query_pagination.query_parameterizer import generate_parameterized_queries
+from .pagination_planning import try_get_pagination_plan
+from .parameter_generator import generate_parameters_for_vertex_partition
+from .query_parameterizer import generate_parameterized_queries
 
 
 ASTWithParameters = namedtuple(
@@ -46,17 +45,28 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
             )
         )
 
-    parameterized_queries = generate_parameterized_queries(schema_info, query_ast, parameters)
+    pagination_plan = try_get_pagination_plan(schema_info, query_ast, num_pages)
+    if len(pagination_plan.vertex_partitions) != 1:
+        raise NotImplementedError(
+            u"We only support pagination plans with one vertex partition. "
+            u"Reveived {}".format(pagination_plan)
+        )
 
-    next_page_parameters, remainder_parameters = generate_parameters_for_parameterized_query(
-        schema_info, parameterized_queries, num_pages
+    parameter_generator = generate_parameters_for_vertex_partition(
+        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0]
+    )
+    first_param = next(parameter_generator)
+
+    page_query, remainder_query, separating_param_name = generate_parameterized_queries(
+        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0]
     )
 
-    next_page_ast_with_parameters = ASTWithParameters(
-        parameterized_queries.page_query, next_page_parameters
+    separating_parameters = {separating_param_name: first_param}
+    page_parameters = dict(parameters)
+    page_parameters.update(separating_parameters)
+    remainder_parameters = dict(parameters)
+    remainder_parameters.update(separating_parameters)
+    return (
+        ASTWithParameters(page_query, page_parameters),
+        ASTWithParameters(remainder_query, remainder_parameters),
     )
-    remainder_ast_with_parameters = ASTWithParameters(
-        parameterized_queries.remainder_query, remainder_parameters,
-    )
-
-    return next_page_ast_with_parameters, remainder_ast_with_parameters
