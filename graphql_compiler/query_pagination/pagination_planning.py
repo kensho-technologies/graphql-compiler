@@ -114,7 +114,7 @@ def get_best_vertex_partition_plan(
 
         quantiles = schema_info.statistics.get_field_quantiles(pagination_node, pagination_field)
         if quantiles is None:
-            # If there's no quantiles, we don't paginate. We could try to assume an uniform
+            # If there are no quantiles, we don't paginate. We could try to assume an uniform
             # value distribution and make some pagination plan with more than 1 page, but
             # the cost estimator would need to match the behavior and assume uniform value
             # distribution when estimating the selectivity of range filters.
