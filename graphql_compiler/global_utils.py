@@ -33,16 +33,14 @@ def is_same_type(left, right):
         return False
 
 
-def generate_new_name(desired_name: str, taken_names: Sequence[str]) -> str:
-    """Return a name similar to the desired one that is not already taken.
+def generate_new_name(base_name: str, taken_names: Sequence[str]) -> str:
+    """Return a name based on the provided string that is not already taken.
 
-    If the desired name is not taken, it is returned. If it is, this method tries
-    {desired_name}_0, then {desired_name}_1, etc.
+    This method tries the following names:
+    {base_name}_0, then {base_name}_1, etc.
+    and returns the first one that's not in taken_names
     """
-    if desired_name not in taken_names:
-        return desired_name
-
     index = 0
-    while "{}_{}".format(desired_name, index) in taken_names:
+    while "{}_{}".format(base_name, index) in taken_names:
         index += 1
-    return "{}_{}".format(desired_name, index)
+    return "{}_{}".format(base_name, index)

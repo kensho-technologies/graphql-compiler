@@ -11,7 +11,7 @@ class GlobalUtilsTests(unittest.TestCase):
         taken_names = ["bird", "plane", "plane_0"]
 
         new_name = generate_new_name("animal", taken_names)
-        self.assertEqual("animal", new_name)
+        self.assertEqual("animal_0", new_name)
 
         new_name = generate_new_name("bird", taken_names)
         self.assertEqual("bird_0", new_name)
