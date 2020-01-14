@@ -88,7 +88,6 @@ def get_best_vertex_partition_plan(
     # These two values are mutated in the code below if this vertex is not ideal in any way.
     page_capacity = number_of_pages
     advisories: Tuple[PaginationAdvisory, ...] = tuple()
-
     if is_uuid4_type(schema_info, pagination_node, pagination_field):
         # UUIDs are uniformly distributed, but it is not wise to make more pages than
         # there are values.
