@@ -1,4 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+from typing import Sequence
+
 from graphql import GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
 
@@ -29,3 +31,14 @@ def is_same_type(left, right):
         return is_same_type(left.of_type, right.of_type)
     else:
         return False
+
+
+def find_new_name(desired_name: str, taken_names: Sequence[str], try_original: bool = False) -> str:
+    """Return a name similar to the desired one that is not already taken."""
+    if try_original and desired_name not in taken_names:
+        return desired_name
+
+    index = 0
+    while "{}_{}".format(desired_name, index) in taken_names:
+        index += 1
+    return "{}_{}".format(desired_name, index)
