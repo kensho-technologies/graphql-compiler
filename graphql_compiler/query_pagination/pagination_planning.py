@@ -126,7 +126,7 @@ def get_best_vertex_partition_plan(
             # remaining N - 2 describe the distribution in between.
             page_capacity = len(quantiles) - 1
 
-        # If we have less than the ideal number of quantiles, we request for more.
+        # If we have fewer than the ideal number of quantiles, we advise creating more.
         if quantiles is None or len(quantiles) < ideal_quantile_resolution:
             current_quantile_resolution = 0 if quantiles is None else len(quantiles)
             advisories = (
