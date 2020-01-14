@@ -148,10 +148,18 @@ def get_pagination_plan(
 ) -> Tuple[PaginationPlan, Tuple[PaginationAdvisory, ...]]:
     """Make a best-effort PaginationPlan and advise on how to improve statistics.
 
-    Might paginate to fewer than the desired number of pages if no good pagination plan
-    is found. This can happen when there's not enough data, or when the planner is not
-    smart enough to find a good plan. In that case it will return along with the result
-    a list of PaginationAdvisorys that indicate why the pagination was not successful.
+    Might paginate to fewer than the desired number of pages if unable to find a more satisfactory
+    plan, and may even return plans with only a single page. For example, this can happen when
+    the captured statistics are insufficient, or when the planner is not smart enough to find a
+    good plan. In these cases, it will return alongside the result a tuple of PaginationAdvisory
+    objects that indicate why the desired pagination was not possible. Each PaginationAdvisory
+    states the necessary step that may be taken to avoid it in the future.
+
+    Might also paginate to fewer than the desired of number of pages even with perfect
+    statistics. This can happen when the vertex inherently doesn't have the capacity to paginate
+    with the desired number of pages. For example, if there's only one instance of Foo, trying
+    to split it into 10 pages does not make sense. In this case, no advisory is returned. It is
+    the task of the caller of this function to consider other vertices for pagination.
     """
     definition_ast = get_only_query_definition(query_ast, GraphQLError)
 
