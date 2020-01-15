@@ -19,7 +19,8 @@ The compiler abides by the following principles:
     each result may appear in the nested tree format used by the standard
     GraphQL specification.
 - Each such result must satisfy all directives and types in its corresponding GraphQL query.
-- The returned list of results is **not** guaranteed to be complete!
+- The returned list of results is **not** guaranteed to be complete! (This currently only applies
+  to Gremlin - please follow this :ref:`link <output_source>` for more information on the issue).
 
   - In other words, there may have been additional result sets that satisfy all directives and
     types in the corresponding GraphQL query, but were not returned by the database.
