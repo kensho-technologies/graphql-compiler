@@ -6265,6 +6265,162 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
+    def test_filter_field_with_tagged_optional_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_field_with_tagged_optional_parameter_in_fold_scope()
+
+        expected_match = """
+            SELECT
+                $Animal___1___in_Animal_ParentOf.name AS `children_with_higher_net_worth`,
+                Animal___1.name AS `name`
+            FROM  (
+                MATCH  {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf")[((
+                        $matched.Animal__out_Animal_ParentOf___1 IS null) OR
+                        (net_worth >= $matched.Animal__out_Animal_ParentOf___1.net_worth
+                    ))].asList()
+            WHERE (
+                ((Animal___1.out_Animal_ParentOf IS null) OR
+                (Animal___1.out_Animal_ParentOf.size() = 0)) OR
+                (Animal__out_Animal_ParentOf___1 IS NOT null)
+            )
+        """
+
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .ifThenElse{
+                it.out_Animal_ParentOf == null
+            }{
+                null
+            }{
+                it.out('Animal_ParentOf')
+            }.as('Animal__out_Animal_ParentOf___1')
+            .optional('Animal___1').as('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                children_with_higher_net_worth: ((
+                    m.Animal___2.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___2.in_Animal_ParentOf.collect{
+                            entry -> entry.outV.next()
+                        }.findAll{
+                            entry -> ((m.Animal__out_Animal_ParentOf___1 == null) ||
+                                (entry.net_worth >= m.Animal__out_Animal_ParentOf___1.net_worth))
+                        }.collect{entry -> entry.name})), name: m.Animal___1.name
+                ])
+            }
+        """
+
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            WHERE (
+                (Animal__out_Animal_ParentOf___1 IS null) OR
+                (Animal__in_Animal_ParentOf___2.net_worth >=
+                Animal__out_Animal_ParentOf___1.net_worth))
+            WITH
+                Animal___1 AS Animal___1,
+                Animal__out_Animal_ParentOf___1 AS Animal__out_Animal_ParentOf___1,
+                collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1
+            RETURN
+                [x IN collected_Animal__in_Animal_ParentOf___1 | x.name]
+                AS `children_with_higher_net_worth`,
+                Animal___1.name AS `name`
+        """
+
+        expected_mssql = NotImplementedError
+
+        expected_postgresql = NotImplementedError
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_filter_count_with_tagged_optional_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_tagged_optional_parameter_in_fold_scope()
+
+        expected_match = """
+            SELECT
+                $Animal___1___out_Animal_ParentOf.name AS `child_names`,
+                Animal___1.name AS `name`
+            FROM  (
+                MATCH  {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_OfSpecies') {{
+                    optional: true,
+                    as: Animal__out_Animal_OfSpecies___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
+            WHERE (
+                (
+                    ($matched.Animal__out_Animal_OfSpecies___1 IS null) OR
+                    ($Animal___1___out_Animal_ParentOf.size() >=
+                    Animal__out_Animal_OfSpecies___1.limbs)
+                ) AND (
+                    ((Animal___1.out_Animal_OfSpecies IS null) OR
+                    (Animal___1.out_Animal_OfSpecies.size() = 0)) OR
+                    (Animal__out_Animal_OfSpecies___1 IS NOT null)
+                )
+            )
+        """
+        expected_gremlin = NotImplementedError
+
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = """
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN schema_1."Species" AS "Species_1"
+            ON "Animal_1".species = "Species_1".uuid
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE
+                "Species_1".uuid IS NULL OR
+                "Species_1".limbs <= folded_subquery_1.fold_output__x_count
+        """
+
+        expected_cypher = NotImplementedError  # _x_count not implemented for Cypher
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
     def test_filter_count_with_tagged_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
 
@@ -6311,7 +6467,7 @@ class CompilerTests(unittest.TestCase):
             ON "Animal_1".uuid = folded_subquery_1.uuid
             WHERE "Species_1".limbs <= folded_subquery_1.fold_output__x_count
         """
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_cypher = NotImplementedError  # _x_count not implemented for Cypher
 
         check_test_data(
             self,

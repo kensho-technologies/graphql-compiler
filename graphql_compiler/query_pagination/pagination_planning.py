@@ -155,13 +155,9 @@ def get_pagination_plan(
     the captured statistics are insufficient, or when the planner is not smart enough to find a
     good plan.
 
-    If the issue can be fixed it will return alongside the result a tuple of PaginationAdvisory
+    If the issue can be fixed, the return value will also contain a tuple of PaginationAdvisory
     objects that indicate why the desired pagination was not possible. Each PaginationAdvisory
     states the necessary step that may be taken to avoid it in the future.
-
-    If the returned plan has fewer than the desired number of pages and no advisories are returned
-    then this vertex is inherently not a good vertex to paginate on, and the caller of this
-    function should consider other vertices for pagination.
 
     Args:
         schema_info: query planning information, including quantile statistics for pagination

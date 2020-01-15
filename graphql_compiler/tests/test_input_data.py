@@ -2552,6 +2552,63 @@ def filter_count_with_runtime_parameter_in_fold_scope() -> CommonTestData:  # no
     )
 
 
+def filter_field_with_tagged_optional_parameter_in_fold_scope() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @optional {
+                net_worth @tag(tag_name: "parent_net_worth")
+            }
+            in_Animal_ParentOf @fold {
+                net_worth @filter(op_name: ">=", value: ["%parent_net_worth"])
+                name @output(out_name: "children_with_higher_net_worth")
+            }
+        }
+    }
+    """
+    expected_output_metadata = {
+        "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "children_with_higher_net_worth": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
+    }
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
+def filter_count_with_tagged_optional_parameter_in_fold_scope() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+            Animal {
+                name @output(out_name: "name")
+                out_Animal_OfSpecies @optional {
+                    limbs @tag(tag_name: "limbs")
+                }
+                out_Animal_ParentOf @fold {
+                    _x_count @filter(op_name: ">=", value: ["%limbs"])
+                    name @output(out_name: "child_names")
+                }
+            }
+        }"""
+    expected_output_metadata = {
+        "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "child_names": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+    }
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def filter_count_with_tagged_parameter_in_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
