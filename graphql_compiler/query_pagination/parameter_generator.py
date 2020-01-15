@@ -13,7 +13,9 @@ from ..cost_estimation.int_value_conversion import convert_field_value_to_int, c
 
 
 def _get_query_path_endpoint_type(schema, query_path):
-    # TODO needs more care
+    # TODO needs more care with:
+    # - non-null types
+    # - type coercions
     current_type = schema.get_type('RootSchemaQuery')
     for selection in query_path:
         current_type = current_type.fields[selection].type.of_type
@@ -21,7 +23,10 @@ def _get_query_path_endpoint_type(schema, query_path):
 
 
 def _sum_partition(number, num_splits):
-    """Represent an integer as a sum of N almost equal integers."""
+    """Represent an integer as a sum of N almost equal integers, sorted in descending order.
+
+    Example: _sum_partition(5, 3) = [2, 2, 1]
+    """
     lower = number // num_splits
     num_high = number - lower * num_splits
     num_low = num_splits - num_high
@@ -44,7 +49,16 @@ def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, fiel
 
 
 def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters, vertex_partition):
-    """Return a generator"""
+    """Return a generator of parameter values that realize the vertex partition.
+
+    This function returns a generator of (vertex_partition.number_of_splits - 1) values that
+    split the values at vertex_partition.pagination_field into vertex_partition.number_of_splits
+    almost equal chunks.
+
+    The values returned can be used to create vertex_partition.number_of_splits pages, or just the
+    first value can be used to separate the first page from the remainder. Splitting the remainder
+    recursively should produce the same results.
+    """
     vertex_type = _get_query_path_endpoint_type(schema_info.schema, vertex_partition.query_path)
     pagination_field = vertex_partition.pagination_field
     if vertex_partition.number_of_splits < 2:
@@ -64,7 +78,7 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
         if filter_info.fields == (pagination_field,)
     ]
 
-    # See what are the min and max values currently imposed by existing filters.
+    # Get the value interval currently imposed by existing filters
     integer_interval = get_integer_interval_for_filters_on_field(
         schema_info, filters_on_field, vertex_type.name, pagination_field, parameters)
     field_value_interval = _convert_int_interval_to_field_value_interval(
