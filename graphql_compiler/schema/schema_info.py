@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from abc import ABCMeta
 from collections import namedtuple
 from dataclasses import dataclass
 from functools import partial
@@ -58,70 +59,7 @@ class GenericSchemaInfo:
 
 
 @dataclass
-class GenericSchemaInfoOnly:
-    """
-    Use this if a SchemaInfo class only contains GenericSchemaInfo.
-
-    Provides convenience methods.
-    """
-    generic_schema_info: GenericSchemaInfo
-
-    @property
-    def schema(self) -> GraphQLSchema:
-        return self.generic_schema_info.schema
-
-    @property
-    def type_equivalence_hints(self) -> Optional[Dict[str, str]]:
-        return self.generic_schema_info.type_equivalence_hints
-
-
-@dataclass
-class MatchSchemaInfo(GenericSchemaInfoOnly):
-    pass
-
-
-def create_match_schema_info(
-    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
-) -> MatchSchemaInfo:
-    """Create a SchemaInfo object for a database using MATCH."""
-    generic_schema_info = GenericSchemaInfo(
-        schema=schema, type_equivalence_hints=type_equivalence_hints
-    )
-    return MatchSchemaInfo(generic_schema_info=generic_schema_info)
-
-
-@dataclass
-class GremlinSchemaInfo(GenericSchemaInfoOnly):
-    pass
-
-
-def create_gremlin_schema_info(
-    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
-) -> GremlinSchemaInfo:
-    """Create a SchemaInfo object for a database using Gremlin."""
-    generic_schema_info = GenericSchemaInfo(
-        schema=schema, type_equivalence_hints=type_equivalence_hints
-    )
-    return GremlinSchemaInfo(generic_schema_info=generic_schema_info)
-
-
-@dataclass
-class CypherSchemaInfo(GenericSchemaInfoOnly):
-    pass
-
-
-def create_cypher_schema_info(
-    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
-) -> CypherSchemaInfo:
-    """Create a SchemaInfo object for a database using Cypher."""
-    generic_schema_info = GenericSchemaInfo(
-        schema=schema, type_equivalence_hints=type_equivalence_hints
-    )
-    return CypherSchemaInfo(generic_schema_info=generic_schema_info)
-
-
-@dataclass
-class BackendSpecificSchemaInfo:
+class BackendSpecificSchemaInfo(metaclass=ABCMeta):
     """
     Common base class to be used by all backend-specific schema info classes.
 
@@ -136,6 +74,51 @@ class BackendSpecificSchemaInfo:
     @property
     def type_equivalence_hints(self) -> Optional[Dict[str, str]]:
         return self.generic_schema_info.type_equivalence_hints
+
+
+@dataclass
+class MatchSchemaInfo(BackendSpecificSchemaInfo):
+    pass
+
+
+def create_match_schema_info(
+    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
+) -> MatchSchemaInfo:
+    """Create a SchemaInfo object for a database using MATCH."""
+    generic_schema_info = GenericSchemaInfo(
+        schema=schema, type_equivalence_hints=type_equivalence_hints
+    )
+    return MatchSchemaInfo(generic_schema_info=generic_schema_info)
+
+
+@dataclass
+class GremlinSchemaInfo(BackendSpecificSchemaInfo):
+    pass
+
+
+def create_gremlin_schema_info(
+    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
+) -> GremlinSchemaInfo:
+    """Create a SchemaInfo object for a database using Gremlin."""
+    generic_schema_info = GenericSchemaInfo(
+        schema=schema, type_equivalence_hints=type_equivalence_hints
+    )
+    return GremlinSchemaInfo(generic_schema_info=generic_schema_info)
+
+
+@dataclass
+class CypherSchemaInfo(BackendSpecificSchemaInfo):
+    pass
+
+
+def create_cypher_schema_info(
+    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
+) -> CypherSchemaInfo:
+    """Create a SchemaInfo object for a database using Cypher."""
+    generic_schema_info = GenericSchemaInfo(
+        schema=schema, type_equivalence_hints=type_equivalence_hints
+    )
+    return CypherSchemaInfo(generic_schema_info=generic_schema_info)
 
 
 @dataclass
