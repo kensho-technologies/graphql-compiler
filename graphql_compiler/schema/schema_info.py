@@ -60,19 +60,21 @@ class GenericSchemaInfo:
 
 @dataclass
 class BackendSpecificSchemaInfo(metaclass=ABCMeta):
-    """
-    Common base class to be used by all backend-specific schema info classes.
+    """Common base class to be used by all backend-specific schema info classes.
 
     This helps hide that the data actually lives one nesting level deeper.
     """
+
     generic_schema_info: GenericSchemaInfo
 
     @property
     def schema(self) -> GraphQLSchema:
+        """Return schema."""
         return self.generic_schema_info.schema
 
     @property
     def type_equivalence_hints(self) -> Optional[Dict[str, str]]:
+        """Return type equivalence hints."""
         return self.generic_schema_info.type_equivalence_hints
 
 
@@ -123,8 +125,7 @@ def create_cypher_schema_info(
 
 @dataclass
 class SQLSchemaInfo(BackendSpecificSchemaInfo):
-    """
-    Schema information specific to SQL databases.
+    """Schema information specific to SQL databases.
 
     If the flavors start diverging in their attributes, consider making a class per flavor.
     """
