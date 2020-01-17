@@ -27,7 +27,7 @@ def find_version():
     if version_match:
         return version_match.group(1)
     raise RuntimeError("Unable to find version string.")
-
+from graphql import lexicographic_sort_schema
 
 def find_name():
     """Only define name in one place."""
