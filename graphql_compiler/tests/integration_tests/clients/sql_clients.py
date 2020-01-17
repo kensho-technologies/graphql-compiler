@@ -7,7 +7,7 @@ import six
 from sqlalchemy import create_engine, text
 from sqlalchemy.sql.ddl import CreateSchema
 
-from .. import backends
+from ... import backends
 
 
 pyodbc_parameter_string = "DRIVER={driver};SERVER={server};UID={uid};PWD={pwd}".format(  # nosec

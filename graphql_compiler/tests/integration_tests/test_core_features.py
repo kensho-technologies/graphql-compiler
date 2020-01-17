@@ -16,7 +16,7 @@ from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
-from . import backends as test_backend
+from .. import backends as test_backend
 from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
