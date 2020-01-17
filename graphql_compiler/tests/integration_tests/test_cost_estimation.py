@@ -13,8 +13,6 @@ from ...cost_estimation.filter_selectivity_utils import (
     FRACTIONAL_SELECTIVITY,
     Selectivity,
     _combine_filter_selectivities,
-    _create_integer_interval,
-    _get_intersection_of_intervals,
     adjust_counts_for_filters,
     get_selectivity_of_filters_at_vertex,
 )
@@ -22,6 +20,7 @@ from ...cost_estimation.int_value_conversion import (
     convert_field_value_to_int,
     convert_int_to_field_value,
 )
+from ...cost_estimation.interval import Interval, intersect_int_intervals
 from ...cost_estimation.statistics import LocalStatistics, Statistics
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -1312,6 +1311,43 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_counts = 32.0 * (1.0 / 3.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_inequality_filters_on_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics(
+            dict(),
+            field_quantiles={
+                ("Event", "event_date"): [
+                    datetime(2019, 3, 1, tzinfo=pytz.utc),
+                    datetime(2019, 6, 1, tzinfo=pytz.utc),
+                    datetime(2019, 8, 1, tzinfo=pytz.utc),
+                    datetime(2019, 9, 1, tzinfo=pytz.utc),
+                ],
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        # Test <= filter in the middle
+        filter_info_list = [
+            FilterInfo(fields=("event_date",), op_name="<=", args=("$event_date_upper",))
+        ]
+        params = {"event_date_upper": datetime(2019, 7, 1)}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, "Event", 32.0
+        )
+        expected_counts = 32.0 * (1.5 / 3.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
 
 # pylint: enable=no-member
 
@@ -1324,87 +1360,87 @@ class IntegerIntervalTests(unittest.TestCase):
 
     def test_interval_creation(self) -> None:
         """Test that intervals are created correctly, and that empty intervals are detected."""
-        interval = _create_integer_interval(5, 1000)
-        self.assertTrue(interval is not None)
+        interval = Interval[int](5, 1000)
+        self.assertTrue(not interval.is_empty())
 
-        interval = _create_integer_interval(5, 5)
-        self.assertTrue(interval is not None)
+        interval = Interval[int](5, 5)
+        self.assertTrue(not interval.is_empty())
 
-        interval = _create_integer_interval(5, 1)
-        self.assertTrue(interval is None)
+        interval = Interval[int](5, 1)
+        self.assertTrue(interval.is_empty())
 
     def test_intersection_when_overlapping(self) -> None:
         """Test intersection computation for non-disjoint intervals."""
-        interval_a = _create_integer_interval(1, 3)
-        interval_b = _create_integer_interval(2, 4)
+        interval_a = Interval[int](1, 3)
+        interval_b = Interval[int](2, 4)
 
-        expected_intersection = _create_integer_interval(2, 3)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](2, 3)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(4, 6)
-        interval_b = _create_integer_interval(2, 4)
+        interval_a = Interval[int](4, 6)
+        interval_b = Interval[int](2, 4)
 
-        expected_intersection = _create_integer_interval(4, 4)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](4, 4)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(4, 6)
-        interval_b = _create_integer_interval(4, 6)
+        interval_a = Interval[int](4, 6)
+        interval_b = Interval[int](4, 6)
 
-        expected_intersection = _create_integer_interval(4, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](4, 6)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(0, None)
-        interval_b = _create_integer_interval(4, 6)
+        interval_a = Interval[int](0, None)
+        interval_b = Interval[int](4, 6)
 
-        expected_intersection = _create_integer_interval(4, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](4, 6)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(0, None)
-        interval_b = _create_integer_interval(None, 6)
+        interval_a = Interval[int](0, None)
+        interval_b = Interval[int](None, 6)
 
-        expected_intersection = _create_integer_interval(0, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](0, 6)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(None, None)
-        interval_b = _create_integer_interval(None, 6)
+        interval_a = Interval[int](None, None)
+        interval_b = Interval[int](None, 6)
 
-        expected_intersection = _create_integer_interval(None, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](None, 6)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(None, None)
-        interval_b = _create_integer_interval(None, None)
+        interval_a = Interval[int](None, None)
+        interval_b = Interval[int](None, None)
 
-        expected_intersection = _create_integer_interval(None, None)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](None, None)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
     def test_disjoint_intervals(self) -> None:
         """Test intersection computation when disjoint intervals are given."""
-        interval_a = _create_integer_interval(1, 3)
-        interval_b = _create_integer_interval(5, 7)
+        interval_a = Interval[int](1, 3)
+        interval_b = Interval[int](5, 7)
 
-        expected_intersection = None
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](1, 0)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(8, 10)
-        interval_b = _create_integer_interval(5, 7)
+        interval_a = Interval[int](8, 10)
+        interval_b = Interval[int](5, 7)
 
-        expected_intersection = None
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](1, 0)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(0, 0)
-        interval_b = _create_integer_interval(1, 1)
+        interval_a = Interval[int](0, 0)
+        interval_b = Interval[int](1, 1)
 
-        expected_intersection = None
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](1, 0)
+        received_intersection = intersect_int_intervals(interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")

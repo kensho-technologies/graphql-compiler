@@ -296,7 +296,7 @@ class IrGenerationTests(unittest.TestCase):
                 base_location: "Animal",
             }
             expected_output_metadata = {
-                "animal_name": OutputMetadata(type=GraphQLString, optional=False),
+                "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
             }
             expected_input_metadata = {
                 "wanted": GraphQLString,
@@ -4349,6 +4349,124 @@ class IrGenerationTests(unittest.TestCase):
         ]
         expected_location_types = {
             base_location: "Animal",
+            parent_fold: "Animal",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_field_with_tagged_optional_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_field_with_tagged_optional_parameter_in_fold_scope()
+
+        base_location = helpers.Location(("Animal",))
+        optional_parent_location = base_location.navigate_to_subpath("out_Animal_ParentOf")
+        revisited_base_location = base_location.revisit()
+        parent_fold = revisited_base_location.navigate_to_fold("in_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Animal"}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse("out", "Animal_ParentOf", optional=True, within_optional_scope=False),
+            blocks.MarkLocation(optional_parent_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.Fold(parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    "||",
+                    expressions.BinaryComposition(
+                        "=",
+                        expressions.ContextFieldExistence(optional_parent_location),
+                        expressions.Literal(False,),
+                    ),
+                    expressions.BinaryComposition(
+                        ">=",
+                        expressions.LocalField("net_worth", GraphQLDecimal),
+                        expressions.ContextField(
+                            optional_parent_location.navigate_to_field("net_worth"), GraphQLDecimal
+                        ),
+                    ),
+                )
+            ),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "children_with_higher_net_worth": expressions.FoldedContextField(
+                        parent_fold.navigate_to_field("name"), GraphQLList(GraphQLString)
+                    ),
+                }
+            ),
+        ]
+
+        expected_location_types = {
+            base_location: "Animal",
+            optional_parent_location: "Animal",
+            revisited_base_location: "Animal",
+            parent_fold: "Animal",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_count_with_tagged_optional_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_tagged_optional_parameter_in_fold_scope()
+
+        base_location = helpers.Location(("Animal",))
+        species_location = base_location.navigate_to_subpath("out_Animal_OfSpecies")
+        revisited_base_location = base_location.revisit()
+        parent_fold = revisited_base_location.navigate_to_fold("out_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Animal"}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse("out", "Animal_OfSpecies", optional=True, within_optional_scope=False),
+            blocks.MarkLocation(species_location),
+            blocks.EndOptional(),
+            blocks.Backtrack(base_location, optional=True),
+            blocks.MarkLocation(revisited_base_location),
+            blocks.Fold(parent_fold),
+            blocks.MarkLocation(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    "||",
+                    expressions.BinaryComposition(
+                        "=",
+                        expressions.ContextFieldExistence(species_location),
+                        expressions.Literal(False,),
+                    ),
+                    expressions.BinaryComposition(
+                        ">=",
+                        expressions.FoldedContextField(
+                            parent_fold.navigate_to_field(COUNT_META_FIELD_NAME), GraphQLInt
+                        ),
+                        expressions.GlobalContextField(
+                            species_location.navigate_to_field("limbs"), GraphQLInt
+                        ),
+                    ),
+                )
+            ),
+            blocks.ConstructResult(
+                {
+                    "name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "child_names": expressions.FoldedContextField(
+                        parent_fold.navigate_to_field("name"), GraphQLList(GraphQLString)
+                    ),
+                }
+            ),
+        ]
+
+        expected_location_types = {
+            base_location: "Animal",
+            species_location: "Species",
+            revisited_base_location: "Animal",
             parent_fold: "Animal",
         }
 

@@ -57,28 +57,24 @@ from ..helpers import get_only_element_from_collection
 
 def _is_local_filter(filter_block):
     """Return True if the Filter block references no non-local fields, and False otherwise."""
-    # We need the "result" value of this function to be mutated within the "visitor_fn".
-    # Since we support both Python 2 and Python 3, we can't use the "nonlocal" keyword here:
-    # https://www.python.org/dev/peps/pep-3104/
-    # Instead, we use a dict to store the value we need mutated, since the "visitor_fn"
-    # can mutate state in the parent scope, but not rebind variables in it without "nonlocal".
-    # TODO(predrag): Revisit this if we drop support for Python 2.
-    result = {"is_local_filter": True}
+    is_local_filter = True
     filter_predicate = filter_block.predicate
 
     def visitor_fn(expression):
         """Expression visitor function that looks for uses of non-local fields."""
+        nonlocal is_local_filter
+
         non_local_expression_types = (ContextField, ContextFieldExistence)
 
         if isinstance(expression, non_local_expression_types):
-            result["is_local_filter"] = False
+            is_local_filter = False
 
         # Don't change the expression.
         return expression
 
     filter_predicate.visit_and_update(visitor_fn)
 
-    return result["is_local_filter"]
+    return is_local_filter
 
 
 def _classify_query_locations(match_query):
