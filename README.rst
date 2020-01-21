@@ -21,8 +21,8 @@ languages.
 
 Furthermore, the GraphQL compiler validates queries through the use of a
 GraphQL schema that specifies the underlying schema of the database. We
-we can currently autogenerate GraphQL schemas from OrientDB databases, (see `End-to-End Example
-<#end-to-end-example>`__) and from SQL databases, (see `End-to-End SQL Example
+can currently autogenerate GraphQL schemas from OrientDB databases (see `End-to-End Example
+<#end-to-end-example>`__) and from SQL databases (see `End-to-End SQL Example
 <#end-to-end-sql-example>`__).
 
 For a more detailed overview and getting started guide, please see `our
