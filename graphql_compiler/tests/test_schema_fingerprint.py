@@ -1,14 +1,13 @@
-from ..fingerprint import compute_schema_fingerprint
-from graphql import build_ast_schema, parse, print_schema
-from .test_helpers import compare_graphql
 import unittest
+
+from graphql import build_ast_schema, parse, print_schema
+
+from ..schema import compute_schema_fingerprint
+from .test_helpers import compare_graphql
 
 
 def _compare_schema_fingerprints(
-    test_case: unittest.TestCase,
-    schema_text1: str,
-    schema_text2: str,
-    expect_equality: bool=True
+    test_case: unittest.TestCase, schema_text1: str, schema_text2: str, expect_equality: bool = True
 ) -> None:
     """Build the schemas from the schema texts and compare their fingerprints for equality."""
     fingerprint1 = compute_schema_fingerprint(build_ast_schema(parse(schema_text1)))
