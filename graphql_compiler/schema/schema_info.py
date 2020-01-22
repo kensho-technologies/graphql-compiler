@@ -1,11 +1,174 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from abc import ABCMeta
 from collections import namedtuple
+from dataclasses import dataclass
+from functools import partial
+from typing import Dict, Optional
 
+from graphql.type import GraphQLSchema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 import six
 import sqlalchemy
+from sqlalchemy.dialects.mssql import dialect as mssql_dialect
+from sqlalchemy.dialects.mysql import dialect as mysql_dialect
+from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
+from sqlalchemy.engine.interfaces import Dialect
 
 from . import is_vertex_field_name
+
+
+# Describes the intent to join two tables using the specified columns.
+#
+# The resulting join expression could be something like:
+# JOIN origin_table.from_column = destination_table.to_column
+#
+# The type of join (inner vs left, etc.) is not specified.
+# The tables are not specified.
+DirectJoinDescriptor = namedtuple(
+    "DirectJoinDescriptor",
+    (
+        "from_column",  # The column in the source table we intend to join on.
+        "to_column",  # The column in the destination table we intend to join on.
+    ),
+)
+
+
+@dataclass
+class GenericSchemaInfo:
+    """Class for storing generic schema info required for querying."""
+
+    schema: GraphQLSchema
+
+    # Optional dict of GraphQL interface or type -> GraphQL union.
+    # Used as a workaround for GraphQL's lack of support for
+    # inheritance across "types" (i.e. non-interfaces), as well as a
+    # workaround for Gremlin's total lack of inheritance-awareness.
+    # The key-value pairs in the dict specify that the "key" type
+    # is equivalent to the "value" type, i.e. that the GraphQL type or
+    # interface in the key is the most-derived common supertype
+    # of every GraphQL type in the "value" GraphQL union.
+    # Recursive expansion of type equivalence hints is not performed,
+    # and only type-level correctness of this argument is enforced.
+    # See README.md for more details on everything this parameter does.
+    # *****
+    # Be very careful with this option, as bad input here will
+    # lead to incorrect output queries being generated.
+    # *****
+    # TODO: make sure we are treating empty dict the same as None
+    type_equivalence_hints: Optional[Dict[str, str]]
+
+
+@dataclass
+class BackendSpecificSchemaInfo(metaclass=ABCMeta):
+    """Common base class to be used by all backend-specific schema info classes.
+
+    This helps hide that the data actually lives one nesting level deeper.
+    """
+
+    generic_schema_info: GenericSchemaInfo
+
+    @property
+    def schema(self) -> GraphQLSchema:
+        """Return schema."""
+        return self.generic_schema_info.schema
+
+    @property
+    def type_equivalence_hints(self) -> Optional[Dict[str, str]]:
+        """Return type equivalence hints."""
+        return self.generic_schema_info.type_equivalence_hints
+
+
+@dataclass
+class MatchSchemaInfo(BackendSpecificSchemaInfo):
+    pass
+
+
+def create_match_schema_info(
+    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
+) -> MatchSchemaInfo:
+    """Create a SchemaInfo object for a database using MATCH."""
+    generic_schema_info = GenericSchemaInfo(
+        schema=schema, type_equivalence_hints=type_equivalence_hints
+    )
+    return MatchSchemaInfo(generic_schema_info=generic_schema_info)
+
+
+@dataclass
+class GremlinSchemaInfo(BackendSpecificSchemaInfo):
+    pass
+
+
+def create_gremlin_schema_info(
+    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
+) -> GremlinSchemaInfo:
+    """Create a SchemaInfo object for a database using Gremlin."""
+    generic_schema_info = GenericSchemaInfo(
+        schema=schema, type_equivalence_hints=type_equivalence_hints
+    )
+    return GremlinSchemaInfo(generic_schema_info=generic_schema_info)
+
+
+@dataclass
+class CypherSchemaInfo(BackendSpecificSchemaInfo):
+    pass
+
+
+def create_cypher_schema_info(
+    schema: GraphQLSchema, type_equivalence_hints: Optional[Dict[str, str]] = None
+) -> CypherSchemaInfo:
+    """Create a SchemaInfo object for a database using Cypher."""
+    generic_schema_info = GenericSchemaInfo(
+        schema=schema, type_equivalence_hints=type_equivalence_hints
+    )
+    return CypherSchemaInfo(generic_schema_info=generic_schema_info)
+
+
+@dataclass
+class SQLSchemaInfo(BackendSpecificSchemaInfo):
+    """Schema information specific to SQL databases.
+
+    If the flavors start diverging in their attributes, consider making a class per flavor.
+    """
+
+    # Specifying the dialect for which we are compiling
+    # e.g. sqlalchemy.dialects.mssql.dialect()
+    dialect: Dialect
+    # dict mapping every GraphQL object type or interface type name in the schema to
+    # a sqlalchemy table.
+    # Column types that do not exist for this dialect are not allowed.
+    # All tables are expected to have primary keys.
+
+    vertex_name_to_table: Dict[str, sqlalchemy.Table]
+    # dict mapping every GraphQL object type or interface type name in the schema to
+    # dict mapping every vertex field name at that type to a DirectJoinDescriptor.
+    # The tables the join is to be performed on are not specified.
+    # They are inferred from the schema and the tables dictionary.
+    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]]
+
+
+def _create_sql_schema_info(
+    dialect: Dialect,
+    schema: GraphQLSchema,
+    vertex_name_to_table: Dict[str, sqlalchemy.Table],
+    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]],
+    type_equivalence_hints: Optional[Dict[str, str]] = None,
+) -> SQLSchemaInfo:
+    """Create a SQLSchemaInfo object for a database using a flavor of SQL."""
+    generic_schema_info = GenericSchemaInfo(
+        schema=schema, type_equivalence_hints=type_equivalence_hints
+    )
+
+    return SQLSchemaInfo(
+        generic_schema_info=generic_schema_info,
+        dialect=dialect,
+        vertex_name_to_table=vertex_name_to_table,
+        join_descriptors=join_descriptors,
+    )
+
+
+create_postgresql_schema_info = partial(_create_sql_schema_info, postgresql_dialect)
+create_mssql_schema_info = partial(_create_sql_schema_info, mssql_dialect)
+create_mysql_schema_info = partial(_create_sql_schema_info, mysql_dialect)
 
 
 # Complete schema information sufficient to compile GraphQL queries for most backends
@@ -30,22 +193,6 @@ CommonSchemaInfo = namedtuple(
         # lead to incorrect output queries being generated.
         # *****
         "type_equivalence_hints",
-    ),
-)
-
-
-# Describes the intent to join two tables using the specified columns.
-#
-# The resulting join expression could be something like:
-# JOIN origin_table.from_column = destination_table.to_column
-#
-# The type of join (inner vs left, etc.) is not specified.
-# The tables are not specified.
-DirectJoinDescriptor = namedtuple(
-    "DirectJoinDescriptor",
-    (
-        "from_column",  # The column in the source table we intend to join on.
-        "to_column",  # The column in the destination table we intend to join on.
     ),
 )
 
