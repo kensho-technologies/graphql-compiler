@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 import unittest
 
 from graphql import build_ast_schema, parse, print_schema
