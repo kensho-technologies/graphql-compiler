@@ -1,4 +1,4 @@
-from graphql import lexicographic_sort_schema, print_schema, GraphQLSchema, get_introspection_query
+from graphql import lexicographic_sort_schema, print_schema, GraphQLSchema
 from hashlib import sha256
 
 
@@ -10,11 +10,11 @@ def compute_schema_fingerprint(schema: GraphQLSchema) -> str:
     represent the same schema.
 
     Args:
-        schema: the schema to use
+        schema: the schema to use.
 
     Returns:
-
+        a fingerprint compactly representing the data in the schema.
     """
-    schema.to_kwargs()
-
-    sha256(text.encode("utf-8")).hexdigest()
+    lexicographically_sorted_schema = lexicographic_sort_schema(schema)
+    text = print_schema(lexicographically_sorted_schema)
+    return sha256(text.encode("utf-8")).hexdigest()

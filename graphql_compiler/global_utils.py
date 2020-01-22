@@ -29,9 +29,3 @@ def is_same_type(left, right):
         return is_same_type(left.of_type, right.of_type)
     else:
         return False
-
-
-def get_text_fingerprint(text: str) -> HexFingerprint:
-    """Return a fingerprint compactly representing the given text."""
-    full_fingerprint = sha256(text.encode("utf-8")).hexdigest()
-    return _prune_fingerprint_to_standard_length(full_fingerprint)
