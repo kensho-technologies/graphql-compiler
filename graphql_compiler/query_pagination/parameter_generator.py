@@ -36,8 +36,8 @@ def _sum_partition(number, num_splits):
     ))
 
 
-def _dedup(gen):
-    prev = None
+def _deduplicate_sorted_generator(gen):
+    prev = object()
     for i in gen:
         if i != prev:
             yield i
@@ -121,8 +121,16 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
         proper_quantiles = quantiles[1:-1]
 
         # Get the relevant quantiles (ones inside the field_value_interval)
-        # XXX what if there were enough quantiles in total, but after taking the filter
-        #     into account, there aren't enough anymore?
+        # TODO(bojanserafimov): It's possible that the planner thought there are enough quantiles
+        #                       to paginate, but didn't notice that there are filters that restrict
+        #                       the range of values into a range for which there are not enough
+        #                       quantiles. In this case, the pagination plan is not fully realized.
+        #                       The generated query will have fewer pages than the plan specified.
+        #
+        #                       One solution is to push all the pagination capacity logic
+        #                       into the cost estimator, and make it return along with the
+        #                       cardinality estimate some other metadata that the paginator would
+        #                       rely on.
         min_quantile = 0
         max_quantile = len(proper_quantiles)
         if field_value_interval.lower_bound is not None:
@@ -131,7 +139,10 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
             max_quantile = bisect.bisect_left(proper_quantiles, field_value_interval.upper_bound)
         relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
 
-        return _dedup(
+        # TODO(bojanserafimov): We deduplicate the results to make sure we don't generate pages
+        #                       that are known to be empty. This can cause the number of generated
+        #                       pages to be less than the desired number of pages.
+        return _deduplicate_sorted_generator(
             proper_quantiles[index]
             for index in _sum_partition(
                 len(relevant_quantiles) + 1,
