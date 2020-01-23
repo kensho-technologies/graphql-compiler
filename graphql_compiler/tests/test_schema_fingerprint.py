@@ -64,7 +64,20 @@ class SchemaFingerprintTests(unittest.TestCase):
         )
         self.assertNotEqual(schema_with_added_field_fingerprint, fingerprint)
 
-    def test_interface_order(self):
+    def test_different_field_type(self):
+        schema_text1 = """
+            type Object {
+                field: String
+            }
+        """
+        schema_text2 = """
+            type Object {
+                field: Int
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_interface_implementation_order(self):
         schema_text1 = """
             type Object implements Interface1 & Interface2 {
                 field1: String
@@ -95,7 +108,38 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
-    def test_union_order(self):
+    def test_different_interface_implementation(self):
+        schema_text1 = """
+            type Object implements Interface1 & Interface2 {
+                field1: String
+                field2: String
+            }
+
+            interface Interface1 {
+                field1: String
+            }
+
+            interface Interface2 {
+                field1: String
+            }
+        """
+        schema_text2 = """
+            type Object implements Interface1 {
+                field1: String
+                field2: String
+            }
+
+            interface Interface1 {
+                field1: String
+            }
+
+            interface Interface2 {
+                field1: String
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_union_definition_order(self):
         schema_text1 = """
             type Object1 {
                 field1: String
@@ -120,7 +164,32 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
-    def test_top_level_order(self):
+    def test_different_union_definitions(self):
+        schema_text1 = """
+            type Object1 {
+                field1: String
+            }
+
+            type Object2 {
+                field2: String
+            }
+
+            union UnionType = Object1 | Object2
+        """
+        schema_text2 = """
+            type Object1 {
+                field1: String
+            }
+
+            type Object2 {
+                field2: String
+            }
+
+            union UnionType = Object1
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_top_level_type_order(self):
         schema_text1 = """
             scalar Date
 
@@ -144,6 +213,29 @@ class SchemaFingerprintTests(unittest.TestCase):
             }
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_different_top_level_types(self):
+        schema_text1 = """
+            scalar Date
+
+            directive @output on FIELD
+
+            type Object {
+                field1: String
+            }
+
+            union UnionType = Object
+        """
+        schema_text2 = """
+            scalar Date
+
+            directive @output on FIELD
+
+            type Object {
+                field1: String
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
 
     def test_directive_definition_argument_order(self):
         schema_text1 = """
@@ -160,6 +252,20 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
+    def test_different_directive_arguments(self):
+        schema_text1 = """
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        schema_text2 = """
+            directive @filter(
+                op_name: String!
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
     def test_directive_definition_location_order(self):
         schema_text1 = """
             directive @filter(
@@ -175,22 +281,20 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
-    def test_argument_order_of_field_definition_directive(self):
+    def test_different_directive_locations(self):
         schema_text1 = """
-            directive @custom_directive(b: String, a: Int) on FIELD_DEFINITION
-
-            type Foo {
-                my_field: Int @custom_directive(b: "123", a: 1)
-            }
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD | INLINE_FRAGMENT
         """
         schema_text2 = """
-            directive @custom_directive(b: String, a: Int) on FIELD_DEFINITION
-
-            type Foo {
-                my_field: Int @custom_directive(a: 1, b: "123")
-            }
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD
         """
-        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
 
     def test_schema_operation_order(self):
         schema_text1 = """
@@ -229,6 +333,42 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
+    def test_different_schema_operations(self):
+        schema_text1 = """
+            schema {
+               query: RootSchemaQuery
+               mutation: RootSchemaMutation
+            }
+            type Object1 {
+                field1: String
+            }
+
+            type RootSchemaQuery {
+                Object1: [Object1]
+            }
+
+            type RootSchemaMutation {
+                Object1: [Object1]
+            }
+        """
+        schema_text2 = """
+            schema {
+               query: RootSchemaQuery
+            }
+            type Object1 {
+                field1: String
+            }
+
+            type RootSchemaQuery {
+                Object1: [Object1]
+            }
+
+            type RootSchemaMutation {
+                Object1: [Object1]
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
     def test_description_change(self):
         schema_text1 = """
             \"\"\"
@@ -241,5 +381,18 @@ class SchemaFingerprintTests(unittest.TestCase):
             Description 2
             \"\"\"
             scalar Date
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_different_deprecation_reason(self):
+        schema_text1 = """
+            type Object {
+                field: String @deprecated(reason: "Reason 1")
+            }
+        """
+        schema_text2 = """
+            type Object {
+                field: String @deprecated(reason: "Reason 2")
+            }
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
