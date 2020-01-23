@@ -35,7 +35,7 @@ class SchemaFingerprintTests(unittest.TestCase):
         # Assert that compute_schema_fingerprint does not modify the original schema.
         compare_graphql(self, schema_text, print_schema(schema))
 
-        # Assert that the fingerprint disregards field order.
+        # Assert that compute_schema_fingerprint disregards field order.
         reordered_schema_text = """
             type Object{
                 field1: String
@@ -49,7 +49,7 @@ class SchemaFingerprintTests(unittest.TestCase):
         )
         self.assertEqual(reordered_schema_fingerprint, fingerprint)
 
-        # Assert that the fingerprint is not the same if we add a new field.
+        # Assert that the computed fingerprint is not the same if we add a new field.
         schema_text_with_added_field = """
             type Object{
                 field1: String
@@ -145,7 +145,7 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
-    def test_directive_argument_order(self):
+    def test_directive_definition_argument_order(self):
         schema_text1 = """
             directive @filter(
                 op_name: String!
@@ -160,7 +160,7 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
-    def test_directive_location_order(self):
+    def test_directive_definition_location_order(self):
         schema_text1 = """
             directive @filter(
                 op_name: String!
@@ -172,6 +172,23 @@ class SchemaFingerprintTests(unittest.TestCase):
                 value: [String!]
                 op_name: String!
             ) repeatable on INLINE_FRAGMENT | FIELD
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_argument_order_of_field_definition_directive(self):
+        schema_text1 = """
+            directive @custom_directive(b: String, a: Int) on FIELD_DEFINITION
+
+            type Foo {
+                my_field: Int @custom_directive(b: "123", a: 1)
+            }
+        """
+        schema_text2 = """
+            directive @custom_directive(b: String, a: Int) on FIELD_DEFINITION
+
+            type Foo {
+                my_field: Int @custom_directive(a: 1, b: "123")
+            }
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2)
 
