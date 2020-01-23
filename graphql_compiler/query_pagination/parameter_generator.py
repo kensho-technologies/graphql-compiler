@@ -36,6 +36,14 @@ def _sum_partition(number, num_splits):
     ))
 
 
+def _dedup(gen):
+    prev = None
+    for i in gen:
+        if i != prev:
+            yield i
+        prev = i
+
+
 def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, field, interval):
     lower_bound = None
     upper_bound = None
@@ -55,9 +63,10 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
     split the values at vertex_partition.pagination_field into vertex_partition.number_of_splits
     almost equal chunks.
 
-    The values returned can be used to create vertex_partition.number_of_splits pages, or just the
-    first value can be used to separate the first page from the remainder. Splitting the remainder
-    recursively should produce the same results.
+    Composability guarantee: The values returned can be used to create
+    vertex_partition.number_of_splits pages, or just the first value can be used to separate
+    the first page from the remainder. Splitting the remainder recursively should produce
+    the same results.
     """
     vertex_type = _get_query_path_endpoint_type(schema_info.schema, vertex_partition.query_path)
     pagination_field = vertex_partition.pagination_field
@@ -112,6 +121,8 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
         proper_quantiles = quantiles[1:-1]
 
         # Get the relevant quantiles (ones inside the field_value_interval)
+        # XXX what if there were enough quantiles in total, but after taking the filter
+        #     into account, there aren't enough anymore?
         min_quantile = 0
         max_quantile = len(proper_quantiles)
         if field_value_interval.lower_bound is not None:
@@ -120,7 +131,7 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
             max_quantile = bisect.bisect_left(proper_quantiles, field_value_interval.upper_bound)
         relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
 
-        return (
+        return _dedup(
             proper_quantiles[index]
             for index in _sum_partition(
                 len(relevant_quantiles) + 1,

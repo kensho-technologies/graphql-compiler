@@ -229,7 +229,7 @@ class QueryPaginationTests(unittest.TestCase):
         uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
         class_counts = {'Species': 1000}
         statistics = LocalStatistics(class_counts, field_quantiles={
-            ('Species', 'limbs'): [i for i in range(101)],
+            ('Species', 'limbs'): list(range(0, 1001, 10))
         })
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -246,14 +246,15 @@ class QueryPaginationTests(unittest.TestCase):
             }
         }'''
         args = {
-            'num_limbs': 50
+            'num_limbs': 505
         }
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(['Species'], 'limbs', 4)
         generated_parameters = generate_parameters_for_vertex_partition(
             schema_info, query_ast, args, vertex_partition)
 
-        expected_parameters = [14, 26, 38]
+        # XXX document why this is expected, see if bisect_left logic is correct
+        expected_parameters = [140, 270, 400]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
@@ -328,3 +329,37 @@ class QueryPaginationTests(unittest.TestCase):
             'c0000000-0000-0000-0000-000000000000',
         ]
         self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    def test_parameter_value_generation_consecutive(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: 'uuid' for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys['Species'] = 'limbs'  # Force pagination on int field
+        uuid4_fields = {vertex_name: {'uuid'} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {'Species': 1000}
+        statistics = LocalStatistics(class_counts, field_quantiles={
+            ('Species', 'limbs'): [0 for i in range(1000)] + list(range(101))
+        })
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields)
+
+        query = '''{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }'''
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(['Species'], 'limbs', 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition)
+
+        # Check that there are no duplicates
+        list_parameters = list(generated_parameters)
+        self.assertEqual(len(list_parameters), len(set(list_parameters)))
