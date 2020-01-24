@@ -51,7 +51,14 @@ def get_field_value_intervals(schema_info, query_metadata, parameters):
 
 
 def get_pagination_capacities(schema_info, field_value_intervals, query_metadata, parameters):
-    """Get the pagination capacity for each eligible pagination field."""
+    """Get the pagination capacity for each eligible pagination field.
+
+    The pagination capacity of a field is defined as the maximum number of pages we can split
+    the query results in by adding filters on this field with some confidence that the pages
+    will have similar sizes. This reasoning is local: if a filter in a different location is
+    correlated with the values on this field, the generated pages might turn out to have
+    wildly different sizes. This problem is somewhat unavoidable.
+    """
     pagination_capacities = {}
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
