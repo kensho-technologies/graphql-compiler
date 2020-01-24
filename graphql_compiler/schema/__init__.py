@@ -464,21 +464,11 @@ def compute_schema_fingerprint(schema: GraphQLSchema) -> str:
     See https://github.com/graphql/graphql-js/issues/2389 for more information.
 
     Args:
-        schema: the schema to use. It may not contain type extensions since type extension
-                information is currently lost when a schema is parsed and printed. See
-                https://github.com/graphql/graphql-js/issues/2386 for more info.
+        schema: the schema to use.
+
     Returns:
         a fingerprint compactly representing the data in the schema.
     """
-    if schema.extensions:
-        raise AssertionError(
-            "The input schema contains type extensions. We disallow type "
-            "extensions in the input schema since type extension information "
-            "is currently lost when a schema is parsed and printed. This issue "
-            "has been fixed in the referenced GraphQL implementation. However, "
-            "it currently has not been solved in the GraphQL python port. Issue "
-            "url: https://github.com/graphql/graphql-js/issues/2386"
-        )
     lexicographically_sorted_schema = lexicographic_sort_schema(schema)
     text = print_schema(lexicographically_sorted_schema)
     return sha256(text.encode("utf-8")).hexdigest()
