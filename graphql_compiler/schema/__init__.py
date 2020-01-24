@@ -472,7 +472,7 @@ def compute_schema_fingerprint(schema: GraphQLSchema) -> str:
         schema: the schema to use.
 
     Returns:
-        a fingerprint compactly representing the data in the schema.
+        a hexadecimal string fingerprint compactly representing the data in the schema.
     """
     lexicographically_sorted_schema = lexicographic_sort_schema(schema)
     text = print_schema(lexicographically_sorted_schema)
