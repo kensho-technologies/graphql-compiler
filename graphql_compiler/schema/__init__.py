@@ -469,7 +469,7 @@ def compute_schema_fingerprint(schema: GraphQLSchema) -> str:
     See https://github.com/graphql/graphql-js/issues/2389 for more information.
 
     Args:
-        schema: the schema to use.
+        schema: the schema for which to compute a fingerprint.
 
     Returns:
         a hexadecimal string fingerprint compactly representing the data in the schema.
