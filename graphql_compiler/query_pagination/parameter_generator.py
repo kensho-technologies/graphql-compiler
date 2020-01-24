@@ -125,6 +125,11 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
     split the values at vertex_partition.pagination_field into vertex_partition.number_of_splits
     almost equal chunks.
 
+    HACK(bojanserafimov): In some cases the number values returned is less than
+                          (vertex_partition.number_of_splits - 1). This happens when the pagination
+                          planner generates an impossible plan. This is obviously not desirable.
+                          This flaw is not visible to the end user, but shold be fixed ASAP.
+
     Composability guarantee: The values returned can be used to create
     vertex_partition.number_of_splits pages, or just the first value can be used to separate
     the first page from the remainder. Splitting the remainder recursively should produce
