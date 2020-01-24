@@ -1,7 +1,7 @@
 # Copyright 2020-present Kensho Technologies, LLC.
 import unittest
 
-from graphql import build_ast_schema, parse, print_schema
+from graphql import build_ast_schema, parse, print_schema, GraphQLSchema
 import pytest
 
 from ..schema import compute_schema_fingerprint
@@ -18,6 +18,8 @@ def _compare_schema_fingerprints(
         test_case.assertEqual(fingerprint1, fingerprint2)
     else:
         test_case.assertNotEqual(fingerprint1, fingerprint2)
+
+def _compute_schema_text_fingerprint(schema: ):
 
 
 class SchemaFingerprintTests(unittest.TestCase):
@@ -164,8 +166,10 @@ class SchemaFingerprintTests(unittest.TestCase):
 
     @pytest.mark.xfail(
         strict=True,
-        reason="Type extension information is lost when a schema is print and parsed. "
-        "See https://github.com/graphql/graphql-js/issues/2386",
+        reason=(
+            "Type extension information is lost when a schema is print and parsed. "
+            "See https://github.com/graphql/graphql-js/issues/2386"
+        ),
     )
     def test_field_equivalency_with_type_extension(self):
         schema_text1 = """
@@ -186,8 +190,10 @@ class SchemaFingerprintTests(unittest.TestCase):
 
     @pytest.mark.xfail(
         strict=True,
-        reason="Type extension information is lost when a schema is print and parsed. "
-        "See https://github.com/graphql/graphql-js/issues/2386",
+        reason=(
+            "Type extension information is lost when a schema is print and parsed. "
+            "See https://github.com/graphql/graphql-js/issues/2386"
+        ),
     )
     def test_interface_equivalency_with_type_extension(self):
         schema_text1 = """
@@ -208,8 +214,10 @@ class SchemaFingerprintTests(unittest.TestCase):
 
     @pytest.mark.xfail(
         strict=True,
-        reason="Type extension information is lost when a schema is print and parsed. "
-        "See https://github.com/graphql/graphql-js/issues/2386",
+        reason=(
+            "Type extension information is lost when a schema is print and parsed. "
+            "See https://github.com/graphql/graphql-js/issues/2386"
+        ),
     )
     def test_different_type_extensions(self):
         schema_text1 = """
@@ -605,8 +613,10 @@ class SchemaFingerprintTests(unittest.TestCase):
 
     @pytest.mark.xfail(
         strict=True,
-        reason="Directives at field definitions are lost when a schema is printed and parsed."
-        "See https://github.com/graphql/graphql-js/issues/2389.",
+        reason=(
+            "Directives at field definitions are lost when a schema is printed and parsed."
+            "See https://github.com/graphql/graphql-js/issues/2389."
+        ),
     )
     def test_different_directives_at_field_definitions(self):
         schema_text1 = """
