@@ -2,6 +2,7 @@
 import unittest
 
 from graphql import build_ast_schema, parse, print_schema
+import pytest
 
 from ..schema import compute_schema_fingerprint
 from .test_helpers import compare_graphql
@@ -73,6 +74,158 @@ class SchemaFingerprintTests(unittest.TestCase):
         schema_text2 = """
             type Object {
                 field: Int
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_field_argument_order(self):
+        schema_text1 = """
+            type Object {
+                field(a: Int, b: String): String
+            }
+        """
+        schema_text2 = """
+            type Object {
+                field(b: String, a: Int): String
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_different_field_arguments(self):
+        schema_text1 = """
+            type Object {
+                field(a: Int, b: String): String
+            }
+        """
+        schema_text2 = """
+            type Object {
+                field(a: Int): Int
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_enum_order(self):
+        schema_text1 = """
+            enum Enum{
+                A
+                B
+            }
+        """
+        schema_text2 = """
+            enum Enum{
+                B
+                A
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_different_enum(self):
+        schema_text1 = """
+            enum Enum{
+                A
+                B
+            }
+        """
+        schema_text2 = """
+            enum Enum{
+                A
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_input_order(self):
+        schema_text1 = """
+            input Input {
+                a: Int
+                b: Int
+            }
+        """
+        schema_text2 = """
+            input Input {
+                b: Int
+                a: Int
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_different_input(self):
+        schema_text1 = """
+            input Input {
+                a: Int
+                b: Int
+            }
+        """
+        schema_text2 = """
+            input Input {
+                a: Int
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="Type extension information is lost when a schema is print and parsed. "
+        "See https://github.com/graphql/graphql-js/issues/2386",
+    )
+    def test_field_equivalency_with_type_extension(self):
+        schema_text1 = """
+            type Object {
+                a: Int
+            }
+            extend type Object {
+                b: Int
+            }
+        """
+        schema_text2 = """
+            type Object {
+                a: Int
+                b: Int
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="Type extension information is lost when a schema is print and parsed. "
+        "See https://github.com/graphql/graphql-js/issues/2386",
+    )
+    def test_interface_equivalency_with_type_extension(self):
+        schema_text1 = """
+            type Object {
+                a: Int
+            }
+            extend type Object {
+                b: Int
+            }
+        """
+        schema_text2 = """
+            type Object {
+                a: Int
+                b: Int
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="Type extension information is lost when a schema is print and parsed. "
+        "See https://github.com/graphql/graphql-js/issues/2386",
+    )
+    def test_different_type_extensions(self):
+        schema_text1 = """
+            type Object {
+                a: Int
+            }
+            extend type Object {
+                b: Int
+            }
+        """
+        schema_text2 = """
+            type Object {
+                a: Int
+            }
+            extend type Object {
+                c: Int
             }
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
@@ -237,65 +390,6 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
 
-    def test_directive_definition_argument_order(self):
-        schema_text1 = """
-            directive @filter(
-                op_name: String!
-                value: [String!]
-            ) repeatable on FIELD | INLINE_FRAGMENT
-        """
-        schema_text2 = """
-            directive @filter(
-                value: [String!]
-                op_name: String!
-            ) repeatable on FIELD | INLINE_FRAGMENT
-        """
-        _compare_schema_fingerprints(self, schema_text1, schema_text2)
-
-    def test_different_directive_arguments(self):
-        schema_text1 = """
-            directive @filter(
-                op_name: String!
-                value: [String!]
-            ) repeatable on FIELD | INLINE_FRAGMENT
-        """
-        schema_text2 = """
-            directive @filter(
-                op_name: String!
-            ) repeatable on FIELD | INLINE_FRAGMENT
-        """
-        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
-
-    def test_directive_definition_location_order(self):
-        schema_text1 = """
-            directive @filter(
-                op_name: String!
-                value: [String!]
-            ) repeatable on FIELD | INLINE_FRAGMENT
-        """
-        schema_text2 = """
-            directive @filter(
-                value: [String!]
-                op_name: String!
-            ) repeatable on INLINE_FRAGMENT | FIELD
-        """
-        _compare_schema_fingerprints(self, schema_text1, schema_text2)
-
-    def test_different_directive_locations(self):
-        schema_text1 = """
-            directive @filter(
-                op_name: String!
-                value: [String!]
-            ) repeatable on FIELD | INLINE_FRAGMENT
-        """
-        schema_text2 = """
-            directive @filter(
-                op_name: String!
-                value: [String!]
-            ) repeatable on FIELD
-        """
-        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
-
     def test_schema_operation_order(self):
         schema_text1 = """
             schema {
@@ -393,6 +487,140 @@ class SchemaFingerprintTests(unittest.TestCase):
         schema_text2 = """
             type Object {
                 field: String @deprecated(reason: "Reason 2")
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_directive_definition_argument_order(self):
+        schema_text1 = """
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        schema_text2 = """
+            directive @filter(
+                value: [String!]
+                op_name: String!
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_different_directive_arguments(self):
+        schema_text1 = """
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        schema_text2 = """
+            directive @filter(
+                op_name: String!
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_directive_definition_location_order(self):
+        schema_text1 = """
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        schema_text2 = """
+            directive @filter(
+                value: [String!]
+                op_name: String!
+            ) repeatable on INLINE_FRAGMENT | FIELD
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_different_directive_locations(self):
+        schema_text1 = """
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD | INLINE_FRAGMENT
+        """
+        schema_text2 = """
+            directive @filter(
+                op_name: String!
+                value: [String!]
+            ) repeatable on FIELD
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
+
+    def test_argument_order_of_directives_at_field_definitions(self):
+        schema_text1 = """
+            directive @custom_directive(a: Int, b: String) on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive(b: "a", a: 1)
+            }
+        """
+        schema_text2 = """
+            directive @custom_directive(a: Int, b: String) on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive(a: 1, b: "a")
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_reordered_directives_at_field_definition(self):
+        schema_text1 = """
+            directive @custom_directive1(a: Int, b: String) on FIELD_DEFINITION
+            directive @custom_directive2(c: Int, d: String) on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive1(a: 1, b: "a") @custom_directive2(c: 1, d: "a")
+            }
+        """
+        schema_text2 = """
+            directive @custom_directive1(a: Int, b: String) on FIELD_DEFINITION
+            directive @custom_directive2(c: Int, d: String) on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive2(d: "a", c: 1) @custom_directive1(b: "a", a: 1)
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    def test_reordered_repeatable_directives_at_field_definition(self):
+        schema_text1 = """
+            directive @custom_directive1(a: Int, b: String) repeatable on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive1(a: 1, b: "a") @custom_directive1(b: 0, a: "b")
+            }
+        """
+        schema_text2 = """
+            directive @custom_directive1(a: Int, b: String) repeatable on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive1(a: "b", b: 0) @custom_directive1(b: "a", a: 1)
+            }
+        """
+        _compare_schema_fingerprints(self, schema_text1, schema_text2)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="Directives at field definitions are lost when a schema is printed and parsed."
+        "See https://github.com/graphql/graphql-js/issues/2389.",
+    )
+    def test_different_directives_at_field_definitions(self):
+        schema_text1 = """
+            directive @custom_directive(a: Int) on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive(a: 1)
+            }
+        """
+        schema_text2 = """
+            directive @custom_directive(a: Int) on FIELD_DEFINITION
+
+            type Object {
+                field: String @custom_directive(a: 2)
             }
         """
         _compare_schema_fingerprints(self, schema_text1, schema_text2, expect_equality=False)
