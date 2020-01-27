@@ -84,6 +84,7 @@ def _add_pagination_filter(
     removed_parameters = []
     new_selections = []
     if len(query_path) == 0:
+        # Add the filter to the correct field on this vertex and remove any redundant filters.
         found_field = False
         for selection_ast in query_ast.selection_set.selections:
             new_selection_ast = selection_ast
@@ -108,6 +109,7 @@ def _add_pagination_filter(
                 0, FieldNode(name=NameNode(value=pagination_field), directives=[directive_to_add])
             )
     else:
+        # Recurse until the target vertex is reached.
         if query_ast.selection_set is None:
             raise AssertionError()
 

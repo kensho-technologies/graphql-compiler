@@ -8,6 +8,7 @@ import pytest
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
+from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
@@ -158,32 +159,80 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        paginated_queries = paginate_query(
+        first, remainder = paginate_query(
             schema_info, test_data, parameters, 1
         )
 
-        expected_query_list = (
-            QueryStringWithParameters(
-                """{
-                    Animal {
-                        uuid @filter(op_name: "<", value: ["$__paged_param_0"])
-                        name @output(out_name: "animal")
-                    }
-                }""",
-                {"_paged_upper_param_on_Animal_uuid": "40000000-0000-0000-0000-000000000000",},
-            ),
-            QueryStringWithParameters(
-                """{
-                    Animal {
-                        uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
-                        name @output(out_name: "animal")
-                    }
-                }""",
-                {"_paged_lower_param_on_Animal_uuid": "40000000-0000-0000-0000-000000000000",},
-            ),
+        expected_first = QueryStringWithParameters(
+            """{
+                Animal {
+                    uuid @filter(op_name: "<", value: ["$__paged_param_0"])
+                    name @output(out_name: "animal")
+                }
+            }""",
+            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
         )
-        compare_graphql(self, expected_query_list[0].query_string, paginated_queries[0].query_string)
 
+        expected_remainder = QueryStringWithParameters(
+            """{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
+                    name @output(out_name: "animal")
+                }
+            }""",
+            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
+        )
+
+        # Check that the correct first page and remainder are generated
+        compare_graphql(self, expected_first.query_string, first.query_string)
+        self.assertEqual(expected_first.parameters, first.parameters)
+        compare_graphql(self, expected_remainder.query_string, remainder.query_string)
+        self.assertEqual(expected_remainder.parameters, remainder.parameters)
+
+        # Check that the first page is estimated to fit into a page
+        first_page_cardinality_estimate = estimate_query_result_cardinality(
+            schema_info, first.query_string, first.parameters)
+        self.assertAlmostEqual(1, first_page_cardinality_estimate)
+
+        # Get the second page
+        second, remainder = paginate_query(
+            schema_info, remainder.query_string, remainder.parameters, 1)
+
+        expected_second = QueryStringWithParameters(
+            '''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
+                         @filter(op_name: "<", value: ["$__paged_param_1"])
+                    name @output(out_name: "animal")
+                }
+            }''',
+            {
+                '__paged_param_0': '40000000-0000-0000-0000-000000000000',
+                '__paged_param_1': '80000000-0000-0000-0000-000000000000',
+            },
+        )
+        expected_remainder = QueryStringWithParameters(
+            '''{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_1"])
+                    name @output(out_name: "animal")
+                }
+            }''',
+            {
+                '__paged_param_1': '80000000-0000-0000-0000-000000000000',
+            },
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_second.query_string, second.query_string)
+        self.assertEqual(expected_second.parameters, second.parameters)
+        compare_graphql(self, expected_remainder.query_string, remainder.query_string)
+        self.assertEqual(expected_remainder.parameters, remainder.parameters)
+
+        # Check that the second page is estimated to fit into a page
+        second_page_cardinality_estimate = estimate_query_result_cardinality(
+            schema_info, second.query_string, second.parameters)
+        self.assertAlmostEqual(1, second_page_cardinality_estimate)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_int(self):
