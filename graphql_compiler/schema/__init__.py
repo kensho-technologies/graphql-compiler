@@ -459,14 +459,15 @@ def compute_schema_fingerprint(schema: GraphQLSchema) -> str:
     The fingerprint is not sensitive to things like type or field order. This function is guaranteed
     to be robust enough that if two GraphQLSchema have the same fingerprint, then they also
     represent the same schema.
-    
+
     Because of internal implementation changes, different versions of this library *may* produce
     different fingerprints for the same schema. Since cross-version fingerprint stability
-    is an *explicit non-goal* here, changing a schema's fingerprint will not be considered 
+    is an *explicit non-goal* here, changing a schema's fingerprint will not be considered
     a breaking change.
 
-    The fingerprint may not include information about directives at field definitions.
-    See https://github.com/graphql/graphql-js/issues/2389 for more information.
+    The fingerprint is computed on a best-effort basis and has some known issues at the moment.
+    Please see the discussion in the pull request below for more details.
+    https://github.com/kensho-technologies/graphql-compiler/pull/737
 
     Args:
         schema: the schema for which to compute a fingerprint.
