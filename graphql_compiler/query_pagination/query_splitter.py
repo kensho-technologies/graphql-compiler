@@ -22,11 +22,13 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
     then generated such that one of the new queries will return roughly a page of results, while the
     other query will generate the rest of the results. This ensures that the two new queries' result
     data is equivalent to the original query's result data.
+
     Args:
         schema_info: QueryPlanningSchemaInfo
         query_ast: Document, AST of the GraphQL query that will be split.
         parameters: dict, parameters with which query will be estimated.
         num_pages: int, number of pages to split the query into.
+
     Returns:
         tuple of (ASTWithParameters namedtuple, ASTWithParameters namedtuple), describing two
         queries: the first query when executed will return roughly a page of results of the original
