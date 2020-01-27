@@ -162,7 +162,6 @@ def generate_parameterized_queries(
         vertex_partition: pagination plan
 
     Returns:
-        # TODO use ASTWithParameters struct to simplify API
         next_page: Ast and params for next page.
         remainder_ast: Ast and params for remainder.
         param_name: The parameter name used in the new filters.
