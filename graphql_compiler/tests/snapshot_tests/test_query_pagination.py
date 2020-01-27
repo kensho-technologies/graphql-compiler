@@ -7,8 +7,8 @@ from graphql import print_ast
 import pytest
 
 from ...ast_manipulation import safe_parse_graphql
-from ...cost_estimation.statistics import LocalStatistics
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
+from ...cost_estimation.statistics import LocalStatistics
 from ...query_pagination import QueryStringWithParameters, paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
@@ -159,9 +159,7 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        first, remainder = paginate_query(
-            schema_info, test_data, parameters, 1
-        )
+        first, remainder = paginate_query(schema_info, test_data, parameters, 1)
 
         expected_first = QueryStringWithParameters(
             """{
@@ -191,36 +189,36 @@ class QueryPaginationTests(unittest.TestCase):
 
         # Check that the first page is estimated to fit into a page
         first_page_cardinality_estimate = estimate_query_result_cardinality(
-            schema_info, first.query_string, first.parameters)
+            schema_info, first.query_string, first.parameters
+        )
         self.assertAlmostEqual(1, first_page_cardinality_estimate)
 
         # Get the second page
         second, remainder = paginate_query(
-            schema_info, remainder.query_string, remainder.parameters, 1)
+            schema_info, remainder.query_string, remainder.parameters, 1
+        )
 
         expected_second = QueryStringWithParameters(
-            '''{
+            """{
                 Animal {
                     uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
                          @filter(op_name: "<", value: ["$__paged_param_1"])
                     name @output(out_name: "animal")
                 }
-            }''',
+            }""",
             {
-                '__paged_param_0': '40000000-0000-0000-0000-000000000000',
-                '__paged_param_1': '80000000-0000-0000-0000-000000000000',
+                "__paged_param_0": "40000000-0000-0000-0000-000000000000",
+                "__paged_param_1": "80000000-0000-0000-0000-000000000000",
             },
         )
         expected_remainder = QueryStringWithParameters(
-            '''{
+            """{
                 Animal {
                     uuid @filter(op_name: ">=", value: ["$__paged_param_1"])
                     name @output(out_name: "animal")
                 }
-            }''',
-            {
-                '__paged_param_1': '80000000-0000-0000-0000-000000000000',
-            },
+            }""",
+            {"__paged_param_1": "80000000-0000-0000-0000-000000000000",},
         )
 
         # Check that the correct queries are generated
@@ -231,7 +229,8 @@ class QueryPaginationTests(unittest.TestCase):
 
         # Check that the second page is estimated to fit into a page
         second_page_cardinality_estimate = estimate_query_result_cardinality(
-            schema_info, second.query_string, second.parameters)
+            schema_info, second.query_string, second.parameters
+        )
         self.assertAlmostEqual(1, second_page_cardinality_estimate)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -489,7 +488,7 @@ class QueryPaginationTests(unittest.TestCase):
         args = {}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        next_page_ast, remainder_ast, param_name = generate_parameterized_queries(
+        (next_page_ast, _), (remainder_ast, _), param_name = generate_parameterized_queries(
             schema_info, query_ast, args, vertex_partition
         )
 
@@ -540,7 +539,7 @@ class QueryPaginationTests(unittest.TestCase):
         args = {"__paged_param_0": "Cow"}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        next_page_ast, remainder_ast, param_name = generate_parameterized_queries(
+        (next_page_ast, _), (remainder_ast, _), param_name = generate_parameterized_queries(
             schema_info, query_ast, args, vertex_partition
         )
 
@@ -595,7 +594,7 @@ class QueryPaginationTests(unittest.TestCase):
         }
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        next_page_ast, remainder_ast, param_name = generate_parameterized_queries(
+        (next_page_ast, _), (remainder_ast, _), param_name = generate_parameterized_queries(
             schema_info, query_ast, args, vertex_partition
         )
 

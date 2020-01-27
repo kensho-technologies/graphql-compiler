@@ -45,7 +45,8 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
             )
         )
 
-    pagination_plan, advisories = get_pagination_plan(schema_info, query_ast, num_pages)
+    # TODO propagate advisories to top-level
+    pagination_plan, _ = get_pagination_plan(schema_info, query_ast, num_pages)
     if len(pagination_plan.vertex_partitions) != 1:
         raise NotImplementedError(
             u"We only support pagination plans with one vertex partition. "
@@ -57,13 +58,17 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
     )
     first_param = next(parameter_generator)
 
-    page_query, remainder_query, param_name = generate_parameterized_queries(
+    (
+        (page_query, page_parameters),
+        (remainder_query, remainder_parameters),
+        param_name,
+    ) = generate_parameterized_queries(
         schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0]
     )
 
-    page_parameters = dict(parameters)
+    page_parameters = dict(page_parameters)
     page_parameters.update({param_name: first_param})
-    remainder_parameters = dict(parameters)
+    remainder_parameters = dict(remainder_parameters)
     remainder_parameters.update({param_name: first_param})
 
     return (
