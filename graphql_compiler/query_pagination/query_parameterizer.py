@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
 from copy import copy
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, cast
+from typing import Any, Dict, List, Set, Tuple, cast
 
 from graphql.language.ast import (
     ArgumentNode,
@@ -46,7 +45,7 @@ def _get_binary_filter_node_parameter(filter_directive: DirectiveNode) -> str:
     """Return the parameter name for a binary Filter Directive."""
     filter_arguments = cast(ListValueNode, filter_directive.arguments[1].value).values
     if len(filter_arguments) != 1:
-        raise AssertionError(u"Expected one argument in filter {}".format(filter_directive))
+        raise AssertionError("Expected one argument in filter {}".format(filter_directive))
 
     argument_name = cast(StringValueNode, filter_arguments[0]).value
     parameter_name = get_parameter_name(argument_name)
@@ -79,8 +78,7 @@ def _add_pagination_filter(
     """
     if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
-            u'Input AST is of type "{}", which should not be a selection.'
-            u"".format(type(query_ast).__name__)
+            f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
         )
 
     removed_parameters = []
@@ -170,13 +168,13 @@ def generate_parameterized_queries(
     query_type = get_only_query_definition(query_ast, GraphQLError)
 
     param_name = _generate_new_name("__paged_param", set(parameters.keys()))
-    next_page_root, next_page_removed_param_names = _add_pagination_filter(
+    next_page_root, _ = _add_pagination_filter(
         query_type,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node("<", param_name),
     )
-    remainder_root, remainder_removed_param_names = _add_pagination_filter(
+    remainder_root, _ = _add_pagination_filter(
         query_type,
         vertex_partition.query_path,
         vertex_partition.pagination_field,

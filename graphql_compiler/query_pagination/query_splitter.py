@@ -17,6 +17,7 @@ ASTWithParameters = namedtuple(
 
 def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters, num_pages):
     """Split a query into two equivalent queries, one of which will return roughly a page of data.
+
     First, two parameterized queries are generated that contain filters usable for pagination i.e.
     filters with which the number of results can be constrained. Parameters for these filters are
     then generated such that one of the new queries will return roughly a page of results, while the
