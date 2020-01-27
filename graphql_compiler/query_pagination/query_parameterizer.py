@@ -15,6 +15,7 @@ from graphql.language.ast import (
     StringValueNode,
 )
 
+from ..global_utils import ASTWithParameters
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
 from ..exceptions import GraphQLError
@@ -150,16 +151,14 @@ def _make_binary_filter_directive_node(op_name: str, param_name: str) -> Directi
 
 def generate_parameterized_queries(
     schema_info: QueryPlanningSchemaInfo,
-    query_ast: DocumentNode,
-    parameters: Dict[str, Any],
+    query: ASTWithParameters,
     vertex_partition: VertexPartitionPlan,
-) -> Tuple[Tuple[DocumentNode, Dict[str, Any]], Tuple[DocumentNode, Dict[str, Any]], str]:
+) -> Tuple[ASTWithParameters, ASTWithParameters, str]:
     """Generate two parameterized queries that can be used to paginate over a given query.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        query_ast: Document, query that is being paginated.
-        parameters: dict, list of parameters for the given query.
+        query: the query to parameterize
         vertex_partition: pagination plan
 
     Returns:
@@ -168,9 +167,9 @@ def generate_parameterized_queries(
         remainder_ast: Ast and params for remainder.
         param_name: The parameter name used in the new filters.
     """
-    query_type = get_only_query_definition(query_ast, GraphQLError)
+    query_type = get_only_query_definition(query.query_ast, GraphQLError)
 
-    param_name = _generate_new_name("__paged_param", set(parameters.keys()))
+    param_name = _generate_new_name("__paged_param", set(query.parameters.keys()))
     next_page_root, next_page_removed_parameters = _add_pagination_filter(
         query_type,
         vertex_partition.query_path,
@@ -184,11 +183,11 @@ def generate_parameterized_queries(
         _make_binary_filter_directive_node(">=", param_name),
     )
 
-    page_parameters = {k: v for k, v in parameters.items() if k not in next_page_removed_parameters}
+    page_parameters = {k: v for k, v in query.parameters.items() if k not in next_page_removed_parameters}
     remainder_parameters = {
-        k: v for k, v in parameters.items() if k not in remainder_removed_parameters
+        k: v for k, v in query.parameters.items() if k not in remainder_removed_parameters
     }
 
-    next_page_ast = DocumentNode(definitions=[next_page_root])
-    remainder_ast = DocumentNode(definitions=[remainder_root])
-    return (next_page_ast, page_parameters), (remainder_ast, remainder_parameters), param_name
+    next_page = ASTWithParameters(DocumentNode(definitions=[next_page_root]), page_parameters)
+    remainder = ASTWithParameters(DocumentNode(definitions=[remainder_root]), remainder_parameters)
+    return next_page, remainder, param_name

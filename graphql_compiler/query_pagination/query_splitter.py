@@ -1,21 +1,13 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
+from ..global_utils import ASTWithParameters
 from .pagination_planning import get_pagination_plan
 from .parameter_generator import generate_parameters_for_vertex_partition
 from .query_parameterizer import generate_parameterized_queries
 
 
-ASTWithParameters = namedtuple(
-    "ASTWithParameters",
-    (
-        "query_ast",  # Document, AST describing a GraphQL query.
-        "parameters",  # dict, parameters for executing the given query.
-    ),
-)
-
-
-def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters, num_pages):
+def split_into_page_query_and_remainder_query(schema_info, query, num_pages):
     """Split a query into two equivalent queries, one of which will return roughly a page of data.
 
     First, two parameterized queries are generated that contain filters usable for pagination i.e.
@@ -26,8 +18,7 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        query_ast: Document, AST of the GraphQL query that will be split.
-        parameters: dict, parameters with which query will be estimated.
+        query: ASTWithParameters
         num_pages: int, number of pages to split the query into.
 
     Returns:
@@ -46,7 +37,7 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
         )
 
     # TODO propagate advisories to top-level
-    pagination_plan, _ = get_pagination_plan(schema_info, query_ast, num_pages)
+    pagination_plan, _ = get_pagination_plan(schema_info, query.query_ast, num_pages)
     if len(pagination_plan.vertex_partitions) != 1:
         raise NotImplementedError(
             u"We only support pagination plans with one vertex partition. "
@@ -54,24 +45,19 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
         )
 
     parameter_generator = generate_parameters_for_vertex_partition(
-        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0]
+        schema_info, query.query_ast, query.parameters, pagination_plan.vertex_partitions[0]
     )
     first_param = next(parameter_generator)
 
-    (
-        (page_query, page_parameters),
-        (remainder_query, remainder_parameters),
-        param_name,
-    ) = generate_parameterized_queries(
-        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0]
-    )
+    page, remainder, param_name = generate_parameterized_queries(
+        schema_info, query, pagination_plan.vertex_partitions[0])
 
-    page_parameters = dict(page_parameters)
+    page_parameters = dict(page.parameters)
     page_parameters.update({param_name: first_param})
-    remainder_parameters = dict(remainder_parameters)
+    remainder_parameters = dict(remainder.parameters)
     remainder_parameters.update({param_name: first_param})
 
     return (
-        ASTWithParameters(page_query, page_parameters),
-        ASTWithParameters(remainder_query, remainder_parameters),
+        ASTWithParameters(page.query_ast, page_parameters),
+        ASTWithParameters(remainder.query_ast, remainder_parameters),
     )

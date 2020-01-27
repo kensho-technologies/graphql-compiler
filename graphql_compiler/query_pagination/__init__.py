@@ -3,20 +3,11 @@ from collections import namedtuple
 
 from graphql.language.printer import print_ast
 
+from ..global_utils import QueryStringWithParameters, ASTWithParameters
 from ..ast_manipulation import safe_parse_graphql
 from ..cost_estimation.cardinality_estimator import estimate_number_of_pages
 from ..query_pagination.query_splitter import (
-    ASTWithParameters,
     split_into_page_query_and_remainder_query,
-)
-
-
-QueryStringWithParameters = namedtuple(
-    "QueryStringWithParameters",
-    (
-        "query_string",  # str, describing a GraphQL query.
-        "parameters",  # dict, parameters for executing the given query.
-    ),
 )
 
 
@@ -61,7 +52,7 @@ def paginate_query_ast(schema_info, query_ast, parameters, page_size):
     num_pages = estimate_number_of_pages(schema_info, graphql_query_string, parameters, page_size)
     if num_pages > 1:
         result_queries = split_into_page_query_and_remainder_query(
-            schema_info, query_ast, parameters, num_pages
+            schema_info, ASTWithParameters(query_ast, parameters), num_pages
         )
 
     return result_queries
