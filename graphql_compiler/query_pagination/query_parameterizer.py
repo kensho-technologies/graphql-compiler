@@ -39,6 +39,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, directive_t
             u"".format(type(query_ast).__name__)
         )
 
+    removed_argument = None
     new_selections = []
     if len(query_path) == 0:
         found_field = False
@@ -50,17 +51,15 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, directive_t
                 new_selection_ast = copy(selection_ast)
                 new_selection_ast.directives = copy(selection_ast.directives)
                 found_directive = False
+
+                new_directives = []
                 for directive in selection_ast.directives:
-                    if (
-                        directive.arguments[0].value.value
-                        == directive_to_add.arguments[0].value.value
-                    ):
-                        # TODO assert only one is found
-                        # TODO assert only weaker filters are removed
-                        found_directive = True
-                        param_name = directive.arguments[1].value.values[0].value[1:]
-                if not found_directive:
-                    new_selection_ast.directives.append(directive_to_add)
+                    if (directive.arguments[0].value.value == directive_to_add.arguments[0].value.value):
+                        removed_argument = directive.arguments[1].value.values[0].value[1:]
+                    else:
+                        new_directives.append(directive)
+                new_directives.append(directive_to_add)
+                new_selection_ast.directives = new_directives
             new_selections.append(new_selection_ast)
         if not found_field:
             new_selections.insert(
@@ -77,9 +76,11 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, directive_t
             field_name = get_ast_field_name(selection_ast)
             if field_name == query_path[0]:
                 found_field = True
-                new_selection_ast = _add_pagination_filters(
+                new_selection_ast, sub_removed_argument = _add_pagination_filters(
                     selection_ast, query_path[1:], pagination_field, directive_to_add
                 )
+                if sub_removed_argument is not None:
+                    removed_argument = sub_removed_argument
             new_selections.append(new_selection_ast)
 
         if not found_field:
@@ -87,7 +88,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, directive_t
 
     new_ast = copy(query_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
-    return new_ast
+    return new_ast, removed_argument
 
 
 def _make_directive(op_name, param_name):
@@ -106,41 +107,39 @@ def _make_directive(op_name, param_name):
 def generate_parameterized_queries(schema_info, query_ast, parameters, vertex_partition):
     """Generate two parameterized queries that can be used to paginate over a given query.
 
-    In order to paginate arbitrary GraphQL queries, additional filters may need to be added to be
-    able to limit the number of results in the original query. This function creates two new queries
-    with additional filters stored as PaginationFilters with which the query result size can be
-    controlled.
-
     Args:
         schema_info: QueryPlanningSchemaInfo
         query_ast: Document, query that is being paginated.
         parameters: dict, list of parameters for the given query.
+        vertex_partition: pagination plan
 
     Returns:
-        ParameterizedPaginationQueries namedtuple
+        next_page_ast: Ast for the first page. Includes an additional filter.
+        next_page_removed_params: ???
+        remainder_ast: Ast for the remainder query. Includes an additional filter.
+        remainder_removed_params: ???
+        param_name: The parameter name used in the new filters.
     """
     query_type = get_only_query_definition(query_ast, GraphQLError)
 
     param_name = _generate_new_name("__paged_param", parameters.keys())
-    next_page_ast = DocumentNode(
-        definitions=[
-            _add_pagination_filters(
-                query_type,
-                vertex_partition.query_path,
-                vertex_partition.pagination_field,
-                _make_directive("<", param_name),
-            )
-        ]
+    next_page_root, next_page_removed_param_name = _add_pagination_filters(
+        query_type,
+        vertex_partition.query_path,
+        vertex_partition.pagination_field,
+        _make_directive("<", param_name),
     )
-    remainder_ast = DocumentNode(
-        definitions=[
-            _add_pagination_filters(
-                query_type,
-                vertex_partition.query_path,
-                vertex_partition.pagination_field,
-                _make_directive(">=", param_name),
-            )
-        ]
+    remainder_root, remainder_removed_param_name = _add_pagination_filters(
+        query_type,
+        vertex_partition.query_path,
+        vertex_partition.pagination_field,
+        _make_directive(">=", param_name),
     )
 
+    # TODO do something with the removed params. Let the caller know to remove them
+    #      from the parameter list, and validate that parameters inserted are more
+    #      selective than the pre-existing values.
+
+    next_page_ast = DocumentNode(definitions=[next_page_root])
+    remainder_ast = DocumentNode(definitions=[remainder_root])
     return next_page_ast, remainder_ast, param_name
