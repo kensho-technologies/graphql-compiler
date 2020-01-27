@@ -116,7 +116,7 @@ def get_best_vertex_partition_plan(
         #                       interval defined by existing filters on this field. Currently
         #                       the planner can generate a plan that is impossible to realize.
         #                       The parameter generator currently deals with this flaw, but
-        #                       it should be fixed ASAP until the code degrades more.
+        #                       it should be fixed ASAP before the code degrades more.
         #                       Fix coming in PR #738.
         quantiles = schema_info.statistics.get_field_quantiles(pagination_node, pagination_field)
         if quantiles is None:
