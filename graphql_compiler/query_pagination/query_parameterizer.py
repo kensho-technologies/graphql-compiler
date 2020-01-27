@@ -90,8 +90,7 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, directive_t
     return new_ast
 
 
-def _make_directive(param_name, lower_page):
-    op_name = "<" if lower_page else ">="
+def _make_directive(op_name, param_name):
     return DirectiveNode(
         name=NameNode(value="filter"),
         arguments=[
@@ -123,20 +122,17 @@ def generate_parameterized_queries(schema_info, query_ast, parameters, vertex_pa
     query_type = get_only_query_definition(query_ast, GraphQLError)
 
     param_name = _generate_new_name("__paged_param", parameters.keys())
-    lower_page_directive = _make_directive(param_name, True)
-    upper_page_directive = _make_directive(param_name, False)
-
     next_page_ast = DocumentNode(definitions=[_add_pagination_filters(
         query_type,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
-        lower_page_directive,
+        _make_directive("<", param_name),
     )])
     remainder_ast = DocumentNode(definitions=[_add_pagination_filters(
         query_type,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
-        upper_page_directive,
+        _make_directive(">=", param_name),
     )])
 
     return next_page_ast, remainder_ast, param_name

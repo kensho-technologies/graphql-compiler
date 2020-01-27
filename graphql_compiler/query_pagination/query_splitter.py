@@ -61,8 +61,9 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
     remainder_parameters.update({
         param_name: first_param
     })
-    raise NotImplementedError()
-    return (
+
+    # Function is complete, but not tested.
+    raise NotImplementedError(
         ASTWithParameters(page_query, page_parameters),
         ASTWithParameters(remainder_query, remainder_parameters),
     )
