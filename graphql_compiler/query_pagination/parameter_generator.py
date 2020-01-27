@@ -1,7 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 import itertools
+from typing import Any, Dict, Iterable, cast
 
+from graphql import DocumentNode
 from graphql.language.printer import print_ast
 
 from ..compiler.compiler_frontend import graphql_to_ir
@@ -14,12 +16,22 @@ from ..cost_estimation.int_value_conversion import (
     convert_int_to_field_value,
 )
 from ..cost_estimation.interval import Interval, intersect_int_intervals, measure_int_interval
+from ..schema.schema_info import QueryPlanningSchemaInfo
+from .pagination_planning import VertexPartitionPlan
 
 
-def _sum_partition(number, num_splits):
+def _sum_partition(number: int, num_splits: int) -> Iterable[int]:
     """Represent an integer as a sum of N almost equal integers, sorted in descending order.
 
     Example: _sum_partition(5, 3) = [2, 2, 1]
+
+    Args:
+        number: The number to be represented as a sum
+        num_splits: The desired length of the output
+
+    Retutns:
+        generator of num_splits values that add up to the number. The values are descending,
+        and the maximum difference between values is 1.
     """
     lower = number // num_splits
     num_high = number - lower * num_splits
@@ -31,15 +43,19 @@ def _sum_partition(number, num_splits):
     )
 
 
-def _deduplicate_sorted_generator(gen):
+def _deduplicate_sorted_generator(generator: Iterable[Any]) -> Iterable[Any]:
+    """Return a generator that skips repeated values in the given sorted generator."""
     prev = object()
-    for i in gen:
+    for i in generator:
         if i != prev:
             yield i
         prev = i
 
 
-def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, field, interval):
+def _convert_int_interval_to_field_value_interval(
+    schema_info: QueryPlanningSchemaInfo, vertex_type: str, field: str, interval: Interval[int]
+) -> Interval[Any]:
+    # XXX document
     lower_bound = None
     upper_bound = None
     if interval.lower_bound is not None:
@@ -54,15 +70,23 @@ def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, fiel
 
 
 def _compute_parameters_for_uuid_field(
-    schema_info, integer_interval, vertex_partition, vertex_type, field
-):
+    schema_info: QueryPlanningSchemaInfo,
+    integer_interval: Interval[int],
+    vertex_partition: VertexPartitionPlan,
+    vertex_type: str,
+    field: str,
+) -> Iterable[Any]:
     uuid_int_universe = Interval(MIN_UUID_INT, MAX_UUID_INT)
     integer_interval = intersect_int_intervals(integer_interval, uuid_int_universe)
 
     int_value_splits = (
-        integer_interval.lower_bound
+        cast(int, integer_interval.lower_bound)
         + int(
-            float(measure_int_interval(integer_interval) * i // vertex_partition.number_of_splits)
+            float(
+                cast(int, measure_int_interval(integer_interval))
+                * i
+                // vertex_partition.number_of_splits
+            )
         )
         for i in range(1, vertex_partition.number_of_splits)
     )
@@ -73,8 +97,17 @@ def _compute_parameters_for_uuid_field(
 
 
 def _compute_parameters_for_non_uuid_field(
-    schema_info, field_value_interval, vertex_partition, vertex_type, field
-):
+    schema_info: QueryPlanningSchemaInfo,
+    field_value_interval: Interval[Any],
+    vertex_partition: VertexPartitionPlan,
+    vertex_type: str,
+    field: str,
+) -> Iterable[Any]:
+    """Return a generator...
+
+    Args:
+
+    """
     quantiles = schema_info.statistics.get_field_quantiles(vertex_type, field)
     if quantiles is None or len(quantiles) <= vertex_partition.number_of_splits:
         raise AssertionError(
@@ -115,7 +148,12 @@ def _compute_parameters_for_non_uuid_field(
     )
 
 
-def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters, vertex_partition):
+def generate_parameters_for_vertex_partition(
+    schema_info: QueryPlanningSchemaInfo,
+    query_ast: DocumentNode,
+    parameters: Dict[str, Any],
+    vertex_partition: VertexPartitionPlan,
+) -> Iterable[Any]:
     """Return a generator of parameter values that realize the vertex partition.
 
     This function returns a generator of (vertex_partition.number_of_splits - 1) values that
