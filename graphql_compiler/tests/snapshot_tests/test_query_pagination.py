@@ -158,20 +158,15 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
-        # Once query pagination is fully implemented, the result of this call should be equal to
-        # expected_query_list.
-        # pylint: disable=unused-variable
-        with self.assertRaises(NotImplementedError):
-            paginated_queries = paginate_query(  # noqa: unused-variable
-                schema_info, test_data, parameters, 1
-            )
+        paginated_queries = paginate_query(
+            schema_info, test_data, parameters, 1
+        )
 
-        expected_query_list = (  # noqa: unused-variable
+        expected_query_list = (
             QueryStringWithParameters(
                 """{
                     Animal {
-                        uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
+                        uuid @filter(op_name: "<", value: ["$__paged_param_0"])
                         name @output(out_name: "animal")
                     }
                 }""",
@@ -180,14 +175,15 @@ class QueryPaginationTests(unittest.TestCase):
             QueryStringWithParameters(
                 """{
                     Animal {
-                        uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
+                        uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
                         name @output(out_name: "animal")
                     }
                 }""",
                 {"_paged_lower_param_on_Animal_uuid": "40000000-0000-0000-0000-000000000000",},
             ),
         )
-        # pylint: enable=unused-variable
+        compare_graphql(self, expected_query_list[0].query_string, paginated_queries[0].query_string)
+
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_int(self):
