@@ -260,7 +260,7 @@ def generate_parameters_for_parameterized_query(
               parameters are generated such that they produce the remainder of the original query's
               result data when executed.
     """
-    # TODO(bojanserafimov): Replace this method with generate_parameters_for_vertex_partition. It's
+    # TODO(bojanserafimov): Replace this method with generate_parameters_for_vertex_partition. Its
     #                       api is simpler (no dependence on parameterization), and it uses the
     #                       VertexPartitionPlan.
     raise NotImplementedError()
