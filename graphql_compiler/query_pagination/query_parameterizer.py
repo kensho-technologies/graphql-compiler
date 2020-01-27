@@ -164,9 +164,7 @@ def generate_parameterized_queries(
 
     Returns:
         next_page_ast: Ast for the first page. Includes an additional filter.
-        next_page_removed_params: ???
         remainder_ast: Ast for the remainder query. Includes an additional filter.
-        remainder_removed_params: ???
         param_name: The parameter name used in the new filters.
     """
     query_type = get_only_query_definition(query_ast, GraphQLError)
