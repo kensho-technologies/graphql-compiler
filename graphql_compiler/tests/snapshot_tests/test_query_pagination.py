@@ -464,3 +464,58 @@ class QueryPaginationTests(unittest.TestCase):
         compare_graphql(self, expected_next_page, print_ast(next_page_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder_ast))
         self.assertEqual(expected_param_name, param_name)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_query_parameterizer_name_conflict(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={("Species", "limbs"): [0 for i in range(1000)] + list(range(101))},
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+                     @filter(op_name: "!=", value: ["$__paged_param_0"])
+            }
+        }"""
+        args = {
+            '__paged_param_0': 'Cow'
+        }
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        next_page_ast, remainder_ast, param_name = generate_parameterized_queries(
+            schema_info, query_ast, args, vertex_partition
+        )
+
+        expected_next_page = """{
+            Species {
+                limbs @filter(op_name: "<", value: ["$__paged_param_1"])
+                name @output(out_name: "species_name")
+                     @filter(op_name: "!=", value: ["$__paged_param_0"])
+            }
+        }"""
+        expected_remainder = """{
+            Species {
+                limbs @filter(op_name: ">=", value: ["$__paged_param_1"])
+                name @output(out_name: "species_name")
+                     @filter(op_name: "!=", value: ["$__paged_param_0"])
+            }
+        }"""
+        expected_param_name = "__paged_param_1"
+        compare_graphql(self, expected_next_page, print_ast(next_page_ast))
+        compare_graphql(self, expected_remainder, print_ast(remainder_ast))
+        self.assertEqual(expected_param_name, param_name)
