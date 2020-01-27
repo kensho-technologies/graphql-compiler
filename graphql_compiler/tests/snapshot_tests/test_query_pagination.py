@@ -492,9 +492,7 @@ class QueryPaginationTests(unittest.TestCase):
                      @filter(op_name: "!=", value: ["$__paged_param_0"])
             }
         }"""
-        args = {
-            '__paged_param_0': 'Cow'
-        }
+        args = {"__paged_param_0": "Cow"}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
         next_page_ast, remainder_ast, param_name = generate_parameterized_queries(
@@ -548,7 +546,7 @@ class QueryPaginationTests(unittest.TestCase):
             }
         }"""
         args = {
-            'limbs_more_than': 100,
+            "limbs_more_than": 100,
         }
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
