@@ -3,8 +3,8 @@ import datetime
 from typing import Any, Dict, Tuple
 import unittest
 
-import pytest
 from graphql import print_ast
+import pytest
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
@@ -20,7 +20,7 @@ from ...query_pagination.parameter_generator import generate_parameters_for_vert
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ..test_helpers import generate_schema_graph, compare_graphql
+from ..test_helpers import compare_graphql, generate_schema_graph
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -445,7 +445,8 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
         next_page_ast, remainder_ast, param_name = generate_parameterized_queries(
-            schema_info, query_ast, args, vertex_partition)
+            schema_info, query_ast, args, vertex_partition
+        )
 
         expected_next_page = """{
             Species {

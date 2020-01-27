@@ -94,10 +94,7 @@ def _make_directive(op_name, param_name):
     return DirectiveNode(
         name=NameNode(value="filter"),
         arguments=[
-            ArgumentNode(
-                name=NameNode(value="op_name"),
-                value=StringValueNode(value=op_name),
-            ),
+            ArgumentNode(name=NameNode(value="op_name"), value=StringValueNode(value=op_name),),
             ArgumentNode(
                 name=NameNode(value="value"),
                 value=ListValueNode(values=[StringValueNode(value="$" + param_name)]),
@@ -122,17 +119,25 @@ def generate_parameterized_queries(schema_info, query_ast, parameters, vertex_pa
     query_type = get_only_query_definition(query_ast, GraphQLError)
 
     param_name = _generate_new_name("__paged_param", parameters.keys())
-    next_page_ast = DocumentNode(definitions=[_add_pagination_filters(
-        query_type,
-        vertex_partition.query_path,
-        vertex_partition.pagination_field,
-        _make_directive("<", param_name),
-    )])
-    remainder_ast = DocumentNode(definitions=[_add_pagination_filters(
-        query_type,
-        vertex_partition.query_path,
-        vertex_partition.pagination_field,
-        _make_directive(">=", param_name),
-    )])
+    next_page_ast = DocumentNode(
+        definitions=[
+            _add_pagination_filters(
+                query_type,
+                vertex_partition.query_path,
+                vertex_partition.pagination_field,
+                _make_directive("<", param_name),
+            )
+        ]
+    )
+    remainder_ast = DocumentNode(
+        definitions=[
+            _add_pagination_filters(
+                query_type,
+                vertex_partition.query_path,
+                vertex_partition.pagination_field,
+                _make_directive(">=", param_name),
+            )
+        ]
+    )
 
     return next_page_ast, remainder_ast, param_name

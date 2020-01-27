@@ -1,18 +1,16 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 
-from .parameter_generator import (
-    generate_parameters_for_vertex_partition
-)
-from .query_parameterizer import generate_parameterized_queries
 from .pagination_planning import get_pagination_plan
+from .parameter_generator import generate_parameters_for_vertex_partition
+from .query_parameterizer import generate_parameterized_queries
 
 
 ASTWithParameters = namedtuple(
-    'ASTWithParameters',
+    "ASTWithParameters",
     (
-        'query_ast',        # Document, AST describing a GraphQL query.
-        'parameters',       # dict, parameters for executing the given query.
+        "query_ast",  # Document, AST describing a GraphQL query.
+        "parameters",  # dict, parameters for executing the given query.
     ),
 )
 
@@ -37,30 +35,33 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
         data. There are no guarantees on the order of the result rows for the two generated queries.
     """
     if num_pages <= 1:
-        raise AssertionError(u'Could not split query {} into pagination queries for the next page'
-                             u' of results, as the number of pages {} must be greater than 1: {}'
-                             .format(query_ast, num_pages, parameters))
+        raise AssertionError(
+            u"Could not split query {} into pagination queries for the next page"
+            u" of results, as the number of pages {} must be greater than 1: {}".format(
+                query_ast, num_pages, parameters
+            )
+        )
 
     pagination_plan, advisories = get_pagination_plan(schema_info, query_ast, num_pages)
     if len(pagination_plan.vertex_partitions) != 1:
-        raise NotImplementedError(u'We only support pagination plans with one vertex partition. '
-                                  u'Reveived {}'.format(pagination_plan))
+        raise NotImplementedError(
+            u"We only support pagination plans with one vertex partition. "
+            u"Reveived {}".format(pagination_plan)
+        )
 
     parameter_generator = generate_parameters_for_vertex_partition(
-        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0])
+        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0]
+    )
     first_param = next(parameter_generator)
 
     page_query, remainder_query, param_name = generate_parameterized_queries(
-        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0])
+        schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0]
+    )
 
     page_parameters = dict(parameters)
-    page_parameters.update({
-        param_name: first_param
-    })
+    page_parameters.update({param_name: first_param})
     remainder_parameters = dict(parameters)
-    remainder_parameters.update({
-        param_name: first_param
-    })
+    remainder_parameters.update({param_name: first_param})
 
     # Function is complete, but not tested.
     raise NotImplementedError(
