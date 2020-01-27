@@ -214,7 +214,46 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         args = {}
         query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(["Species"], "limbs", 4)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition
+        )
+
+        expected_parameters = [26, 51, 76]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_parameter_value_generation_inline_fragment(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                out_Entity_Related {
+                    ... on Species {
+                        name @output(out_name: "species_name")
+                    }
+                }
+            }
+        }"""
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species", "out_Entity_Related"), "limbs", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
             schema_info, query_ast, args, vertex_partition
         )
@@ -250,7 +289,7 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         args = {"num_limbs": 505}
         query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(["Species"], "limbs", 4)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
             schema_info, query_ast, args, vertex_partition
         )
@@ -365,7 +404,7 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         args = {}
         query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(["Species"], "limbs", 4)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
             schema_info, query_ast, args, vertex_partition
         )

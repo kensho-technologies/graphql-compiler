@@ -16,16 +16,6 @@ from ..cost_estimation.int_value_conversion import (
 from ..cost_estimation.interval import Interval, intersect_int_intervals, measure_int_interval
 
 
-def _get_query_path_endpoint_type(schema, query_path):
-    # TODO needs more care with:
-    # - non-null types
-    # - type coercions
-    current_type = schema.get_type("RootSchemaQuery")
-    for selection in query_path:
-        current_type = current_type.fields[selection].type.of_type
-    return current_type
-
-
 def _sum_partition(number, num_splits):
     """Represent an integer as a sum of N almost equal integers, sorted in descending order.
 
@@ -136,15 +126,13 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
                           (vertex_partition.number_of_splits - 1). This happens when the pagination
                           planner generates an impossible plan. This is obviously not desirable.
                           This flaw is not visible to the end user, but shold be fixed ASAP.
+                          Fix coming in PR #738.
 
     Composability guarantee: The values returned can be used to create
     vertex_partition.number_of_splits pages, or just the first value can be used to separate
     the first page from the remainder. Splitting the remainder recursively should produce
     the same results.
     """
-    vertex_type = _get_query_path_endpoint_type(
-        schema_info.schema, vertex_partition.query_path
-    ).name
     pagination_field = vertex_partition.pagination_field
     if vertex_partition.number_of_splits < 2:
         raise AssertionError("Invalid number of splits {}".format(vertex_partition))
@@ -156,7 +144,9 @@ def generate_parameters_for_vertex_partition(schema_info, query_ast, parameters,
         graphql_query_string,
         type_equivalence_hints=schema_info.type_equivalence_hints,
     ).query_metadata_table
-    filter_infos = query_metadata.get_filter_infos(Location(tuple(vertex_partition.query_path)))
+    query_location = Location(vertex_partition.query_path)
+    vertex_type = query_metadata.get_location_info(query_location).type.name
+    filter_infos = query_metadata.get_filter_infos(query_location)
     filters_on_field = [
         filter_info for filter_info in filter_infos if filter_info.fields == (pagination_field,)
     ]
