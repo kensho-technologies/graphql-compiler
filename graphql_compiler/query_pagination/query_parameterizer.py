@@ -73,6 +73,7 @@ def _add_pagination_filter(
         directive_to_add: The filter directive to add
 
     Returns:
+        tuple (new_ast, removed_parameters)
         new_ast: A query with the filter inserted, and any filters on the same location with
                  the same operation removed.
         removed_parameters: The parameter names used in filters that were removed.
