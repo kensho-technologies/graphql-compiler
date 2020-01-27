@@ -1,11 +1,10 @@
 Execution model
 ===============
 
-Since the GraphQL compiler can target multiple different query
-languages, each with its own behaviors and limitations, the execution
-model must also be defined as a function of the compilation target
-language. While we strive to minimize the differences between
-compilation targets, some differences are unavoidable.
+Since the GraphQL compiler can target multiple different query languages, each with its own
+behaviors and limitations, the execution model must also be defined as a function of the
+compilation target language. While we strive to minimize the differences between compilation
+targets, some differences are unavoidable.
 
 The compiler abides by the following principles:
 
