@@ -55,7 +55,7 @@ def _deduplicate_sorted_generator(generator: Iterable[Any]) -> Iterable[Any]:
 def _convert_int_interval_to_field_value_interval(
     schema_info: QueryPlanningSchemaInfo, vertex_type: str, field: str, interval: Interval[int]
 ) -> Interval[Any]:
-    # XXX document
+    """Convert the endpoints of an interval. See int_value_conversion for the conversion spec."""
     lower_bound = None
     upper_bound = None
     if interval.lower_bound is not None:
@@ -76,6 +76,22 @@ def _compute_parameters_for_uuid_field(
     vertex_type: str,
     field: str,
 ) -> Iterable[Any]:
+    """Return a generator of parameter values for the vertex partition at a uuid field.
+
+    See generate_parameters_for_vertex_partition for more details.
+
+    Args:
+        schema_info: contains statistics and relevant schema information
+        integer_interval: the interval of values for the field, constrained by existing filters
+                          in the query, in int form. See the int_value_conversion module for
+                          the definition of an int-equivalent of a uuid.
+        vertex_partition: the pagination plan we are working on
+        vertex_type: the name of the vertex type where the pagination field is
+        field: the name of the pagination field
+
+    Returns:
+        generator of field values. See generate_parameters_for_vertex_partition for more details.
+    """
     uuid_int_universe = Interval(MIN_UUID_INT, MAX_UUID_INT)
     integer_interval = intersect_int_intervals(integer_interval, uuid_int_universe)
 
@@ -103,10 +119,20 @@ def _compute_parameters_for_non_uuid_field(
     vertex_type: str,
     field: str,
 ) -> Iterable[Any]:
-    """Return a generator...
+    """Return a generator of parameter values for the vertex partition at a non-uuid field.
+
+    See generate_parameters_for_vertex_partition for more details.
 
     Args:
+        schema_info: contains statistics and relevant schema information
+        field_value_interval: the interval of values for the field, constrained by existing filters
+                              in the query
+        vertex_partition: the pagination plan we are working on
+        vertex_type: the name of the vertex type where the pagination field is
+        field: the name of the pagination field
 
+    Returns:
+        generator of field values. See generate_parameters_for_vertex_partition for more details.
     """
     quantiles = schema_info.statistics.get_field_quantiles(vertex_type, field)
     if quantiles is None or len(quantiles) <= vertex_partition.number_of_splits:
@@ -156,20 +182,26 @@ def generate_parameters_for_vertex_partition(
 ) -> Iterable[Any]:
     """Return a generator of parameter values that realize the vertex partition.
 
-    This function returns a generator of (vertex_partition.number_of_splits - 1) values that
-    split the values at vertex_partition.pagination_field into vertex_partition.number_of_splits
-    almost equal chunks.
-
-    HACK(bojanserafimov): In some cases the number values returned is less than
-                          (vertex_partition.number_of_splits - 1). This happens when the pagination
-                          planner generates an impossible plan. This is obviously not desirable.
-                          This flaw is not visible to the end user, but shold be fixed ASAP.
-                          Fix coming in PR #738.
-
     Composability guarantee: The values returned can be used to create
     vertex_partition.number_of_splits pages, or just the first value can be used to separate
     the first page from the remainder. Splitting the remainder recursively should produce
     the same results.
+
+    Args:
+        schema_info: contains statistics and relevant schema information
+        query_ast: the query for which we are generating parameters
+        parameters: parameters for the query
+        vertex_partition: the pagination plan we are working on
+
+    Returns:
+        Returns a generator of (vertex_partition.number_of_splits - 1) values that split the
+        values at vertex_partition.pagination_field into vertex_partition.number_of_splits
+        almost equal chunks.
+        HACK(bojanserafimov): In some cases the number values returned is less than
+                              (vertex_partition.number_of_splits - 1). This happens when the
+                              pagination planner generates an impossible plan. This is obviously
+                              not desirable. This flaw is not visible to the end user, but shold
+                              be fixed ASAP. Fix coming in PR #738.
     """
     pagination_field = vertex_partition.pagination_field
     if vertex_partition.number_of_splits < 2:
