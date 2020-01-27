@@ -238,29 +238,3 @@ def generate_parameters_for_vertex_partition(
         return _compute_parameters_for_non_uuid_field(
             schema_info, field_value_interval, vertex_partition, vertex_type, pagination_field
         )
-
-
-def generate_parameters_for_parameterized_query(
-    schema_info, parameterized_pagination_queries, num_pages
-):
-    """Generate parameters for the given parameterized pagination queries.
-
-    Args:
-        schema_info: QueryPlanningSchemaInfo
-        parameterized_pagination_queries: ParameterizedPaginationQueries namedtuple, parameterized
-                                          queries for which parameters are being generated.
-        num_pages: int, number of pages to split the query into.
-
-    Returns:
-        two dicts:
-            - dict, parameters with which to execute the page query. The next page query's
-              parameters are generated such that only a page of the original query's result data is
-              produced when executed.
-            - dict, parameters with which to execute the remainder query. The remainder query
-              parameters are generated such that they produce the remainder of the original query's
-              result data when executed.
-    """
-    # TODO(bojanserafimov): Replace this method with generate_parameters_for_vertex_partition. Its
-    #                       api is simpler (no dependence on parameterization), and it uses the
-    #                       VertexPartitionPlan.
-    raise NotImplementedError()

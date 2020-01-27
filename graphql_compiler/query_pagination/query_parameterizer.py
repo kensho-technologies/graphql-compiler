@@ -1,61 +1,138 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from copy import copy
+from typing import Sequence
 
-
-RESERVED_PARAMETER_PREFIX = "_paged_"
-
-# ParameterizedPaginationQueries namedtuple, describing two query ASTs that have PaginationFilters
-# describing filters with which the query result size can be controlled. Note that these filters are
-# returned parameterized i.e. values for the filters' parameters have yet to be generated.
-# Additionally, a dict containing user-defined parameters is stored. Since this function may modify
-# the user parameters to ensure better pagination, the user_parameters dict may differ from the
-# original query's parameters that were provided to the paginator.
-ParameterizedPaginationQueries = namedtuple(
-    "ParameterizedPaginationQueries",
-    (
-        "next_page_query",  # Document, AST of query that will return the next page of
-        # results when combined with pagination parameters.
-        "remainder_query",  # Document, AST of query that will return the remainder of
-        # results when combined with pagination parameters.
-        "pagination_filters",  # List[PaginationFilter], filters usable for pagination.
-        "user_parameters",  # dict, parameters that the user has defined for other filters.
-    ),
+from graphql.language.ast import (
+    ArgumentNode,
+    DirectiveNode,
+    DocumentNode,
+    FieldNode,
+    InlineFragmentNode,
+    ListValueNode,
+    NameNode,
+    OperationDefinitionNode,
+    SelectionSetNode,
+    StringValueNode,
 )
 
-# PaginationFilter namedtuples document filters usable for pagination purposes within the larger
-# context of a ParameterizedPaginationQueries namedtuple. These filters may either be added by the
-# query parameterizer, or filters that the user has added whose parameter values may be modified for
-# generating paginated queries.
-PaginationFilter = namedtuple(
-    "PaginationFilter",
-    (
-        "vertex_class",  # str, vertex class to which the property field belongs to.
-        "property_field",  # str, name of the property field filtering is done over.
-        "next_page_query_filter",  # Directive, filter directive with '<' operator usable
-        # for pagination in the page query.
-        "remainder_query_filter",  # Directive, filter directive with '>=' operator usable
-        # for pagination in the remainder query.
-        "related_filters",  # List[Directive], filter directives that share the same
-        # vertex and property field as the next_page_query_filter,
-        # and are used to generate more accurate pages.
-    ),
-)
+from ..ast_manipulation import get_ast_field_name, get_only_query_definition
+from ..exceptions import GraphQLError
 
 
-def generate_parameterized_queries(schema_info, query_ast, parameters):
+def _generate_new_name(base_name: str, taken_names: Sequence[str]) -> str:
+    """Return a name based on the provided string that is not already taken.
+    This method tries the following names:
+    {base_name}_0, then {base_name}_1, etc.
+    and returns the first one that's not in taken_names
+    """
+    index = 0
+    while "{}_{}".format(base_name, index) in taken_names:
+        index += 1
+    return "{}_{}".format(base_name, index)
+
+
+def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page, parameters):
+    if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
+        raise AssertionError(
+            u'Input AST is of type "{}", which should not be a selection.'
+            u"".format(type(query_ast).__name__)
+        )
+
+    # Decide what directive to add, and what existing directives to removej
+    param_name = _generate_new_name("__paged_param", parameters.keys())
+    directive_to_add = DirectiveNode(
+        name=NameNode(value="filter"),
+        arguments=[
+            ArgumentNode(
+                name=NameNode(value="op_name"),
+                value=StringValueNode(value="<" if lower_page else ">="),
+            ),
+            ArgumentNode(
+                name=NameNode(value="value"),
+                value=ListValueNode(value=[StringValueNode(value="$" + param_name)]),
+            ),
+        ],
+    )
+
+    new_selections = []
+    if len(query_path) == 0:
+        found_field = False
+        for selection_ast in query_ast.selection_set.selections:
+            new_selection_ast = selection_ast
+            field_name = get_ast_field_name(selection_ast)
+            if field_name == pagination_field:
+                found_field = True
+                new_selection_ast = copy(selection_ast)
+                new_selection_ast.directives = copy(selection_ast.directives)
+                found_directive = False
+                for directive in selection_ast.directives:
+                    if (
+                        directive.arguments[0].value.value
+                        == directive_to_add.arguments[0].value.value
+                    ):
+                        # TODO assert only one is found
+                        # TODO assert only weaker filters are removed
+                        found_directive = True
+                        param_name = directive.arguments[1].value.values[0].value[1:]
+                if not found_directive:
+                    new_selection_ast.directives.append(directive_to_add)
+            new_selections.append(new_selection_ast)
+        if not found_field:
+            new_selections.insert(
+                0, FieldNode(name=NameNode(value=pagination_field), directives=[directive_to_add])
+            )
+    else:
+        if query_ast.selection_set is None:
+            raise AssertionError()
+
+        found_field = False
+        new_selections = []
+        for selection_ast in query_ast.selection_set.selections:
+            new_selection_ast = selection_ast
+            field_name = get_ast_field_name(selection_ast)
+            if field_name == query_path[0]:
+                found_field = True
+                new_selection_ast, param_name = _add_pagination_filters(
+                    selection_ast, query_path[1:], pagination_field, lower_page, parameters
+                )
+            new_selections.append(new_selection_ast)
+
+        if not found_field:
+            raise AssertionError()
+
+    new_ast = copy(query_ast)
+    new_ast.selection_set = SelectionSetNode(selections=new_selections)
+    return new_ast, param_name
+
+
+def generate_parameterized_queries(schema_info, query_ast, parameters, vertex_partition):
     """Generate two parameterized queries that can be used to paginate over a given query.
-
     In order to paginate arbitrary GraphQL queries, additional filters may need to be added to be
     able to limit the number of results in the original query. This function creates two new queries
     with additional filters stored as PaginationFilters with which the query result size can be
     controlled.
-
     Args:
         schema_info: QueryPlanningSchemaInfo
         query_ast: Document, query that is being paginated.
         parameters: dict, list of parameters for the given query.
-
     Returns:
         ParameterizedPaginationQueries namedtuple
     """
-    raise NotImplementedError()
+    query_type = get_only_query_definition(query_ast, GraphQLError)
+
+    next_page_type, next_page_param_name = _add_pagination_filters(
+        query_type, vertex_partition.query_path, vertex_partition.pagination_field, True, parameters
+    )
+    remainder_type, remainder_param_name = _add_pagination_filters(
+        query_type,
+        vertex_partition.query_path,
+        vertex_partition.pagination_field,
+        False,
+        parameters,
+    )
+
+    next_page_ast = DocumentNode(definitions=[next_page_type])
+    remainder_ast = DocumentNode(definitions=[remainder_type])
+
+    return (next_page_ast, next_page_param_name), (remainder_ast, remainder_param_name)

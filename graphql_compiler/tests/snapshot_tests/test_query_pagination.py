@@ -16,6 +16,7 @@ from ...query_pagination.pagination_planning import (
     get_pagination_plan,
 )
 from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition
+from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
@@ -412,3 +413,42 @@ class QueryPaginationTests(unittest.TestCase):
         # Check that there are no duplicates
         list_parameters = list(generated_parameters)
         self.assertEqual(len(list_parameters), len(set(list_parameters)))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_query_parameterizer(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={("Species", "limbs"): [0 for i in range(1000)] + list(range(101))},
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }"""
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        (
+            (next_page_ast, next_page_param_name),
+            (remainder_ast, remainder_param_name),
+        ) = generate_parameterized_queries(schema_info, query_ast, args, vertex_partition)
+
+        import pdb
+
+        pdb.set_trace()
+        print(1)
