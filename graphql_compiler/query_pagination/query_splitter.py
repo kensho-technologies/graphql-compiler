@@ -50,16 +50,16 @@ def split_into_page_query_and_remainder_query(schema_info, query_ast, parameters
         schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0])
     first_param = next(parameter_generator)
 
-    (page_query, page_param), (remainder_query, remainder_param) = generate_parameterized_queries(
+    page_query, remainder_query, param_name = generate_parameterized_queries(
         schema_info, query_ast, parameters, pagination_plan.vertex_partitions[0])
 
     page_parameters = dict(parameters)
     page_parameters.update({
-        page_param: first_param
+        param_name: first_param
     })
     remainder_parameters = dict(parameters)
     remainder_parameters.update({
-        remainder_param: first_param
+        param_name: first_param
     })
     raise NotImplementedError()
     return (

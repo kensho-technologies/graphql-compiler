@@ -4,6 +4,7 @@ from typing import Any, Dict, Tuple
 import unittest
 
 import pytest
+from graphql import print_ast
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.statistics import LocalStatistics
@@ -19,7 +20,7 @@ from ...query_pagination.parameter_generator import generate_parameters_for_vert
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ..test_helpers import generate_schema_graph
+from ..test_helpers import generate_schema_graph, compare_graphql
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -443,12 +444,22 @@ class QueryPaginationTests(unittest.TestCase):
         args = {}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        (
-            (next_page_ast, next_page_param_name),
-            (remainder_ast, remainder_param_name),
-        ) = generate_parameterized_queries(schema_info, query_ast, args, vertex_partition)
+        next_page_ast, remainder_ast, param_name = generate_parameterized_queries(
+            schema_info, query_ast, args, vertex_partition)
 
-        import pdb
-
-        pdb.set_trace()
-        print(1)
+        expected_next_page = """{
+            Species {
+                limbs @filter(op_name: "<", value: ["$__paged_param_0"])
+                name @output(out_name: "species_name")
+            }
+        }"""
+        expected_remainder = """{
+            Species {
+                limbs @filter(op_name: ">=", value: ["$__paged_param_0"])
+                name @output(out_name: "species_name")
+            }
+        }"""
+        expected_param_name = "__paged_param_0"
+        compare_graphql(self, expected_next_page, print_ast(next_page_ast))
+        compare_graphql(self, expected_remainder, print_ast(remainder_ast))
+        self.assertEqual(expected_param_name, param_name)

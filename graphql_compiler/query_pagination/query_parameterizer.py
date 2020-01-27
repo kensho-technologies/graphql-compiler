@@ -32,28 +32,12 @@ def _generate_new_name(base_name: str, taken_names: Sequence[str]) -> str:
     return "{}_{}".format(base_name, index)
 
 
-def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page, parameters):
+def _add_pagination_filters(query_ast, query_path, pagination_field, directive_to_add):
     if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
             u'Input AST is of type "{}", which should not be a selection.'
             u"".format(type(query_ast).__name__)
         )
-
-    # Decide what directive to add, and what existing directives to removej
-    param_name = _generate_new_name("__paged_param", parameters.keys())
-    directive_to_add = DirectiveNode(
-        name=NameNode(value="filter"),
-        arguments=[
-            ArgumentNode(
-                name=NameNode(value="op_name"),
-                value=StringValueNode(value="<" if lower_page else ">="),
-            ),
-            ArgumentNode(
-                name=NameNode(value="value"),
-                value=ListValueNode(value=[StringValueNode(value="$" + param_name)]),
-            ),
-        ],
-    )
 
     new_selections = []
     if len(query_path) == 0:
@@ -93,8 +77,8 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page,
             field_name = get_ast_field_name(selection_ast)
             if field_name == query_path[0]:
                 found_field = True
-                new_selection_ast, param_name = _add_pagination_filters(
-                    selection_ast, query_path[1:], pagination_field, lower_page, parameters
+                new_selection_ast = _add_pagination_filters(
+                    selection_ast, query_path[1:], pagination_field, directive_to_add
                 )
             new_selections.append(new_selection_ast)
 
@@ -103,7 +87,24 @@ def _add_pagination_filters(query_ast, query_path, pagination_field, lower_page,
 
     new_ast = copy(query_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
-    return new_ast, param_name
+    return new_ast
+
+
+def _make_directive(param_name, lower_page):
+    op_name = "<" if lower_page else ">="
+    return DirectiveNode(
+        name=NameNode(value="filter"),
+        arguments=[
+            ArgumentNode(
+                name=NameNode(value="op_name"),
+                value=StringValueNode(value=op_name),
+            ),
+            ArgumentNode(
+                name=NameNode(value="value"),
+                value=ListValueNode(values=[StringValueNode(value="$" + param_name)]),
+            ),
+        ],
+    )
 
 
 def generate_parameterized_queries(schema_info, query_ast, parameters, vertex_partition):
@@ -121,18 +122,21 @@ def generate_parameterized_queries(schema_info, query_ast, parameters, vertex_pa
     """
     query_type = get_only_query_definition(query_ast, GraphQLError)
 
-    next_page_type, next_page_param_name = _add_pagination_filters(
-        query_type, vertex_partition.query_path, vertex_partition.pagination_field, True, parameters
-    )
-    remainder_type, remainder_param_name = _add_pagination_filters(
+    param_name = _generate_new_name("__paged_param", parameters.keys())
+    lower_page_directive = _make_directive(param_name, True)
+    upper_page_directive = _make_directive(param_name, False)
+
+    next_page_ast = DocumentNode(definitions=[_add_pagination_filters(
         query_type,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
-        False,
-        parameters,
-    )
+        lower_page_directive,
+    )])
+    remainder_ast = DocumentNode(definitions=[_add_pagination_filters(
+        query_type,
+        vertex_partition.query_path,
+        vertex_partition.pagination_field,
+        upper_page_directive,
+    )])
 
-    next_page_ast = DocumentNode(definitions=[next_page_type])
-    remainder_ast = DocumentNode(definitions=[remainder_type])
-
-    return (next_page_ast, next_page_param_name), (remainder_ast, remainder_param_name)
+    return next_page_ast, remainder_ast, param_name
