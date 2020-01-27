@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
 from copy import copy
-from typing import Any, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, Dict, List, Optional, Sequence, Set, Tuple, cast
 
 from graphql.language.ast import (
     ArgumentNode,
@@ -17,6 +17,7 @@ from graphql.language.ast import (
 )
 
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
+from ..compiler.helpers import get_parameter_name
 from ..exceptions import GraphQLError
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
@@ -39,6 +40,22 @@ def _generate_new_name(base_name: str, taken_names: Set[str]) -> str:
     while "{}_{}".format(base_name, index) in taken_names:
         index += 1
     return "{}_{}".format(base_name, index)
+
+
+def _get_binary_filter_node_parameter(filter_directive: DirectiveNode) -> str:
+    """Return the parameter name for a binary Filter Directive."""
+    filter_arguments = cast(ListValueNode, filter_directive.arguments[1].value).values
+    if len(filter_arguments) != 1:
+        raise AssertionError(u"Expected one argument in filter {}".format(filter_directive))
+
+    argument_name = cast(StringValueNode, filter_arguments[0]).value
+    parameter_name = get_parameter_name(argument_name)
+    return parameter_name
+
+
+def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
+    """Return the @filter's op_name as a string."""
+    return cast(StringValueNode, filter_directive.arguments[0].value).value
 
 
 def _add_pagination_filter(
@@ -77,15 +94,12 @@ def _add_pagination_filter(
                 found_field = True
                 new_selection_ast = copy(selection_ast)
                 new_selection_ast.directives = copy(selection_ast.directives)
-                found_directive = False
 
                 new_directives = []
                 for directive in selection_ast.directives:
-                    if (
-                        directive.arguments[0].value.value
-                        == directive_to_add.arguments[0].value.value
-                    ):
-                        removed_parameters.append(directive.arguments[1].value.values[0].value[1:])
+                    operation = _get_filter_node_operation(directive)
+                    if operation == _get_filter_node_operation(directive_to_add):
+                        removed_parameters.append(_get_binary_filter_node_parameter(directive))
                     else:
                         new_directives.append(directive)
                 new_directives.append(directive_to_add)
