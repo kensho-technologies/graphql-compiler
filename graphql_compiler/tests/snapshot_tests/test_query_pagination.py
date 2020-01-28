@@ -489,8 +489,8 @@ class QueryPaginationTests(unittest.TestCase):
         args = {}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        next_page, remainder, param_name = generate_parameterized_queries(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        next_page, remainder = generate_parameterized_queries(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition, 100
         )
 
         expected_next_page = """{
@@ -508,7 +508,6 @@ class QueryPaginationTests(unittest.TestCase):
         expected_param_name = "__paged_param_0"
         compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
-        self.assertEqual(expected_param_name, param_name)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_query_parameterizer_name_conflict(self):
@@ -540,8 +539,8 @@ class QueryPaginationTests(unittest.TestCase):
         args = {"__paged_param_0": "Cow"}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        next_page, remainder, param_name = generate_parameterized_queries(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        next_page, remainder = generate_parameterized_queries(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition, 100
         )
 
         expected_next_page = """{
@@ -561,7 +560,6 @@ class QueryPaginationTests(unittest.TestCase):
         expected_param_name = "__paged_param_1"
         compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
-        self.assertEqual(expected_param_name, param_name)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_query_parameterizer_filter_deduplication(self):
@@ -595,8 +593,8 @@ class QueryPaginationTests(unittest.TestCase):
         }
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        next_page, remainder, param_name = generate_parameterized_queries(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        next_page, remainder = generate_parameterized_queries(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition, 100
         )
 
         expected_next_page = """{
@@ -615,4 +613,3 @@ class QueryPaginationTests(unittest.TestCase):
         expected_param_name = "__paged_param_0"
         compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
-        self.assertEqual(expected_param_name, param_name)

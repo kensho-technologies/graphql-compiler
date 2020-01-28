@@ -154,18 +154,19 @@ def generate_parameterized_queries(
     schema_info: QueryPlanningSchemaInfo,
     query: ASTWithParameters,
     vertex_partition: VertexPartitionPlan,
-) -> Tuple[ASTWithParameters, ASTWithParameters, str]:
+    parameter_value: Any,
+) -> Tuple[ASTWithParameters, ASTWithParameters]:
     """Generate two parameterized queries that can be used to paginate over a given query.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
         query: the query to parameterize
         vertex_partition: pagination plan
+        parameter_value: the value of the parameter used for pagination
 
     Returns:
         next_page: Ast and params for next page.
         remainder_ast: Ast and params for remainder.
-        param_name: The parameter name used in the new filters.
     """
     query_type = get_only_query_definition(query.query_ast, GraphQLError)
 
@@ -184,10 +185,13 @@ def generate_parameterized_queries(
     )
 
     page_parameters = {k: v for k, v in query.parameters.items() if k not in next_page_removed_parameters}
+    page_parameters[param_name] = parameter_value
     remainder_parameters = {
         k: v for k, v in query.parameters.items() if k not in remainder_removed_parameters
     }
+    remainder_parameters[param_name] = parameter_value
+    # TODO assert only redundant filters are removed
 
     next_page = ASTWithParameters(DocumentNode(definitions=[next_page_root]), page_parameters)
     remainder = ASTWithParameters(DocumentNode(definitions=[remainder_root]), remainder_parameters)
-    return next_page, remainder, param_name
+    return next_page, remainder
