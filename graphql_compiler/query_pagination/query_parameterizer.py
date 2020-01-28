@@ -84,7 +84,7 @@ def _add_pagination_filter_at_node(
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
 ) -> Tuple[DocumentNode, Dict[str, Any]]:
-    """Add the filter to the target field, returning a query and its new parameters
+    """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
         query_ast: The query in which we are adding a filter
