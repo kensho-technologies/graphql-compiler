@@ -59,7 +59,9 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
 
 
 def _is_new_filter_stronger(operation, new_filter_value, old_filter_value):
-    # TODO assert types are comparable
+    if type(new_filter_value) != type(old_filter_value):
+        raise AssertionError()
+
     if operation == "<":
         return new_filter_value <= old_filter_value
     elif operation == ">=":
@@ -76,18 +78,16 @@ def _is_filter_redundant(filter_operation_1, filter_operation_2):
     return False
 
 
-def _add_pagination_filter(
+def _add_pagination_filter_at_node(
     query_ast: DocumentNode,
-    query_path: Tuple[str, ...],
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
 ) -> Tuple[DocumentNode, Dict[str, Any]]:
-    """Add the filter to the target field, returning a query and the names of removed filters.
+    """Add the filter to the target field, returning a query and its new parameters
 
     Args:
         query_ast: The query in which we are adding a filter
-        query_path: The path to the pagination vertex
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
         extended_parameters: The original parameters of the query along with
@@ -108,62 +108,100 @@ def _add_pagination_filter(
     new_directive_parameter_name = _get_binary_filter_node_parameter(directive_to_add)
     new_directive_parameter_value = extended_parameters[new_directive_parameter_name]
 
+    # If the field exists, add the new filter and remove redundant filters.
     new_parameters = dict(extended_parameters)
     new_selections = []
+    found_field = False
+    for selection_ast in query_ast.selection_set.selections:
+        new_selection_ast = selection_ast
+        field_name = get_ast_field_name(selection_ast)
+        if field_name == pagination_field:
+            found_field = True
+            new_selection_ast = copy(selection_ast)
+            new_selection_ast.directives = copy(selection_ast.directives)
+
+            new_directives = []
+            for directive in selection_ast.directives:
+                operation = _get_filter_node_operation(directive)
+                if _is_filter_redundant(new_directive_operation, operation):
+                    parameter_name = _get_binary_filter_node_parameter(directive)
+                    parameter_value = new_parameters[parameter_name]
+                    if not _is_new_filter_stronger(
+                        operation, new_directive_parameter_value, parameter_value
+                    ):
+                        raise AssertionError()
+                    del new_parameters[parameter_name]
+                else:
+                    new_directives.append(directive)
+            new_directives.append(directive_to_add)
+            new_selection_ast.directives = new_directives
+        new_selections.append(new_selection_ast)
+
+    # If field didn't exist, create it and add the new directive to it.
+    if not found_field:
+        new_selections.insert(
+            0, FieldNode(name=NameNode(value=pagination_field), directives=[directive_to_add])
+        )
+
+    new_ast = copy(query_ast)
+    new_ast.selection_set = SelectionSetNode(selections=new_selections)
+    return new_ast, new_parameters
+
+
+def _add_pagination_filter(
+    query_ast: DocumentNode,
+    query_path: Tuple[str, ...],
+    pagination_field: str,
+    directive_to_add: DirectiveNode,
+    extended_parameters: Dict[str, Any],
+) -> Tuple[DocumentNode, Dict[str, Any]]:
+    """Add the filter to the target field, returning a query and its new parameters.
+
+    Args:
+        query_ast: The query in which we are adding a filter
+        query_path: The path to the pagination vertex
+        pagination_field: The field on which we are adding a filter
+        directive_to_add: The filter directive to add
+        extended_parameters: The original parameters of the query along with
+                             the parameter used in directive_to_add
+
+    Returns:
+        tuple (new_ast, removed_parameters)
+        new_ast: A query with the filter inserted, and any filters on the same location with
+                 the same operation removed.
+        new_parameters: The parameters to use with the new_ast
+    """
+    if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
+        raise AssertionError(
+            f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
+        )
+
     if len(query_path) == 0:
-        # Add the filter to the correct field on this vertex and remove any redundant filters.
-        found_field = False
-        for selection_ast in query_ast.selection_set.selections:
-            new_selection_ast = selection_ast
-            field_name = get_ast_field_name(selection_ast)
-            if field_name == pagination_field:
-                found_field = True
-                new_selection_ast = copy(selection_ast)
-                new_selection_ast.directives = copy(selection_ast.directives)
+        return _add_pagination_filter_at_node(
+            query_ast, pagination_field, directive_to_add, extended_parameters
+        )
 
-                new_directives = []
-                for directive in selection_ast.directives:
-                    operation = _get_filter_node_operation(directive)
-                    if _is_filter_redundant(new_directive_operation, operation):
-                        parameter_name = _get_binary_filter_node_parameter(directive)
-                        parameter_value = new_parameters[parameter_name]
-                        if not _is_new_filter_stronger(
-                            operation, new_directive_parameter_value, parameter_value
-                        ):
-                            raise AssertionError()
-                        del new_parameters[parameter_name]
-                    else:
-                        new_directives.append(directive)
-                new_directives.append(directive_to_add)
-                new_selection_ast.directives = new_directives
-            new_selections.append(new_selection_ast)
-        if not found_field:
-            new_selections.insert(
-                0, FieldNode(name=NameNode(value=pagination_field), directives=[directive_to_add])
+    if query_ast.selection_set is None:
+        raise AssertionError()
+
+    found_field = False
+    new_selections = []
+    for selection_ast in query_ast.selection_set.selections:
+        new_selection_ast = selection_ast
+        field_name = get_ast_field_name(selection_ast)
+        if field_name == query_path[0]:
+            found_field = True
+            new_selection_ast, new_parameters = _add_pagination_filter(
+                selection_ast,
+                query_path[1:],
+                pagination_field,
+                directive_to_add,
+                extended_parameters,
             )
-    else:
-        # Recurse until the target vertex is reached.
-        if query_ast.selection_set is None:
-            raise AssertionError()
+        new_selections.append(new_selection_ast)
 
-        found_field = False
-        new_selections = []
-        for selection_ast in query_ast.selection_set.selections:
-            new_selection_ast = selection_ast
-            field_name = get_ast_field_name(selection_ast)
-            if field_name == query_path[0]:
-                found_field = True
-                new_selection_ast, new_parameters = _add_pagination_filter(
-                    selection_ast,
-                    query_path[1:],
-                    pagination_field,
-                    directive_to_add,
-                    extended_parameters,
-                )
-            new_selections.append(new_selection_ast)
-
-        if not found_field:
-            raise AssertionError()
+    if not found_field:
+        raise AssertionError()
 
     new_ast = copy(query_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
