@@ -46,7 +46,7 @@ def _get_binary_filter_node_parameter(filter_directive: DirectiveNode) -> str:
     """Return the parameter name for a binary Filter Directive."""
     filter_arguments = cast(ListValueNode, filter_directive.arguments[1].value).values
     if len(filter_arguments) != 1:
-        raise AssertionError("Expected one argument in filter {}".format(filter_directive))
+        raise AssertionError(f"Expected one argument in filter {filter_directive}")
 
     argument_name = cast(StringValueNode, filter_arguments[0]).value
     parameter_name = get_parameter_name(argument_name)
@@ -58,19 +58,35 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
     return cast(StringValueNode, filter_directive.arguments[0].value).value
 
 
-def _is_new_filter_stronger(operation, new_filter_value, old_filter_value):
+def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_value: Any) -> bool:
+    """Return if the old filter can be omitted in the presence of the new one.
+
+    Args:
+        operation: the operation that both filters share. One of "<" and ">=".
+        new_filter_value: the value of the new filter
+        old_filter_value: the value of the old filter. Must be the exact same type
+                          as the value of the new filter.
+
+    Returns:
+        whether the old filter can be removed with no change in query meaning.
+    """
     if type(new_filter_value) != type(old_filter_value):
-        raise AssertionError()
+        raise AssertionError(
+            f"Expected {new_filter_value} and {old_filter_value} "
+            f"to have the same type, but got {type(new_filter_value)} "
+            f"and {type(old_filter_value)}."
+        )
 
     if operation == "<":
         return new_filter_value <= old_filter_value
     elif operation == ">=":
         return new_filter_value >= old_filter_value
     else:
-        raise NotImplementedError()
+        raise AssertionError(f"Expected operation to be < or >=, got {operation}.")
 
 
-def _is_filter_redundant(filter_operation_1, filter_operation_2):
+def _is_filter_redundant(filter_operation_1: str, filter_operation_2: str) -> bool:
+    """Return True only if one of the filters is redundant."""
     if filter_operation_1 == "<" and filter_operation_2 == "<":
         return True
     if filter_operation_1 == ">=" and filter_operation_2 == ">=":
@@ -129,7 +145,12 @@ def _add_pagination_filter_at_node(
                     if not _is_new_filter_stronger(
                         operation, new_directive_parameter_value, parameter_value
                     ):
-                        raise AssertionError()
+                        raise AssertionError(
+                            f"Pagination filter {directive_to_add} on "
+                            f"{pagination_field} is not stronger than "
+                            f"an existing filter {directive}. This is "
+                            f"likely a bug in parameter generation."
+                        )
                     del new_parameters[parameter_name]
                 else:
                     new_directives.append(directive)
@@ -182,7 +203,7 @@ def _add_pagination_filter(
         )
 
     if query_ast.selection_set is None:
-        raise AssertionError()
+        raise AssertionError(f"Invalid query path {query_path} {query_ast}.")
 
     found_field = False
     new_selections = []
@@ -201,7 +222,7 @@ def _add_pagination_filter(
         new_selections.append(new_selection_ast)
 
     if not found_field:
-        raise AssertionError()
+        raise AssertionError(f"Invalid query path {query_path} {query_ast}.")
 
     new_ast = copy(query_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
