@@ -63,6 +63,7 @@ def _add_pagination_filter(
     query_path: Tuple[str, ...],
     pagination_field: str,
     directive_to_add: DirectiveNode,
+    extended_parameters: Dict[str, Any],
 ) -> Tuple[DocumentNode, List[str]]:
     """Add the filter to the target field, returning a query and the names of removed filters.
 
@@ -71,19 +72,21 @@ def _add_pagination_filter(
         query_path: The path to the pagination vertex
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
+        extended_parameters: The original parameters of the query along with
+                             the parameter used in directive_to_add
 
     Returns:
         tuple (new_ast, removed_parameters)
         new_ast: A query with the filter inserted, and any filters on the same location with
                  the same operation removed.
-        removed_parameters: The parameter names used in filters that were removed.
+        new_parameters: The parameters to use with the new_ast
     """
     if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
             f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
         )
 
-    removed_parameters = []
+    new_parameters = dict(extended_parameters)
     new_selections = []
     if len(query_path) == 0:
         # Add the filter to the correct field on this vertex and remove any redundant filters.
@@ -100,7 +103,9 @@ def _add_pagination_filter(
                 for directive in selection_ast.directives:
                     operation = _get_filter_node_operation(directive)
                     if operation == _get_filter_node_operation(directive_to_add):
-                        removed_parameters.append(_get_binary_filter_node_parameter(directive))
+                        # XXX ???
+                        parameter_name = _get_binary_filter_node_parameter(directive)
+                        del new_parameters[parameter_name]
                     else:
                         new_directives.append(directive)
                 new_directives.append(directive_to_add)
@@ -122,10 +127,9 @@ def _add_pagination_filter(
             field_name = get_ast_field_name(selection_ast)
             if field_name == query_path[0]:
                 found_field = True
-                new_selection_ast, sub_removed_parameters = _add_pagination_filter(
-                    selection_ast, query_path[1:], pagination_field, directive_to_add
+                new_selection_ast, new_parameters = _add_pagination_filter(
+                    selection_ast, query_path[1:], pagination_field, directive_to_add, extended_parameters
                 )
-                removed_parameters.extend(sub_removed_parameters)
             new_selections.append(new_selection_ast)
 
         if not found_field:
@@ -133,7 +137,7 @@ def _add_pagination_filter(
 
     new_ast = copy(query_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
-    return new_ast, removed_parameters
+    return new_ast, new_parameters
 
 
 def _make_binary_filter_directive_node(op_name: str, param_name: str) -> DirectiveNode:
@@ -170,28 +174,26 @@ def generate_parameterized_queries(
     """
     query_type = get_only_query_definition(query.query_ast, GraphQLError)
 
+    # Create extended parameters that include the pagination parameter value
     param_name = _generate_new_name("__paged_param", set(query.parameters.keys()))
-    next_page_root, next_page_removed_parameters = _add_pagination_filter(
+    extended_parameters = dict(query.parameters)
+    extended_parameters[param_name] = parameter_value
+
+    next_page_root, next_page_parameters = _add_pagination_filter(
         query_type,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node("<", param_name),
+        extended_parameters,
     )
-    remainder_root, remainder_removed_parameters = _add_pagination_filter(
+    remainder_root, remainder_parameters = _add_pagination_filter(
         query_type,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node(">=", param_name),
+        extended_parameters,
     )
 
-    page_parameters = {k: v for k, v in query.parameters.items() if k not in next_page_removed_parameters}
-    page_parameters[param_name] = parameter_value
-    remainder_parameters = {
-        k: v for k, v in query.parameters.items() if k not in remainder_removed_parameters
-    }
-    remainder_parameters[param_name] = parameter_value
-    # TODO assert only redundant filters are removed
-
-    next_page = ASTWithParameters(DocumentNode(definitions=[next_page_root]), page_parameters)
+    next_page = ASTWithParameters(DocumentNode(definitions=[next_page_root]), next_page_parameters)
     remainder = ASTWithParameters(DocumentNode(definitions=[remainder_root]), remainder_parameters)
     return next_page, remainder
