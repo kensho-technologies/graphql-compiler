@@ -6,11 +6,11 @@ import unittest
 from graphql import print_ast
 import pytest
 
-from ...global_utils import ASTWithParameters, QueryStringWithParameters
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.statistics import LocalStatistics
-from ...query_pagination import QueryStringWithParameters, paginate_query
+from ...global_utils import ASTWithParameters, QueryStringWithParameters
+from ...query_pagination import paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
     PaginationAdvisory,
@@ -505,7 +505,6 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "species_name")
             }
         }"""
-        expected_param_name = "__paged_param_0"
         compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
 
@@ -557,7 +556,6 @@ class QueryPaginationTests(unittest.TestCase):
                      @filter(op_name: "!=", value: ["$__paged_param_0"])
             }
         }"""
-        expected_param_name = "__paged_param_1"
         compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
 
@@ -610,6 +608,5 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "species_name")
             }
         }"""
-        expected_param_name = "__paged_param_0"
         compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))

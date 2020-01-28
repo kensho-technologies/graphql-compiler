@@ -1,14 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
-
 from graphql.language.printer import print_ast
 
-from ..global_utils import QueryStringWithParameters, ASTWithParameters
 from ..ast_manipulation import safe_parse_graphql
 from ..cost_estimation.cardinality_estimator import estimate_number_of_pages
-from ..query_pagination.query_splitter import (
-    split_into_page_query_and_remainder_query,
-)
+from ..global_utils import ASTWithParameters, QueryStringWithParameters
+from ..query_pagination.query_splitter import split_into_page_query_and_remainder_query
 
 
 def paginate_query_ast(schema_info, query_ast, parameters, page_size):

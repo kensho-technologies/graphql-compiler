@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 import itertools
-from typing import Any, Dict, Iterable, cast
+from typing import Any, Dict, Iterator, cast
 
 from graphql import DocumentNode
 from graphql.language.printer import print_ast
@@ -20,7 +20,7 @@ from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
 
 
-def _sum_partition(number: int, num_splits: int) -> Iterable[int]:
+def _sum_partition(number: int, num_splits: int) -> Iterator[int]:
     """Represent an integer as a sum of N almost equal integers, sorted in descending order.
 
     Example: _sum_partition(5, 3) = [2, 2, 1]
@@ -43,7 +43,7 @@ def _sum_partition(number: int, num_splits: int) -> Iterable[int]:
     )
 
 
-def _deduplicate_sorted_generator(generator: Iterable[Any]) -> Iterable[Any]:
+def _deduplicate_sorted_generator(generator: Iterator[Any]) -> Iterator[Any]:
     """Return a generator that skips repeated values in the given sorted generator."""
     prev = object()
     for i in generator:
@@ -75,7 +75,7 @@ def _compute_parameters_for_uuid_field(
     vertex_partition: VertexPartitionPlan,
     vertex_type: str,
     field: str,
-) -> Iterable[Any]:
+) -> Iterator[Any]:
     """Return a generator of parameter values for the vertex partition at a uuid field.
 
     See generate_parameters_for_vertex_partition for more details.
@@ -118,7 +118,7 @@ def _compute_parameters_for_non_uuid_field(
     vertex_partition: VertexPartitionPlan,
     vertex_type: str,
     field: str,
-) -> Iterable[Any]:
+) -> Iterator[Any]:
     """Return a generator of parameter values for the vertex partition at a non-uuid field.
 
     See generate_parameters_for_vertex_partition for more details.
@@ -179,7 +179,7 @@ def generate_parameters_for_vertex_partition(
     query_ast: DocumentNode,
     parameters: Dict[str, Any],
     vertex_partition: VertexPartitionPlan,
-) -> Iterable[Any]:
+) -> Iterator[Any]:
     """Return a generator of parameter values that realize the vertex partition.
 
     Composability guarantee: The values returned can be used to create

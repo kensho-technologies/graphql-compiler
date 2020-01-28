@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
-from typing import Any, Dict, List, Set, Tuple, cast
+from typing import Any, Dict, Set, Tuple, cast
 
 from graphql.language.ast import (
     ArgumentNode,
@@ -15,10 +15,10 @@ from graphql.language.ast import (
     StringValueNode,
 )
 
-from ..global_utils import ASTWithParameters
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
 from ..exceptions import GraphQLError
+from ..global_utils import ASTWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
 
@@ -60,18 +60,18 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
 
 def _is_new_filter_stronger(operation, new_filter_value, old_filter_value):
     # TODO assert types are comparable
-    if operation == '<':
+    if operation == "<":
         return new_filter_value <= old_filter_value
-    elif operation == '>=':
+    elif operation == ">=":
         return new_filter_value >= old_filter_value
     else:
         raise NotImplementedError()
 
 
 def _is_filter_redundant(filter_operation_1, filter_operation_2):
-    if filter_operation_1 == '<' and filter_operation_2 == '<':
+    if filter_operation_1 == "<" and filter_operation_2 == "<":
         return True
-    if filter_operation_1 == '>=' and filter_operation_2 == '>=':
+    if filter_operation_1 == ">=" and filter_operation_2 == ">=":
         return True
     return False
 
@@ -82,7 +82,7 @@ def _add_pagination_filter(
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-) -> Tuple[DocumentNode, List[str]]:
+) -> Tuple[DocumentNode, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and the names of removed filters.
 
     Args:
@@ -127,7 +127,9 @@ def _add_pagination_filter(
                     if _is_filter_redundant(new_directive_operation, operation):
                         parameter_name = _get_binary_filter_node_parameter(directive)
                         parameter_value = new_parameters[parameter_name]
-                        if not _is_new_filter_stronger(operation, new_directive_parameter_value, parameter_value):
+                        if not _is_new_filter_stronger(
+                            operation, new_directive_parameter_value, parameter_value
+                        ):
                             raise AssertionError()
                         del new_parameters[parameter_name]
                     else:
@@ -152,7 +154,11 @@ def _add_pagination_filter(
             if field_name == query_path[0]:
                 found_field = True
                 new_selection_ast, new_parameters = _add_pagination_filter(
-                    selection_ast, query_path[1:], pagination_field, directive_to_add, extended_parameters
+                    selection_ast,
+                    query_path[1:],
+                    pagination_field,
+                    directive_to_add,
+                    extended_parameters,
                 )
             new_selections.append(new_selection_ast)
 
