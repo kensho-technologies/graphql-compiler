@@ -279,8 +279,9 @@ def generate_parameterized_queries(
         parameter_value: the value of the parameter used for pagination
 
     Returns:
-        next_page: Ast and params for next page.
-        remainder_ast: Ast and params for remainder.
+        tuple (next_page, remainder)
+        next_page: AST and params for next page.
+        remainder: AST and params for the remainder query that returns all results not on the next page.
     """
     query_string = print_ast(query.query_ast)
     query_root = get_only_query_definition(query.query_ast, GraphQLError)
