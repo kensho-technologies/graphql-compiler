@@ -58,6 +58,24 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
     return cast(StringValueNode, filter_directive.arguments[0].value).value
 
 
+def _is_new_filter_stronger(operation, new_filter_value, old_filter_value):
+    # TODO assert types are comparable
+    if operation == '<':
+        return new_filter_value <= old_filter_value
+    elif operation == '>=':
+        return new_filter_value >= old_filter_value
+    else:
+        raise NotImplementedError()
+
+
+def _is_filter_redundant(filter_operation_1, filter_operation_2):
+    if filter_operation_1 == '<' and filter_operation_2 == '<':
+        return True
+    if filter_operation_1 == '>=' and filter_operation_2 == '>=':
+        return True
+    return False
+
+
 def _add_pagination_filter(
     query_ast: DocumentNode,
     query_path: Tuple[str, ...],
@@ -86,6 +104,10 @@ def _add_pagination_filter(
             f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
         )
 
+    new_directive_operation = _get_filter_node_operation(directive_to_add)
+    new_directive_parameter_name = _get_binary_filter_node_parameter(directive_to_add)
+    new_directive_parameter_value = extended_parameters[new_directive_parameter_name]
+
     new_parameters = dict(extended_parameters)
     new_selections = []
     if len(query_path) == 0:
@@ -102,9 +124,11 @@ def _add_pagination_filter(
                 new_directives = []
                 for directive in selection_ast.directives:
                     operation = _get_filter_node_operation(directive)
-                    if operation == _get_filter_node_operation(directive_to_add):
-                        # XXX ???
+                    if _is_filter_redundant(new_directive_operation, operation):
                         parameter_name = _get_binary_filter_node_parameter(directive)
+                        parameter_value = new_parameters[parameter_name]
+                        if not _is_new_filter_stronger(operation, new_directive_parameter_value, parameter_value):
+                            raise AssertionError()
                         del new_parameters[parameter_name]
                     else:
                         new_directives.append(directive)
