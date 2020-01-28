@@ -7,12 +7,14 @@ import six
 
 @dataclass
 class QueryStringWithParameters:
+    """A query string and parameters that validate against the query."""
     query_string: str
     parameters: Dict[str, Any]
 
 
 @dataclass
 class ASTWithParameters:
+    """A query AST and parameters that validate against the query."""
     query_ast: DocumentNode
     parameters: Dict[str, Any]
 
