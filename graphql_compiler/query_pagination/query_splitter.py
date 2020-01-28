@@ -42,7 +42,7 @@ def split_into_page_query_and_remainder_query(
     if len(pagination_plan.vertex_partitions) != 1:
         raise NotImplementedError(
             u"We only support pagination plans with one vertex partition. "
-            u"Reveived {}".format(pagination_plan)
+            u"Received {}".format(pagination_plan)
         )
 
     parameter_generator = generate_parameters_for_vertex_partition(
