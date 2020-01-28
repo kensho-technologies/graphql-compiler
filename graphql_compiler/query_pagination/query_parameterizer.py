@@ -260,7 +260,7 @@ def generate_parameterized_queries(
     Returns:
         tuple (next_page, remainder)
         next_page: AST and params for next page.
-        remainder_ast: Ast and params for remainder.
+        remainder: AST and params for the remainder query that returns all results not on the next page.
     """
     query_type = get_only_query_definition(query.query_ast, GraphQLError)
 
