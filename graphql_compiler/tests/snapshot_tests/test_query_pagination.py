@@ -3,11 +3,14 @@ import datetime
 from typing import Any, Dict, Tuple
 import unittest
 
+from graphql import print_ast
 import pytest
 
 from ...ast_manipulation import safe_parse_graphql
+from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ...cost_estimation.statistics import LocalStatistics
-from ...query_pagination import QueryStringWithParameters, paginate_query
+from ...global_utils import ASTWithParameters, QueryStringWithParameters
+from ...query_pagination import paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
     PaginationAdvisory,
@@ -16,9 +19,10 @@ from ...query_pagination.pagination_planning import (
     get_pagination_plan,
 )
 from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition
+from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ..test_helpers import generate_schema_graph
+from ..test_helpers import compare_graphql, generate_schema_graph
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -156,36 +160,79 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        # Since query pagination is still a skeleton, we expect a NotImplementedError for this test.
-        # Once query pagination is fully implemented, the result of this call should be equal to
-        # expected_query_list.
-        # pylint: disable=unused-variable
-        with self.assertRaises(NotImplementedError):
-            paginated_queries = paginate_query(  # noqa: unused-variable
-                schema_info, test_data, parameters, 1
-            )
+        first, remainder = paginate_query(schema_info, test_data, parameters, 1)
 
-        expected_query_list = (  # noqa: unused-variable
-            QueryStringWithParameters(
-                """{
-                    Animal {
-                        uuid @filter(op_name: "<", value: ["$_paged_upper_param_on_Animal_uuid"])
-                        name @output(out_name: "animal")
-                    }
-                }""",
-                {"_paged_upper_param_on_Animal_uuid": "40000000-0000-0000-0000-000000000000",},
-            ),
-            QueryStringWithParameters(
-                """{
-                    Animal {
-                        uuid @filter(op_name: ">=", value: ["$_paged_lower_param_on_Animal_uuid"])
-                        name @output(out_name: "animal")
-                    }
-                }""",
-                {"_paged_lower_param_on_Animal_uuid": "40000000-0000-0000-0000-000000000000",},
-            ),
+        expected_first = QueryStringWithParameters(
+            """{
+                Animal {
+                    uuid @filter(op_name: "<", value: ["$__paged_param_0"])
+                    name @output(out_name: "animal")
+                }
+            }""",
+            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
         )
-        # pylint: enable=unused-variable
+
+        expected_remainder = QueryStringWithParameters(
+            """{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
+                    name @output(out_name: "animal")
+                }
+            }""",
+            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
+        )
+
+        # Check that the correct first page and remainder are generated
+        compare_graphql(self, expected_first.query_string, first.query_string)
+        self.assertEqual(expected_first.parameters, first.parameters)
+        compare_graphql(self, expected_remainder.query_string, remainder.query_string)
+        self.assertEqual(expected_remainder.parameters, remainder.parameters)
+
+        # Check that the first page is estimated to fit into a page
+        first_page_cardinality_estimate = estimate_query_result_cardinality(
+            schema_info, first.query_string, first.parameters
+        )
+        self.assertAlmostEqual(1, first_page_cardinality_estimate)
+
+        # Get the second page
+        second, remainder = paginate_query(
+            schema_info, remainder.query_string, remainder.parameters, 1
+        )
+
+        expected_second = QueryStringWithParameters(
+            """{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_0"])
+                         @filter(op_name: "<", value: ["$__paged_param_1"])
+                    name @output(out_name: "animal")
+                }
+            }""",
+            {
+                "__paged_param_0": "40000000-0000-0000-0000-000000000000",
+                "__paged_param_1": "80000000-0000-0000-0000-000000000000",
+            },
+        )
+        expected_remainder = QueryStringWithParameters(
+            """{
+                Animal {
+                    uuid @filter(op_name: ">=", value: ["$__paged_param_1"])
+                    name @output(out_name: "animal")
+                }
+            }""",
+            {"__paged_param_1": "80000000-0000-0000-0000-000000000000",},
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_second.query_string, second.query_string)
+        self.assertEqual(expected_second.parameters, second.parameters)
+        compare_graphql(self, expected_remainder.query_string, remainder.query_string)
+        self.assertEqual(expected_remainder.parameters, remainder.parameters)
+
+        # Check that the second page is estimated to fit into a page
+        second_page_cardinality_estimate = estimate_query_result_cardinality(
+            schema_info, second.query_string, second.parameters
+        )
+        self.assertAlmostEqual(1, second_page_cardinality_estimate)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_int(self):
@@ -412,3 +459,154 @@ class QueryPaginationTests(unittest.TestCase):
         # Check that there are no duplicates
         list_parameters = list(generated_parameters)
         self.assertEqual(len(list_parameters), len(set(list_parameters)))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_query_parameterizer(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={("Species", "limbs"): [0 for i in range(1000)] + list(range(101))},
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }"""
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        next_page, remainder = generate_parameterized_queries(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition, 100
+        )
+
+        expected_next_page = """{
+            Species {
+                limbs @filter(op_name: "<", value: ["$__paged_param_0"])
+                name @output(out_name: "species_name")
+            }
+        }"""
+        expected_remainder = """{
+            Species {
+                limbs @filter(op_name: ">=", value: ["$__paged_param_0"])
+                name @output(out_name: "species_name")
+            }
+        }"""
+        compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
+        compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_query_parameterizer_name_conflict(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={("Species", "limbs"): [0 for i in range(1000)] + list(range(101))},
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+                     @filter(op_name: "!=", value: ["$__paged_param_0"])
+            }
+        }"""
+        args = {"__paged_param_0": "Cow"}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        next_page, remainder = generate_parameterized_queries(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition, 100
+        )
+
+        expected_next_page = """{
+            Species {
+                limbs @filter(op_name: "<", value: ["$__paged_param_1"])
+                name @output(out_name: "species_name")
+                     @filter(op_name: "!=", value: ["$__paged_param_0"])
+            }
+        }"""
+        expected_remainder = """{
+            Species {
+                limbs @filter(op_name: ">=", value: ["$__paged_param_1"])
+                name @output(out_name: "species_name")
+                     @filter(op_name: "!=", value: ["$__paged_param_0"])
+            }
+        }"""
+        compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
+        compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_query_parameterizer_filter_deduplication(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={("Species", "limbs"): [0 for i in range(1000)] + list(range(101))},
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                limbs @filter(op_name: ">=", value: ["$limbs_more_than"])
+                name @output(out_name: "species_name")
+            }
+        }"""
+        args = {
+            "limbs_more_than": 100,
+        }
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        next_page, remainder = generate_parameterized_queries(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition, 100
+        )
+
+        expected_next_page = """{
+            Species {
+                limbs @filter(op_name: ">=", value: ["$limbs_more_than"])
+                      @filter(op_name: "<", value: ["$__paged_param_0"])
+                name @output(out_name: "species_name")
+            }
+        }"""
+        expected_remainder = """{
+            Species {
+                limbs @filter(op_name: ">=", value: ["$__paged_param_0"])
+                name @output(out_name: "species_name")
+            }
+        }"""
+        compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
+        compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))

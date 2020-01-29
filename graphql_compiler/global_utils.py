@@ -1,6 +1,25 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from graphql import GraphQLList, GraphQLNamedType, GraphQLNonNull
+from dataclasses import dataclass
+from typing import Any, Dict
+
+from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
+
+
+@dataclass
+class QueryStringWithParameters:
+    """A query string and parameters that validate against the query."""
+
+    query_string: str
+    parameters: Dict[str, Any]
+
+
+@dataclass
+class ASTWithParameters:
+    """A query AST and parameters that validate against the query."""
+
+    query_ast: DocumentNode
+    parameters: Dict[str, Any]
 
 
 def merge_non_overlapping_dicts(merge_target, new_data):
