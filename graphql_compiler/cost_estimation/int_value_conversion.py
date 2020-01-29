@@ -102,6 +102,7 @@ def convert_field_value_to_int(
     if is_int_field_type(schema_info, vertex_class, property_field):
         return value
     elif is_datetime_field_type(schema_info, vertex_class, property_field):
+        # TODO is astimezone the right thing to use? Maybe value.replace(tzinfo=pytz.utc)?
         return (value.astimezone(pytz.utc) - DATETIME_EPOCH_UTC) // datetime.timedelta(
             microseconds=1
         )

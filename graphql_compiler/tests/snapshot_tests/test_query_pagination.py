@@ -5,6 +5,7 @@ import unittest
 
 from graphql import print_ast
 import pytest
+import pytz
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
@@ -358,7 +359,7 @@ class QueryPaginationTests(unittest.TestCase):
         statistics = LocalStatistics(
             class_counts,
             field_quantiles={
-                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1) for i in range(101)],
+                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1, tzinfo=pytz.utc) for i in range(101)],
             },
         )
         schema_info = QueryPlanningSchemaInfo(
@@ -383,9 +384,9 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         expected_parameters = [
-            datetime.datetime(2026, 1, 1, 0, 0),
-            datetime.datetime(2051, 1, 1, 0, 0),
-            datetime.datetime(2076, 1, 1, 0, 0),
+            datetime.datetime(2026, 1, 1, 0, 0, tzinfo=pytz.utc),
+            datetime.datetime(2051, 1, 1, 0, 0, tzinfo=pytz.utc),
+            datetime.datetime(2076, 1, 1, 0, 0, tzinfo=pytz.utc),
         ]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
@@ -661,7 +662,7 @@ class QueryPaginationTests(unittest.TestCase):
         statistics = LocalStatistics(
             class_counts,
             field_quantiles={
-                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1) for i in range(101)],
+                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1, tzinfo=pytz.utc) for i in range(101)],
             },
         )
         schema_info = QueryPlanningSchemaInfo(
@@ -684,6 +685,8 @@ class QueryPaginationTests(unittest.TestCase):
 
         first, remainder, _ = paginate_query(schema_info, query, 100)
 
+        # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
+        # 100 results, we stop at 2011.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -691,7 +694,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0, tzinfo=pytz.utc),},
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -700,7 +703,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0, tzinfo=pytz.utc),},
         )
 
         # Check that the correct queries are generated
@@ -711,25 +714,30 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
 
         # Get the second page
-        second, remainder, _ = paginate_query(schema_info, remainder[0], 600)
+        second, remainder, _ = paginate_query(schema_info, remainder[0], 100)
 
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
-                    event_date @filter(op_name: "<", value: ["$__paged_param_0"])
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                               @filter(op_name: "<", value: ["$__paged_param_1"])
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2021, 1, 1, 0, 0),},
+            {
+                # TODO parameters seem wonky
+                "__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0, tzinfo=pytz.utc),
+                "__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0, tzinfo=pytz.utc),
+            },
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
                 Event {
-                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_1"])
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2021, 1, 1, 0, 0),},
+            {"__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0, tzinfo=pytz.utc),},
         )
 
         # Check that the correct queries are generated

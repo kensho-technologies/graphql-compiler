@@ -1,6 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
+import datetime
 from typing import Any, Dict
+
+import pytz
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
@@ -20,6 +23,19 @@ class ASTWithParameters:
 
     query_ast: DocumentNode
     parameters: Dict[str, Any]
+
+
+def canonicalize_datetime(value):
+    if value.tzinfo is None:
+        # TODO astimezone, or replace?
+        return value.astimezone(pytz.utc)
+    return value
+
+
+def canonicalize_value(value):
+    if isinstance(value, datetime.datetime):
+        return canonicalize_datetime(value)
+    return value
 
 
 def merge_non_overlapping_dicts(merge_target, new_data):

@@ -1,8 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
+import datetime
 
 import six
 
+from ..global_utils import canonicalize_value
 
 @six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)
@@ -138,12 +140,17 @@ class LocalStatistics(Statistics):
             field_quantiles = dict()
 
         # Validate arguments
-        for vertex_name, quantile_list in six.iteritems(field_quantiles):
+        for (vertex_name, field_name), quantile_list in six.iteritems(field_quantiles):
             if len(quantile_list) < 2:
                 raise AssertionError(
-                    u"The number of quantiles should be at least 2. Vertex "
-                    u"{} has {}.".format(vertex_name, len(quantile_list))
+                    u"The number of quantiles should be at least 2. Field "
+                    u"{}.{} has {}.".format(vertex_name, field_name, len(quantile_list))
                 )
+
+        # Canonicalize quantile values
+        # TODO canonicalize, or validate?
+        for key, quantile_list in six.iteritems(field_quantiles):
+            field_quantiles[key] = [canonicalize_value(value) for value in quantile_list]
 
         self._class_counts = class_counts
         self._vertex_edge_vertex_counts = vertex_edge_vertex_counts
