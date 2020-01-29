@@ -81,7 +81,7 @@ def paginate_query(
         page_size: int, describes the desired number of result rows per page.
 
     Returns:
-        tuple containing queries for going over the original query in a paginated fashion:
+        tuple containing two elements:
             - page_and_remainder such that:
               - page_and_remainder.whole_query == query
               - page_and_remainder.page_size == page_size
