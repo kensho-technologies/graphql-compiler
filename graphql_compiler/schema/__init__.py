@@ -2,6 +2,7 @@
 from collections import OrderedDict
 from datetime import date, datetime
 from decimal import Decimal
+from hashlib import sha256
 from itertools import chain
 
 import arrow
@@ -16,7 +17,10 @@ from graphql import (
     GraphQLNonNull,
     GraphQLObjectType,
     GraphQLScalarType,
+    GraphQLSchema,
     GraphQLString,
+    lexicographic_sort_schema,
+    print_schema,
 )
 from graphql.type.directives import specified_directives
 import six
@@ -447,3 +451,30 @@ def check_for_nondefault_directive_names(directives):
         raise AssertionError(
             u"Unsupported directives found: {}".format(nondefault_directives_found)
         )
+
+
+def compute_schema_fingerprint(schema: GraphQLSchema) -> str:
+    """Compute a fingerprint compactly representing the data in the given schema.
+
+    The fingerprint is not sensitive to things like type or field order. This function is guaranteed
+    to be robust enough that if two GraphQLSchema have the same fingerprint, then they also
+    represent the same schema.
+
+    Because of internal implementation changes, different versions of this library *may* produce
+    different fingerprints for the same schema. Since cross-version fingerprint stability
+    is an *explicit non-goal* here, changing a schema's fingerprint will not be considered
+    a breaking change.
+
+    The fingerprint is computed on a best-effort basis and has some known issues at the moment.
+    Please see the discussion in the pull request below for more details.
+    https://github.com/kensho-technologies/graphql-compiler/pull/737
+
+    Args:
+        schema: the schema for which to compute a fingerprint.
+
+    Returns:
+        a hexadecimal string fingerprint compactly representing the data in the schema.
+    """
+    lexicographically_sorted_schema = lexicographic_sort_schema(schema)
+    text = print_schema(lexicographically_sorted_schema)
+    return sha256(text.encode("utf-8")).hexdigest()
