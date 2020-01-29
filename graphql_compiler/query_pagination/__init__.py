@@ -14,7 +14,7 @@ from .query_splitter import split_into_page_query_and_remainder_query
 def paginate_query_ast(
     schema_info: QueryPlanningSchemaInfo, query: ASTWithParameters, page_size: int
 ) -> Tuple[ASTWithParameters, Tuple[ASTWithParameters, ...], Tuple[PaginationAdvisory, ...]]:
-    """Generate a query fetching a page of results and the remainder query for a query AST.
+    """Generate a query fetching a page of results and the remainder queries for a query AST.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
     should expect the actual number of results of the page query to be within two orders of
@@ -31,8 +31,12 @@ def paginate_query_ast(
               of result data of the original query.
             - Tuple of ASTWithParameters, describing queries that return the rest of the result
               data of the original query. If the original query is expected to return only a page or
-              less of results, then this element will be an empty tuple.
-            - Tuple of PaginationAdvisories that communicate what can be done to improve pagination
+              less of results, then this element will be an empty tuple. If the pagination plan was
+              simple enough, the remainder will be just one query. In some complicated cases, for
+              example when the pagination plan involves multiple VertexPartitionPlans, it's not
+              possible to describe the remainder with just one query, so we return multiple.
+            - Tuple of PaginationAdvisory objects that communicate what can be done to improve
+              pagination
 
     Raises:
         ValueError if page_size is below 1.
@@ -67,7 +71,7 @@ def paginate_query(
 ) -> Tuple[
     QueryStringWithParameters, Tuple[QueryStringWithParameters, ...], Tuple[PaginationAdvisory, ...]
 ]:
-    """Generate a query fetching a page of results and the remainder query for a query string.
+    """Generate a query fetching a page of results and the remainder queries for a query string.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
     should expect the actual number of results of the page query to be within two orders of
@@ -85,8 +89,12 @@ def paginate_query(
               result data of the original query.
             - Tuple of QueryStringWithParameters, describing queries that return the rest of the
               result data of the original query. If the original query is expected to return only
-              a page or less of results, then this element will be an empty tuple.
-            - Tuple of PaginationAdvisories that communicate what can be done to improve pagination
+              a page or less of results, then this element will be an empty tuple. If the pagination
+              plan was simple enough, the remainder will be just one query. In some complicated
+              cases, for example when the pagination plan involves multiple VertexPartitionPlans,
+              it's not possible to describe the remainder with just one query, so we return multiple
+            - Tuple of PaginationAdvisory objects that communicate what can be done to improve
+              pagination
     """
     query_ast = safe_parse_graphql(query.query_string)
 

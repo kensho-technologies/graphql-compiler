@@ -26,9 +26,9 @@ def split_into_page_query_and_remainder_query(
 
     Returns:
         tuple containing three elements:
-            - ASTWithParameters namedtuple, describing a query expected to return roughly a page
+            - ASTWithParameters, describing a query expected to return roughly a page
               of result data of the original query.
-            - ASTWithParameters namedtuple or None, describing a query that returns the rest of the
+            - ASTWithParameters or None, describing a query that returns the rest of the
               result data of the original query. If the original query is expected to return only a
               page or less of results, then this element will have value None.
             - Tuple of PaginationAdvisories that communicate what can be done to improve pagination
