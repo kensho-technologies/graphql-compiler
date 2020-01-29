@@ -162,7 +162,9 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        first, remainder, _ = paginate_query(schema_info, query, 1)
+        first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
+        first = first_page_and_remainder.one_page
+        remainder = first_page_and_remainder.remainder
 
         expected_first = QueryStringWithParameters(
             """{
@@ -198,7 +200,9 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertAlmostEqual(1, first_page_cardinality_estimate)
 
         # Get the second page
-        second, remainder, _ = paginate_query(schema_info, remainder[0], 1)
+        second_page_and_remainder, _ = paginate_query(schema_info, remainder[0], 1)
+        second = second_page_and_remainder.one_page
+        remainder = second_page_and_remainder.remainder
 
         expected_second = QueryStringWithParameters(
             """{

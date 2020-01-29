@@ -9,11 +9,12 @@ from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import PaginationAdvisory
 from .query_splitter import split_into_page_query_and_remainder_query
+from .typedefs import PageAndRemainder
 
 
 def paginate_query_ast(
     schema_info: QueryPlanningSchemaInfo, query: ASTWithParameters, page_size: int
-) -> Tuple[ASTWithParameters, Tuple[ASTWithParameters, ...], Tuple[PaginationAdvisory, ...]]:
+) -> Tuple[PageAndRemainder[ASTWithParameters], Tuple[PaginationAdvisory, ...]]:
     """Generate a query fetching a page of results and the remainder queries for a query AST.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
@@ -27,14 +28,9 @@ def paginate_query_ast(
 
     Returns:
         tuple containing two elements:
-            - ASTWithParameters, describing a query expected to return roughly a page
-              of result data of the original query.
-            - Tuple of ASTWithParameters, describing queries that return the rest of the result
-              data of the original query. If the original query is expected to return only a page or
-              less of results, then this element will be an empty tuple. If the pagination plan was
-              simple enough, the remainder will be just one query. In some complicated cases, for
-              example when the pagination plan involves adding multiple filters, it's not
-              possible to describe the remainder with just one query, so we return multiple.
+            - page_and_remainder such that:
+              - page_and_remainder.whole_query == query
+              - page_and_remainder.page_size == page_size
             - Tuple of PaginationAdvisory objects that communicate what can be done to improve
               pagination
 
@@ -63,14 +59,15 @@ def paginate_query_ast(
         )
         remainder_queries = (remainder_query,)
 
-    return page_query, remainder_queries, advisories
+    return (
+        PageAndRemainder[ASTWithParameters](query, page_size, page_query, remainder_queries),
+        advisories,
+    )
 
 
 def paginate_query(
     schema_info: QueryPlanningSchemaInfo, query: QueryStringWithParameters, page_size: int
-) -> Tuple[
-    QueryStringWithParameters, Tuple[QueryStringWithParameters, ...], Tuple[PaginationAdvisory, ...]
-]:
+) -> Tuple[PageAndRemainder[QueryStringWithParameters], Tuple[PaginationAdvisory, ...]]:
     """Generate a query fetching a page of results and the remainder queries for a query string.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
@@ -85,30 +82,28 @@ def paginate_query(
 
     Returns:
         tuple containing queries for going over the original query in a paginated fashion:
-            - QueryStringWithParameters, query expected to return roughly a page of
-              result data of the original query.
-            - Tuple of QueryStringWithParameters, describing queries that return the rest of the
-              result data of the original query. If the original query is expected to return only
-              a page or less of results, then this element will be an empty tuple. If the pagination
-              plan was simple enough, the remainder will be just one query. In some complicated
-              cases, for example when the pagination plan involves adding multiple filters,
-              it's not possible to describe the remainder with just one query, so we return multiple
+            - page_and_remainder such that:
+              - page_and_remainder.whole_query == query
+              - page_and_remainder.page_size == page_size
             - Tuple of PaginationAdvisory objects that communicate what can be done to improve
               pagination
     """
     query_ast = safe_parse_graphql(query.query_string)
 
-    next_page_ast_with_parameters, remainder_ast_with_parameters, advisories = paginate_query_ast(
+    ast_page_and_remainder, advisories = paginate_query_ast(
         schema_info, ASTWithParameters(query_ast, query.parameters), page_size
     )
 
     page_query_with_parameters = QueryStringWithParameters(
-        print_ast(next_page_ast_with_parameters.query_ast),
-        next_page_ast_with_parameters.parameters,
+        print_ast(ast_page_and_remainder.one_page.query_ast),
+        ast_page_and_remainder.one_page.parameters,
     )
     remainder_queries_with_parameters = tuple(
         QueryStringWithParameters(print_ast(query.query_ast), query.parameters)
-        for query in remainder_ast_with_parameters
+        for query in ast_page_and_remainder.remainder
+    )
+    text_page_and_remainder = PageAndRemainder[QueryStringWithParameters](
+        query, page_size, page_query_with_parameters, remainder_queries_with_parameters
     )
 
-    return page_query_with_parameters, remainder_queries_with_parameters, advisories
+    return text_page_and_remainder, advisories
