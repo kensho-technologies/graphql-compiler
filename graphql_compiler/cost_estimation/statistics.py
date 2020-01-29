@@ -129,8 +129,6 @@ class LocalStatistics(Statistics):
                              element is a value greater than or equal to i/N of all present
                              values. The number N can be different for each entry. N has to be at
                              least 2 for every entry present in the dict.
-            TODO(bojanserafimov): Enforce a canonical representation for quantile values. Datetimes
-                                  should be in utc, decimals should have type float, etc.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
@@ -148,7 +146,8 @@ class LocalStatistics(Statistics):
                 )
 
         # Canonicalize quantile values
-        # TODO canonicalize, or validate?
+        # TODO(bojanserafimov): Infer the desired type from the schema, not from the type of
+        #                       each individual quantile value.
         for key, quantile_list in six.iteritems(field_quantiles):
             field_quantiles[key] = [canonicalize_value(value) for value in quantile_list]
 
