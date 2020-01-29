@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import datetime
-from typing import Any, Dict, Tuple
+from typing import Tuple
 import unittest
 
 from graphql import print_ast
@@ -139,12 +139,14 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
-        test_data = """{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal")
             }
-        }"""
-        parameters: Dict[str, Any] = {}
+        }""",
+            {},
+        )
 
         count_data = {
             "Animal": 4,
@@ -160,7 +162,9 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        first, remainder = paginate_query(schema_info, test_data, parameters, 1)
+        first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
+        first = first_page_and_remainder.one_page
+        remainder = first_page_and_remainder.remainder
 
         expected_first = QueryStringWithParameters(
             """{
@@ -185,8 +189,9 @@ class QueryPaginationTests(unittest.TestCase):
         # Check that the correct first page and remainder are generated
         compare_graphql(self, expected_first.query_string, first.query_string)
         self.assertEqual(expected_first.parameters, first.parameters)
-        compare_graphql(self, expected_remainder.query_string, remainder.query_string)
-        self.assertEqual(expected_remainder.parameters, remainder.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder.parameters, remainder[0].parameters)
 
         # Check that the first page is estimated to fit into a page
         first_page_cardinality_estimate = estimate_query_result_cardinality(
@@ -195,9 +200,9 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertAlmostEqual(1, first_page_cardinality_estimate)
 
         # Get the second page
-        second, remainder = paginate_query(
-            schema_info, remainder.query_string, remainder.parameters, 1
-        )
+        second_page_and_remainder, _ = paginate_query(schema_info, remainder[0], 1)
+        second = second_page_and_remainder.one_page
+        remainder = second_page_and_remainder.remainder
 
         expected_second = QueryStringWithParameters(
             """{
@@ -225,8 +230,9 @@ class QueryPaginationTests(unittest.TestCase):
         # Check that the correct queries are generated
         compare_graphql(self, expected_second.query_string, second.query_string)
         self.assertEqual(expected_second.parameters, second.parameters)
-        compare_graphql(self, expected_remainder.query_string, remainder.query_string)
-        self.assertEqual(expected_remainder.parameters, remainder.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder.parameters, remainder[0].parameters)
 
         # Check that the second page is estimated to fit into a page
         second_page_cardinality_estimate = estimate_query_result_cardinality(

@@ -1,14 +1,16 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import Tuple
+
 from ..global_utils import ASTWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
-from .pagination_planning import get_pagination_plan
+from .pagination_planning import PaginationAdvisory, get_pagination_plan
 from .parameter_generator import generate_parameters_for_vertex_partition
 from .query_parameterizer import generate_parameterized_queries
 
 
 def split_into_page_query_and_remainder_query(
     schema_info: QueryPlanningSchemaInfo, query: ASTWithParameters, num_pages: int
-):
+) -> Tuple[ASTWithParameters, ASTWithParameters, Tuple[PaginationAdvisory, ...]]:
     """Split a query into two equivalent queries, one of which will return roughly a page of data.
 
     First, two parameterized queries are generated that contain filters usable for pagination i.e.
@@ -23,11 +25,13 @@ def split_into_page_query_and_remainder_query(
         num_pages: int, number of pages to split the query into.
 
     Returns:
-        tuple of (ASTWithParameters namedtuple, ASTWithParameters namedtuple), describing two
-        queries: the first query when executed will return roughly a page of results of the original
-        query; the second query will return the rest of the results of the original query. The union
-        of the two queries' result data is equivalent to the given query and parameter's result
-        data. There are no guarantees on the order of the result rows for the two generated queries.
+        tuple containing three elements:
+            - ASTWithParameters, describing a query expected to return roughly a page
+              of result data of the original query.
+            - ASTWithParameters or None, describing a query that returns the rest of the
+              result data of the original query. If the original query is expected to return only a
+              page or less of results, then this element will have value None.
+            - Tuple of PaginationAdvisories that communicate what can be done to improve pagination
     """
     if num_pages <= 1:
         raise AssertionError(
@@ -38,7 +42,7 @@ def split_into_page_query_and_remainder_query(
         )
 
     # TODO propagate advisories to top-level
-    pagination_plan, _ = get_pagination_plan(schema_info, query.query_ast, num_pages)
+    pagination_plan, advisories = get_pagination_plan(schema_info, query.query_ast, num_pages)
     if len(pagination_plan.vertex_partitions) != 1:
         raise NotImplementedError(
             u"We only support pagination plans with one vertex partition. "
@@ -50,6 +54,7 @@ def split_into_page_query_and_remainder_query(
     )
     first_param = next(parameter_generator)
 
-    return generate_parameterized_queries(
+    page_query, remainder_query = generate_parameterized_queries(
         schema_info, query, pagination_plan.vertex_partitions[0], first_param
     )
+    return page_query, remainder_query, advisories

@@ -1,14 +1,21 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import Tuple
+
 from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..cost_estimation.cardinality_estimator import estimate_number_of_pages
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
-from ..query_pagination.query_splitter import split_into_page_query_and_remainder_query
+from ..schema.schema_info import QueryPlanningSchemaInfo
+from .pagination_planning import PaginationAdvisory
+from .query_splitter import split_into_page_query_and_remainder_query
+from .typedefs import PageAndRemainder
 
 
-def paginate_query_ast(schema_info, query_ast, parameters, page_size):
-    """Generate a query fetching a page of results and the remainder query for a query AST.
+def paginate_query_ast(
+    schema_info: QueryPlanningSchemaInfo, query: ASTWithParameters, page_size: int
+) -> Tuple[PageAndRemainder[ASTWithParameters], Tuple[PaginationAdvisory, ...]]:
+    """Generate a query fetching a page of results and the remainder queries for a query AST.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
     should expect the actual number of results of the page query to be within two orders of
@@ -16,46 +23,52 @@ def paginate_query_ast(schema_info, query_ast, parameters, page_size):
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        query_ast: Document, AST of the GraphQL query that is being paginated.
-        parameters: dict, parameters with which query will be estimated.
+        query: ASTWithParameters
         page_size: int, describes the desired number of result rows per page.
 
     Returns:
         tuple containing two elements:
-            - ASTWithParameters namedtuple, describing a query expected to return roughly a page
-              of result data of the original query.
-            - ASTWithParameters namedtuple or None, describing a query that returns the rest of the
-              result data of the original query. If the original query is expected to return only a
-              page or less of results, then this element will have value None.
+            - page_and_remainder such that:
+              - page_and_remainder.whole_query == query
+              - page_and_remainder.page_size == page_size
+            - Tuple of PaginationAdvisory objects that communicate what can be done to improve
+              pagination
 
     Raises:
         ValueError if page_size is below 1.
     """
     if page_size < 1:
         raise ValueError(
-            u"Could not page query {} with page size lower than 1: {}".format(query_ast, page_size)
+            u"Could not page query {} with page size lower than 1: {}".format(query, page_size)
         )
 
     # Initially, assume the query does not need to be paged i.e. will return one page of results.
-    result_queries = (
-        ASTWithParameters(query_ast, parameters),
-        None,
-    )
+    page_query = query
+    remainder_queries: Tuple[ASTWithParameters, ...] = tuple()
+    advisories: Tuple[PaginationAdvisory, ...] = tuple()
 
     # HACK(vlad): Since the current cost estimator expects GraphQL queries given as a string, we
     #             print the given AST and provide that to the cost estimator.
-    graphql_query_string = print_ast(query_ast)
-    num_pages = estimate_number_of_pages(schema_info, graphql_query_string, parameters, page_size)
+    graphql_query_string = print_ast(query.query_ast)
+    num_pages = estimate_number_of_pages(
+        schema_info, graphql_query_string, query.parameters, page_size
+    )
     if num_pages > 1:
-        result_queries = split_into_page_query_and_remainder_query(
-            schema_info, ASTWithParameters(query_ast, parameters), num_pages
+        page_query, remainder_query, advisories = split_into_page_query_and_remainder_query(
+            schema_info, query, num_pages
         )
+        remainder_queries = (remainder_query,)
 
-    return result_queries
+    return (
+        PageAndRemainder[ASTWithParameters](query, page_size, page_query, remainder_queries),
+        advisories,
+    )
 
 
-def paginate_query(schema_info, query_string, parameters, page_size):
-    """Generate a query fetching a page of results and the remainder query for a query string.
+def paginate_query(
+    schema_info: QueryPlanningSchemaInfo, query: QueryStringWithParameters, page_size: int
+) -> Tuple[PageAndRemainder[QueryStringWithParameters], Tuple[PaginationAdvisory, ...]]:
+    """Generate a query fetching a page of results and the remainder queries for a query string.
 
     Since the cost estimator may underestimate or overestimate the actual number of pages, you
     should expect the actual number of results of the page query to be within two orders of
@@ -63,36 +76,34 @@ def paginate_query(schema_info, query_string, parameters, page_size):
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        schema_graph: SchemaGraph instance.
-        statistics: Statistics object.
-        query_string: str, valid GraphQL query to be paginated.
+        query: QueryStringWithParameters
         parameters: dict, parameters with which query will be estimated.
         page_size: int, describes the desired number of result rows per page.
 
     Returns:
-        tuple containing queries for going over the original query in a paginated fashion:
-            - QueryStringWithParameters namedtuple, query expected to return roughly a page of
-              result data of the original query.
-            - QueryStringWithParameters namedtuple or None. If the given query was estimated to
-              return more than a page of results, this element is a QueryStringWithParameters
-              namedtuple describing a query for the rest of the result data. Otherwise, this element
-              is None.
+        tuple containing two elements:
+            - page_and_remainder such that:
+              - page_and_remainder.whole_query == query
+              - page_and_remainder.page_size == page_size
+            - Tuple of PaginationAdvisory objects that communicate what can be done to improve
+              pagination
     """
-    query_ast = safe_parse_graphql(query_string)
+    query_ast = safe_parse_graphql(query.query_string)
 
-    next_page_ast_with_parameters, remainder_ast_with_parameters = paginate_query_ast(
-        schema_info, query_ast, parameters, page_size
+    ast_page_and_remainder, advisories = paginate_query_ast(
+        schema_info, ASTWithParameters(query_ast, query.parameters), page_size
     )
 
     page_query_with_parameters = QueryStringWithParameters(
-        print_ast(next_page_ast_with_parameters.query_ast),
-        next_page_ast_with_parameters.parameters,
+        print_ast(ast_page_and_remainder.one_page.query_ast),
+        ast_page_and_remainder.one_page.parameters,
     )
-    remainder_query_with_parameters = None
-    if remainder_ast_with_parameters is not None:
-        remainder_query_with_parameters = QueryStringWithParameters(
-            print_ast(remainder_ast_with_parameters.query_ast),
-            remainder_ast_with_parameters.parameters,
-        )
+    remainder_queries_with_parameters = tuple(
+        QueryStringWithParameters(print_ast(query.query_ast), query.parameters)
+        for query in ast_page_and_remainder.remainder
+    )
+    text_page_and_remainder = PageAndRemainder[QueryStringWithParameters](
+        query, page_size, page_query_with_parameters, remainder_queries_with_parameters
+    )
 
-    return page_query_with_parameters, remainder_query_with_parameters
+    return text_page_and_remainder, advisories
