@@ -612,3 +612,129 @@ class QueryPaginationTests(unittest.TestCase):
         }"""
         compare_graphql(self, expected_next_page, print_ast(next_page.query_ast))
         compare_graphql(self, expected_remainder, print_ast(remainder.query_ast))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_no_pagination(self):
+        """Ensure pagination is not done when not needed."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        original_query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal")
+            }
+        }""",
+            {},
+        )
+
+        count_data = {
+            "Animal": 4,
+        }
+
+        statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        first, remainder, _ = paginate_query(schema_info, original_query, 10)
+
+        # No pagination necessary
+        compare_graphql(self, original_query.query_string, first.query_string)
+        self.assertEqual(original_query.parameters, first.parameters)
+        self.assertEqual(0, len(remainder))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Event": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={
+                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1) for i in range(101)],
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Event {
+                name @output(out_name: "event_name")
+            }
+        }""",
+            {},
+        )
+
+        first, remainder, _ = paginate_query(schema_info, query, 100)
+
+        expected_page_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: "<", value: ["$__paged_param_0"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_page_query.query_string, first.query_string)
+        self.assertEqual(expected_page_query.parameters, first.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder_query.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
+
+        # Get the second page
+        second, remainder, _ = paginate_query(schema_info, remainder[0], 600)
+
+        expected_page_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: "<", value: ["$__paged_param_0"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2021, 1, 1, 0, 0),},
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2021, 1, 1, 0, 0),},
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_page_query.query_string, second.query_string)
+        self.assertEqual(expected_page_query.parameters, second.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder_query.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
