@@ -33,7 +33,7 @@ def paginate_query_ast(
               data of the original query. If the original query is expected to return only a page or
               less of results, then this element will be an empty tuple. If the pagination plan was
               simple enough, the remainder will be just one query. In some complicated cases, for
-              example when the pagination plan involves multiple VertexPartitionPlans, it's not
+              example when the pagination plan involves adding multiple filters, it's not
               possible to describe the remainder with just one query, so we return multiple.
             - Tuple of PaginationAdvisory objects that communicate what can be done to improve
               pagination
@@ -91,7 +91,7 @@ def paginate_query(
               result data of the original query. If the original query is expected to return only
               a page or less of results, then this element will be an empty tuple. If the pagination
               plan was simple enough, the remainder will be just one query. In some complicated
-              cases, for example when the pagination plan involves multiple VertexPartitionPlans,
+              cases, for example when the pagination plan involves adding multiple filters,
               it's not possible to describe the remainder with just one query, so we return multiple
             - Tuple of PaginationAdvisory objects that communicate what can be done to improve
               pagination
