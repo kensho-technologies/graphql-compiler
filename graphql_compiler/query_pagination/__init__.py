@@ -27,7 +27,7 @@ def paginate_query_ast(
 
     Returns:
         tuple containing two elements:
-            - ASTWithParameters namedtuple, describing a query expected to return roughly a page
+            - ASTWithParameters, describing a query expected to return roughly a page
               of result data of the original query.
             - Tuple of ASTWithParameters, describing queries that return the rest of the result
               data of the original query. If the original query is expected to return only a page or
@@ -81,7 +81,7 @@ def paginate_query(
 
     Returns:
         tuple containing queries for going over the original query in a paginated fashion:
-            - QueryStringWithParameters namedtuple, query expected to return roughly a page of
+            - QueryStringWithParameters, query expected to return roughly a page of
               result data of the original query.
             - Tuple of QueryStringWithParameters, describing queries that return the rest of the
               result data of the original query. If the original query is expected to return only
