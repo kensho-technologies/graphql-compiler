@@ -1510,7 +1510,7 @@ class IntegerIntervalTests(unittest.TestCase):
                 schema_info, "Event", "event_date", int_value
             )
             self.assertAlmostEqual(
-                0, (datetime_value.astimezone(pytz.utc) - recovered_datetime).total_seconds()
+                0, (datetime_value.replace(tzinfo=pytz.utc) - recovered_datetime).total_seconds()
             )
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")

@@ -1,10 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
-import datetime
 
 import six
 
 from ..global_utils import canonicalize_value
+
 
 @six.python_2_unicode_compatible
 @six.add_metaclass(ABCMeta)

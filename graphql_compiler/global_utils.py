@@ -3,9 +3,8 @@ from dataclasses import dataclass
 import datetime
 from typing import Any, Dict
 
-import pytz
-
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
+import pytz
 import six
 
 
@@ -33,8 +32,7 @@ class ASTWithParameters:
 
 def canonicalize_datetime(value):
     if value.tzinfo is None:
-        # TODO astimezone, or replace?
-        return value.astimezone(pytz.utc)
+        return value.replace(tzinfo=pytz.utc)
     return value
 
 

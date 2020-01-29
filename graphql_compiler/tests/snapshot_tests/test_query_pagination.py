@@ -298,9 +298,7 @@ class QueryPaginationTests(unittest.TestCase):
                 limbs @filter(op_name: ">=", value: ["$limbs_lower"])
             }
         }"""
-        args = {
-            "limbs_lower": 26
-        }
+        args = {"limbs_lower": 26}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
         generated_parameters = generate_parameters_for_vertex_partition(
@@ -336,9 +334,7 @@ class QueryPaginationTests(unittest.TestCase):
                 limbs @filter(op_name: "<", value: ["$limbs_upper"])
             }
         }"""
-        args = {
-            "limbs_upper": 76
-        }
+        args = {"limbs_upper": 76}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
         generated_parameters = generate_parameters_for_vertex_partition(
@@ -435,7 +431,9 @@ class QueryPaginationTests(unittest.TestCase):
         statistics = LocalStatistics(
             class_counts,
             field_quantiles={
-                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1, tzinfo=pytz.utc) for i in range(101)],
+                ("Event", "event_date"): [
+                    datetime.datetime(2000 + i, 1, 1, tzinfo=pytz.utc) for i in range(101)
+                ],
             },
         )
         schema_info = QueryPlanningSchemaInfo(
@@ -738,7 +736,9 @@ class QueryPaginationTests(unittest.TestCase):
         statistics = LocalStatistics(
             class_counts,
             field_quantiles={
-                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1, tzinfo=pytz.utc) for i in range(101)],
+                ("Event", "event_date"): [
+                    datetime.datetime(2000 + i, 1, 1, tzinfo=pytz.utc) for i in range(101)
+                ],
             },
         )
         schema_info = QueryPlanningSchemaInfo(
@@ -834,7 +834,7 @@ class QueryPaginationTests(unittest.TestCase):
         statistics = LocalStatistics(
             class_counts,
             field_quantiles={
-                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1, tzinfo=pytz.utc) for i in range(101)],
+                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1) for i in range(101)],
             },
         )
         schema_info = QueryPlanningSchemaInfo(
@@ -853,15 +853,13 @@ class QueryPaginationTests(unittest.TestCase):
                 event_date @filter(op_name: ">=", value: ["$date_lower"])
             }
         }""",
-            {
-                "date_lower": datetime.datetime(2050, 1, 1, 0, 0)
-            },
+            {"date_lower": datetime.datetime(2050, 1, 1, 0, 0)},
         )
 
         first, remainder, _ = paginate_query(schema_info, query, 100)
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results after 2050, we stop at 2055.
+        # 100 results after 2050, we stop at 2059.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -871,8 +869,8 @@ class QueryPaginationTests(unittest.TestCase):
                 }
             }""",
             {
-                "date_lower": datetime.datetime(2050, 1, 1, 5, tzinfo=pytz.utc),
-                "__paged_param_0": datetime.datetime(2061, 1, 1, 0, 0, tzinfo=pytz.utc),
+                "date_lower": datetime.datetime(2050, 1, 1, 0, tzinfo=pytz.utc),
+                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0, tzinfo=pytz.utc),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -882,7 +880,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2061, 1, 1, 0, 0, tzinfo=pytz.utc),},
+            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0, tzinfo=pytz.utc),},
         )
 
         # Check that the correct queries are generated
