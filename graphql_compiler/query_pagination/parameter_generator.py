@@ -169,7 +169,7 @@ def _compute_parameters_for_non_uuid_field(
     #                       that are known to be empty. This can cause the number of generated
     #                       pages to be less than the desired number of pages.
     return _deduplicate_sorted_generator(
-        proper_quantiles[index]
+        relevant_quantiles[index]
         for index in _sum_partition(len(relevant_quantiles) + 1, vertex_partition.number_of_splits)
     )
 
