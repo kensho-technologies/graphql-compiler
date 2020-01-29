@@ -14,6 +14,9 @@ class QueryStringWithParameters:
     """A query string and parameters that validate against the query."""
 
     query_string: str
+
+    # parameters are expected to be canonicalized:
+    # - all datetime objects should have a time zone
     parameters: Dict[str, Any]
 
 
@@ -22,6 +25,9 @@ class ASTWithParameters:
     """A query AST and parameters that validate against the query."""
 
     query_ast: DocumentNode
+
+    # parameters are expected to be canonicalized:
+    # - all datetime objects should have a time zone
     parameters: Dict[str, Any]
 
 

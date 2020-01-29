@@ -5,7 +5,7 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..cost_estimation.cardinality_estimator import estimate_number_of_pages
-from ..global_utils import ASTWithParameters, QueryStringWithParameters
+from ..global_utils import ASTWithParameters, QueryStringWithParameters, canonicalize_value
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import PaginationAdvisory
 from .query_splitter import split_into_page_query_and_remainder_query
@@ -89,9 +89,12 @@ def paginate_query(
             - Tuple of PaginationAdvisories that communicate what can be done to improve pagination
     """
     query_ast = safe_parse_graphql(query.query_string)
+    canonicalized_parameters = {
+        key: canonicalize_value(value) for key, value in query.parameters.items()
+    }
 
     next_page_ast_with_parameters, remainder_ast_with_parameters, advisories = paginate_query_ast(
-        schema_info, ASTWithParameters(query_ast, query.parameters), page_size
+        schema_info, ASTWithParameters(query_ast, canonicalized_parameters), page_size
     )
 
     page_query_with_parameters = QueryStringWithParameters(
