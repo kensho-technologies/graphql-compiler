@@ -161,8 +161,7 @@ class LocalStatistics(Statistics):
         """See base class."""
         if class_name not in self._class_counts:
             raise AssertionError(
-                "Class count statistic is required, but entry not found for: "
-                "{}".format(class_name)
+                f"Class count statistic is required, but entry not found for {class_name}"
             )
         return self._class_counts[class_name]
 
