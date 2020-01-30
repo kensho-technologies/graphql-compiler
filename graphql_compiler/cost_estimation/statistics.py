@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
+import datetime
 
 import six
 
@@ -138,12 +139,18 @@ class LocalStatistics(Statistics):
             field_quantiles = dict()
 
         # Validate arguments
-        for vertex_name, quantile_list in six.iteritems(field_quantiles):
+        for (vertex_name, field_name), quantile_list in six.iteritems(field_quantiles):
             if len(quantile_list) < 2:
                 raise AssertionError(
-                    u"The number of quantiles should be at least 2. Vertex "
-                    u"{} has {}.".format(vertex_name, len(quantile_list))
+                    f"The number of quantiles should be at least 2. Field "
+                    f"{vertex_name}.{field_name} has {len(quantile_list)}."
                 )
+            for quantile in quantile_list:
+                if isinstance(quantile, datetime.datetime):
+                    if quantile.tzinfo is None:
+                        raise AssertionError(
+                            f"Quantile for {vertex_name}.{field_name} has no tzinfo."
+                        )
 
         self._class_counts = class_counts
         self._vertex_edge_vertex_counts = vertex_edge_vertex_counts
@@ -154,8 +161,8 @@ class LocalStatistics(Statistics):
         """See base class."""
         if class_name not in self._class_counts:
             raise AssertionError(
-                u"Class count statistic is required, but entry not found for: "
-                u"{}".format(class_name)
+                "Class count statistic is required, but entry not found for: "
+                "{}".format(class_name)
             )
         return self._class_counts[class_name]
 
