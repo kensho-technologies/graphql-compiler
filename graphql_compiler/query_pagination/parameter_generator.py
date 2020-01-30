@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 import itertools
-from typing import Any, Dict, Iterator, cast
+from typing import Any, Dict, Iterator, List, cast
 
 from graphql import DocumentNode
 from graphql.language.printer import print_ast
@@ -29,7 +29,9 @@ def _deduplicate_sorted_generator(generator: Iterator[Any]) -> Iterator[Any]:
         prev = i
 
 
-def _choose_parameter_values(relevant_quantiles, desired_num_splits):
+def _choose_parameter_values(
+    relevant_quantiles: List[Any], desired_num_splits: int
+) -> Iterator[Any]:
     """Choose parameter values as evenly as possible.
 
     # TODO document better
@@ -44,8 +46,6 @@ def _choose_parameter_values(relevant_quantiles, desired_num_splits):
     if desired_num_splits < 2:
         raise AssertionError()
 
-    # Let regions be the spaces between the quantiles.
-    # Let a split be a union of consecutive regions.
     num_regions = len(relevant_quantiles) + 1
     if desired_num_splits >= num_regions:
         return _deduplicate_sorted_generator(quantile for quantile in relevant_quantiles)
