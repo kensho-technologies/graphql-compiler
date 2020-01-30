@@ -19,7 +19,7 @@ from ...query_pagination.pagination_planning import (
     VertexPartitionPlan,
     get_pagination_plan,
 )
-from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition
+from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition, _choose_parameter_values
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -547,8 +547,20 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [26, 51, 76]
+        expected_parameters = [10, 20]
         self.assertEqual(expected_parameters, list(generated_parameters))
+
+    def test_choose_parameter_values(self):
+        self.assertEqual([1], list(_choose_parameter_values([1], 2)))
+        self.assertEqual([1], list(_choose_parameter_values([1], 3)))
+        self.assertEqual([1], list(_choose_parameter_values([1, 1], 3)))
+        self.assertEqual([3], list(_choose_parameter_values([1, 3], 2)))
+        self.assertEqual([1, 3], list(_choose_parameter_values([1, 3], 3)))
+        self.assertEqual([1, 3], list(_choose_parameter_values([1, 3], 4)))
+        self.assertEqual([3], list(_choose_parameter_values([1, 3, 5], 2)))
+        self.assertEqual([3, 5], list(_choose_parameter_values([1, 3, 5], 3)))
+        self.assertEqual([1, 3, 5], list(_choose_parameter_values([1, 3, 5], 4)))
+        self.assertEqual([1, 3, 5], list(_choose_parameter_values([1, 3, 5], 5)))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_int_existing_filters(self):
