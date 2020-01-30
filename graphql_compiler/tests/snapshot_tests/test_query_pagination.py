@@ -600,6 +600,44 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_parameter_value_generation_int_existing_filter_tiny_page(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts, field_quantiles={("Species", "limbs"): list(range(0, 101, 10))},
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+                limbs @filter(op_name: ">=", value: ["$limbs_lower"])
+            }
+        }"""
+        args = {
+            "limbs_lower": 10
+        }
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 10)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition
+        )
+
+        first_parameter = next(generated_parameters)
+        self.assertTrue(first_parameter > 10)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_int_existing_filters_2(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
