@@ -372,7 +372,11 @@ class QueryPaginationTests(unittest.TestCase):
         # We do this to make sure the test runs the same across local timezones.
         now = datetime.datetime.now()
         timedelta_from_utc = now.astimezone(pytz.utc) - now.replace(tzinfo=pytz.utc)
-        local_datetime = datetime.datetime(2050, 1, 1, 0, 0) + timedelta_from_utc
+        local_datetime = datetime.datetime(2050, 1, 1, 0, 0) - timedelta_from_utc
+        self.assertEqual(
+            datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc),
+            local_datetime.astimezone(pytz.utc),
+        )
 
         query = QueryStringWithParameters(
             """{
@@ -389,7 +393,7 @@ class QueryPaginationTests(unittest.TestCase):
         remainder = first_page_and_remainder.remainder
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results after 2050, we stop at 2061.
+        # 100 results after 2050, we stop at 2059.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -400,7 +404,7 @@ class QueryPaginationTests(unittest.TestCase):
             }""",
             {
                 "date_lower": local_datetime,
-                "__paged_param_0": datetime.datetime(2061, 1, 1, 0, 0, tzinfo=pytz.utc),
+                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0, tzinfo=pytz.utc),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -410,7 +414,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2061, 1, 1, 0, 0, tzinfo=pytz.utc),},
+            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0, tzinfo=pytz.utc),},
         )
 
         # Check that the correct queries are generated
