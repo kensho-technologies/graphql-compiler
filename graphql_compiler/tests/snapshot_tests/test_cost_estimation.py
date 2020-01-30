@@ -1501,7 +1501,6 @@ class IntegerIntervalTests(unittest.TestCase):
             datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.utc),
             datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("GMT")),
             datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("America/New_York")),
-            datetime(2000, 1, 1, tzinfo=pytz.utc),
         ]
         for datetime_value in datetime_values:
             int_value = convert_field_value_to_int(
