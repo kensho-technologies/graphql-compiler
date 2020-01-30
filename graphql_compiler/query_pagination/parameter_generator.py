@@ -34,14 +34,19 @@ def _choose_parameter_values(
 ) -> Iterator[Any]:
     """Choose parameter values as evenly as possible.
 
-    # TODO document better
+    Choose parameter values by picking at most (desired_num_splits - 1) of the quantiles given that
+    split the value space into desired_num_split splits. There are many ways to do that, and this
+    function tries to have the size of the splits be as even as possible.
+
+    It is possible that the desired number of splits cannot be achieved if there are not enough
+    quantiles. In that case fewer than the desired number of splits are created.
 
     Args:
         relevant_quantiles: N quantiles dividing the space of values into N+1 regions.
         desired_num_splits: A split is a union of consecutive regions.
 
     Returns:
-        (desired_num_splits - 1) values that define the splits
+        at most (desired_num_splits - 1) values that define the splits
     """
     if desired_num_splits < 2:
         raise AssertionError()
