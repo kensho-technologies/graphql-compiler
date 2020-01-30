@@ -5,6 +5,7 @@ import unittest
 
 from graphql import print_ast
 import pytest
+import pytz
 
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
@@ -239,6 +240,243 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, second.query_string, second.parameters
         )
         self.assertAlmostEqual(1, second_page_cardinality_estimate)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Event": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={
+                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1) for i in range(101)],
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Event {
+                name @output(out_name: "event_name")
+            }
+        }""",
+            {},
+        )
+
+        first_page_and_remainder, _ = paginate_query(schema_info, query, 100)
+        first = first_page_and_remainder.one_page
+        remainder = first_page_and_remainder.remainder
+
+        # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
+        # 100 results, we stop at 2011.
+        expected_page_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: "<", value: ["$__paged_param_0"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_page_query.query_string, first.query_string)
+        self.assertEqual(expected_page_query.parameters, first.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder_query.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
+
+        # Get the second page
+        second_page_and_remainder, _ = paginate_query(schema_info, remainder[0], 100)
+        second = second_page_and_remainder.one_page
+        remainder = second_page_and_remainder.remainder
+
+        expected_page_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                               @filter(op_name: "<", value: ["$__paged_param_1"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {
+                # TODO parameters seem wonky
+                "__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),
+                "__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0),
+            },
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            """{
+                Event {
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_1"])
+                    name @output(out_name: "event_name")
+                }
+            }""",
+            {"__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0),},
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_page_query.query_string, second.query_string)
+        self.assertEqual(expected_page_query.parameters, second.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder_query.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_datetime_existing_filter(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Event": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={
+                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1) for i in range(101)],
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        local_datetime = datetime.datetime(2050, 1, 1, 0, 0)
+        query = QueryStringWithParameters(
+            """{
+            Event {
+                name @output(out_name: "event_name")
+                event_date @filter(op_name: ">=", value: ["$date_lower"])
+            }
+        }""",
+            {"date_lower": local_datetime},
+        )
+
+        first_page_and_remainder, _ = paginate_query(schema_info, query, 100)
+        first = first_page_and_remainder.one_page
+        remainder = first_page_and_remainder.remainder
+
+        # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
+        # 100 results after 2050, we stop at 2059.
+        expected_page_query = QueryStringWithParameters(
+            """{
+                Event {
+                    name @output(out_name: "event_name")
+                    event_date @filter(op_name: ">=", value: ["$date_lower"])
+                               @filter(op_name: "<", value: ["$__paged_param_0"])
+                }
+            }""",
+            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            """{
+                Event {
+                    name @output(out_name: "event_name")
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_page_query.query_string, first.query_string)
+        self.assertEqual(expected_page_query.parameters, first.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder_query.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_datetime_existing_tz_aware_filter(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Event": 1000}
+        statistics = LocalStatistics(
+            class_counts,
+            field_quantiles={
+                ("Event", "event_date"): [datetime.datetime(2000 + i, 1, 1) for i in range(101)],
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Event {
+                name @output(out_name: "event_name")
+                event_date @filter(op_name: ">=", value: ["$date_lower"])
+            }
+        }""",
+            {"date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc)},
+        )
+
+        first_page_and_remainder, _ = paginate_query(schema_info, query, 100)
+        first = first_page_and_remainder.one_page
+        remainder = first_page_and_remainder.remainder
+
+        # We can't expect anything good when using a tz-aware filter on a tz-naive
+        # field, but at least we shouldn't error. The current implementation ignores
+        # the timezone, so this is a white-box test for that behavior.
+        expected_page_query = QueryStringWithParameters(
+            """{
+                Event {
+                    name @output(out_name: "event_name")
+                    event_date @filter(op_name: ">=", value: ["$date_lower"])
+                               @filter(op_name: "<", value: ["$__paged_param_0"])
+                }
+            }""",
+            {
+                "date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc),
+                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
+            },
+        )
+        expected_remainder_query = QueryStringWithParameters(
+            """{
+                Event {
+                    name @output(out_name: "event_name")
+                    event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
+                }
+            }""",
+            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+        )
+
+        # Check that the correct queries are generated
+        compare_graphql(self, expected_page_query.query_string, first.query_string)
+        self.assertEqual(expected_page_query.parameters, first.parameters)
+        self.assertEqual(1, len(remainder))
+        compare_graphql(self, expected_remainder_query.query_string, remainder[0].query_string)
+        self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_int(self):

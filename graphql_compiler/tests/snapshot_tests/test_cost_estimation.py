@@ -1321,10 +1321,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             dict(),
             field_quantiles={
                 ("Event", "event_date"): [
-                    datetime(2019, 3, 1, tzinfo=pytz.utc),
-                    datetime(2019, 6, 1, tzinfo=pytz.utc),
-                    datetime(2019, 8, 1, tzinfo=pytz.utc),
-                    datetime(2019, 9, 1, tzinfo=pytz.utc),
+                    datetime(2019, 3, 1),
+                    datetime(2019, 6, 1),
+                    datetime(2019, 8, 1),
+                    datetime(2019, 9, 1),
                 ],
             },
         )
@@ -1509,9 +1509,7 @@ class IntegerIntervalTests(unittest.TestCase):
             recovered_datetime = convert_int_to_field_value(
                 schema_info, "Event", "event_date", int_value
             )
-            self.assertAlmostEqual(
-                0, (datetime_value.astimezone(pytz.utc) - recovered_datetime).total_seconds()
-            )
+            self.assertEqual(datetime_value.replace(tzinfo=None), recovered_datetime)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_int_value_conversion_date(self):

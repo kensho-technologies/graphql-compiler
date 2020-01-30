@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
+import datetime
 from typing import Any, Dict, Set, Tuple, cast
 
 from graphql import print_ast
@@ -79,8 +80,12 @@ def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_va
         )
 
     if operation == "<":
+        if isinstance(old_filter_value, datetime.datetime):
+            return new_filter_value.replace(tzinfo=None) <= old_filter_value.replace(tzinfo=None)
         return new_filter_value <= old_filter_value
     elif operation == ">=":
+        if isinstance(old_filter_value, datetime.datetime):
+            return new_filter_value.replace(tzinfo=None) >= old_filter_value.replace(tzinfo=None)
         return new_filter_value >= old_filter_value
     else:
         raise AssertionError(f"Expected operation to be < or >=, got {operation}.")
