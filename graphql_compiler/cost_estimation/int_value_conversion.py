@@ -17,9 +17,6 @@ import datetime
 from typing import Any
 from uuid import UUID
 
-import pytz
-
-from ..exceptions import GraphQLError
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_type, is_uuid4_type
 
