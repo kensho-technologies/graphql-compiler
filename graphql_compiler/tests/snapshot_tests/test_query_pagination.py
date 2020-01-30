@@ -19,7 +19,10 @@ from ...query_pagination.pagination_planning import (
     VertexPartitionPlan,
     get_pagination_plan,
 )
-from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition
+from ...query_pagination.parameter_generator import (
+    _choose_parameter_values,
+    generate_parameters_for_vertex_partition,
+)
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -278,7 +281,7 @@ class QueryPaginationTests(unittest.TestCase):
         remainder = first_page_and_remainder.remainder
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results, we stop at 2011.
+        # 100 results, we stop at 2010.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -286,7 +289,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),},
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -295,7 +298,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -320,8 +323,8 @@ class QueryPaginationTests(unittest.TestCase):
             }""",
             {
                 # TODO parameters seem wonky
-                "__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),
-                "__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0),
+                "__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),
+                "__paged_param_1": datetime.datetime(2019, 1, 1, 0, 0),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -331,7 +334,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0),},
+            {"__paged_param_1": datetime.datetime(2019, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -380,7 +383,7 @@ class QueryPaginationTests(unittest.TestCase):
         remainder = first_page_and_remainder.remainder
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results after 2050, we stop at 2059.
+        # 100 results after 2050, we stop at 2058.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -389,7 +392,7 @@ class QueryPaginationTests(unittest.TestCase):
                                @filter(op_name: "<", value: ["$__paged_param_0"])
                 }
             }""",
-            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -398,7 +401,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -458,7 +461,7 @@ class QueryPaginationTests(unittest.TestCase):
             }""",
             {
                 "date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc),
-                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
+                "__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -468,7 +471,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -510,8 +513,55 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [26, 51, 76]
+        expected_parameters = [25, 50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_parameter_value_generation_int_few_quantiles(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Species": 10000000}
+        statistics = LocalStatistics(
+            class_counts, field_quantiles={("Species", "limbs"): [0, 10, 20, 30,],}
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = """{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }"""
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, query_ast, args, vertex_partition
+        )
+
+        expected_parameters = [10, 20]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    def test_choose_parameter_values(self):
+        self.assertEqual([1], list(_choose_parameter_values([1], 2)))
+        self.assertEqual([1], list(_choose_parameter_values([1], 3)))
+        self.assertEqual([1], list(_choose_parameter_values([1, 1], 3)))
+        self.assertEqual([3], list(_choose_parameter_values([1, 3], 2)))
+        self.assertEqual([1, 3], list(_choose_parameter_values([1, 3], 3)))
+        self.assertEqual([1, 3], list(_choose_parameter_values([1, 3], 4)))
+        self.assertEqual([3], list(_choose_parameter_values([1, 3, 5], 2)))
+        self.assertEqual([3, 5], list(_choose_parameter_values([1, 3, 5], 3)))
+        self.assertEqual([1, 3, 5], list(_choose_parameter_values([1, 3, 5], 4)))
+        self.assertEqual([1, 3, 5], list(_choose_parameter_values([1, 3, 5], 5)))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_int_existing_filters(self):
@@ -546,7 +596,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [51, 76]
+        expected_parameters = [50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -582,7 +632,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [26, 51]
+        expected_parameters = [25, 50]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -621,7 +671,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [26, 51, 76]
+        expected_parameters = [25, 50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -658,7 +708,7 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         # XXX document why this is expected, see if bisect_left logic is correct
-        expected_parameters = [140, 270, 400]
+        expected_parameters = [130, 260, 390]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -697,9 +747,9 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         expected_parameters = [
-            datetime.datetime(2026, 1, 1, 0, 0),
-            datetime.datetime(2051, 1, 1, 0, 0),
-            datetime.datetime(2076, 1, 1, 0, 0),
+            datetime.datetime(2025, 1, 1, 0, 0),
+            datetime.datetime(2050, 1, 1, 0, 0),
+            datetime.datetime(2075, 1, 1, 0, 0),
         ]
         self.assertEqual(expected_parameters, list(generated_parameters))
 

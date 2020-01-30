@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 import itertools
-from typing import Any, Dict, Iterator, cast
+from typing import Any, Dict, Iterator, List, cast
 
 from graphql import DocumentNode
 from graphql.language.printer import print_ast
@@ -20,29 +20,6 @@ from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
 
 
-def _sum_partition(number: int, num_splits: int) -> Iterator[int]:
-    """Represent an integer as a sum of N almost equal integers, sorted in descending order.
-
-    Example: _sum_partition(5, 3) = [2, 2, 1]
-
-    Args:
-        number: The number to be represented as a sum
-        num_splits: The desired length of the output
-
-    Retutns:
-        generator of num_splits values that add up to the number. The values are descending,
-        and the maximum difference between values is 1.
-    """
-    lower = number // num_splits
-    num_high = number - lower * num_splits
-    num_low = num_splits - num_high
-    return itertools.accumulate(
-        itertools.chain(
-            itertools.repeat(lower + 1, num_high), itertools.repeat(lower, num_low - 1),
-        )
-    )
-
-
 def _deduplicate_sorted_generator(generator: Iterator[Any]) -> Iterator[Any]:
     """Return a generator that skips repeated values in the given sorted generator."""
     prev = object()
@@ -50,6 +27,58 @@ def _deduplicate_sorted_generator(generator: Iterator[Any]) -> Iterator[Any]:
         if i != prev:
             yield i
         prev = i
+
+
+def _choose_parameter_values(
+    relevant_quantiles: List[Any], desired_num_splits: int
+) -> Iterator[Any]:
+    """Choose parameter values as evenly as possible.
+
+    Choose parameter values by picking at most (desired_num_splits - 1) of the quantiles given that
+    split the value space into desired_num_split splits. There are many ways to do that, and this
+    function tries to have the size of the splits be as even as possible.
+
+    It is possible that the desired number of splits cannot be achieved if there are not enough
+    quantiles. In that case fewer than the desired number of splits are created.
+
+    Args:
+        relevant_quantiles: N quantiles dividing the space of values into N+1 regions.
+        desired_num_splits: A split is a union of consecutive regions.
+
+    Returns:
+        at most (desired_num_splits - 1) values that define the splits
+    """
+    if desired_num_splits < 2:
+        raise AssertionError(
+            f"Unexpectedly received desired_num_splits = {desired_num_splits}, which this "
+            f"function is not able to handle."
+        )
+
+    num_regions = len(relevant_quantiles) + 1
+    if desired_num_splits >= num_regions:
+        return _deduplicate_sorted_generator(quantile for quantile in relevant_quantiles)
+
+    # We can't have all the splits be the same number of regions, but we can make sure
+    # the number of splits per region varies by at most one.
+    small_split_region_count = num_regions // desired_num_splits
+    large_split_region_count = small_split_region_count + 1
+    large_split_count = num_regions - small_split_region_count * desired_num_splits
+    small_split_count = desired_num_splits - large_split_count
+
+    # Compute 1-based indexes for which quantiles define the desired splits
+    quantile_indexes = itertools.accumulate(
+        itertools.chain(
+            itertools.repeat(large_split_region_count, large_split_count),
+            itertools.repeat(small_split_region_count, small_split_count - 1),
+        )
+    )
+
+    # TODO(bojanserafimov): We deduplicate the results to make sure we don't generate pages
+    #                       that are known to be empty. This can cause the number of generated
+    #                       pages to be less than the desired number of pages.
+    return _deduplicate_sorted_generator(
+        relevant_quantiles[index - 1] for index in quantile_indexes
+    )
 
 
 def _convert_int_interval_to_field_value_interval(
@@ -165,13 +194,7 @@ def _compute_parameters_for_non_uuid_field(
         max_quantile = bisect.bisect_left(proper_quantiles, field_value_interval.upper_bound)
     relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
 
-    # TODO(bojanserafimov): We deduplicate the results to make sure we don't generate pages
-    #                       that are known to be empty. This can cause the number of generated
-    #                       pages to be less than the desired number of pages.
-    return _deduplicate_sorted_generator(
-        relevant_quantiles[index]
-        for index in _sum_partition(len(relevant_quantiles) + 1, vertex_partition.number_of_splits)
-    )
+    return _choose_parameter_values(relevant_quantiles, vertex_partition.number_of_splits)
 
 
 def generate_parameters_for_vertex_partition(
