@@ -49,7 +49,10 @@ def _choose_parameter_values(
         at most (desired_num_splits - 1) values that define the splits
     """
     if desired_num_splits < 2:
-        raise AssertionError()
+        raise AssertionError(
+            f"Unexpectedly received desired_num_splits = {desired_num_splits}, which this "
+            f"function is not able to handle."
+        )
 
     num_regions = len(relevant_quantiles) + 1
     if desired_num_splits >= num_regions:
