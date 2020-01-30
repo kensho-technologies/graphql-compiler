@@ -278,7 +278,7 @@ class QueryPaginationTests(unittest.TestCase):
         remainder = first_page_and_remainder.remainder
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results, we stop at 2011.
+        # 100 results, we stop at 2010.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -286,7 +286,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),},
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -295,7 +295,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -320,8 +320,8 @@ class QueryPaginationTests(unittest.TestCase):
             }""",
             {
                 # TODO parameters seem wonky
-                "__paged_param_0": datetime.datetime(2011, 1, 1, 0, 0),
-                "__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0),
+                "__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),
+                "__paged_param_1": datetime.datetime(2019, 1, 1, 0, 0),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -331,7 +331,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_1": datetime.datetime(2021, 1, 1, 0, 0),},
+            {"__paged_param_1": datetime.datetime(2019, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -380,7 +380,7 @@ class QueryPaginationTests(unittest.TestCase):
         remainder = first_page_and_remainder.remainder
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results after 2050, we stop at 2059.
+        # 100 results after 2050, we stop at 2058.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -389,7 +389,7 @@ class QueryPaginationTests(unittest.TestCase):
                                @filter(op_name: "<", value: ["$__paged_param_0"])
                 }
             }""",
-            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -398,7 +398,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -458,7 +458,7 @@ class QueryPaginationTests(unittest.TestCase):
             }""",
             {
                 "date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc),
-                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
+                "__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -468,7 +468,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -510,7 +510,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [26, 51, 76]
+        expected_parameters = [25, 50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -595,7 +595,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [51, 76]
+        expected_parameters = [50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -631,7 +631,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [26, 51]
+        expected_parameters = [25, 50]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -670,7 +670,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_info, query_ast, args, vertex_partition
         )
 
-        expected_parameters = [26, 51, 76]
+        expected_parameters = [25, 50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -707,7 +707,7 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         # XXX document why this is expected, see if bisect_left logic is correct
-        expected_parameters = [140, 270, 400]
+        expected_parameters = [130, 260, 390]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -746,9 +746,9 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         expected_parameters = [
-            datetime.datetime(2026, 1, 1, 0, 0),
-            datetime.datetime(2051, 1, 1, 0, 0),
-            datetime.datetime(2076, 1, 1, 0, 0),
+            datetime.datetime(2025, 1, 1, 0, 0),
+            datetime.datetime(2050, 1, 1, 0, 0),
+            datetime.datetime(2075, 1, 1, 0, 0),
         ]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
