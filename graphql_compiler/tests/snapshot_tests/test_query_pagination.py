@@ -383,7 +383,7 @@ class QueryPaginationTests(unittest.TestCase):
         remainder = first_page_and_remainder.remainder
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results after 2050, we stop at 2058.
+        # 100 results after 2050, we stop at 2059.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -392,7 +392,7 @@ class QueryPaginationTests(unittest.TestCase):
                                @filter(op_name: "<", value: ["$__paged_param_0"])
                 }
             }""",
-            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
+            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -401,7 +401,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -461,7 +461,7 @@ class QueryPaginationTests(unittest.TestCase):
             }""",
             {
                 "date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc),
-                "__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),
+                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -471,7 +471,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2058, 1, 1, 0, 0),},
+            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
         )
 
         # Check that the correct queries are generated
@@ -589,7 +589,7 @@ class QueryPaginationTests(unittest.TestCase):
                 limbs @filter(op_name: ">=", value: ["$limbs_lower"])
             }
         }"""
-        args = {"limbs_lower": 26}
+        args = {"limbs_lower": 25}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
         generated_parameters = generate_parameters_for_vertex_partition(
