@@ -147,9 +147,10 @@ class LocalStatistics(Statistics):
                 )
             for quantile in quantile_list:
                 if isinstance(quantile, datetime.datetime):
-                    if quantile.tzinfo is None:
-                        raise AssertionError(
-                            f"Quantile for {vertex_name}.{field_name} has no tzinfo."
+                    if quantile.tzinfo is not None:
+                        raise NotImplementedError(
+                            f"Range reasoning for tz-aware datetimes is not implemented. "
+                            f"found tz-aware quantiles for {vertex_name}.{field_name}."
                         )
 
         self._class_counts = class_counts
