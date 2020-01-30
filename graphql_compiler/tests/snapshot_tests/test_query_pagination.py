@@ -19,7 +19,10 @@ from ...query_pagination.pagination_planning import (
     VertexPartitionPlan,
     get_pagination_plan,
 )
-from ...query_pagination.parameter_generator import generate_parameters_for_vertex_partition, _choose_parameter_values
+from ...query_pagination.parameter_generator import (
+    _choose_parameter_values,
+    generate_parameters_for_vertex_partition,
+)
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -522,9 +525,7 @@ class QueryPaginationTests(unittest.TestCase):
         uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
         class_counts = {"Species": 10000000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): [
-                0, 10, 20, 30,
-            ],}
+            class_counts, field_quantiles={("Species", "limbs"): [0, 10, 20, 30,],}
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,

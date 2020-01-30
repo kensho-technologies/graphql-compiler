@@ -29,30 +29,48 @@ def _deduplicate_sorted_generator(generator: Iterator[Any]) -> Iterator[Any]:
         prev = i
 
 
-def _choose_parameter_values(quantiles, desired_num_splits):
+def _choose_parameter_values(relevant_quantiles, desired_num_splits):
+    """Choose parameter values as evenly as possible.
+
+    # TODO document better
+
+    Args:
+        relevant_quantiles: N quantiles dividing the space of values into N+1 regions.
+        desired_num_splits: A split is a union of consecutive regions.
+
+    Returns:
+        (desired_num_splits - 1) values that define the splits
+    """
     if desired_num_splits < 2:
         raise AssertionError()
 
-    num_regions = len(quantiles) + 1
+    # Let regions be the spaces between the quantiles.
+    # Let a split be a union of consecutive regions.
+    num_regions = len(relevant_quantiles) + 1
     if desired_num_splits >= num_regions:
-        return _deduplicate_sorted_generator(quantile for quantile in quantiles)
+        return _deduplicate_sorted_generator(quantile for quantile in relevant_quantiles)
 
-    num_regions_in_small_split = num_regions // desired_num_splits
-    num_regions_in_large_split = num_regions_in_small_split + 1
-    num_large_splits = num_regions - num_regions_in_small_split * desired_num_splits
-    num_small_splits = desired_num_splits - num_large_splits
+    # We can't have all the splits be the same number of regions, but we can make sure
+    # the number of splits per region varies by at most one.
+    small_split_region_count = num_regions // desired_num_splits
+    large_split_region_count = small_split_region_count + 1
+    large_split_count = num_regions - small_split_region_count * desired_num_splits
+    small_split_count = desired_num_splits - large_split_count
 
+    # Compute 1-based indexes for which quantiles define the desired splits
     quantile_indexes = itertools.accumulate(
         itertools.chain(
-            itertools.repeat(num_regions_in_large_split, num_large_splits),
-            itertools.repeat(num_regions_in_small_split, num_small_splits - 1),
+            itertools.repeat(large_split_region_count, large_split_count),
+            itertools.repeat(small_split_region_count, small_split_count - 1),
         )
     )
 
     # TODO(bojanserafimov): We deduplicate the results to make sure we don't generate pages
     #                       that are known to be empty. This can cause the number of generated
     #                       pages to be less than the desired number of pages.
-    return _deduplicate_sorted_generator(quantiles[index - 1] for index in quantile_indexes)
+    return _deduplicate_sorted_generator(
+        relevant_quantiles[index - 1] for index in quantile_indexes
+    )
 
 
 def _convert_int_interval_to_field_value_interval(
