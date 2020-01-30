@@ -344,12 +344,7 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    @pytest.mark.xfail(
-        strict=True,
-        reason="pagination with tz-naive filters not implemented yet",
-        raises=AssertionError,
-    )
-    def _test_pagination_datetime_existing_filter(self):
+    def test_pagination_datetime_existing_filter(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
@@ -388,7 +383,7 @@ class QueryPaginationTests(unittest.TestCase):
         remainder = first_page_and_remainder.remainder
 
         # There are 1000 dates uniformly spread out between year 2000 and 3000, so to get
-        # 100 results after 2050, we stop at 2059.
+        # 100 results after 2050, we stop at 2061.
         expected_page_query = QueryStringWithParameters(
             """{
                 Event {
@@ -398,8 +393,8 @@ class QueryPaginationTests(unittest.TestCase):
                 }
             }""",
             {
-                "date_lower": datetime.datetime(2050, 1, 1, 0, tzinfo=pytz.utc),
-                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0, tzinfo=pytz.utc),
+                "date_lower": datetime.datetime(2050, 1, 1, 0),
+                "__paged_param_0": datetime.datetime(2061, 1, 1, 0, 0, tzinfo=pytz.utc),
             },
         )
         expected_remainder_query = QueryStringWithParameters(
@@ -409,7 +404,7 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0, tzinfo=pytz.utc),},
+            {"__paged_param_0": datetime.datetime(2061, 1, 1, 0, 0, tzinfo=pytz.utc),},
         )
 
         # Check that the correct queries are generated

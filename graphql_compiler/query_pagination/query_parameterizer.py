@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
+import datetime
 from typing import Any, Dict, Set, Tuple, cast
 
 from graphql import print_ast
@@ -15,6 +16,7 @@ from graphql.language.ast import (
     SelectionSetNode,
     StringValueNode,
 )
+import pytz
 
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
@@ -79,8 +81,12 @@ def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_va
         )
 
     if operation == "<":
+        if isinstance(new_filter_value, datetime.datetime):
+            return new_filter_value.astimezone(pytz.utc) <= old_filter_value.astimezone(pytz.utc)
         return new_filter_value <= old_filter_value
     elif operation == ">=":
+        if isinstance(new_filter_value, datetime.datetime):
+            return new_filter_value.astimezone(pytz.utc) >= old_filter_value.astimezone(pytz.utc)
         return new_filter_value >= old_filter_value
     else:
         raise AssertionError(f"Expected operation to be < or >=, got {operation}.")
