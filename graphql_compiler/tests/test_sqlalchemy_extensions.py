@@ -4,7 +4,7 @@ import unittest
 import sqlalchemy
 import sqlalchemy.dialects.mssql as mssql
 
-from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
+from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string, emit_odbc_string
 from .test_helpers import compare_sql, get_sqlalchemy_schema_info
 
 
@@ -46,5 +46,44 @@ class CommonIrLoweringTests(unittest.TestCase):
              SELECT [Animal_1].name
              FROM db_1.schema_1.[Animal] AS [Animal_1]
              WHERE [Animal_1].name IN :names
+        """
+        compare_sql(self, expected_text, text)
+
+    def test_emit_odbc_string_basic(self):
+        query = sqlalchemy.select([self.sql_schema_info.vertex_name_to_table["Animal"].c.name])
+        text = emit_odbc_string(query, mssql.dialect())
+        expected_text = """
+            SELECT db_1.schema_1.[Animal].name
+            FROM db_1.schema_1.[Animal]
+        """
+        compare_sql(self, expected_text, text)
+
+    def test_emit_odbc_string_argument(self):
+        animal = self.sql_schema_info.vertex_name_to_table["Animal"].alias()
+        query = sqlalchemy.select([animal.c.name]).where(
+            animal.c.name == sqlalchemy.bindparam("name", expanding=False)
+        )
+        parameters = {}
+        text = emit_odbc_string(mssql.dialect(), query, parameters)
+        expected_text = """
+             SELECT [Animal_1].name
+             FROM db_1.schema_1.[Animal] AS [Animal_1]
+             WHERE [Animal_1].name = ?
+        """
+        compare_sql(self, expected_text, text)
+
+    def test_emit_odbc_list_argument(self):
+        animal = self.sql_schema_info.vertex_name_to_table["Animal"].alias()
+        query = sqlalchemy.select([animal.c.name]).where(
+            animal.c.name.in_(sqlalchemy.bindparam("names", expanding=True))
+        )
+        parameters = {
+            "names": ("Joe", "Mike")
+        }
+        text = emit_odbc_string(mssql.dialect(), query, parameters)
+        expected_text = """
+             SELECT [Animal_1].name
+             FROM db_1.schema_1.[Animal] AS [Animal_1]
+             WHERE [Animal_1].name IN (? ?)
         """
         compare_sql(self, expected_text, text)

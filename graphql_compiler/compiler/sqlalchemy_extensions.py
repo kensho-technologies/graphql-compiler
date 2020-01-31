@@ -76,3 +76,15 @@ def print_sqlalchemy_query_string(query, dialect):
             return super(BindparamCompiler, self).visit_bindparam(bindparam, **kwargs)
 
     return str(BindparamCompiler(dialect, query).process(query))
+
+
+def emit_odbc_string(dialect, query, parameters):
+    class BindparamCompiler(dialect.statement_compiler):
+        def visit_bindparam(self, bindparam, **kwargs):
+            # No idea what I'm doing here but it works.
+            value = parameters[bindparam._orig_key]
+            if isinstance(value, tuple):
+                return "({})".format(" ".join(["?" for _ in value]))
+            return "?"
+
+    return str(BindparamCompiler(dialect, query).process(query))
