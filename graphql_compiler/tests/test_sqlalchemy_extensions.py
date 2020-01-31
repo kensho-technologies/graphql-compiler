@@ -87,6 +87,6 @@ class CommonIrLoweringTests(unittest.TestCase):
         expected_text = """
              SELECT [Animal_1].name
              FROM db_1.schema_1.[Animal] AS [Animal_1]
-             WHERE [Animal_1].name IN (? ?)
+             WHERE [Animal_1].name IN (?, ?)
         """
         compare_sql(self, expected_text, text)
