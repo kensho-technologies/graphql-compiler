@@ -189,7 +189,7 @@ def _compute_parameters_for_non_uuid_field(
     min_quantile = 0
     max_quantile = len(proper_quantiles)
     if field_value_interval.lower_bound is not None:
-        min_quantile = bisect.bisect_left(proper_quantiles, field_value_interval.lower_bound)
+        min_quantile = bisect.bisect_right(proper_quantiles, field_value_interval.lower_bound)
     if field_value_interval.upper_bound is not None:
         max_quantile = bisect.bisect_left(proper_quantiles, field_value_interval.upper_bound)
     relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
