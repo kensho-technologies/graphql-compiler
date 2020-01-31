@@ -51,7 +51,8 @@ class CommonIrLoweringTests(unittest.TestCase):
 
     def test_emit_odbc_string_basic(self):
         query = sqlalchemy.select([self.sql_schema_info.vertex_name_to_table["Animal"].c.name])
-        text = emit_odbc_string(query, mssql.dialect())
+        parameters = {}
+        text = emit_odbc_string(mssql.dialect(), query, parameters)
         expected_text = """
             SELECT db_1.schema_1.[Animal].name
             FROM db_1.schema_1.[Animal]
@@ -63,7 +64,9 @@ class CommonIrLoweringTests(unittest.TestCase):
         query = sqlalchemy.select([animal.c.name]).where(
             animal.c.name == sqlalchemy.bindparam("name", expanding=False)
         )
-        parameters = {}
+        parameters = {
+            "name": "John"
+        }
         text = emit_odbc_string(mssql.dialect(), query, parameters)
         expected_text = """
              SELECT [Animal_1].name

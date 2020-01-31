@@ -83,7 +83,7 @@ def emit_odbc_string(dialect, query, parameters):
         def visit_bindparam(self, bindparam, **kwargs):
             # No idea what I'm doing here but it works.
             value = parameters[bindparam._orig_key]
-            if isinstance(value, tuple):
+            if isinstance(value, (tuple, list)):
                 return "({})".format(" ".join(["?" for _ in value]))
             return "?"
 
