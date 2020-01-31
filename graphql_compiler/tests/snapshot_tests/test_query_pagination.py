@@ -625,9 +625,7 @@ class QueryPaginationTests(unittest.TestCase):
                 limbs @filter(op_name: ">=", value: ["$limbs_lower"])
             }
         }"""
-        args = {
-            "limbs_lower": 10
-        }
+        args = {"limbs_lower": 10}
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 10)
         generated_parameters = generate_parameters_for_vertex_partition(
