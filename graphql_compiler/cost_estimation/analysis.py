@@ -63,6 +63,9 @@ def get_pagination_capacities(schema_info, field_value_intervals, query_metadata
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
 
+        # TODO Factor in the distinct_result_set_estimates. For instance, if a field has a
+        #      unique filter on it, it's pagination capacity is 1.
+
         for field_name, field in location_info.type.fields.items():
             key = (location.query_path, field_name)
             if not is_meta_field(field_name):
