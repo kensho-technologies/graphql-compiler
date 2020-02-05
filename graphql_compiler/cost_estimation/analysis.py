@@ -150,6 +150,7 @@ def get_pagination_capacities(
 
 @dataclass
 class QueryAnalysis:
+    """A cache for analysis passes over a fixed query and fixed schema_info."""
     schema_info: QueryPlanningSchemaInfo
     query: QueryStringWithParameters
 
