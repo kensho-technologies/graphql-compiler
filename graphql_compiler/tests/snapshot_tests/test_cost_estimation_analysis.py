@@ -47,7 +47,6 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        # Check that the correct plan is generated when it's obvious (page the root)
         graphql_query_string = """{
             Animal {
                 name @output(out_name: "animal_name")
@@ -73,6 +72,49 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         self.assertEqual(expected_ints, ints)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_get_distinct_result_set_estimates(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        graphql_query_string = """{
+            Animal {
+                name @output(out_name: "animal_name")
+                uuid @filter(op_name: "=", value: ["$uuid"])
+                out_Animal_ParentOf {
+                    name @output(out_name: "child_name")
+                }
+            }
+        }"""
+        parameters = {
+            "uuid": "80000000-0000-0000-0000-000000000000",
+        }
+        number_of_pages = 10
+        query_metadata = graphql_to_ir(
+            schema_info.schema,
+            graphql_query_string,
+            type_equivalence_hints=schema_info.type_equivalence_hints
+        ).query_metadata_table
+
+        estimates = analysis.get_distinct_result_set_estimates(schema_info, query_metadata, parameters)
+        expected_estimates = {
+            ('Animal',): 1,
+            ('Animal', 'out_Animal_ParentOf'): 1000,
+        }
+        self.assertEqual(expected_estimates, estimates)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_pagination_capacities(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -89,7 +131,6 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        # Check that the correct plan is generated when it's obvious (page the root)
         graphql_query_string = """{
             Animal {
                 name @output(out_name: "animal_name")

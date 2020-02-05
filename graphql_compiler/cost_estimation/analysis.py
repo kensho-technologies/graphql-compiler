@@ -1,4 +1,4 @@
-from .filter_selectivity_utils import get_integer_interval_for_filters_on_field
+from .filter_selectivity_utils import get_integer_interval_for_filters_on_field, adjust_counts_for_filters
 from ..cost_estimation.interval import Interval, measure_int_interval, intersect_int_intervals
 from ..cost_estimation.int_value_conversion import convert_field_value_to_int, convert_int_to_field_value, MIN_UUID_INT, MAX_UUID_INT, field_supports_range_reasoning, is_uuid4_type
 from ..schema import is_meta_field
@@ -48,6 +48,22 @@ def get_field_value_intervals(schema_info, query_metadata, parameters):
 
             field_value_intervals[(location.query_path, field_name)] = field_value_interval
     return field_value_intervals
+
+
+def get_distinct_result_set_estimates(schema_info, query_metadata, parameters):
+    """Map each location to its max number of different results expected in the result."""
+    distinct_result_set_estimates = {}
+    for location, location_info in query_metadata.registered_locations:
+        vertex_type_name = location_info.type.name
+        filter_infos = query_metadata.get_filter_infos(location)
+        class_count = schema_info.statistics.get_class_count(vertex_type_name)
+        distinct_result_set_estimates[location.query_path] = adjust_counts_for_filters(
+            schema_info, filter_infos, parameters, vertex_type_name, class_count)
+
+    # TODO transfer along many-to-one edges
+
+    return distinct_result_set_estimates
+
 
 
 def get_pagination_capacities(schema_info, field_value_intervals, query_metadata, parameters):
