@@ -1,7 +1,16 @@
-from .filter_selectivity_utils import get_integer_interval_for_filters_on_field, adjust_counts_for_filters
-from ..cost_estimation.interval import Interval, measure_int_interval, intersect_int_intervals
-from ..cost_estimation.int_value_conversion import convert_field_value_to_int, convert_int_to_field_value, MIN_UUID_INT, MAX_UUID_INT, field_supports_range_reasoning, is_uuid4_type
+import bisect
+
+from ..cost_estimation.int_value_conversion import (
+    convert_int_to_field_value,
+    field_supports_range_reasoning,
+    is_uuid4_type,
+)
+from ..cost_estimation.interval import Interval
 from ..schema import is_meta_field
+from .filter_selectivity_utils import (
+    adjust_counts_for_filters,
+    get_integer_interval_for_filters_on_field,
+)
 
 
 def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, field, interval):
@@ -9,10 +18,12 @@ def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, fiel
     upper_bound = None
     if interval.lower_bound is not None:
         lower_bound = convert_int_to_field_value(
-            schema_info, vertex_type, field, interval.lower_bound)
+            schema_info, vertex_type, field, interval.lower_bound
+        )
     if interval.upper_bound is not None:
         upper_bound = convert_int_to_field_value(
-            schema_info, vertex_type, field, interval.upper_bound)
+            schema_info, vertex_type, field, interval.upper_bound
+        )
     return Interval(lower_bound, upper_bound)
 
 
@@ -27,7 +38,7 @@ def get_field_value_intervals(schema_info, query_metadata, parameters):
         single_field_filters = {}
         for filter_info in filter_infos:
             if len(filter_info.fields) == 0:
-                raise AssertionError(u"Got filter on 0 fields {} {}".format(filter_info, location_name))
+                raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_type_name}")
             elif len(filter_info.fields) == 1:
                 single_field_filters.setdefault(filter_info.fields[0], []).append(filter_info)
             else:
@@ -36,15 +47,15 @@ def get_field_value_intervals(schema_info, query_metadata, parameters):
         # Find field_value_interval for each field
         for field_name, filters_on_field in single_field_filters.items():
             filters_on_field = [
-                filter_info
-                for filter_info in filter_infos
-                if filter_info.fields == (field_name,)
+                filter_info for filter_info in filter_infos if filter_info.fields == (field_name,)
             ]
 
             integer_interval = get_integer_interval_for_filters_on_field(
-                schema_info, filters_on_field, vertex_type_name, field_name, parameters)
+                schema_info, filters_on_field, vertex_type_name, field_name, parameters
+            )
             field_value_interval = _convert_int_interval_to_field_value_interval(
-                schema_info, vertex_type_name, field_name, integer_interval)
+                schema_info, vertex_type_name, field_name, integer_interval
+            )
 
             field_value_intervals[(location.query_path, field_name)] = field_value_interval
     return field_value_intervals
@@ -58,12 +69,12 @@ def get_distinct_result_set_estimates(schema_info, query_metadata, parameters):
         filter_infos = query_metadata.get_filter_infos(location)
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
         distinct_result_set_estimates[location.query_path] = adjust_counts_for_filters(
-            schema_info, filter_infos, parameters, vertex_type_name, class_count)
+            schema_info, filter_infos, parameters, vertex_type_name, class_count
+        )
 
     # TODO transfer along many-to-one edges
 
     return distinct_result_set_estimates
-
 
 
 def get_pagination_capacities(
@@ -81,14 +92,16 @@ def get_pagination_capacities(
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
 
-        for field_name, field in location_info.type.fields.items():
+        for field_name, _ in location_info.type.fields.items():
             key = (location.query_path, field_name)
             if not is_meta_field(field_name):
                 if is_uuid4_type(schema_info, vertex_type_name, field_name):
                     pagination_capacities[key] = distinct_result_set_estimates[location.query_path]
                 elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                     field_value_interval = field_value_intervals.get(key, Interval(None, None))
-                    quantiles = schema_info.statistics.get_field_quantiles(vertex_type_name, field_name)
+                    quantiles = schema_info.statistics.get_field_quantiles(
+                        vertex_type_name, field_name
+                    )
                     if quantiles is not None:
 
                         # Since we can't be sure the minimum observed value is the
@@ -101,16 +114,20 @@ def get_pagination_capacities(
                         min_quantile = 0
                         max_quantile = len(proper_quantiles)
                         if field_value_interval.lower_bound is not None:
-                            min_quantile = bisect.bisect_left(proper_quantiles, field_value_interval.lower_bound)
+                            min_quantile = bisect.bisect_left(
+                                proper_quantiles, field_value_interval.lower_bound
+                            )
                         if field_value_interval.upper_bound is not None:
-                            max_quantile = bisect.bisect_left(proper_quantiles, field_value_interval.upper_bound)
+                            max_quantile = bisect.bisect_left(
+                                proper_quantiles, field_value_interval.upper_bound
+                            )
                         relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
 
                         # TODO take into account duplicate quantile values
 
                         pagination_capacities[key] = min(
                             len(relevant_quantiles) + 1,
-                            distinct_result_set_estimates[location.query_path]
+                            distinct_result_set_estimates[location.query_path],
                         )
 
     return pagination_capacities
