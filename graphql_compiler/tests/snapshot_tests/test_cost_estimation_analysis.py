@@ -148,6 +148,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         ).query_metadata_table
 
         ints = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
-        caps = analysis.get_pagination_capacities(schema_info, ints, query_metadata, parameters)
-        expected_caps = {(('Animal',), 'uuid'): 1000}
+        distinct_result_estimates = analysis.get_distinct_result_set_estimates(
+            schema_info, query_metadata, parameters)
+        caps = analysis.get_pagination_capacities(
+            schema_info, ints, distinct_result_estimates, query_metadata, parameters)
+        expected_caps = {(('Animal',), 'uuid'): 500}
         self.assertEqual(expected_caps, caps)

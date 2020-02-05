@@ -66,7 +66,9 @@ def get_distinct_result_set_estimates(schema_info, query_metadata, parameters):
 
 
 
-def get_pagination_capacities(schema_info, field_value_intervals, query_metadata, parameters):
+def get_pagination_capacities(
+    schema_info, field_value_intervals, distinct_result_set_estimates, query_metadata, parameters
+):
     """Get the pagination capacity for each eligible pagination field.
 
     The pagination capacity of a field is defined as the maximum number of pages we can split
@@ -79,15 +81,11 @@ def get_pagination_capacities(schema_info, field_value_intervals, query_metadata
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
 
-        # TODO Factor in the distinct_result_set_estimates. For instance, if a field has a
-        #      unique filter on it, it's pagination capacity is 1.
-
         for field_name, field in location_info.type.fields.items():
             key = (location.query_path, field_name)
             if not is_meta_field(field_name):
                 if is_uuid4_type(schema_info, vertex_type_name, field_name):
-                    # TODO multiply by filter selectivity
-                    pagination_capacities[key] = schema_info.statistics.get_class_count(vertex_type_name)
+                    pagination_capacities[key] = distinct_result_set_estimates[location.query_path]
                 elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                     # TODO write test for this case
                     field_value_interval = field_value_intervals.get(key, Interval(None, None))
@@ -111,6 +109,9 @@ def get_pagination_capacities(schema_info, field_value_intervals, query_metadata
 
                         # TODO take into account duplicate quantile values
 
-                        pagination_capacities[key] = len(relevant_quantiles) + 1
+                        pagination_capacities[key] = min(
+                            len(relevant_quantiles) + 1,
+                            distinct_result_set_estimates[location.query_path]
+                        )
 
     return pagination_capacities
