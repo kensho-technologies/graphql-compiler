@@ -87,7 +87,6 @@ def get_pagination_capacities(
                 if is_uuid4_type(schema_info, vertex_type_name, field_name):
                     pagination_capacities[key] = distinct_result_set_estimates[location.query_path]
                 elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
-                    # TODO write test for this case
                     field_value_interval = field_value_intervals.get(key, Interval(None, None))
                     quantiles = schema_info.statistics.get_field_quantiles(vertex_type_name, field_name)
                     if quantiles is not None:

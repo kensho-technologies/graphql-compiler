@@ -154,3 +154,88 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             schema_info, ints, distinct_result_estimates, query_metadata, parameters)
         expected_caps = {(('Animal',), 'uuid'): 500}
         self.assertEqual(expected_caps, caps)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_get_pagination_capacities_unique_filter(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        graphql_query_string = """{
+            Animal {
+                name @output(out_name: "animal_name")
+                uuid @filter(op_name: "=", value: ["$uuid"])
+            }
+        }"""
+        parameters = {
+            "uuid": "80000000-0000-0000-0000-000000000000",
+        }
+        number_of_pages = 10
+        query_metadata = graphql_to_ir(
+            schema_info.schema,
+            graphql_query_string,
+            type_equivalence_hints=schema_info.type_equivalence_hints
+        ).query_metadata_table
+
+        ints = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
+        distinct_result_estimates = analysis.get_distinct_result_set_estimates(
+            schema_info, query_metadata, parameters)
+        caps = analysis.get_pagination_capacities(
+            schema_info, ints, distinct_result_estimates, query_metadata, parameters)
+        expected_caps = {(('Animal',), 'uuid'): 1}
+        self.assertEqual(expected_caps, caps)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_get_pagination_capacities_int_field(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts, field_quantiles={("Species", "limbs"): list(range(101))}
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        graphql_query_string = """{
+            Species {
+                name @output(out_name: "species_name")
+            }
+        }"""
+        parameters = {}
+        number_of_pages = 10
+        query_metadata = graphql_to_ir(
+            schema_info.schema,
+            graphql_query_string,
+            type_equivalence_hints=schema_info.type_equivalence_hints
+        ).query_metadata_table
+
+        ints = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
+        distinct_result_estimates = analysis.get_distinct_result_set_estimates(
+            schema_info, query_metadata, parameters)
+        caps = analysis.get_pagination_capacities(
+            schema_info, ints, distinct_result_estimates, query_metadata, parameters)
+        expected_caps = {
+            (('Species',), 'limbs'): 100,
+            (('Species',), 'uuid'): 1000,
+        }
+        self.assertEqual(expected_caps, caps)
