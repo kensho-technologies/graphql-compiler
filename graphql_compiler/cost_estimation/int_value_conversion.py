@@ -17,8 +17,6 @@ import datetime
 from typing import Any
 from uuid import UUID
 
-import pytz
-
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_type, is_uuid4_type
 
@@ -29,7 +27,7 @@ MIN_UUID_INT = 0
 MAX_UUID_INT = 2 ** 128 - 1
 
 
-DATETIME_EPOCH_UTC = datetime.datetime(1970, 1, 1, tzinfo=pytz.utc)
+DATETIME_EPOCH_TZ_NAIVE = datetime.datetime(1970, 1, 1)
 
 
 def field_supports_range_reasoning(
@@ -70,7 +68,7 @@ def convert_int_to_field_value(
     if is_int_field_type(schema_info, vertex_class, property_field):
         return int_value
     elif is_datetime_field_type(schema_info, vertex_class, property_field):
-        return DATETIME_EPOCH_UTC + datetime.timedelta(microseconds=int_value)
+        return DATETIME_EPOCH_TZ_NAIVE + datetime.timedelta(microseconds=int_value)
     elif is_date_field_type(schema_info, vertex_class, property_field):
         return datetime.date.fromordinal(int_value)
     elif is_uuid4_type(schema_info, vertex_class, property_field):
@@ -102,7 +100,7 @@ def convert_field_value_to_int(
     if is_int_field_type(schema_info, vertex_class, property_field):
         return value
     elif is_datetime_field_type(schema_info, vertex_class, property_field):
-        return (value.astimezone(pytz.utc) - DATETIME_EPOCH_UTC) // datetime.timedelta(
+        return (value.replace(tzinfo=None) - DATETIME_EPOCH_TZ_NAIVE) // datetime.timedelta(
             microseconds=1
         )
     elif is_date_field_type(schema_info, vertex_class, property_field):

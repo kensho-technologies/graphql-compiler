@@ -112,6 +112,12 @@ def get_best_vertex_partition_plan(
         ideal_min_num_quantiles_per_page = 5
         ideal_quantile_resolution = ideal_min_num_quantiles_per_page * number_of_pages + 1
 
+        # HACK(bojanserafimov): The planner should consider only quantiles in the field value
+        #                       interval defined by existing filters on this field. Currently
+        #                       the planner can generate a plan that is impossible to realize.
+        #                       The parameter generator currently deals with this flaw, but
+        #                       it should be fixed ASAP before the code degrades more.
+        #                       Fix coming in PR #738.
         quantiles = schema_info.statistics.get_field_quantiles(pagination_node, pagination_field)
         if quantiles is None:
             # If there are no quantiles, we don't paginate. We could try to assume an uniform
