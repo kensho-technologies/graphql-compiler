@@ -1,5 +1,11 @@
 import bisect
+from dataclasses import dataclass
+import functools
 
+from ..compiler.compiler_frontend import graphql_to_ir
+from ..schema.schema_info import QueryPlanningSchemaInfo
+from ..global_utils import QueryStringWithParameters
+from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
     convert_int_to_field_value,
     field_supports_range_reasoning,
@@ -11,6 +17,15 @@ from .filter_selectivity_utils import (
     adjust_counts_for_filters,
     get_integer_interval_for_filters_on_field,
 )
+
+
+
+def get_metadata_table(query: QueryStringWithParameters):
+    query_metadata = graphql_to_ir(
+        schema_info.schema,
+        graphql_query_string,
+        type_equivalence_hints=schema_info.type_equivalence_hints,
+    ).query_metadata_table
 
 
 def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, field, interval):
@@ -131,3 +146,55 @@ def get_pagination_capacities(
                         )
 
     return pagination_capacities
+
+
+@dataclass
+class QueryAnalysis:
+    schema_info: QueryPlanningSchemaInfo
+    query: QueryStringWithParameters
+
+    @functools.cached_property
+    def metadata_table(self):
+        return graphql_to_ir(
+            self.schema_info.schema,
+            self.query.query_string,
+            type_equivalence_hints=self.schema_info.type_equivalence_hints,
+        ).query_metadata_table
+
+    @functools.cached_property
+    def cardinality_estimate(self):
+        self._cardinality_estimate = estimate_query_result_cardinality(
+            self.schema_info,
+            self.query.query_string,
+            self.query.parameters
+        )
+        return self._cardinality_estimate
+
+    @functools.cached_property
+    def field_value_intervals(self):
+        self._field_value_intervals = get_field_value_intervals(
+            self.schema_info,
+            self.metadata_table,
+            self.query.parameters
+        )
+        return self._field_value_intervals
+
+    @functools.cached_property
+    def distinct_result_set_estimates(self):
+        self._distinct_result_set_estimates = get_distinct_result_set_estimates(
+            self.schema_info,
+            self.metadata_table,
+            self.query.parameters
+        )
+        return self._distinct_result_set_estimates
+
+    @functools.cached_property
+    def pagination_capacities(self):
+        self._pagination_capacities = get_pagination_capacities(
+            self.schema_info,
+            self.field_value_intervals,
+            self.distinct_result_set_estimates,
+            self.metadata_table,
+            self.query.parameters
+        )
+        return self._pagination_capacities

@@ -3,8 +3,9 @@ import unittest
 
 import pytest
 
+from ...global_utils import QueryStringWithParameters
 from ...compiler.compiler_frontend import graphql_to_ir
-from ...cost_estimation import analysis
+from ...cost_estimation.analysis import QueryAnalysis
 from ...cost_estimation.interval import Interval
 from ...cost_estimation.statistics import LocalStatistics
 from ...schema.schema_info import QueryPlanningSchemaInfo
@@ -36,22 +37,17 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        graphql_query_string = """{
-            Animal {
-                name @output(out_name: "animal_name")
-                uuid @filter(op_name: ">", value: ["$uuid_min"])
+        query = QueryStringWithParameters(
+            """{
+                Animal {
+                    name @output(out_name: "animal_name")
+                    uuid @filter(op_name: ">", value: ["$uuid_min"])
+                }
+            }""", {
+                "uuid_min": "80000000-0000-0000-0000-000000000000",
             }
-        }"""
-        parameters = {
-            "uuid_min": "80000000-0000-0000-0000-000000000000",
-        }
-        query_metadata = graphql_to_ir(
-            schema_info.schema,
-            graphql_query_string,
-            type_equivalence_hints=schema_info.type_equivalence_hints,
-        ).query_metadata_table
-
-        intervals = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
+        )
+        intervals = QueryAnalysis(schema_info, query).field_value_intervals
         expected_intervals = {
             (("Animal",), "uuid"): Interval(
                 lower_bound="80000000-0000-0000-0000-000000000001", upper_bound=None
@@ -76,7 +72,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        graphql_query_string = """{
+        query = QueryStringWithParameters("""{
             Animal {
                 name @output(out_name: "animal_name")
                 uuid @filter(op_name: "=", value: ["$uuid"])
@@ -84,19 +80,11 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                     name @output(out_name: "child_name")
                 }
             }
-        }"""
-        parameters = {
+        }""", {
             "uuid": "80000000-0000-0000-0000-000000000000",
-        }
-        query_metadata = graphql_to_ir(
-            schema_info.schema,
-            graphql_query_string,
-            type_equivalence_hints=schema_info.type_equivalence_hints,
-        ).query_metadata_table
+        })
 
-        estimates = analysis.get_distinct_result_set_estimates(
-            schema_info, query_metadata, parameters
-        )
+        estimates = QueryAnalysis(schema_info, query).distinct_result_set_estimates
         expected_estimates = {
             ("Animal",): 1,
             ("Animal", "out_Animal_ParentOf"): 1000,
@@ -120,28 +108,16 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        graphql_query_string = """{
+        query = QueryStringWithParameters("""{
             Animal {
                 name @output(out_name: "animal_name")
                 uuid @filter(op_name: ">", value: ["$uuid_min"])
             }
-        }"""
-        parameters = {
+        }""", {
             "uuid_min": "80000000-0000-0000-0000-000000000000",
-        }
-        query_metadata = graphql_to_ir(
-            schema_info.schema,
-            graphql_query_string,
-            type_equivalence_hints=schema_info.type_equivalence_hints,
-        ).query_metadata_table
+        })
 
-        intervals = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
-        distinct_result_estimates = analysis.get_distinct_result_set_estimates(
-            schema_info, query_metadata, parameters
-        )
-        capacities = analysis.get_pagination_capacities(
-            schema_info, intervals, distinct_result_estimates, query_metadata, parameters
-        )
+        capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 500}
         self.assertEqual(expected_capacities, capacities)
 
@@ -162,28 +138,16 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        graphql_query_string = """{
+        query = QueryStringWithParameters("""{
             Animal {
                 name @output(out_name: "animal_name")
                 uuid @filter(op_name: "=", value: ["$uuid"])
             }
-        }"""
-        parameters = {
+        }""", {
             "uuid": "80000000-0000-0000-0000-000000000000",
-        }
-        query_metadata = graphql_to_ir(
-            schema_info.schema,
-            graphql_query_string,
-            type_equivalence_hints=schema_info.type_equivalence_hints,
-        ).query_metadata_table
+        })
 
-        intervals = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
-        distinct_result_estimates = analysis.get_distinct_result_set_estimates(
-            schema_info, query_metadata, parameters
-        )
-        capacities = analysis.get_pagination_capacities(
-            schema_info, intervals, distinct_result_estimates, query_metadata, parameters
-        )
+        capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 1}
         self.assertEqual(expected_capacities, capacities)
 
@@ -207,25 +171,13 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        graphql_query_string = """{
+        query = QueryStringWithParameters("""{
             Species {
                 name @output(out_name: "species_name")
             }
-        }"""
-        parameters = {}
-        query_metadata = graphql_to_ir(
-            schema_info.schema,
-            graphql_query_string,
-            type_equivalence_hints=schema_info.type_equivalence_hints,
-        ).query_metadata_table
+        }""", {})
 
-        intervals = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
-        distinct_result_estimates = analysis.get_distinct_result_set_estimates(
-            schema_info, query_metadata, parameters
-        )
-        capacities = analysis.get_pagination_capacities(
-            schema_info, intervals, distinct_result_estimates, query_metadata, parameters
-        )
+        capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {
             (("Species",), "limbs"): 100,
             (("Species",), "uuid"): 1000,
@@ -252,28 +204,16 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        graphql_query_string = """{
+        query = QueryStringWithParameters("""{
             Species {
                 name @output(out_name: "species_name")
                 limbs @filter(op_name: ">=", value: ["$limbs_min"])
             }
-        }"""
-        parameters = {
+        }""", {
             "limbs_min": 10,
-        }
-        query_metadata = graphql_to_ir(
-            schema_info.schema,
-            graphql_query_string,
-            type_equivalence_hints=schema_info.type_equivalence_hints,
-        ).query_metadata_table
+        })
 
-        intervals = analysis.get_field_value_intervals(schema_info, query_metadata, parameters)
-        distinct_result_estimates = analysis.get_distinct_result_set_estimates(
-            schema_info, query_metadata, parameters
-        )
-        capacities = analysis.get_pagination_capacities(
-            schema_info, intervals, distinct_result_estimates, query_metadata, parameters
-        )
+        capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {
             (("Species",), "limbs"): 91,
             (("Species",), "uuid"): 905,
