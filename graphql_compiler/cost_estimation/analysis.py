@@ -63,7 +63,7 @@ def get_field_value_intervals(
         parameters: parameters used for the query
 
     Returns:
-        Dict mapping some PropertyPaths to the interval of filtered values at that field.
+        dict mapping some PropertyPath objects to their interval of allowed values
     """
     field_value_intervals = {}
     for location, location_info in query_metadata.registered_locations:
@@ -99,8 +99,11 @@ def get_distinct_result_set_estimates(
 ) -> Dict[VertexPath, float]:
     """Map each VertexPath in the query to its distinct result set estimate.
 
-    The distinct result set estimate for a query node is the expected number of different
-    vertices that will appear under it in the result of the query.
+    The distinct result set estimate for vertex query node is the expected number of
+    different instances of the vertex type that will appear in the result set of the
+    query. For instance, suppose a query that included an edge traversal from A to B
+    that also included a unique filter on A. In this case, the distinct result estimate
+    for A is 1 even though the cardinality of the result set might be quite large.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
