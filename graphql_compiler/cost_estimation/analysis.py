@@ -1,10 +1,11 @@
 import bisect
 from dataclasses import dataclass
-import functools
+from typing import Any, Dict, List
+
+from cached_property import cached_property
 
 from ..compiler.compiler_frontend import graphql_to_ir
-from ..schema.schema_info import QueryPlanningSchemaInfo
-from ..global_utils import QueryStringWithParameters
+from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
     convert_int_to_field_value,
@@ -12,23 +13,18 @@ from ..cost_estimation.int_value_conversion import (
     is_uuid4_type,
 )
 from ..cost_estimation.interval import Interval
+from ..global_utils import PropertyPath, QueryStringWithParameters, VertexPath
 from ..schema import is_meta_field
+from ..schema.schema_info import QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
     adjust_counts_for_filters,
     get_integer_interval_for_filters_on_field,
 )
 
 
-
-def get_metadata_table(query: QueryStringWithParameters):
-    query_metadata = graphql_to_ir(
-        schema_info.schema,
-        graphql_query_string,
-        type_equivalence_hints=schema_info.type_equivalence_hints,
-    ).query_metadata_table
-
-
-def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, field, interval):
+def _convert_int_interval_to_field_value_interval(
+    schema_info: QueryPlanningSchemaInfo, vertex_type: str, field: str, interval: Interval[int]
+) -> Interval[Any]:
     lower_bound = None
     upper_bound = None
     if interval.lower_bound is not None:
@@ -42,15 +38,19 @@ def _convert_int_interval_to_field_value_interval(schema_info, vertex_type, fiel
     return Interval(lower_bound, upper_bound)
 
 
-def get_field_value_intervals(schema_info, query_metadata, parameters):
-    """Map each (query_path, field) tuple to its field value interval or None if not supported."""
+def get_field_value_intervals(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+    parameters: Dict[str, Any],
+) -> Dict[PropertyPath, Interval[Any]]:
+    """Map each (query_path, field) tuple to its field value interval."""
     field_value_intervals = {}
     for location, location_info in query_metadata.registered_locations:
         filter_infos = query_metadata.get_filter_infos(location)
         vertex_type_name = location_info.type.name
 
         # Group filters by field
-        single_field_filters = {}
+        single_field_filters: Dict[str, List[FilterInfo]] = {}
         for filter_info in filter_infos:
             if len(filter_info.fields) == 0:
                 raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_type_name}")
@@ -76,7 +76,11 @@ def get_field_value_intervals(schema_info, query_metadata, parameters):
     return field_value_intervals
 
 
-def get_distinct_result_set_estimates(schema_info, query_metadata, parameters):
+def get_distinct_result_set_estimates(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+    parameters: Dict[str, Any],
+) -> Dict[VertexPath, float]:
     """Map each location to its max number of different results expected in the result."""
     distinct_result_set_estimates = {}
     for location, location_info in query_metadata.registered_locations:
@@ -93,8 +97,12 @@ def get_distinct_result_set_estimates(schema_info, query_metadata, parameters):
 
 
 def get_pagination_capacities(
-    schema_info, field_value_intervals, distinct_result_set_estimates, query_metadata, parameters
-):
+    schema_info: QueryPlanningSchemaInfo,
+    field_value_intervals: Dict[PropertyPath, Interval[Any]],
+    distinct_result_set_estimates: Dict[VertexPath, float],
+    query_metadata: QueryMetadataTable,
+    parameters: Dict[str, Any],
+) -> Dict[PropertyPath, float]:
     """Get the pagination capacity for each eligible pagination field.
 
     The pagination capacity of a field is defined as the maximum number of pages we can split
@@ -151,10 +159,11 @@ def get_pagination_capacities(
 @dataclass
 class QueryAnalysis:
     """A cache for analysis passes over a fixed query and fixed schema_info."""
+
     schema_info: QueryPlanningSchemaInfo
     query: QueryStringWithParameters
 
-    @functools.cached_property
+    @cached_property
     def metadata_table(self):
         return graphql_to_ir(
             self.schema_info.schema,
@@ -162,40 +171,30 @@ class QueryAnalysis:
             type_equivalence_hints=self.schema_info.type_equivalence_hints,
         ).query_metadata_table
 
-    @functools.cached_property
-    def cardinality_estimate(self):
-        self._cardinality_estimate = estimate_query_result_cardinality(
-            self.schema_info,
-            self.query.query_string,
-            self.query.parameters
+    @cached_property
+    def cardinality_estimate(self) -> float:
+        return estimate_query_result_cardinality(
+            self.schema_info, self.query.query_string, self.query.parameters
         )
-        return self._cardinality_estimate
 
-    @functools.cached_property
-    def field_value_intervals(self):
-        self._field_value_intervals = get_field_value_intervals(
-            self.schema_info,
-            self.metadata_table,
-            self.query.parameters
+    @cached_property
+    def field_value_intervals(self) -> Dict[PropertyPath, Interval[Any]]:
+        return get_field_value_intervals(
+            self.schema_info, self.metadata_table, self.query.parameters
         )
-        return self._field_value_intervals
 
-    @functools.cached_property
-    def distinct_result_set_estimates(self):
-        self._distinct_result_set_estimates = get_distinct_result_set_estimates(
-            self.schema_info,
-            self.metadata_table,
-            self.query.parameters
+    @cached_property
+    def distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
+        return get_distinct_result_set_estimates(
+            self.schema_info, self.metadata_table, self.query.parameters
         )
-        return self._distinct_result_set_estimates
 
-    @functools.cached_property
-    def pagination_capacities(self):
-        self._pagination_capacities = get_pagination_capacities(
+    @cached_property
+    def pagination_capacities(self) -> Dict[PropertyPath, float]:
+        return get_pagination_capacities(
             self.schema_info,
             self.field_value_intervals,
             self.distinct_result_set_estimates,
             self.metadata_table,
-            self.query.parameters
+            self.query.parameters,
         )
-        return self._pagination_capacities

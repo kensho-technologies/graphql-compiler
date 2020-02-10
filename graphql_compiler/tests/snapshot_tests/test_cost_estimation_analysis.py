@@ -3,11 +3,10 @@ import unittest
 
 import pytest
 
-from ...global_utils import QueryStringWithParameters
-from ...compiler.compiler_frontend import graphql_to_ir
 from ...cost_estimation.analysis import QueryAnalysis
 from ...cost_estimation.interval import Interval
 from ...cost_estimation.statistics import LocalStatistics
+from ...global_utils import QueryStringWithParameters
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
@@ -18,7 +17,7 @@ from ..test_helpers import generate_schema_graph
 # pylint: disable=no-member
 @pytest.mark.slow
 class CostEstimationAnalysisTests(unittest.TestCase):
-    """Test the cost estimation module using standard input data when possible."""
+    """Test the cost estimation analysis passes."""
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_field_value_intervals(self) -> None:
@@ -43,9 +42,8 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                     name @output(out_name: "animal_name")
                     uuid @filter(op_name: ">", value: ["$uuid_min"])
                 }
-            }""", {
-                "uuid_min": "80000000-0000-0000-0000-000000000000",
-            }
+            }""",
+            {"uuid_min": "80000000-0000-0000-0000-000000000000",},
         )
         intervals = QueryAnalysis(schema_info, query).field_value_intervals
         expected_intervals = {
@@ -72,7 +70,8 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal_name")
                 uuid @filter(op_name: "=", value: ["$uuid"])
@@ -80,9 +79,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                     name @output(out_name: "child_name")
                 }
             }
-        }""", {
-            "uuid": "80000000-0000-0000-0000-000000000000",
-        })
+        }""",
+            {"uuid": "80000000-0000-0000-0000-000000000000",},
+        )
 
         estimates = QueryAnalysis(schema_info, query).distinct_result_set_estimates
         expected_estimates = {
@@ -108,14 +107,15 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal_name")
                 uuid @filter(op_name: ">", value: ["$uuid_min"])
             }
-        }""", {
-            "uuid_min": "80000000-0000-0000-0000-000000000000",
-        })
+        }""",
+            {"uuid_min": "80000000-0000-0000-0000-000000000000",},
+        )
 
         capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 500}
@@ -138,14 +138,15 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal_name")
                 uuid @filter(op_name: "=", value: ["$uuid"])
             }
-        }""", {
-            "uuid": "80000000-0000-0000-0000-000000000000",
-        })
+        }""",
+            {"uuid": "80000000-0000-0000-0000-000000000000",},
+        )
 
         capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 1}
@@ -171,11 +172,14 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
             }
-        }""", {})
+        }""",
+            {},
+        )
 
         capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {
@@ -204,14 +208,15 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
                 limbs @filter(op_name: ">=", value: ["$limbs_min"])
             }
-        }""", {
-            "limbs_min": 10,
-        })
+        }""",
+            {"limbs_min": 10,},
+        )
 
         capacities = QueryAnalysis(schema_info, query).pagination_capacities
         expected_capacities = {
