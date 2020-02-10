@@ -55,9 +55,7 @@ def get_field_value_intervals(
     query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
-    """Map each PropertyPath in the query to its field value interval if it can be computed.
-
-    # XXX more docs
+    """Map the PropertyPath of each field in the query to its field value interval.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
