@@ -1,3 +1,4 @@
+# Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 from dataclasses import dataclass
 from typing import Any, Dict, List
@@ -43,7 +44,16 @@ def get_field_value_intervals(
     query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
-    """Map each (query_path, field) tuple to its field value interval."""
+    """Map each PropertyPath in the query to its field value interval if it can be computed.
+
+    Args:
+        - schema_info: QueryPlanningSchemaInfo
+        - query_metadata: a representation of the query
+        - parameters: the parameters used for the query
+
+    Returns:
+        Dict mapping some PropertyPaths to the interval of filtered values at that field.
+    """
     field_value_intervals = {}
     for location, location_info in query_metadata.registered_locations:
         filter_infos = query_metadata.get_filter_infos(location)
@@ -81,7 +91,19 @@ def get_distinct_result_set_estimates(
     query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
 ) -> Dict[VertexPath, float]:
-    """Map each location to its max number of different results expected in the result."""
+    """Map each VertexPath in the query to its distinct result set estimate.
+
+    The distinct result set estimate for a query node is the expected number of different
+    vertices that will appear under it in the result of the query.
+
+    Args:
+        - schema_info: QueryPlanningSchemaInfo
+        - query_metadata: a representation of the query
+        - parameters: the query parameters
+
+    Returns:
+        the distinct result set estimate for each VertexPath
+    """
     distinct_result_set_estimates = {}
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
@@ -110,6 +132,16 @@ def get_pagination_capacities(
     will have similar sizes. This reasoning is local: if a filter in a different location is
     correlated with the values on this field, the generated pages might turn out to have
     wildly different sizes. This problem is somewhat unavoidable.
+
+    Args:
+        - schema_info: QueryPlanningSchemaInfo
+        - field_value_intervals: see get_field_value_intervals
+        - distinct_result_set_estimates: see get_distinct_result_set_estimates
+        - query_metadata: a representation of the query
+        - parameters: the query parameters
+
+    Returns:
+        The pagination capacity of each Property path
     """
     pagination_capacities = {}
     for location, location_info in query_metadata.registered_locations:
