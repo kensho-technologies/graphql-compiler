@@ -26,6 +26,17 @@ from .filter_selectivity_utils import (
 def _convert_int_interval_to_field_value_interval(
     schema_info: QueryPlanningSchemaInfo, vertex_type: str, field: str, interval: Interval[int]
 ) -> Interval[Any]:
+    """Convert the integer interval endpoints to a type appropriate for the field.
+
+    Args:
+        schema_info: QueryPlanningSchemaInfo
+        vertex_type: name of a vertex type
+        field: name of a field on the vertex_type
+        interval: interval to convert
+
+    Returns:
+        Interval with endpoints appropriate for the field on the vertex_type.
+    """
     lower_bound = None
     upper_bound = None
     if interval.lower_bound is not None:
@@ -46,10 +57,12 @@ def get_field_value_intervals(
 ) -> Dict[PropertyPath, Interval[Any]]:
     """Map each PropertyPath in the query to its field value interval if it can be computed.
 
+    # XXX more docs
+
     Args:
-        - schema_info: QueryPlanningSchemaInfo
-        - query_metadata: a representation of the query
-        - parameters: the parameters used for the query
+        schema_info: QueryPlanningSchemaInfo
+        query_metadata: representation of the query
+        parameters: parameters used for the query
 
     Returns:
         Dict mapping some PropertyPaths to the interval of filtered values at that field.
@@ -71,17 +84,12 @@ def get_field_value_intervals(
 
         # Find field_value_interval for each field
         for field_name, filters_on_field in single_field_filters.items():
-            filters_on_field = [
-                filter_info for filter_info in filter_infos if filter_info.fields == (field_name,)
-            ]
-
             integer_interval = get_integer_interval_for_filters_on_field(
                 schema_info, filters_on_field, vertex_type_name, field_name, parameters
             )
             field_value_interval = _convert_int_interval_to_field_value_interval(
                 schema_info, vertex_type_name, field_name, integer_interval
             )
-
             field_value_intervals[(location.query_path, field_name)] = field_value_interval
     return field_value_intervals
 
@@ -97,9 +105,9 @@ def get_distinct_result_set_estimates(
     vertices that will appear under it in the result of the query.
 
     Args:
-        - schema_info: QueryPlanningSchemaInfo
-        - query_metadata: a representation of the query
-        - parameters: the query parameters
+        schema_info: QueryPlanningSchemaInfo
+        query_metadata: a representation of the query
+        parameters: the query parameters
 
     Returns:
         the distinct result set estimate for each VertexPath
@@ -113,7 +121,10 @@ def get_distinct_result_set_estimates(
             schema_info, filter_infos, parameters, vertex_type_name, class_count
         )
 
-    # TODO transfer along many-to-one edges
+    # TODO(bojanserafimov): If there's a many-to-one edge from A to B in the query, the
+    #                       distinct result set estimate for B cannot be greater than
+    #                       the one for A. Taking this into account would make the results
+    #                       more accurate.
 
     return distinct_result_set_estimates
 
@@ -134,11 +145,11 @@ def get_pagination_capacities(
     wildly different sizes. This problem is somewhat unavoidable.
 
     Args:
-        - schema_info: QueryPlanningSchemaInfo
-        - field_value_intervals: see get_field_value_intervals
-        - distinct_result_set_estimates: see get_distinct_result_set_estimates
-        - query_metadata: a representation of the query
-        - parameters: the query parameters
+        schema_info: QueryPlanningSchemaInfo
+        field_value_intervals: see get_field_value_intervals
+        distinct_result_set_estimates: see get_distinct_result_set_estimates
+        query_metadata: a representation of the query
+        parameters: the query parameters
 
     Returns:
         The pagination capacity of each Property path
@@ -179,7 +190,8 @@ def get_pagination_capacities(
                             )
                         relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
 
-                        # TODO take into account duplicate quantile values
+                        # TODO(bojanserafimov): If the relevant quantiles contain duplicates, the
+                        #                       pagination capacity would be lower.
 
                         pagination_capacities[key] = min(
                             len(relevant_quantiles) + 1,
