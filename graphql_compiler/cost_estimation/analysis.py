@@ -129,7 +129,8 @@ def get_pagination_capacities(
 
                         # Since we can't be sure the minimum observed value is the
                         # actual minimum value, we treat values less than it as part
-                        # of the first quantile. That's why we drop the minimum and
+                        # of the first quantile. Similarly, we treat values greater than the known
+                        # maximum as part of the last quantile. That's why we drop the minimum and
                         # maximum observed values from the quantile list.
                         proper_quantiles = quantiles[1:-1]
 
