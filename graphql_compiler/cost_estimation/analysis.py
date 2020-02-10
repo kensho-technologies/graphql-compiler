@@ -198,6 +198,7 @@ class QueryAnalysis:
 
     @cached_property
     def metadata_table(self):
+        """Return the metadata table for this query."""
         return graphql_to_ir(
             self.schema_info.schema,
             self.query.query_string,
@@ -206,24 +207,28 @@ class QueryAnalysis:
 
     @cached_property
     def cardinality_estimate(self) -> float:
+        """Return the cardinality estimate for this query."""
         return estimate_query_result_cardinality(
             self.schema_info, self.query.query_string, self.query.parameters
         )
 
     @cached_property
     def field_value_intervals(self) -> Dict[PropertyPath, Interval[Any]]:
+        """Return the field value intervals for this query."""
         return get_field_value_intervals(
             self.schema_info, self.metadata_table, self.query.parameters
         )
 
     @cached_property
     def distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
+        """Return the distinct result set estimates for this query."""
         return get_distinct_result_set_estimates(
             self.schema_info, self.metadata_table, self.query.parameters
         )
 
     @cached_property
     def pagination_capacities(self) -> Dict[PropertyPath, float]:
+        """Return the pagination capacities for this query."""
         return get_pagination_capacities(
             self.schema_info,
             self.field_value_intervals,
