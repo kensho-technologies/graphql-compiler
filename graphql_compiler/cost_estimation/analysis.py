@@ -176,11 +176,10 @@ def get_pagination_capacities(
                     )
                     if quantiles is not None:
 
-                        # Since we can't be sure the minimum observed value is the
-                        # actual minimum value, we treat values less than it as part
-                        # of the first chunk. Similarly, we treat values greater than the known
-                        # maximum as part of the last chunk. That's why we drop the minimum and
-                        # maximum observed values from the quantile list.
+                        # The first and last values of the quantiles are the minimum and maximum
+                        # observed values. We call all other values the proper quantiles. We don't
+                        # directly use the minimum and maximum values as page boundaries since we
+                        # will most likely generate empty pages.
                         proper_quantiles = quantiles[1:-1]
 
                         # Get the relevant quantiles (ones inside the field_value_interval)
