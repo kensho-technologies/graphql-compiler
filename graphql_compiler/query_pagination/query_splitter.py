@@ -9,7 +9,7 @@ from .query_parameterizer import generate_parameterized_queries
 
 
 def split_into_page_query_and_remainder_query(
-    schema_info: QueryPlanningSchemaInfo, query: ASTWithParameters, num_pages: int
+    analysis, query: ASTWithParameters, num_pages: int
 ) -> Tuple[ASTWithParameters, ASTWithParameters, Tuple[PaginationAdvisory, ...]]:
     """Split a query into two equivalent queries, one of which will return roughly a page of data.
 
@@ -42,7 +42,7 @@ def split_into_page_query_and_remainder_query(
         )
 
     # TODO propagate advisories to top-level
-    pagination_plan, advisories = get_pagination_plan(schema_info, query.query_ast, num_pages)
+    pagination_plan, advisories = get_pagination_plan(analysis, query.query_ast, num_pages)
     if len(pagination_plan.vertex_partitions) != 1:
         raise NotImplementedError(
             u"We only support pagination plans with one vertex partition. "
@@ -50,11 +50,11 @@ def split_into_page_query_and_remainder_query(
         )
 
     parameter_generator = generate_parameters_for_vertex_partition(
-        schema_info, query.query_ast, query.parameters, pagination_plan.vertex_partitions[0]
+        analysis.schema_info, query.query_ast, query.parameters, pagination_plan.vertex_partitions[0]
     )
     first_param = next(parameter_generator)
 
     page_query, remainder_query = generate_parameterized_queries(
-        schema_info, query, pagination_plan.vertex_partitions[0], first_param
+        analysis.schema_info, query, pagination_plan.vertex_partitions[0], first_param
     )
     return page_query, remainder_query, advisories

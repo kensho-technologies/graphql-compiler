@@ -3,6 +3,7 @@ from typing import Tuple
 
 from graphql.language.printer import print_ast
 
+from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..ast_manipulation import safe_parse_graphql
 from ..cost_estimation.cardinality_estimator import estimate_number_of_pages
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
@@ -13,7 +14,7 @@ from .typedefs import PageAndRemainder
 
 
 def paginate_query_ast(
-    schema_info: QueryPlanningSchemaInfo, query: ASTWithParameters, page_size: int
+    analysis: QueryPlanningAnalysis, query: ASTWithParameters, page_size: int
 ) -> Tuple[PageAndRemainder[ASTWithParameters], Tuple[PaginationAdvisory, ...]]:
     """Generate a query fetching a page of results and the remainder queries for a query AST.
 
@@ -51,11 +52,11 @@ def paginate_query_ast(
     #             print the given AST and provide that to the cost estimator.
     graphql_query_string = print_ast(query.query_ast)
     num_pages = estimate_number_of_pages(
-        schema_info, graphql_query_string, query.parameters, page_size
+        analysis.schema_info, graphql_query_string, query.parameters, page_size
     )
     if num_pages > 1:
         page_query, remainder_query, advisories = split_into_page_query_and_remainder_query(
-            schema_info, query, num_pages
+            analysis, query, num_pages
         )
         remainder_queries = (remainder_query,)
 
@@ -88,10 +89,11 @@ def paginate_query(
             - Tuple of PaginationAdvisory objects that communicate what can be done to improve
               pagination
     """
+    analysis = QueryPlanningAnalysis(schema_info, query)
     query_ast = safe_parse_graphql(query.query_string)
 
     ast_page_and_remainder, advisories = paginate_query_ast(
-        schema_info, ASTWithParameters(query_ast, query.parameters), page_size
+        analysis, ASTWithParameters(query_ast, query.parameters), page_size
     )
 
     page_query_with_parameters = QueryStringWithParameters(
