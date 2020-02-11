@@ -130,6 +130,9 @@ def get_pagination_plan(
     vertex_path = (root_node,)
     property_path = PropertyPath(vertex_path, pagination_field)
     capacity = analysis.pagination_capacities[property_path]
-    number_of_splits = int(min(capacity, number_of_pages))
+    number_of_splits = int(min(capacity, number_of_pages))  # TODO int cast sketchy
+
+    if number_of_splits <= 1:
+        return PaginationPlan(tuple()), tuple()
     vertex_partition_plan = VertexPartitionPlan(vertex_path, pagination_field, number_of_splits)
     return PaginationPlan((vertex_partition_plan,)), tuple()  # TODO is this right?

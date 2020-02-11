@@ -70,6 +70,45 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_plan, pagination_plan)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_planning_unique_filter(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        # Check that the correct plan is generated when it's obvious (page the root)
+        query = QueryStringWithParameters("""{
+            Animal {
+                uuid @filter(op_name: "=", value: ["$animal_uuid"])
+                name @output(out_name: "animal_name")
+            }
+        }""", {
+            "animal_uuid": "40000000-0000-0000-0000-000000000000",
+        })
+        number_of_pages = 10
+        query_ast = safe_parse_graphql(query.query_string)
+        analysis = QueryPlanningAnalysis(schema_info, query)
+        pagination_plan, warnings = get_pagination_plan(analysis, query_ast, number_of_pages)
+
+        # This is a white box test. We check that we don't paginate on the root when it has a
+        # unique filter on it. A better plan is to paginate on a different vertex, but that is
+        # not implemented.
+        expected_plan = PaginationPlan(tuple())
+        expected_warnings: Tuple[PaginationAdvisory, ...] = tuple()
+        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
+        self.assertEqual(expected_plan, pagination_plan)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_planning_on_int(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
