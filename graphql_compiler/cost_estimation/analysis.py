@@ -55,7 +55,7 @@ def get_field_value_intervals(
     query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
-    """Map the PropertyPath of each field in the query to its field value interval.
+    """Map the PropertyPath of each field in the query with filters to its field value interval.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
@@ -88,7 +88,8 @@ def get_field_value_intervals(
             field_value_interval = _convert_int_interval_to_field_value_interval(
                 schema_info, vertex_type_name, field_name, integer_interval
             )
-            field_value_intervals[(location.query_path, field_name)] = field_value_interval
+            property_path = PropertyPath(location.query_path, field_name)
+            field_value_intervals[property_path] = field_value_interval
     return field_value_intervals
 
 
@@ -160,12 +161,16 @@ def get_pagination_capacities(
         vertex_type_name = location_info.type.name
 
         for field_name, _ in location_info.type.fields.items():
-            key = (location.query_path, field_name)
+            property_path = PropertyPath(location.query_path, field_name)
             if not is_meta_field(field_name):
                 if is_uuid4_type(schema_info, vertex_type_name, field_name):
-                    pagination_capacities[key] = distinct_result_set_estimates[location.query_path]
+                    pagination_capacities[property_path] = distinct_result_set_estimates[
+                        location.query_path
+                    ]
                 elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
-                    field_value_interval = field_value_intervals.get(key, Interval(None, None))
+                    field_value_interval = field_value_intervals.get(
+                        property_path, Interval(None, None)
+                    )
                     quantiles = schema_info.statistics.get_field_quantiles(
                         vertex_type_name, field_name
                     )
@@ -173,8 +178,8 @@ def get_pagination_capacities(
 
                         # Since we can't be sure the minimum observed value is the
                         # actual minimum value, we treat values less than it as part
-                        # of the first quantile. Similarly, we treat values greater than the known
-                        # maximum as part of the last quantile. That's why we drop the minimum and
+                        # of the first chunk. Similarly, we treat values greater than the known
+                        # maximum as part of the last chunk. That's why we drop the minimum and
                         # maximum observed values from the quantile list.
                         proper_quantiles = quantiles[1:-1]
 
@@ -194,7 +199,7 @@ def get_pagination_capacities(
                         # TODO(bojanserafimov): If the relevant quantiles contain duplicates, the
                         #                       pagination capacity would be lower.
 
-                        pagination_capacities[key] = min(
+                        pagination_capacities[property_path] = min(
                             len(relevant_quantiles) + 1,
                             distinct_result_set_estimates[location.query_path],
                         )

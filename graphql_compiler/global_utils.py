@@ -1,4 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
+from collections import namedtuple
 from dataclasses import dataclass
 from typing import Any, Dict, Tuple
 
@@ -9,8 +10,8 @@ import six
 # A path starting with a vertex and continuing with edges from that vertex
 VertexPath = Tuple[str, ...]
 
-# A VertexPath with a property on the final vertex of the path
-PropertyPath = Tuple[VertexPath, str]
+# A VertexPath with a property on the final vertex of the path.
+PropertyPath = namedtuple("PropertyPath", ["vertex_path", "field_name"])
 
 
 @dataclass

@@ -152,7 +152,7 @@ def get_best_vertex_partition_plan(
 
 
 def get_pagination_plan(
-    schema_info: QueryPlanningSchemaInfo, query_ast: DocumentNode, number_of_pages: int
+    schema_info: QueryPlanningSchemaInfo, query_ast: DocumentNode, analysis, number_of_pages: int
 ) -> Tuple[PaginationPlan, Tuple[PaginationAdvisory, ...]]:
     """Make a best-effort PaginationPlan and advise on how to improve statistics.
 
@@ -184,6 +184,9 @@ def get_pagination_plan(
         )
     elif number_of_pages == 1:
         return PaginationPlan(tuple()), tuple()
+
+    for property_path, capacity in analysis.pagination_capacities:
+        raise NotImplementedError()
 
     # Select the root node as the only vertex to paginate on.
     # TODO(bojanserafimov): Make a better pagination plan. Selecting the root is not
