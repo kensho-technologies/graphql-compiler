@@ -114,13 +114,8 @@ def get_pagination_plan(
         return PaginationPlan(tuple()), tuple()
 
     # Select the root node as the only vertex to paginate on.
-    # TODO(bojanserafimov): Make a better pagination plan. Selecting the root is not
-    #                       a good idea if:
-    #                       - The root node has no pagination_key
-    #                       - The root node has a unique index
-    #                       - There are only a few different vertices at the root
-    #                         that this query select.
-    #                       - The class count of the root is lower than the page count
+    # TODO(bojanserafimov): Make a better pagination plan. Another vertex might have a
+    #                       higher pagination capacity than the root does.
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
     pagination_field = analysis.schema_info.pagination_keys.get(pagination_node)
