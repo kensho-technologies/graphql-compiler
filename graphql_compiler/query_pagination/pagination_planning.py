@@ -111,11 +111,11 @@ def get_pagination_plan(
     elif number_of_pages == 1:
         return PaginationPlan(tuple()), tuple()
 
-    # Select the root node as the only vertex to paginate on.
-    # TODO(bojanserafimov): Make a better pagination plan. Another vertex might have a
+    # TODO(bojanserafimov): Make a better pagination plan. A non-root vertex might have a
     #                       higher pagination capacity than the root does.
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
+
     # TODO(bojanserafimov): Remove pagination fields. The pagination planner is now smart enough
     #                       to pick the best field for pagination based on the query. This is not
     #                       trivial since the pagination_fields are used in tests to force int
@@ -127,7 +127,7 @@ def get_pagination_plan(
     vertex_path = (root_node,)
     property_path = PropertyPath(vertex_path, pagination_field)
     capacity = analysis.pagination_capacities[property_path]
-    number_of_splits = int(min(capacity, number_of_pages))  # TODO int cast sketchy
+    number_of_splits = min(capacity, number_of_pages)
 
     if number_of_splits <= 1:
         return PaginationPlan(tuple()), tuple()
