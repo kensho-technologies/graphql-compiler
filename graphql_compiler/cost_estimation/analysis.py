@@ -154,7 +154,7 @@ def get_pagination_capacities(
         parameters: the query parameters
 
     Returns:
-        The pagination capacity of each Property path
+        the pagination capacity of each PropertyPath
     """
     pagination_capacities = {}
     for location, location_info in query_metadata.registered_locations:
