@@ -1,7 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-from collections import namedtuple
 from dataclasses import dataclass
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, NamedTuple, Tuple
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
@@ -10,8 +9,12 @@ import six
 # A path starting with a vertex and continuing with edges from that vertex
 VertexPath = Tuple[str, ...]
 
-# A VertexPath with a property on the final vertex of the path.
-PropertyPath = namedtuple("PropertyPath", ["vertex_path", "field_name"])
+
+class PropertyPath(NamedTuple):
+    """A VertexPath with a property on the final vertex of the path."""
+
+    vertex_path: VertexPath
+    field_name: str
 
 
 @dataclass
