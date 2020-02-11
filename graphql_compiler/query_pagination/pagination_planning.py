@@ -132,4 +132,4 @@ def get_pagination_plan(
     if number_of_splits <= 1:
         return PaginationPlan(tuple()), tuple()
     vertex_partition_plan = VertexPartitionPlan(vertex_path, pagination_field, number_of_splits)
-    return PaginationPlan((vertex_partition_plan,)), tuple()  # TODO is this right?
+    return PaginationPlan((vertex_partition_plan,)), tuple()
