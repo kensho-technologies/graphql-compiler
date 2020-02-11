@@ -116,6 +116,10 @@ def get_pagination_plan(
     #                       higher pagination capacity than the root does.
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
+    # TODO(bojanserafimov): Remove pagination fields. The pagination planner is now smart enough
+    #                       to pick the best field for pagination based on the query. This is not
+    #                       trivial since the pagination_fields are used in tests to force int
+    #                       pagination when uuid pagination is also available.
     pagination_field = analysis.schema_info.pagination_keys.get(pagination_node)
     if pagination_field is None:
         return None, (PaginationFieldNotSpecified(pagination_node),)
