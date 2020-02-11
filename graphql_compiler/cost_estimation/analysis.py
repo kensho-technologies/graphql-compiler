@@ -59,7 +59,7 @@ def get_field_value_intervals(
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        query_metadata: representation of the query
+        query_metadata: info on locations, inputs, outputs, and tags in the query
         parameters: parameters used for the query
 
     Returns:
@@ -108,7 +108,7 @@ def get_distinct_result_set_estimates(
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        query_metadata: a representation of the query
+        query_metadata: info on locations, inputs, outputs, and tags in the query
         parameters: the query parameters
 
     Returns:
@@ -150,7 +150,7 @@ def get_pagination_capacities(
         schema_info: QueryPlanningSchemaInfo
         field_value_intervals: see get_field_value_intervals
         distinct_result_set_estimates: see get_distinct_result_set_estimates
-        query_metadata: a representation of the query
+        query_metadata: info on locations, inputs, outputs, and tags in the query
         parameters: the query parameters
 
     Returns:
