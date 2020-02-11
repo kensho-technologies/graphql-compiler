@@ -357,7 +357,7 @@ def estimate_query_result_cardinality(schema_info, graphql_query, parameters):
     return expected_query_result_cardinality
 
 
-def estimate_number_of_pages(schema_info, graphql_query, params, page_size):
+def estimate_number_of_pages(analysis, params, page_size):
     """Estimate how many pages of results will be generated for a given query.
 
     Using the cardinality estimator, we generate an estimate for the query result cardinality i.e.
@@ -385,7 +385,7 @@ def estimate_number_of_pages(schema_info, graphql_query, params, page_size):
             u" with page size lower than 1: {} {}".format(graphql_query, page_size, params)
         )
 
-    result_size = estimate_query_result_cardinality(schema_info, graphql_query, params)
+    result_size = analysis.cardinality_estimate
     if result_size < 0.0:
         raise AssertionError(
             u"Received negative estimate {} for cardinality of query {}: {}".format(

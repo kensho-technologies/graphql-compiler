@@ -48,12 +48,7 @@ def paginate_query_ast(
     remainder_queries: Tuple[ASTWithParameters, ...] = tuple()
     advisories: Tuple[PaginationAdvisory, ...] = tuple()
 
-    # HACK(vlad): Since the current cost estimator expects GraphQL queries given as a string, we
-    #             print the given AST and provide that to the cost estimator.
-    graphql_query_string = print_ast(query.query_ast)
-    num_pages = estimate_number_of_pages(
-        analysis.schema_info, graphql_query_string, query.parameters, page_size
-    )
+    num_pages = estimate_number_of_pages(analysis, query.parameters, page_size)
     if num_pages > 1:
         page_query, remainder_query, advisories = split_into_page_query_and_remainder_query(
             analysis, query, num_pages
