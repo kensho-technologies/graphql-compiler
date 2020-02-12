@@ -217,7 +217,7 @@ class QueryPlanningAnalysis:
 
     @cached_property
     def query_string_with_parameters(self):
-        """Return the query in string form"""
+        """Return the query in string form."""
         query_string = print_ast(self.ast_with_parameters.query_ast)
         return QueryStringWithParameters(query_string, self.ast_with_parameters.parameters)
 
