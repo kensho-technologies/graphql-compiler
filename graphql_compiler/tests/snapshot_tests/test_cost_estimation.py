@@ -7,9 +7,8 @@ import pytest
 import pytz
 
 from .. import test_input_data
-from ...global_utils import ASTWithParameters, QueryStringWithParameters
 from ...compiler.metadata import FilterInfo
-from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
+from ...cost_estimation.analysis import QueryPlanningAnalysis
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY,
     FRACTIONAL_SELECTIVITY,
@@ -24,7 +23,7 @@ from ...cost_estimation.int_value_conversion import (
 )
 from ...cost_estimation.interval import Interval, intersect_int_intervals
 from ...cost_estimation.statistics import LocalStatistics, Statistics
-from ...cost_estimation.analysis import QueryPlanningAnalysis
+from ...global_utils import QueryStringWithParameters
 from ...schema.schema_info import QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ...schema_generation.schema_graph import SchemaGraph

@@ -8,8 +8,8 @@ import pytest
 import pytz
 
 from ...ast_manipulation import safe_parse_graphql
-from ...cost_estimation.statistics import LocalStatistics
 from ...cost_estimation.analysis import QueryPlanningAnalysis
+from ...cost_estimation.statistics import LocalStatistics
 from ...global_utils import ASTWithParameters, QueryStringWithParameters
 from ...query_pagination import paginate_query
 from ...query_pagination.pagination_planning import (
@@ -198,7 +198,9 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_remainder.parameters, remainder[0].parameters)
 
         # Check that the first page is estimated to fit into a page
-        first_page_cardinality_estimate = QueryPlanningAnalysis(schema_info, first).cardinality_estimate
+        first_page_cardinality_estimate = QueryPlanningAnalysis(
+            schema_info, first
+        ).cardinality_estimate
         self.assertAlmostEqual(1, first_page_cardinality_estimate)
 
         # Get the second page
@@ -237,7 +239,9 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_remainder.parameters, remainder[0].parameters)
 
         # Check that the second page is estimated to fit into a page
-        second_page_cardinality_estimate = QueryPlanningAnalysis(schema_info, first).cardinality_estimate
+        second_page_cardinality_estimate = QueryPlanningAnalysis(
+            schema_info, first
+        ).cardinality_estimate
         self.assertAlmostEqual(1, second_page_cardinality_estimate)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")

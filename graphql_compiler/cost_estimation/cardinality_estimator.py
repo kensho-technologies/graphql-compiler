@@ -1,9 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
-from typing import Dict, Any
+from typing import Any, Dict
 
-from ..compiler.metadata import QueryMetadataTable
-from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import (
     INBOUND_EDGE_DIRECTION,
     OUTBOUND_EDGE_DIRECTION,
@@ -11,8 +9,9 @@ from ..compiler.helpers import (
     Location,
     get_edge_direction_and_name,
 )
-from .filter_selectivity_utils import adjust_counts_for_filters
+from ..compiler.metadata import QueryMetadataTable
 from ..schema.schema_info import QueryPlanningSchemaInfo
+from .filter_selectivity_utils import adjust_counts_for_filters
 
 
 def _is_subexpansion_optional(query_metadata, parent_location, child_location):
@@ -324,7 +323,7 @@ def _estimate_expansion_cardinality(schema_info, query_metadata, parameters, cur
 def estimate_query_result_cardinality(
     schema_info: QueryPlanningSchemaInfo,
     query_metadata: QueryMetadataTable,
-    parameters: Dict[str, Any]
+    parameters: Dict[str, Any],
 ) -> float:
     """Estimate the cardinality of a GraphQL query's result using database statistics.
 

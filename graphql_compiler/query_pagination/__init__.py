@@ -4,15 +4,15 @@ from typing import Tuple
 from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
-from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..cost_estimation.analysis import QueryPlanningAnalysis
+from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import PaginationAdvisory
 from .query_splitter import split_into_page_query_and_remainder_query
 from .typedefs import PageAndRemainder
 
 
-def _estimate_number_of_pages(result_size, page_size):
+def _estimate_number_of_pages(query, result_size, page_size):
     """Estimate how many pages of results will be generated for a given query.
 
     Using the cardinality estimator, we generate an estimate for the query result cardinality i.e.
@@ -23,10 +23,9 @@ def _estimate_number_of_pages(result_size, page_size):
     (or equal to) 5000 results.
 
     Args:
-        schema_info: QueryPlanningSchemaInfo
-        graphql_query: str, valid GraphQL query to be estimated.
-        params: dict, parameters for the given query.
-        page_size: int, desired number of result rows per page.
+        query: ASTWithParameters
+        result_size: The estimated result size of a query
+        page_size: The desired page size of a query
 
     Returns:
         int, estimated number of pages if the query were executed.
@@ -36,15 +35,13 @@ def _estimate_number_of_pages(result_size, page_size):
     """
     if page_size < 1:
         raise ValueError(
-            u"Could not estimate number of pages for query {}"
-            u" with page size lower than 1: {} {}".format(graphql_query, page_size, params)
+            f"Could not estimate number of pages for query {query}"
+            f" with page size lower than 1: {page_size}"
         )
 
     if result_size < 0.0:
         raise AssertionError(
-            u"Received negative estimate {} for cardinality of query {}: {}".format(
-                result_size, graphql_query, params
-            )
+            f"Received negative estimate {result_size} for cardinality of query {query}"
         )
 
     # Since using a // b returns the fraction rounded down, we instead use (a + b - 1) // b, which
@@ -83,7 +80,7 @@ def paginate_query_ast(
     """
     if page_size < 1:
         raise ValueError(
-            u"Could not page query {} with page size lower than 1: {}".format(query, page_size)
+            "Could not page query {} with page size lower than 1: {}".format(query, page_size)
         )
 
     # Initially, assume the query does not need to be paged i.e. will return one page of results.
@@ -94,10 +91,11 @@ def paginate_query_ast(
     # HACK(vlad): Since the current cost estimator expects GraphQL queries given as a string, we
     #             print the given AST and provide that to the cost estimator.
     graphql_query_string = print_ast(query.query_ast)
-    analysis = QueryPlanningAnalysis(schema_info,
-                                     QueryStringWithParameters(graphql_query_string, query.parameters))
+    analysis = QueryPlanningAnalysis(
+        schema_info, QueryStringWithParameters(graphql_query_string, query.parameters)
+    )
     result_size = analysis.cardinality_estimate
-    num_pages = _estimate_number_of_pages(result_size, page_size)
+    num_pages = _estimate_number_of_pages(query, result_size, page_size)
     if num_pages > 1:
         page_query, remainder_query, advisories = split_into_page_query_and_remainder_query(
             schema_info, query, num_pages
