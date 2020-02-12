@@ -13,14 +13,7 @@ from .typedefs import PageAndRemainder
 
 
 def _estimate_number_of_pages(query: ASTWithParameters, result_size: float, page_size: int) -> int:
-    """Estimate how many pages of results will be generated for a given query.
-
-    Using the cardinality estimator, we generate an estimate for the query result cardinality i.e.
-    the number of result rows, then divide (rounding up) by the page_size to get the approximate
-    number of pages that the query will produce.
-    For example, if a query were estimated to return 12000 result rows, and the desired page size is
-    5000, then the query can be divided into ceil(12000/5000)=3 pages, each with a result size below
-    (or equal to) 5000 results.
+    """Estimate how many pages of results we should generate to meet the desired result size.
 
     Args:
         query: ASTWithParameters
