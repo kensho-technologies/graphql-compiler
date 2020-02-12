@@ -1,6 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
+from typing import Dict, Any
 
+from ..compiler.metadata import QueryMetadataTable
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import (
     INBOUND_EDGE_DIRECTION,
@@ -10,6 +12,7 @@ from ..compiler.helpers import (
     get_edge_direction_and_name,
 )
 from .filter_selectivity_utils import adjust_counts_for_filters
+from ..schema.schema_info import QueryPlanningSchemaInfo
 
 
 def _is_subexpansion_optional(query_metadata, parent_location, child_location):
@@ -318,22 +321,26 @@ def _estimate_expansion_cardinality(schema_info, query_metadata, parameters, cur
     return expansion_cardinality
 
 
-def estimate_query_result_cardinality(schema_info, graphql_query, parameters):
+# XXX
+# 2. Move estimate_number_of_pages to pagination module
+# 3. Maybe use ast instead of query string in QueryPlanningAnalysis
+# 4. Propagate new api
+def estimate_query_result_cardinality(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+    parameters: Dict[str, Any]
+) -> float:
     """Estimate the cardinality of a GraphQL query's result using database statistics.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        graphql_query: string, a valid GraphQL query
+        query_metadata: info on locations, inputs, outputs, and tags in the query
         parameters: dict, parameters with which query will be executed.
 
     Returns:
         float, expected query result cardinality. Equal to the number of root vertices multiplied by
         the expected number of result sets per full expansion of a root vertex.
     """
-    query_metadata = graphql_to_ir(
-        schema_info.schema, graphql_query, type_equivalence_hints=schema_info.type_equivalence_hints
-    ).query_metadata_table
-
     root_location = query_metadata.root_location
 
     # First, count the vertices corresponding to the root location that pass relevant filters

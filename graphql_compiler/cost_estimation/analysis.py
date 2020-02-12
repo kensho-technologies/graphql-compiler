@@ -226,7 +226,7 @@ class QueryPlanningAnalysis:
     def cardinality_estimate(self) -> float:
         """Return the cardinality estimate for this query."""
         return estimate_query_result_cardinality(
-            self.schema_info, self.query.query_string, self.query.parameters
+            self.schema_info, self.metadata_table, self.query.parameters
         )
 
     @cached_property
