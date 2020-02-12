@@ -266,5 +266,6 @@ class QueryPlanningAnalysis:
 def analyze_query_string(
     schema_info: QueryPlanningSchemaInfo, query: QueryStringWithParameters
 ) -> QueryPlanningAnalysis:
+    """Create a QueryPlanningAnalysis object for the given query."""
     query_ast = safe_parse_graphql(query.query_string)
     return QueryPlanningAnalysis(schema_info, ASTWithParameters(query_ast, query.parameters))
