@@ -4,7 +4,9 @@ from dataclasses import dataclass
 from typing import Any, Dict, List
 
 from cached_property import cached_property
+from graphql.language.printer import print_ast
 
+from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
@@ -14,7 +16,7 @@ from ..cost_estimation.int_value_conversion import (
     is_uuid4_type,
 )
 from ..cost_estimation.interval import Interval
-from ..global_utils import PropertyPath, QueryStringWithParameters, VertexPath
+from ..global_utils import PropertyPath, QueryStringWithParameters, VertexPath, ASTWithParameters
 from ..schema import is_meta_field
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
@@ -211,14 +213,20 @@ class QueryPlanningAnalysis:
     """A cache for analysis passes over a fixed query and fixed schema_info."""
 
     schema_info: QueryPlanningSchemaInfo
-    query: QueryStringWithParameters
+    ast_with_parameters: ASTWithParameters
+
+    @cached_property
+    def query_string_with_parameters(self):
+        """Return the query in string form"""
+        query_string = print_ast(self.ast_with_parameters.query_ast)
+        return QueryStringWithParameters(query_string, self.ast_with_parameters.parameters)
 
     @cached_property
     def metadata_table(self):
         """Return the metadata table for this query."""
         return graphql_to_ir(
             self.schema_info.schema,
-            self.query.query_string,
+            self.query_string_with_parameters.query_string,
             type_equivalence_hints=self.schema_info.type_equivalence_hints,
         ).query_metadata_table
 
@@ -226,21 +234,21 @@ class QueryPlanningAnalysis:
     def cardinality_estimate(self) -> float:
         """Return the cardinality estimate for this query."""
         return estimate_query_result_cardinality(
-            self.schema_info, self.metadata_table, self.query.parameters
+            self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
         )
 
     @cached_property
     def field_value_intervals(self) -> Dict[PropertyPath, Interval[Any]]:
         """Return the field value intervals for this query."""
         return get_field_value_intervals(
-            self.schema_info, self.metadata_table, self.query.parameters
+            self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
         )
 
     @cached_property
     def distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
         """Return the distinct result set estimates for this query."""
         return get_distinct_result_set_estimates(
-            self.schema_info, self.metadata_table, self.query.parameters
+            self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
         )
 
     @cached_property
@@ -251,5 +259,10 @@ class QueryPlanningAnalysis:
             self.field_value_intervals,
             self.distinct_result_set_estimates,
             self.metadata_table,
-            self.query.parameters,
+            self.query_ast.parameters,
         )
+
+
+def analyze_query_string(schema_info: QueryPlanningSchemaInfo, query: QueryStringWithParameters) -> QueryPlanningAnalysis:
+    query_ast = safe_parse_graphql(query.query_string)
+    return QueryPlanningAnalysis(schema_info, ASTWithParameters(query_ast, query.parameters))

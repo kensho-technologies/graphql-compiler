@@ -8,7 +8,7 @@ import pytz
 
 from .. import test_input_data
 from ...compiler.metadata import FilterInfo
-from ...cost_estimation.analysis import QueryPlanningAnalysis
+from ...cost_estimation.analysis import analyze_query_string
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY,
     FRACTIONAL_SELECTIVITY,
@@ -44,7 +44,7 @@ def _make_schema_info_and_estimate_cardinality(
         pagination_keys=pagination_keys,
         uuid4_fields=uuid4_fields,
     )
-    analysis = QueryPlanningAnalysis(schema_info, QueryStringWithParameters(graphql_input, args))
+    analysis = analyze_query_string(schema_info, QueryStringWithParameters(graphql_input, args))
     return analysis.cardinality_estimate
 
 
