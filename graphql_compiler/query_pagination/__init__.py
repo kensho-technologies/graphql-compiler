@@ -12,7 +12,7 @@ from .query_splitter import split_into_page_query_and_remainder_query
 from .typedefs import PageAndRemainder
 
 
-def _estimate_number_of_pages(query, result_size, page_size):
+def _estimate_number_of_pages(query: ASTWithParameters, result_size: float, page_size: int) -> int:
     """Estimate how many pages of results will be generated for a given query.
 
     Using the cardinality estimator, we generate an estimate for the query result cardinality i.e.
