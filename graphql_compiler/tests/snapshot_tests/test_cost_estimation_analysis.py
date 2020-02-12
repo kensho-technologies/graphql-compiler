@@ -3,7 +3,7 @@ import unittest
 
 import pytest
 
-from ...cost_estimation.analysis import QueryPlanningAnalysis
+from ...cost_estimation.analysis import analyze_query_string
 from ...cost_estimation.interval import Interval
 from ...cost_estimation.statistics import LocalStatistics
 from ...global_utils import QueryStringWithParameters
@@ -45,7 +45,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             }""",
             {"uuid_min": "80000000-0000-0000-0000-000000000000",},
         )
-        intervals = QueryPlanningAnalysis(schema_info, query).field_value_intervals
+        intervals = analyze_query_string(schema_info, query).field_value_intervals
         expected_intervals = {
             (("Animal",), "uuid"): Interval(
                 lower_bound="80000000-0000-0000-0000-000000000001", upper_bound=None
@@ -83,7 +83,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"uuid": "80000000-0000-0000-0000-000000000000",},
         )
 
-        estimates = QueryPlanningAnalysis(schema_info, query).distinct_result_set_estimates
+        estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
         expected_estimates = {
             ("Animal",): 1,
             ("Animal", "out_Animal_ParentOf"): 1000,
@@ -117,7 +117,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"uuid_min": "80000000-0000-0000-0000-000000000000",},
         )
 
-        capacities = QueryPlanningAnalysis(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query).pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 500}
         self.assertEqual(expected_capacities, capacities)
 
@@ -148,7 +148,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"uuid": "80000000-0000-0000-0000-000000000000",},
         )
 
-        capacities = QueryPlanningAnalysis(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query).pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 1}
         self.assertEqual(expected_capacities, capacities)
 
@@ -181,7 +181,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {},
         )
 
-        capacities = QueryPlanningAnalysis(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query).pagination_capacities
         expected_capacities = {
             (("Species",), "limbs"): 100,
             (("Species",), "uuid"): 1000,
@@ -218,7 +218,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"limbs_min": 10,},
         )
 
-        capacities = QueryPlanningAnalysis(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query).pagination_capacities
         expected_capacities = {
             (("Species",), "limbs"): 91,
             (("Species",), "uuid"): 905,
