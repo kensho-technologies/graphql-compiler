@@ -16,7 +16,7 @@ from ..cost_estimation.int_value_conversion import (
     is_uuid4_type,
 )
 from ..cost_estimation.interval import Interval
-from ..global_utils import PropertyPath, QueryStringWithParameters, VertexPath, ASTWithParameters
+from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
 from ..schema import is_meta_field
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
@@ -259,10 +259,12 @@ class QueryPlanningAnalysis:
             self.field_value_intervals,
             self.distinct_result_set_estimates,
             self.metadata_table,
-            self.query_ast.parameters,
+            self.ast_with_parameters.parameters,
         )
 
 
-def analyze_query_string(schema_info: QueryPlanningSchemaInfo, query: QueryStringWithParameters) -> QueryPlanningAnalysis:
+def analyze_query_string(
+    schema_info: QueryPlanningSchemaInfo, query: QueryStringWithParameters
+) -> QueryPlanningAnalysis:
     query_ast = safe_parse_graphql(query.query_string)
     return QueryPlanningAnalysis(schema_info, ASTWithParameters(query_ast, query.parameters))
