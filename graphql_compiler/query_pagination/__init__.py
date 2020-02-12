@@ -4,7 +4,7 @@ from typing import Tuple
 from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
-from ..cost_estimation.analysis import QueryPlanningAnalysis
+from ..cost_estimation.analysis import analyze_query_string
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import PaginationAdvisory
@@ -84,7 +84,7 @@ def paginate_query_ast(
     # HACK(vlad): Since the current cost estimator expects GraphQL queries given as a string, we
     #             print the given AST and provide that to the cost estimator.
     graphql_query_string = print_ast(query.query_ast)
-    analysis = QueryPlanningAnalysis(
+    analysis = analyze_query_string(
         schema_info, QueryStringWithParameters(graphql_query_string, query.parameters)
     )
     result_size = analysis.cardinality_estimate
