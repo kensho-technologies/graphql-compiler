@@ -139,7 +139,7 @@ def get_pagination_capacities(
     distinct_result_set_estimates: Dict[VertexPath, float],
     query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
-) -> Dict[PropertyPath, float]:
+) -> Dict[PropertyPath, int]:
     """Get the pagination capacity for each eligible pagination field.
 
     The pagination capacity of a field is defined as the maximum number of pages we can split
@@ -166,9 +166,9 @@ def get_pagination_capacities(
             property_path = PropertyPath(location.query_path, field_name)
             if not is_meta_field(field_name):
                 if is_uuid4_type(schema_info, vertex_type_name, field_name):
-                    pagination_capacities[property_path] = distinct_result_set_estimates[
-                        location.query_path
-                    ]
+                    pagination_capacities[property_path] = int(
+                        distinct_result_set_estimates[location.query_path]
+                    )
                 elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                     field_value_interval = field_value_intervals.get(
                         property_path, Interval(None, None)
@@ -202,7 +202,7 @@ def get_pagination_capacities(
 
                         pagination_capacities[property_path] = min(
                             len(relevant_quantiles) + 1,
-                            distinct_result_set_estimates[location.query_path],
+                            int(distinct_result_set_estimates[location.query_path]),
                         )
 
     return pagination_capacities
@@ -252,7 +252,7 @@ class QueryPlanningAnalysis:
         )
 
     @cached_property
-    def pagination_capacities(self) -> Dict[PropertyPath, float]:
+    def pagination_capacities(self) -> Dict[PropertyPath, int]:
         """Return the pagination capacities for this query."""
         return get_pagination_capacities(
             self.schema_info,
