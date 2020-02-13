@@ -16,6 +16,7 @@ from ..cost_estimation.int_value_conversion import (
     convert_int_to_field_value,
 )
 from ..cost_estimation.interval import Interval, intersect_int_intervals, measure_int_interval
+from ..global_utils import ASTWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
 
@@ -199,8 +200,7 @@ def _compute_parameters_for_non_uuid_field(
 
 def generate_parameters_for_vertex_partition(
     schema_info: QueryPlanningSchemaInfo,
-    query_ast: DocumentNode,
-    parameters: Dict[str, Any],
+    query: ASTWithParameters,
     vertex_partition: VertexPartitionPlan,
 ) -> Iterator[Any]:
     """Return a generator of parameter values that realize the vertex partition.
@@ -212,8 +212,7 @@ def generate_parameters_for_vertex_partition(
 
     Args:
         schema_info: contains statistics and relevant schema information
-        query_ast: the query for which we are generating parameters
-        parameters: parameters for the query
+        query: the query for which we are generating parameters
         vertex_partition: the pagination plan we are working on
 
     Returns:
@@ -231,7 +230,7 @@ def generate_parameters_for_vertex_partition(
         raise AssertionError("Invalid number of splits {}".format(vertex_partition))
 
     # Find the FilterInfos on the pagination field
-    graphql_query_string = print_ast(query_ast)
+    graphql_query_string = print_ast(query.query_ast)
     query_metadata = graphql_to_ir(
         schema_info.schema,
         graphql_query_string,
@@ -246,7 +245,7 @@ def generate_parameters_for_vertex_partition(
 
     # Get the value interval currently imposed by existing filters
     integer_interval = get_integer_interval_for_filters_on_field(
-        schema_info, filters_on_field, vertex_type, pagination_field, parameters
+        schema_info, filters_on_field, vertex_type, pagination_field, query.parameters
     )
     field_value_interval = _convert_int_interval_to_field_value_interval(
         schema_info, vertex_type, pagination_field, integer_interval

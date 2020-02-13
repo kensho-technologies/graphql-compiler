@@ -1,9 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from typing import Tuple
 
-from ..global_utils import ASTWithParameters
-from ..schema.schema_info import QueryPlanningSchemaInfo
 from ..cost_estimation.analysis import QueryPlanningAnalysis
+from ..global_utils import ASTWithParameters
 from .pagination_planning import PaginationAdvisory, get_pagination_plan
 from .parameter_generator import generate_parameters_for_vertex_partition
 from .query_parameterizer import generate_parameterized_queries
@@ -36,14 +35,10 @@ def split_into_page_query_and_remainder_query(
     if num_pages <= 1:
         raise AssertionError(
             u"Could not split query {} into pagination queries for the next page"
-            u" of results, as the number of pages {} must be greater than 1: {}".format(
-                query.query_ast, num_pages, query.parameters
+            u" of results, as the number of pages {} must be greater than 1".format(
+                query_analysis.ast_with_parameters, num_pages
             )
         )
-
-    # TODO propagate analysis?
-    schema_info = query_analysis.schema_info
-    query = query_analysis.ast_with_parameters
 
     # TODO propagate advisories to top-level
     pagination_plan, advisories = get_pagination_plan(query_analysis, num_pages)
@@ -54,11 +49,16 @@ def split_into_page_query_and_remainder_query(
         )
 
     parameter_generator = generate_parameters_for_vertex_partition(
-        schema_info, query.query_ast, query.parameters, pagination_plan.vertex_partitions[0]
+        query_analysis.schema_info,
+        query_analysis.ast_with_parameters,
+        pagination_plan.vertex_partitions[0],
     )
     first_param = next(parameter_generator)
 
     page_query, remainder_query = generate_parameterized_queries(
-        schema_info, query, pagination_plan.vertex_partitions[0], first_param
+        query_analysis.schema_info,
+        query_analysis.ast_with_parameters,
+        pagination_plan.vertex_partitions[0],
+        first_param,
     )
     return page_query, remainder_query, advisories

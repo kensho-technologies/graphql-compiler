@@ -3,8 +3,7 @@ from typing import Tuple
 
 from graphql.language.printer import print_ast
 
-from ..ast_manipulation import safe_parse_graphql
-from ..cost_estimation.analysis import analyze_query_string, QueryPlanningAnalysis
+from ..cost_estimation.analysis import QueryPlanningAnalysis, analyze_query_string
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import PaginationAdvisory
@@ -72,7 +71,9 @@ def paginate_query_ast(
     """
     if page_size < 1:
         raise ValueError(
-            "Could not page query {} with page size lower than 1: {}".format(query, page_size)
+            "Could not page query {} with page size lower than 1: {}".format(
+                query_analysis.query_string_with_parameters, page_size
+            )
         )
 
     # Initially, assume the query does not need to be paged i.e. will return one page of results.
@@ -82,7 +83,8 @@ def paginate_query_ast(
 
     result_size = query_analysis.cardinality_estimate
     num_pages = _estimate_number_of_pages(
-        query_analysis.query_string_with_parameters, result_size, page_size)
+        query_analysis.query_string_with_parameters, result_size, page_size
+    )
     if num_pages > 1:
         page_query, remainder_query, advisories = split_into_page_query_and_remainder_query(
             query_analysis, num_pages
@@ -91,7 +93,8 @@ def paginate_query_ast(
 
     return (
         PageAndRemainder[ASTWithParameters](
-            query_analysis.ast_with_parameters, page_size, page_query, remainder_queries),
+            query_analysis.ast_with_parameters, page_size, page_query, remainder_queries
+        ),
         advisories,
     )
 
@@ -119,8 +122,6 @@ def paginate_query(
             - Tuple of PaginationAdvisory objects that communicate what can be done to improve
               pagination
     """
-    query_ast = safe_parse_graphql(query.query_string)
-
     query_analysis = analyze_query_string(schema_info, query)
     ast_page_and_remainder, advisories = paginate_query_ast(query_analysis, page_size)
 
