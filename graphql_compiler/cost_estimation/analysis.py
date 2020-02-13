@@ -166,9 +166,9 @@ def get_pagination_capacities(
             property_path = PropertyPath(location.query_path, field_name)
             if not is_meta_field(field_name):
                 if is_uuid4_type(schema_info, vertex_type_name, field_name):
-                    pagination_capacities[property_path] = int(distinct_result_set_estimates[
-                        location.query_path
-                    ])
+                    pagination_capacities[property_path] = int(
+                        distinct_result_set_estimates[location.query_path]
+                    )
                 elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                     field_value_interval = field_value_intervals.get(
                         property_path, Interval(None, None)

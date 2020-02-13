@@ -1,15 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABC
 from dataclasses import dataclass, field
-from typing import Optional, Tuple
+from typing import Tuple
 
-from ..global_utils import PropertyPath
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
 from ..cost_estimation.analysis import QueryPlanningAnalysis
-from ..cost_estimation.helpers import is_uuid4_type
-from ..cost_estimation.int_value_conversion import field_supports_range_reasoning
 from ..exceptions import GraphQLError
-from ..schema.schema_info import QueryPlanningSchemaInfo
+from ..global_utils import PropertyPath
 
 
 @dataclass
@@ -122,7 +119,7 @@ def get_pagination_plan(
     #                       pagination when uuid pagination is also available.
     pagination_field = query_analysis.schema_info.pagination_keys.get(pagination_node)
     if pagination_field is None:
-        return None, (PaginationFieldNotSpecified(pagination_node),)
+        return PaginationPlan(tuple()), (PaginationFieldNotSpecified(pagination_node),)
 
     vertex_path = (root_node,)
     property_path = PropertyPath(vertex_path, pagination_field)
