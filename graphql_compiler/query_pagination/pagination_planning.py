@@ -3,9 +3,8 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Optional, Tuple
 
-from graphql import DocumentNode
-
 from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
+from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..cost_estimation.helpers import is_uuid4_type
 from ..cost_estimation.int_value_conversion import field_supports_range_reasoning
 from ..exceptions import GraphQLError
@@ -152,7 +151,7 @@ def get_best_vertex_partition_plan(
 
 
 def get_pagination_plan(
-    schema_info: QueryPlanningSchemaInfo, query_ast: DocumentNode, number_of_pages: int
+    query_analysis: QueryPlanningAnalysis, number_of_pages: int
 ) -> Tuple[PaginationPlan, Tuple[PaginationAdvisory, ...]]:
     """Make a best-effort PaginationPlan and advise on how to improve statistics.
 
@@ -166,15 +165,16 @@ def get_pagination_plan(
     states the necessary step that may be taken to avoid it in the future.
 
     Args:
-        schema_info: query planning information, including quantile statistics for pagination
-        query_ast: GraphQL AST node describing the query being paginated
+        query_analysis: the query with any query analysis needed for pagination
         number_of_pages: desired number of pages to attempt to paginate the query into
 
     Returns:
         tuple including a best-effort pagination plan together with a tuple of advisories describing
         any ways in which the pagination plan was less than ideal and how to resolve them
     """
-    definition_ast = get_only_query_definition(query_ast, GraphQLError)
+    definition_ast = get_only_query_definition(
+        query_analysis.ast_with_parameters.query_ast, GraphQLError
+    )
 
     if number_of_pages <= 0:
         raise AssertionError(
@@ -196,7 +196,7 @@ def get_pagination_plan(
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
     vertex_partition_plan, advisories = get_best_vertex_partition_plan(
-        schema_info, pagination_node, number_of_pages
+        query_analysis.schema_info, pagination_node, number_of_pages
     )
 
     if vertex_partition_plan is None:

@@ -54,14 +54,17 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         # Check that the correct plan is generated when it's obvious (page the root)
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal_name")
             }
-        }"""
+        }""",
+            {},
+        )
         number_of_pages = 10
-        query_ast = safe_parse_graphql(query)
-        pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        analysis = analyze_query_string(schema_info, query)
+        pagination_plan, warnings = get_pagination_plan(analysis, number_of_pages)
         expected_plan = PaginationPlan((VertexPartitionPlan(("Animal",), "uuid", number_of_pages),))
         expected_warnings: Tuple[PaginationAdvisory, ...] = tuple()
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
@@ -88,14 +91,17 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         # Check that the paginator generates a plan paginating on an int field
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
             }
-        }"""
+        }""",
+            {},
+        )
         number_of_pages = 10
-        query_ast = safe_parse_graphql(query)
-        pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        analysis = analyze_query_string(schema_info, query)
+        pagination_plan, warnings = get_pagination_plan(analysis, number_of_pages)
         expected_plan = PaginationPlan(
             (VertexPartitionPlan(("Species",), "limbs", number_of_pages),)
         )
@@ -122,14 +128,17 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         # Check that the paginator detects a lack of quantile data for Species.limbs
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
             }
-        }"""
+        }""",
+            {},
+        )
         number_of_pages = 10
-        query_ast = safe_parse_graphql(query)
-        pagination_plan, warnings = get_pagination_plan(schema_info, query_ast, number_of_pages)
+        analysis = analyze_query_string(schema_info, query)
+        pagination_plan, warnings = get_pagination_plan(analysis, number_of_pages)
         expected_plan = PaginationPlan(tuple())
         expected_warnings = (InsufficientQuantiles("Species", "limbs", 0, 51),)
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
@@ -510,7 +519,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         expected_parameters = [25, 50, 75]
@@ -545,7 +554,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         expected_parameters = [10, 20]
@@ -593,7 +602,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         expected_parameters = [50, 75]
@@ -629,7 +638,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 10)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         first_parameter = next(generated_parameters)
@@ -665,7 +674,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         expected_parameters = [25, 50]
@@ -704,7 +713,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species", "out_Entity_Related"), "limbs", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         expected_parameters = [25, 50, 75]
@@ -740,7 +749,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         # XXX document why this is expected, see if bisect_left logic is correct
@@ -779,7 +788,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Event",), "event_date", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         expected_parameters = [
@@ -815,7 +824,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         expected_parameters = [
@@ -855,7 +864,7 @@ class QueryPaginationTests(unittest.TestCase):
         query_ast = safe_parse_graphql(query)
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, query_ast, args, vertex_partition
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
         )
 
         # Check that there are no duplicates
