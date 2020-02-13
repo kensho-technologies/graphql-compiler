@@ -148,9 +148,8 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
         self.assertEqual(expected_plan, pagination_plan)
 
-    # XXX actually pass this test
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def _test_pagination_planning_on_int_error(self) -> None:
+    def test_pagination_planning_on_int_error(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}

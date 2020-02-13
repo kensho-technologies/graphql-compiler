@@ -123,6 +123,13 @@ def get_pagination_plan(
 
     vertex_path = (root_node,)
     property_path = PropertyPath(vertex_path, pagination_field)
+    if property_path not in query_analysis.pagination_capacities:
+        ideal_min_num_quantiles_per_page = 5
+        ideal_quantile_resolution = ideal_min_num_quantiles_per_page * number_of_pages + 1
+        return PaginationPlan(tuple()), (InsufficientQuantiles(
+            pagination_node, pagination_field, 0, ideal_quantile_resolution
+        ),)
+
     capacity = query_analysis.pagination_capacities[property_path]
     number_of_splits = min(capacity, number_of_pages)
 
