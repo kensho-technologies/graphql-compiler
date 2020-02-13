@@ -1,9 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 import itertools
-from typing import Any, Dict, Iterator, List, cast
+from typing import Any, Iterator, List, cast
 
-from graphql import DocumentNode
 from graphql.language.printer import print_ast
 
 from ..compiler.compiler_frontend import graphql_to_ir
