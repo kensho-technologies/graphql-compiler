@@ -87,7 +87,6 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        # Check that the correct plan is generated when it's obvious (page the root)
         query = QueryStringWithParameters(
             """{
             Animal {
