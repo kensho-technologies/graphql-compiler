@@ -121,18 +121,24 @@ def get_pagination_plan(
     if pagination_field is None:
         return PaginationPlan(tuple()), (PaginationFieldNotSpecified(pagination_node),)
 
+    # Get the pagination capacity
     vertex_path = (root_node,)
     property_path = PropertyPath(vertex_path, pagination_field)
-    if property_path not in query_analysis.pagination_capacities:
+    capacity = query_analysis.pagination_capacities.get(property_path)
+    if capacity is None:
         ideal_min_num_quantiles_per_page = 5
         ideal_quantile_resolution = ideal_min_num_quantiles_per_page * number_of_pages + 1
-        return PaginationPlan(tuple()), (InsufficientQuantiles(
-            pagination_node, pagination_field, 0, ideal_quantile_resolution
-        ),)
+        return (
+            PaginationPlan(tuple()),
+            (
+                InsufficientQuantiles(
+                    pagination_node, pagination_field, 0, ideal_quantile_resolution
+                ),
+            ),
+        )
 
-    capacity = query_analysis.pagination_capacities[property_path]
+    # Construct and return plan
     number_of_splits = min(capacity, number_of_pages)
-
     if number_of_splits <= 1:
         return PaginationPlan(tuple()), tuple()
     vertex_partition_plan = VertexPartitionPlan(vertex_path, pagination_field, number_of_splits)
