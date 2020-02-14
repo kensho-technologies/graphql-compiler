@@ -333,8 +333,8 @@ class EdgeConstraint(Enum):
     AtMostOneSource = auto()
     AtLeastOneDestination = auto()
     AtMostOneDestination = auto()
-    NoParallelEdges = auto()
-    NoLoops = auto()
+    NoParallelEdges = auto()  # No pair of edges with matching sources and destinations
+    NoLoops = auto()  # No edge with source = destination
 
 
 @dataclass
