@@ -1,12 +1,13 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta
 from collections import namedtuple
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from enum import Enum, auto, unique
 from functools import partial
-from typing import Dict, Optional
+from typing import Dict, Optional, Set, Union
 
 from graphql.type import GraphQLSchema
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 import six
 import sqlalchemy
 from sqlalchemy.dialects.mssql import dialect as mssql_dialect
@@ -15,6 +16,8 @@ from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
 from sqlalchemy.engine.interfaces import Dialect
 
 from . import is_vertex_field_name
+from ..cost_estimation.statistics import Statistics
+from ..schema_generation.schema_graph import SchemaGraph
 
 
 # Describes the intent to join two tables using the specified columns.
@@ -324,46 +327,62 @@ def make_sqlalchemy_schema_info(
     )
 
 
-# All schema information sufficient for query cost estimation and auto pagination
-QueryPlanningSchemaInfo = namedtuple(
-    "QueryPlanningSchemaInfo",
-    (
-        # GraphQLSchema
-        "schema",
-        # optional dict of GraphQL interface or type -> GraphQL union.
-        # Used as a workaround for GraphQL's lack of support for
-        # inheritance across "types" (i.e. non-interfaces), as well as a
-        # workaround for Gremlin's total lack of inheritance-awareness.
-        # The key-value pairs in the dict specify that the "key" type
-        # is equivalent to the "value" type, i.e. that the GraphQL type or
-        # interface in the key is the most-derived common supertype
-        # of every GraphQL type in the "value" GraphQL union.
-        # Recursive expansion of type equivalence hints is not performed,
-        # and only type-level correctness of this argument is enforced.
-        # See README.md for more details on everything this parameter does.
-        # *****
-        # Be very careful with this option, as bad input here will
-        # lead to incorrect output queries being generated.
-        # *****
-        "type_equivalence_hints",
-        # A SchemaGraph instance that corresponds to the GraphQLSchema, containing additional
-        # information on unique indexes, subclass sets, and edge base connection classes.
-        "schema_graph",
-        # A Statistics object giving statistical information about all objects in the schema.
-        "statistics",
-        # Dict mapping vertex names in the graphql schema to the Int or ID type property name
-        # to be used for pagination on that vertex. This property should be non-null and
-        # unique for all rows.  An easy choice for pagination key in most situations is the
-        # primary key. The pagination key for a vertex can be omitted making the vertex
-        # ineligible for pagination.
-        #
-        # NOTE(bojanserafimov): The type of this property might be different in the
-        #                       schema graph, due to the process of type overrides that happens
-        #                       during schema generation.
-        "pagination_keys",
-        # Dict mapping vertex names in the graphql schema to a set of property names that
-        # are known to contain uniformly distributed uppercase uuid values. The types of those
-        # fields are expected to be ID or String.
-        "uuid4_fields",
-    ),
-)
+@unique
+class EdgeConstraint(Enum):
+    AtLeastOneSource = auto()
+    AtMostOneSource = auto()
+    AtLeastOneDestination = auto()
+    AtMostOneDestination = auto()
+    NoParallelEdges = auto()
+    NoLoops = auto()
+
+
+@dataclass
+class QueryPlanningSchemaInfo:
+    """All schema information sufficient for query cost estimation and auto pagination."""
+
+    # The schema used for querying
+    schema: GraphQLSchema
+
+    # optional dict of GraphQL interface or type -> GraphQL union.
+    # Used as a workaround for GraphQL's lack of support for
+    # inheritance across "types" (i.e. non-interfaces), as well as a
+    # workaround for Gremlin's total lack of inheritance-awareness.
+    # The key-value pairs in the dict specify that the "key" type
+    # is equivalent to the "value" type, i.e. that the GraphQL type or
+    # interface in the key is the most-derived common supertype
+    # of every GraphQL type in the "value" GraphQL union.
+    # Recursive expansion of type equivalence hints is not performed,
+    # and only type-level correctness of this argument is enforced.
+    # See README.md for more details on everything this parameter does.
+    # *****
+    # Be very careful with this option, as bad input here will
+    # lead to incorrect output queries being generated.
+    # *****
+    type_equivalence_hints: Dict[Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType]
+
+    # A SchemaGraph instance that corresponds to the GraphQLSchema, containing additional
+    # information on unique indexes, subclass sets, and edge base connection classes.
+    schema_graph: SchemaGraph
+
+    # A Statistics object giving statistical information about all objects in the schema.
+    statistics: Statistics
+
+    # Dict mapping vertex names in the graphql schema to the Int or ID type property name
+    # to be used for pagination on that vertex. This property should be non-null and
+    # unique for all rows.  An easy choice for pagination key in most situations is the
+    # primary key. The pagination key for a vertex can be omitted making the vertex
+    # ineligible for pagination.
+    #
+    # NOTE(bojanserafimov): The type of this property might be different in the
+    #                       schema graph, due to the process of type overrides that happens
+    #                       during schema generation.
+    pagination_keys: Dict[str, str]
+
+    # Dict mapping vertex names in the graphql schema to a set of property names that
+    # are known to contain uniformly distributed uppercase uuid values. The types of those
+    # fields are expected to be ID or String.
+    uuid4_fields: Dict[str, Set[str]]
+
+    # Map edge names to constraints inferred for them.
+    edge_constraints: Dict[str, Set[EdgeConstraint]] = field(default_factory=dict)
