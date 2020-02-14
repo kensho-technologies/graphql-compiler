@@ -329,12 +329,12 @@ def make_sqlalchemy_schema_info(
 
 @unique
 class EdgeConstraint(Enum):
+    """An integrity constraint on a directed edge in the schema."""
+
     AtLeastOneSource = auto()
     AtMostOneSource = auto()
     AtLeastOneDestination = auto()
     AtMostOneDestination = auto()
-    NoParallelEdges = auto()  # No pair of edges with matching sources and destinations
-    NoLoops = auto()  # No edge with source = destination
 
 
 @dataclass
