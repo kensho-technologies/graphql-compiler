@@ -17,7 +17,7 @@ from ..schema.schema_info import QueryPlanningSchemaInfo
 def _get_field_type(
     schema_info: QueryPlanningSchemaInfo, vertex_name: str, field_name: str
 ) -> Union[GraphQLList, GraphQLScalarType]:
-    """Get the GraphQL type of the field on the specified."""
+    """Get the GraphQL type of the field on the specified vertex."""
     return (
         cast(
             Union[GraphQLObjectType, GraphQLInterfaceType], schema_info.schema.get_type(vertex_name)
