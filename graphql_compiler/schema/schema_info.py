@@ -4,10 +4,10 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum, auto, unique
 from functools import partial
-from typing import Dict, Optional, Set, Union
+from typing import Dict, Optional, Set
 
 from graphql.type import GraphQLSchema
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 import six
 import sqlalchemy
 from sqlalchemy.dialects.mssql import dialect as mssql_dialect
@@ -15,7 +15,7 @@ from sqlalchemy.dialects.mysql import dialect as mysql_dialect
 from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
 from sqlalchemy.engine.interfaces import Dialect
 
-from . import is_vertex_field_name
+from . import TypeEquivalenceHintsType, is_vertex_field_name
 from ..cost_estimation.statistics import Statistics
 from ..schema_generation.schema_graph import SchemaGraph
 
@@ -359,7 +359,7 @@ class QueryPlanningSchemaInfo:
     # Be very careful with this option, as bad input here will
     # lead to incorrect output queries being generated.
     # *****
-    type_equivalence_hints: Dict[Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType]
+    type_equivalence_hints: TypeEquivalenceHintsType
 
     # A SchemaGraph instance that corresponds to the GraphQLSchema, containing additional
     # information on unique indexes, subclass sets, and edge base connection classes.
