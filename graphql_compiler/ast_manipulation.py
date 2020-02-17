@@ -35,20 +35,12 @@ def get_human_friendly_ast_field_name(ast):
     return get_ast_field_name(ast)
 
 
-def _preprocess_graphql_string(graphql_string):
-    """Apply any necessary preprocessing to the input GraphQL string, returning the new version."""
-    # HACK(predrag): Workaround for graphql-core issue, to avoid needless errors:
-    #                https://github.com/graphql-python/graphql-core/issues/98
-    return graphql_string + "\n"
-
-
 def safe_parse_graphql(graphql_string):
-    """Return an AST representation of the given GraphQL input, avoiding known land mines."""
-    graphql_string = _preprocess_graphql_string(graphql_string)
+    """Return an AST representation of the given GraphQL input, reraising GraphQL library errors."""
     try:
         ast = parse(graphql_string)
     except GraphQLSyntaxError as e:
-        raise GraphQLParsingError(e)
+        raise GraphQLParsingError(e) from e
 
     return ast
 
