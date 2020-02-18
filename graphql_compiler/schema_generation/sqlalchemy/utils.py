@@ -9,7 +9,7 @@ def validate_that_tables_have_primary_keys(tables):
             raise MissingPrimaryKeyError(
                 "SQLAlchemy Table with name {} and schema {} is missing a "
                 "primary key. Note that the primary keys in SQLAlchemy "
-                "Table objects do not have to match the primary keys in"
+                "Table objects do not have to match the primary keys in "
                 "the underlying row. They must simple be unique and "
                 "non-null identifiers of each row.".format(table.name, table.schema)
             )
