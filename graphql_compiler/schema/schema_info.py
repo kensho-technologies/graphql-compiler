@@ -385,4 +385,4 @@ class QueryPlanningSchemaInfo:
     uuid4_fields: Dict[str, Set[str]]
 
     # Map edge names to constraints inferred for them.
-    edge_constraints: Dict[str, Set[EdgeConstraint]] = field(default_factory=dict)
+    edge_constraints: Dict[str, EdgeConstraint] = field(default_factory=dict)
