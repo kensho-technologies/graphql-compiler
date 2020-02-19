@@ -8,6 +8,7 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import graphql_to_ir
+from ..compiler.helpers import Location
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -102,6 +103,8 @@ def get_distinct_result_set_estimates(
 ) -> Dict[VertexPath, float]:
     """Map each VertexPath in the query to its distinct result set estimate.
 
+    VertexPaths that lead into a fold scope are omitted.
+
     The distinct result set estimate for vertex query node is the expected number of
     different instances of the vertex type that will appear in the result set of the
     query. For instance, suppose a query that included an edge traversal from A to B
@@ -118,6 +121,8 @@ def get_distinct_result_set_estimates(
     """
     distinct_result_set_estimates = {}
     for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
         vertex_type_name = location_info.type.name
         filter_infos = query_metadata.get_filter_infos(location)
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
@@ -161,6 +166,8 @@ def get_pagination_capacities(
     pagination_capacities = {}
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
 
         for field_name, _ in location_info.type.fields.items():
             property_path = PropertyPath(location.query_path, field_name)
