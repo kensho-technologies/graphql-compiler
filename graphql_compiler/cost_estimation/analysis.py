@@ -144,8 +144,7 @@ def get_distinct_result_set_estimates(
             if EdgeConstraint.AtMostOneSource in edge_constraints:
                 single_destination_traversals.add((to_path, from_path))
 
-    # TODO 20
-    for i in range(20):
+    for _ in single_destination_traversals:  # This is on purpose (TODO explain why)
         for from_path, to_path in single_destination_traversals:
             distinct_result_set_estimates[from_path] = min(distinct_result_set_estimates[from_path],
                                                            distinct_result_set_estimates[to_path])
