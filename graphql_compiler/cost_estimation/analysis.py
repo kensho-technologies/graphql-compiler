@@ -122,7 +122,7 @@ def get_distinct_result_set_estimates(
     distinct_result_set_estimates = {}
     for location, location_info in query_metadata.registered_locations:
         if not isinstance(location, Location):
-            continue  # Might be a FoldScopeLocation
+            continue  # We don't paginate inside folds.
         vertex_type_name = location_info.type.name
         filter_infos = query_metadata.get_filter_infos(location)
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
