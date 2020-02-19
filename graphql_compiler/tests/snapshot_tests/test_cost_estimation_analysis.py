@@ -253,7 +253,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         }""",
             {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
         )
-        number_of_pages = 10
         analysis = analyze_query_string(schema_info, query)
-        analysis.distinct_result_set_estimates
-        # TODO test correctness
+        capacities = analysis.pagination_capacities
+        expected_capacities = {
+            (("Animal",), "uuid"): 1000,
+        }
+        self.assertEqual(expected_capacities, capacities)
