@@ -167,7 +167,7 @@ def get_pagination_capacities(
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
         if not isinstance(location, Location):
-            continue  # We don't consider FoldScopeLocations for pagination for simplicity
+            continue  # We don't paginate inside folds.
 
         for field_name, _ in location_info.type.fields.items():
             property_path = PropertyPath(location.query_path, field_name)
