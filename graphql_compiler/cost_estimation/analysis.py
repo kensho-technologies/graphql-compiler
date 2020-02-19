@@ -8,6 +8,7 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import graphql_to_ir
+from ..compiler.helpers import get_edge_direction_and_name
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -18,7 +19,7 @@ from ..cost_estimation.int_value_conversion import (
 from ..cost_estimation.interval import Interval
 from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
 from ..schema import is_meta_field
-from ..schema.schema_info import QueryPlanningSchemaInfo
+from ..schema.schema_info import QueryPlanningSchemaInfo, EdgeConstraint
 from .filter_selectivity_utils import (
     adjust_counts_for_filters,
     get_integer_interval_for_filters_on_field,
@@ -125,10 +126,29 @@ def get_distinct_result_set_estimates(
             schema_info, filter_infos, parameters, vertex_type_name, class_count
         )
 
-    # TODO(bojanserafimov): If there's a many-to-one edge from A to B in the query, the
-    #                       distinct result set estimate for B cannot be greater than
-    #                       the one for A. Taking this into account would make the results
-    #                       more accurate.
+    single_destination_traversals = set()
+    for location, _ in query_metadata.registered_locations:
+        if len(location.query_path) > 1:
+            from_path = location.query_path[:-1]
+            to_path = location.query_path
+            # TODO(bojanserafimov): Make this work with FoldScope locations, and test analysis
+            #                       passes when query has folds. Also, a fold implies a single
+            #                       destination traversal.
+            edge_direction, edge_name = get_edge_direction_and_name(location.query_path[-1])
+            edge_constraints = schema_info.edge_constraints.get(edge_name, set())
+            if edge_direction == 'in':
+                from_path, to_path = to_path, from_path
+
+            if EdgeConstraint.AtMostOneDestination in edge_constraints:
+                single_destination_traversals.add((from_path, to_path))
+            if EdgeConstraint.AtMostOneSource in edge_constraints:
+                single_destination_traversals.add((to_path, from_path))
+
+    # TODO 20
+    for i in range(20):
+        for from_path, to_path in single_destination_traversals:
+            distinct_result_set_estimates[from_path] = min(distinct_result_set_estimates[from_path],
+                                                           distinct_result_set_estimates[to_path])
 
     return distinct_result_set_estimates
 
