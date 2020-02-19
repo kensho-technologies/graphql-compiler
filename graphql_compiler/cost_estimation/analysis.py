@@ -8,7 +8,7 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import graphql_to_ir
-from ..compiler.helpers import get_edge_direction_and_name
+from ..compiler.helpers import get_edge_direction_and_name, Location
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -103,6 +103,8 @@ def get_distinct_result_set_estimates(
 ) -> Dict[VertexPath, float]:
     """Map each VertexPath in the query to its distinct result set estimate.
 
+    VertexPaths that lead into a fold scope are omitted.
+
     The distinct result set estimate for vertex query node is the expected number of
     different instances of the vertex type that will appear in the result set of the
     query. For instance, suppose a query that included an edge traversal from A to B
@@ -119,6 +121,8 @@ def get_distinct_result_set_estimates(
     """
     distinct_result_set_estimates = {}
     for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
         vertex_type_name = location_info.type.name
         filter_infos = query_metadata.get_filter_infos(location)
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
@@ -128,12 +132,15 @@ def get_distinct_result_set_estimates(
 
     single_destination_traversals = set()
     for location, _ in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            # TODO(bojanserafimov): We currently ignore FoldScopeLocations. However, a unique
+            #                       filter on a FoldScopeLocation also uniquely filters the
+            #                       enclosing scope.
+            continue
+
         if len(location.query_path) > 1:
             from_path = location.query_path[:-1]
             to_path = location.query_path
-            # TODO(bojanserafimov): Make this work with FoldScope locations, and test analysis
-            #                       passes when query has folds. Also, a fold implies a single
-            #                       destination traversal.
             edge_direction, edge_name = get_edge_direction_and_name(location.query_path[-1])
             edge_constraints = schema_info.edge_constraints.get(edge_name, set())
             if edge_direction == 'in':
@@ -180,6 +187,8 @@ def get_pagination_capacities(
     pagination_capacities = {}
     for location, location_info in query_metadata.registered_locations:
         vertex_type_name = location_info.type.name
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
 
         for field_name, _ in location_info.type.fields.items():
             property_path = PropertyPath(location.query_path, field_name)

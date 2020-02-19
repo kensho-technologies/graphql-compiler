@@ -2,7 +2,7 @@
 from abc import ABCMeta
 from collections import namedtuple
 from dataclasses import dataclass, field
-from enum import Enum, auto, unique
+from enum import Flag, auto, unique
 from functools import partial
 from typing import Dict, Optional, Set
 
@@ -328,7 +328,7 @@ def make_sqlalchemy_schema_info(
 
 
 @unique
-class EdgeConstraint(Enum):
+class EdgeConstraint(Flag):
     """An integrity constraint on an edge in the schema."""
 
     AtLeastOneSource = auto()
@@ -385,4 +385,4 @@ class QueryPlanningSchemaInfo:
     uuid4_fields: Dict[str, Set[str]]
 
     # Map edge names to constraints inferred for them.
-    edge_constraints: Dict[str, Set[EdgeConstraint]] = field(default_factory=dict)
+    edge_constraints: Dict[str, EdgeConstraint] = field(default_factory=dict)
