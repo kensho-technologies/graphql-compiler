@@ -224,3 +224,36 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             (("Species",), "uuid"): 905,
         }
         self.assertEqual(expected_capacities, capacities)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_analysis_with_fold(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal_name")
+                out_Animal_ParentOf @fold {
+                    name @output(out_name: "child_names")
+                }
+            }
+        }""",
+            {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
+        )
+        number_of_pages = 10
+        analysis = analyze_query_string(schema_info, query)
+        analysis.distinct_result_set_estimates
+        # TODO test correctness
