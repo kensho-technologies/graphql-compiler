@@ -57,10 +57,12 @@ setup(
     install_requires=[  # Make sure to keep in sync with Pipfile requirements.
         "arrow>=0.15.0,<1",
         "funcy>=1.7.3,<2",
+        "dataclasses>=0.6",
         "graphql-core>=3,<4",
         "pytz>=2017.2",
         "six>=1.10.0",
         "sqlalchemy>=1.3.0,<2",
+        "cached-property>=1.5.1,<2",
     ],
     extras_require={':python_version<"3.7"': ["dataclasses>=0.6"],},
     classifiers=[
