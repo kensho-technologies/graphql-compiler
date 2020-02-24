@@ -8,7 +8,7 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import graphql_to_ir
-from ..compiler.helpers import Location
+from ..compiler.helpers import Location, get_edge_direction_and_name
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -19,7 +19,7 @@ from ..cost_estimation.int_value_conversion import (
 from ..cost_estimation.interval import Interval
 from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
 from ..schema import is_meta_field
-from ..schema.schema_info import QueryPlanningSchemaInfo
+from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
     adjust_counts_for_filters,
     get_integer_interval_for_filters_on_field,
@@ -130,10 +130,36 @@ def get_distinct_result_set_estimates(
             schema_info, filter_infos, parameters, vertex_type_name, class_count
         )
 
-    # TODO(bojanserafimov): If there's a many-to-one edge from A to B in the query, the
-    #                       distinct result set estimate for B cannot be greater than
-    #                       the one for A. Taking this into account would make the results
-    #                       more accurate.
+    single_destination_traversals = set()
+    for location, _ in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            # TODO(bojanserafimov): We currently ignore FoldScopeLocations. However, a unique
+            #                       filter on a FoldScopeLocation also uniquely filters the
+            #                       enclosing scope.
+            continue
+
+        if len(location.query_path) > 1:
+            from_path = location.query_path[:-1]
+            to_path = location.query_path
+            edge_direction, edge_name = get_edge_direction_and_name(location.query_path[-1])
+            no_constraints = EdgeConstraint(0)  # unset all bits of the flag
+            edge_constraints = schema_info.edge_constraints.get(edge_name, no_constraints)
+            if edge_direction == "in":
+                from_path, to_path = to_path, from_path
+
+            if EdgeConstraint.AtMostOneDestination in edge_constraints:
+                single_destination_traversals.add((from_path, to_path))
+            if EdgeConstraint.AtMostOneSource in edge_constraints:
+                single_destination_traversals.add((to_path, from_path))
+
+    # Make sure there's no path of many-to-one traversals leading to a node with lower
+    # distinct_result_set_estimate.
+    max_path_length = len(single_destination_traversals)
+    for _ in range(max_path_length):
+        for from_path, to_path in single_destination_traversals:
+            distinct_result_set_estimates[from_path] = min(
+                distinct_result_set_estimates[from_path], distinct_result_set_estimates[to_path]
+            )
 
     return distinct_result_set_estimates
 

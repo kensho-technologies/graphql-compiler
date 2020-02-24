@@ -24,7 +24,7 @@ from ...query_pagination.parameter_generator import (
     generate_parameters_for_vertex_partition,
 )
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
-from ...schema.schema_info import QueryPlanningSchemaInfo
+from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import compare_graphql, generate_schema_graph
 
@@ -64,10 +64,10 @@ class QueryPaginationTests(unittest.TestCase):
         )
         number_of_pages = 10
         analysis = analyze_query_string(schema_info, query)
-        pagination_plan, warnings = get_pagination_plan(analysis, number_of_pages)
+        pagination_plan, advisories = get_pagination_plan(analysis, number_of_pages)
         expected_plan = PaginationPlan((VertexPartitionPlan(("Animal",), "uuid", number_of_pages),))
-        expected_warnings: Tuple[PaginationAdvisory, ...] = tuple()
-        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
+        expected_advisories: Tuple[PaginationAdvisory, ...] = tuple()
+        self.assertEqual([w.message for w in expected_advisories], [w.message for w in advisories])
         self.assertEqual(expected_plan, pagination_plan)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -98,14 +98,59 @@ class QueryPaginationTests(unittest.TestCase):
         )
         number_of_pages = 10
         analysis = analyze_query_string(schema_info, query)
-        pagination_plan, warnings = get_pagination_plan(analysis, number_of_pages)
+        pagination_plan, advisories = get_pagination_plan(analysis, number_of_pages)
 
         # This is a white box test. We check that we don't paginate on the root when it has a
         # unique filter on it. A better plan is to paginate on a different vertex, but that is
         # not implemented.
         expected_plan = PaginationPlan(tuple())
-        expected_warnings: Tuple[PaginationAdvisory, ...] = tuple()
-        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
+        expected_advisories: Tuple[PaginationAdvisory, ...] = tuple()
+        self.assertEqual([w.message for w in expected_advisories], [w.message for w in advisories])
+        self.assertEqual(expected_plan, pagination_plan)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_planning_unique_filter_on_many_to_one(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        edge_constraints = {"Animal_ParentOf": EdgeConstraint.AtMostOneSource}
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+            edge_constraints=edge_constraints,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal_name")
+                in_Animal_ParentOf {
+                    uuid @filter(op_name: "=", value: ["$animal_uuid"])
+                }
+                out_Animal_ParentOf {
+                    name @output(out_name: "child_name")
+                }
+            }
+        }""",
+            {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
+        )
+        number_of_pages = 10
+        analysis = analyze_query_string(schema_info, query)
+        pagination_plan, advisories = get_pagination_plan(analysis, number_of_pages)
+
+        # This is a white box test. We check that we don't paginate on the root when it has a
+        # unique filter on its many-to-one neighbor. A better plan is to paginate on a
+        # different vertex, but that is not implemented.
+        expected_plan = PaginationPlan(tuple())
+        expected_advisories: Tuple[PaginationAdvisory, ...] = tuple()
+        self.assertEqual([w.message for w in expected_advisories], [w.message for w in advisories])
         self.assertEqual(expected_plan, pagination_plan)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -139,12 +184,12 @@ class QueryPaginationTests(unittest.TestCase):
         )
         number_of_pages = 10
         analysis = analyze_query_string(schema_info, query)
-        pagination_plan, warnings = get_pagination_plan(analysis, number_of_pages)
+        pagination_plan, advisories = get_pagination_plan(analysis, number_of_pages)
         expected_plan = PaginationPlan(
             (VertexPartitionPlan(("Species",), "limbs", number_of_pages),)
         )
-        expected_warnings: Tuple[PaginationAdvisory, ...] = ()
-        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
+        expected_advisories: Tuple[PaginationAdvisory, ...] = ()
+        self.assertEqual([w.message for w in expected_advisories], [w.message for w in advisories])
         self.assertEqual(expected_plan, pagination_plan)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -176,10 +221,10 @@ class QueryPaginationTests(unittest.TestCase):
         )
         number_of_pages = 10
         analysis = analyze_query_string(schema_info, query)
-        pagination_plan, warnings = get_pagination_plan(analysis, number_of_pages)
+        pagination_plan, advisories = get_pagination_plan(analysis, number_of_pages)
         expected_plan = PaginationPlan(tuple())
-        expected_warnings = (InsufficientQuantiles("Species", "limbs", 0, 51),)
-        self.assertEqual([w.message for w in expected_warnings], [w.message for w in warnings])
+        expected_advisories = (InsufficientQuantiles("Species", "limbs", 0, 51),)
+        self.assertEqual([w.message for w in expected_advisories], [w.message for w in advisories])
         self.assertEqual(expected_plan, pagination_plan)
 
     # TODO: These tests can be sped up by having an existing test SchemaGraph object.

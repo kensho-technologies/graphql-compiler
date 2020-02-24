@@ -329,7 +329,7 @@ def make_sqlalchemy_schema_info(
 
 @unique
 class EdgeConstraint(Flag):
-    """An integrity constraint on a directed edge in the schema."""
+    """An integrity constraint on an edge in the schema."""
 
     AtLeastOneSource = auto()
     AtMostOneSource = auto()
