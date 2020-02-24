@@ -142,7 +142,8 @@ def get_distinct_result_set_estimates(
             from_path = location.query_path[:-1]
             to_path = location.query_path
             edge_direction, edge_name = get_edge_direction_and_name(location.query_path[-1])
-            edge_constraints = schema_info.edge_constraints.get(edge_name, EdgeConstraint(0))
+            no_constraints = EdgeConstraint(0)  # unset all bits of the flag
+            edge_constraints = schema_info.edge_constraints.get(edge_name, no_constraints)
             if edge_direction == "in":
                 from_path, to_path = to_path, from_path
 
@@ -151,7 +152,10 @@ def get_distinct_result_set_estimates(
             if EdgeConstraint.AtMostOneSource in edge_constraints:
                 single_destination_traversals.add((to_path, from_path))
 
-    for _ in single_destination_traversals:  # This is on purpose (TODO explain why)
+    # Make sure there's no path of many-to-one traversals leading to a node with lower
+    # distinct_result_set_estimate.
+    max_path_length = len(single_destination_traversals)
+    for _ in range(max_path_length):
         for from_path, to_path in single_destination_traversals:
             distinct_result_set_estimates[from_path] = min(
                 distinct_result_set_estimates[from_path], distinct_result_set_estimates[to_path]
