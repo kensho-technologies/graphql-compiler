@@ -24,7 +24,7 @@ from ...query_pagination.parameter_generator import (
     generate_parameters_for_vertex_partition,
 )
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
-from ...schema.schema_info import QueryPlanningSchemaInfo, EdgeConstraint
+from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import compare_graphql, generate_schema_graph
 
@@ -116,9 +116,7 @@ class QueryPaginationTests(unittest.TestCase):
         uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
-        edge_constraints = {
-            'Animal_ParentOf': {EdgeConstraint.AtMostOneSource}
-        }
+        edge_constraints = {"Animal_ParentOf": EdgeConstraint.AtMostOneSource}
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
             type_equivalence_hints=type_equivalence_hints,
@@ -129,7 +127,8 @@ class QueryPaginationTests(unittest.TestCase):
             edge_constraints=edge_constraints,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal_name")
                 in_Animal_ParentOf {
