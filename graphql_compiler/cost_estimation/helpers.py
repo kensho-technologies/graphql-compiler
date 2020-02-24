@@ -30,7 +30,9 @@ def is_datetime_field_type(
     schema_info: QueryPlanningSchemaInfo, vertex_name: str, field_name: str
 ) -> bool:
     """Return whether the field is of type GraphQLDateTime."""
-    return is_same_type(GraphQLDateTime, _get_property_field_type(schema_info, vertex_name, field_name))
+    return is_same_type(
+        GraphQLDateTime, _get_property_field_type(schema_info, vertex_name, field_name)
+    )
 
 
 def is_date_field_type(
