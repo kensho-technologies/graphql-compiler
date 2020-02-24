@@ -61,6 +61,7 @@ setup(
         "pytz>=2017.2",
         "six>=1.10.0",
         "sqlalchemy>=1.3.0,<2",
+        "cached-property>=1.5.1,<2",
     ],
     extras_require={':python_version<"3.7"': ["dataclasses>=0.6"],},
     classifiers=[
