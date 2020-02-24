@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from typing import Union, cast
+from typing import Union
 
 from graphql import (
     GraphQLInt,
