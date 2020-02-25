@@ -3,14 +3,14 @@ from typing import Tuple
 
 from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..global_utils import ASTWithParameters
-from .pagination_planning import PaginationAdvisory, PaginationPlan, get_pagination_plan
+from .pagination_planning import PaginationPlan
 from .parameter_generator import generate_parameters_for_vertex_partition
 from .query_parameterizer import generate_parameterized_queries
 
 
 def split_into_page_query_and_remainder_query(
     query_analysis: QueryPlanningAnalysis, pagination_plan: PaginationPlan
-) -> Tuple[ASTWithParameters, ASTWithParameters, Tuple[PaginationAdvisory, ...]]:
+) -> Tuple[ASTWithParameters, ASTWithParameters]:
     """Split a query into two equivalent queries, one of which will return roughly a page of data.
 
     First, two parameterized queries are generated that contain filters usable for pagination i.e.
