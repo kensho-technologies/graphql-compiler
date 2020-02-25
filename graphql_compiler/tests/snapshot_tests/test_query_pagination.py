@@ -1178,7 +1178,7 @@ class QueryPaginationTests(unittest.TestCase):
         first = first_page_and_remainder.one_page
         remainder = first_page_and_remainder.remainder
 
-        # No pagination necessary
+        # Query should be split, but there's no viable pagination method.
         compare_graphql(self, original_query.query_string, first.query_string)
         self.assertEqual(original_query.parameters, first.parameters)
         self.assertEqual(0, len(remainder))
