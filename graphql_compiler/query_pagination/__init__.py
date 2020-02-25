@@ -6,7 +6,7 @@ from graphql.language.printer import print_ast
 from ..cost_estimation.analysis import QueryPlanningAnalysis, analyze_query_string
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
-from .pagination_planning import PaginationAdvisory
+from .pagination_planning import PaginationAdvisory, get_pagination_plan
 from .query_splitter import split_into_page_query_and_remainder_query
 from .typedefs import PageAndRemainder
 
@@ -86,10 +86,12 @@ def paginate_query_ast(
         query_analysis.query_string_with_parameters, result_size, page_size
     )
     if num_pages > 1:
-        page_query, remainder_query, advisories = split_into_page_query_and_remainder_query(
-            query_analysis, num_pages
-        )
-        remainder_queries = (remainder_query,)
+        pagination_plan, advisories = get_pagination_plan(query_analysis, num_pages)
+        if pagination_plan.vertex_partitions:
+            page_query, remainder_query = split_into_page_query_and_remainder_query(
+                query_analysis, pagination_plan
+            )
+            remainder_queries = (remainder_query,)
 
     return (
         PageAndRemainder[ASTWithParameters](
