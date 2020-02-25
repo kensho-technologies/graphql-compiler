@@ -13,15 +13,9 @@ def split_into_page_query_and_remainder_query(
 ) -> Tuple[ASTWithParameters, ASTWithParameters]:
     """Split a query into two equivalent queries, one of which will return roughly a page of data.
 
-    First, two parameterized queries are generated that contain filters usable for pagination i.e.
-    filters with which the number of results can be constrained. Parameters for these filters are
-    then generated such that one of the new queries will return roughly a page of results, while the
-    other query will generate the rest of the results. This ensures that the two new queries' result
-    data is equivalent to the original query's result data.
-
     Args:
         query_analysis: the query with any query analysis needed for pagination
-        pagination_plan: plan on how to split the query
+        pagination_plan: plan on how to split the query. The plan defines what is considered a page
 
     Returns:
         tuple containing three elements:
@@ -30,7 +24,6 @@ def split_into_page_query_and_remainder_query(
             - ASTWithParameters or None, describing a query that returns the rest of the
               result data of the original query. If the original query is expected to return only a
               page or less of results, then this element will have value None.
-            - Tuple of PaginationAdvisories that communicate what can be done to improve pagination
     """
     if len(pagination_plan.vertex_partitions) != 1:
         raise NotImplementedError(
