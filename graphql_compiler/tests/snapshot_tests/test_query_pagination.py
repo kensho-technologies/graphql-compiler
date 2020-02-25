@@ -1143,3 +1143,42 @@ class QueryPaginationTests(unittest.TestCase):
         compare_graphql(self, original_query.query_string, first.query_string)
         self.assertEqual(original_query.parameters, first.parameters)
         self.assertEqual(0, len(remainder))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_impossible_pagination(self):
+        """Ensure pagination is not done when not needed."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        original_query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal")
+            }
+        }""",
+            {},
+        )
+
+        count_data = {
+            "Animal": 100000,
+        }
+
+        statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        first_page_and_remainder, _ = paginate_query(schema_info, original_query, 10)
+        first = first_page_and_remainder.one_page
+        remainder = first_page_and_remainder.remainder
+
+        # No pagination necessary
+        compare_graphql(self, original_query.query_string, first.query_string)
+        self.assertEqual(original_query.parameters, first.parameters)
+        self.assertEqual(0, len(remainder))
