@@ -17,6 +17,7 @@ import datetime
 from typing import Any
 from uuid import UUID
 
+from ..schema import is_meta_field
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_type, is_uuid4_type
 
@@ -34,6 +35,8 @@ def field_supports_range_reasoning(
     schema_info: QueryPlanningSchemaInfo, vertex_class: str, property_field: str
 ) -> bool:
     """Return whether range reasoning is supported. See module docstring for definition."""
+    if is_meta_field(property_field):
+        return False
     return (
         is_uuid4_type(schema_info, vertex_class, property_field)
         or is_int_field_type(schema_info, vertex_class, property_field)
