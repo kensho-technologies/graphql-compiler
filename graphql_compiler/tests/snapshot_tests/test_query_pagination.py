@@ -1204,11 +1204,6 @@ class QueryPaginationTests(unittest.TestCase):
         from .. import test_input_data
         from ..test_input_data import CommonTestData
 
-        failing_tests = (
-        )
-
-        from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
-        from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
         arg_value = {
             "String": "lol",
             "ID": "40000000-0000-0000-0000-000000000000",
@@ -1220,11 +1215,9 @@ class QueryPaginationTests(unittest.TestCase):
         }
 
         for test_name in dir(test_input_data):
-            if test_name in failing_tests:
-                continue
             method = getattr(test_input_data, test_name)
-            if hasattr(method, '__annotations__'):
-                output_type = method.__annotations__.get('return')
+            if hasattr(method, "__annotations__"):
+                output_type = method.__annotations__.get("return")
                 if output_type == CommonTestData:
                     test_data = method()
                     query = test_data.graphql_input
@@ -1233,4 +1226,3 @@ class QueryPaginationTests(unittest.TestCase):
                         for arg_name, arg_type in test_data.expected_input_metadata.items()
                     }
                     paginate_query(schema_info, QueryStringWithParameters(query, args), 10)
-
