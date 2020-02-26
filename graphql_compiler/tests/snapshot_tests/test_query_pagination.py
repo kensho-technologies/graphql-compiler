@@ -1207,6 +1207,18 @@ class QueryPaginationTests(unittest.TestCase):
         failing_tests = (
         )
 
+        from graphql import GraphQLID, GraphQLInt, GraphQLList, GraphQLString
+        from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
+        arg_value = {
+            "String": "lol",
+            "ID": "40000000-0000-0000-0000-000000000000",
+            "Int": 5,
+            "Date": datetime.date(2000, 1, 1),
+            "DateTime": datetime.datetime(2000, 1, 1),
+            "Decimal": 5.3,
+            "[String]": ["lol", "lel"],
+        }
+
         for test_name in dir(test_input_data):
             if test_name in failing_tests:
                 continue
@@ -1216,7 +1228,9 @@ class QueryPaginationTests(unittest.TestCase):
                 if output_type == CommonTestData:
                     test_data = method()
                     query = test_data.graphql_input
-                    if test_data.expected_input_metadata == {}:
-                        args = {}
-                        paginate_query(schema_info, QueryStringWithParameters(query, args), 10)
+                    args = {
+                        arg_name: arg_value[str(arg_type)]
+                        for arg_name, arg_type in test_data.expected_input_metadata.items()
+                    }
+                    paginate_query(schema_info, QueryStringWithParameters(query, args), 10)
 
