@@ -85,6 +85,8 @@ def get_field_value_intervals(
 
         # Find field_value_interval for each field
         for field_name, filters_on_field in single_field_filters.items():
+            # TODO add:
+            # if field_supports_range_reasoning(schema_info, location_name, field_name):
             integer_interval = get_integer_interval_for_filters_on_field(
                 schema_info, filters_on_field, vertex_type_name, field_name, parameters
             )

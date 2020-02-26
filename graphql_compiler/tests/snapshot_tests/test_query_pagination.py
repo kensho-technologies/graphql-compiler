@@ -1182,3 +1182,32 @@ class QueryPaginationTests(unittest.TestCase):
         compare_graphql(self, original_query.query_string, first.query_string)
         self.assertEqual(original_query.parameters, first.parameters)
         self.assertEqual(0, len(remainder))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_with_compiler_tests(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        count_data = {vertex_name: 100 for vertex_name in schema_graph.vertex_class_names}
+        count_data.update({edge_name: 100 for edge_name in schema_graph.edge_class_names})
+        statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        from .. import test_input_data
+        for test_name in dir(test_input_data):
+            if test_name[0].islower():
+                method = getattr(test_input_data, test_name)
+                test_data = method()
+                query = test_data.graphql_input
+                if test_data.expected_input_metadata == {}:
+                    args = {}
+                    paginate_query(schema_info, QueryStringWithParameters(query, args), 10)
+
