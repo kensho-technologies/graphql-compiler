@@ -70,6 +70,9 @@ def get_field_value_intervals(
     """
     field_value_intervals = {}
     for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
+
         filter_infos = query_metadata.get_filter_infos(location)
         vertex_type_name = location_info.type.name
 

@@ -1205,12 +1205,6 @@ class QueryPaginationTests(unittest.TestCase):
         from ..test_input_data import CommonTestData
 
         failing_tests = (
-            "complex_optional_variables",
-            "filter_count_with_tagged_optional_parameter_in_fold_scope",
-            "filter_count_with_tagged_parameter_in_fold_scope",
-            "filter_field_with_tagged_optional_parameter_in_fold_scope",
-            "in_collection_op_filter_with_optional_tag",
-            "in_collection_op_filter_with_tag",
         )
 
         for test_name in dir(test_input_data):

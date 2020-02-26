@@ -8,7 +8,7 @@ from typing import Any, Dict, List
 
 import six
 
-from ..compiler.helpers import get_parameter_name
+from ..compiler.helpers import get_parameter_name, is_runtime_parameter
 from ..compiler.metadata import FilterInfo
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .helpers import is_uuid4_type
@@ -283,6 +283,14 @@ def _get_selectivity_fraction_of_interval(
     return float(interval_size) / domain_interval_size
 
 
+def _filter_uses_only_runtime_parameters(filter_info: FilterInfo) -> bool:
+    """Return whether the filter uses only runtime parameters."""
+    for filter_argument in filter_info.args:
+        if not is_runtime_parameter(filter_argument):
+            return False
+    return True
+
+
 def get_integer_interval_for_filters_on_field(
     schema_info: QueryPlanningSchemaInfo,
     filters_on_field: List[FilterInfo],
@@ -293,6 +301,8 @@ def get_integer_interval_for_filters_on_field(
     """Get the interval of possible values on this field, constrained by its inequality filters."""
     interval = Interval[int](None, None)
     for filter_info in filters_on_field:
+        if not _filter_uses_only_runtime_parameters(filter_info):
+            continue  # We can't reason about tagged parameters
         if filter_info.op_name in INEQUALITY_OPERATORS:
             parameter_values = [
                 convert_field_value_to_int(
@@ -389,6 +399,9 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         # Process in_collection filters
         for filter_info in filters_on_field:
             if filter_info.op_name == "in_collection":
+                if not _filter_uses_only_runtime_parameters(filter_info):
+                    continue  # We can't reason about tagged parameters
+
                 # TODO(bojanserafimov): Check if the filter values are in the interval selected
                 #                       by the inequality filters.
                 collection = parameters[get_parameter_name(filter_info.args[0])]
