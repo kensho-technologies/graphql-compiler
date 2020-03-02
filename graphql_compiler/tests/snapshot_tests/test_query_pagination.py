@@ -7,6 +7,7 @@ from graphql import print_ast
 import pytest
 import pytz
 
+from .. import test_input_data
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.analysis import analyze_query_string
 from ...cost_estimation.statistics import LocalStatistics
@@ -26,7 +27,8 @@ from ...query_pagination.parameter_generator import (
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ..test_helpers import compare_graphql, generate_schema_graph
+from ..test_helpers import compare_graphql, generate_schema_graph, get_function_names_from_module
+from ..test_input_data import CommonTestData
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -1182,3 +1184,45 @@ class QueryPaginationTests(unittest.TestCase):
         compare_graphql(self, original_query.query_string, first.query_string)
         self.assertEqual(original_query.parameters, first.parameters)
         self.assertEqual(0, len(remainder))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_with_compiler_tests(self):
+        """Test that pagination doesn't crash on any of the queries from the compiler tests."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        count_data = {vertex_name: 100 for vertex_name in schema_graph.vertex_class_names}
+        count_data.update({edge_name: 100 for edge_name in schema_graph.edge_class_names})
+        statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        arbitrary_value_for_type = {
+            "String": "string_1",
+            "ID": "40000000-0000-0000-0000-000000000000",
+            "Int": 5,
+            "Date": datetime.date(2000, 1, 1),
+            "DateTime": datetime.datetime(2000, 1, 1),
+            "Decimal": 5.3,
+            "[String]": ["string_1", "string_2"],
+        }
+
+        for test_name in get_function_names_from_module(test_input_data):
+            method = getattr(test_input_data, test_name)
+            if hasattr(method, "__annotations__"):
+                output_type = method.__annotations__.get("return")
+                if output_type == CommonTestData:
+                    test_data = method()
+                    query = test_data.graphql_input
+                    args = {
+                        arg_name: arbitrary_value_for_type[str(arg_type)]
+                        for arg_name, arg_type in test_data.expected_input_metadata.items()
+                    }
+                    paginate_query(schema_info, QueryStringWithParameters(query, args), 10)

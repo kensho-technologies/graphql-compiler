@@ -58,7 +58,10 @@ def get_field_value_intervals(
     query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
-    """Map the PropertyPath of each field in the query with filters to its field value interval.
+    """Map the PropertyPath of each supported field with filters to its field value interval.
+
+    This method only considers fields on which we have range reasoning
+    (see field_supports_range_reasoning) that are not inside folds.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
@@ -70,6 +73,9 @@ def get_field_value_intervals(
     """
     field_value_intervals = {}
     for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
+
         filter_infos = query_metadata.get_filter_infos(location)
         vertex_type_name = location_info.type.name
 
@@ -85,14 +91,15 @@ def get_field_value_intervals(
 
         # Find field_value_interval for each field
         for field_name, filters_on_field in single_field_filters.items():
-            integer_interval = get_integer_interval_for_filters_on_field(
-                schema_info, filters_on_field, vertex_type_name, field_name, parameters
-            )
-            field_value_interval = _convert_int_interval_to_field_value_interval(
-                schema_info, vertex_type_name, field_name, integer_interval
-            )
-            property_path = PropertyPath(location.query_path, field_name)
-            field_value_intervals[property_path] = field_value_interval
+            if field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
+                integer_interval = get_integer_interval_for_filters_on_field(
+                    schema_info, filters_on_field, vertex_type_name, field_name, parameters
+                )
+                field_value_interval = _convert_int_interval_to_field_value_interval(
+                    schema_info, vertex_type_name, field_name, integer_interval
+                )
+                property_path = PropertyPath(location.query_path, field_name)
+                field_value_intervals[property_path] = field_value_interval
     return field_value_intervals
 
 
