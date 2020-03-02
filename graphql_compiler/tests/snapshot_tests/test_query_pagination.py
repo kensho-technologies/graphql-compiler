@@ -7,6 +7,7 @@ from graphql import print_ast
 import pytest
 import pytz
 
+from .. import test_input_data
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.analysis import analyze_query_string
 from ...cost_estimation.statistics import LocalStatistics
@@ -27,6 +28,7 @@ from ...query_pagination.query_parameterizer import generate_parameterized_queri
 from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import compare_graphql, generate_schema_graph
+from ..test_input_data import CommonTestData
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -1185,6 +1187,7 @@ class QueryPaginationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_with_compiler_tests(self):
+        """Test that pagination doesn't crash on any of the queries from the compiler tests."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
@@ -1201,10 +1204,7 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_fields=uuid4_fields,
         )
 
-        from .. import test_input_data
-        from ..test_input_data import CommonTestData
-
-        arg_value = {
+        arbitrary_value_for_type = {
             "String": "lol",
             "ID": "40000000-0000-0000-0000-000000000000",
             "Int": 5,
@@ -1222,7 +1222,7 @@ class QueryPaginationTests(unittest.TestCase):
                     test_data = method()
                     query = test_data.graphql_input
                     args = {
-                        arg_name: arg_value[str(arg_type)]
+                        arg_name: arbitrary_value_for_type[str(arg_type)]
                         for arg_name, arg_type in test_data.expected_input_metadata.items()
                     }
                     paginate_query(schema_info, QueryStringWithParameters(query, args), 10)
