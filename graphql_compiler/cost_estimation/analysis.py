@@ -58,7 +58,10 @@ def get_field_value_intervals(
     query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
-    """Map the PropertyPath of each field in the query with filters to its field value interval.
+    """Map the PropertyPath of each supported field with filters to its field value interval.
+
+    This method only considers fields on which we have range reasoning
+    (see field_supports_range_reasoning) that are not inside folds.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
