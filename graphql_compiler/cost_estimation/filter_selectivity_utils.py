@@ -301,9 +301,10 @@ def get_integer_interval_for_filters_on_field(
     """Get the interval of possible values on this field, constrained by its inequality filters."""
     interval = Interval[int](None, None)
     for filter_info in filters_on_field:
-        if not _filter_uses_only_runtime_parameters(filter_info):
-            continue  # We can't reason about tagged parameters
         if filter_info.op_name in INEQUALITY_OPERATORS:
+            if not _filter_uses_only_runtime_parameters(filter_info):
+                continue  # We can't reason about tagged parameters in inequality filters
+
             parameter_values = [
                 convert_field_value_to_int(
                     schema_info,
@@ -400,7 +401,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         for filter_info in filters_on_field:
             if filter_info.op_name == "in_collection":
                 if not _filter_uses_only_runtime_parameters(filter_info):
-                    continue  # We can't reason about tagged parameters
+                    continue  # We can't reason about tagged parameters in in_collection filters
 
                 # TODO(bojanserafimov): Check if the filter values are in the interval selected
                 #                       by the inequality filters.
