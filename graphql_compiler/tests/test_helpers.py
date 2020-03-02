@@ -1,6 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
 from collections import namedtuple
+from inspect import getmembers, isfunction
 from pprint import pformat
 import re
 from typing import Any, Dict, List, Optional, Set, Tuple, Union
@@ -443,6 +444,23 @@ BackendTester = namedtuple(
         "setup_data",
     ),
 )
+
+
+def get_function_names_from_module(module):
+    """Return a set of function names present in a given module."""
+    return {member for member, member_type in getmembers(module) if isfunction(member_type)}
+
+
+def get_test_function_names_from_class(test_class):
+    """Return a set of test function names present in a given TestCase class."""
+    if not issubclass(test_class, unittest.TestCase):
+        raise AssertionError(u"Received non-test class {} as input.".format(test_class))
+    member_dict = test_class.__dict__
+    return {
+        member
+        for member in member_dict
+        if isfunction(member_dict[member]) and member[:5] == "test_"
+    }
 
 
 def transform(emitted_output: str) -> str:

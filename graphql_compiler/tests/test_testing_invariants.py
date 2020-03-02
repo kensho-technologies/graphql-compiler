@@ -1,26 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common GraphQL test inputs and expected outputs."""
-from inspect import getmembers, isfunction
 import unittest
 
-import graphql_compiler.tests.test_input_data as test_input_data
-
-
-def get_function_names_from_module(module):
-    """Return a set of function names present in a given module."""
-    return {member for member, member_type in getmembers(module) if isfunction(member_type)}
-
-
-def get_test_function_names_from_class(test_class):
-    """Return a set of test function names present in a given TestCase class."""
-    if not issubclass(test_class, unittest.TestCase):
-        raise AssertionError(u"Received non-test class {} as input.".format(test_class))
-    member_dict = test_class.__dict__
-    return {
-        member
-        for member in member_dict
-        if isfunction(member_dict[member]) and member[:5] == "test_"
-    }
+from . import test_input_data as test_input_data
+from .test_helpers import get_function_names_from_module, get_test_function_names_from_class
 
 
 # The namedtuple function is imported from test_input_data,

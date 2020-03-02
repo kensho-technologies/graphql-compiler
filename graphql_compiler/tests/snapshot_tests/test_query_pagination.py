@@ -27,9 +27,8 @@ from ...query_pagination.parameter_generator import (
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
 from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
-from ..test_helpers import compare_graphql, generate_schema_graph
+from ..test_helpers import compare_graphql, generate_schema_graph, get_function_names_from_module
 from ..test_input_data import CommonTestData
-from ..test_testing_invariants import get_function_names_from_module
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
