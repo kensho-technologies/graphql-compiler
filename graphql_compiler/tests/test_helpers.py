@@ -453,7 +453,7 @@ def get_function_names_from_module(module):
 
 def get_test_function_names_from_class(test_class):
     """Return a set of test function names present in a given TestCase class."""
-    if not issubclass(test_class, unittest.TestCase):
+    if not issubclass(test_class, TestCase):
         raise AssertionError(u"Received non-test class {} as input.".format(test_class))
     member_dict = test_class.__dict__
     return {
