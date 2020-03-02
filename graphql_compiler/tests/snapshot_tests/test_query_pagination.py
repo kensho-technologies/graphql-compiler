@@ -1211,7 +1211,7 @@ class QueryPaginationTests(unittest.TestCase):
             "Date": datetime.date(2000, 1, 1),
             "DateTime": datetime.datetime(2000, 1, 1),
             "Decimal": 5.3,
-            "[String]": ["lol", "lel"],
+            "[String]": ["string_1", "string_2"],
         }
 
         for test_name in dir(test_input_data):
