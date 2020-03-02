@@ -1205,7 +1205,7 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         arbitrary_value_for_type = {
-            "String": "lol",
+            "String": "string_1",
             "ID": "40000000-0000-0000-0000-000000000000",
             "Int": 5,
             "Date": datetime.date(2000, 1, 1),
