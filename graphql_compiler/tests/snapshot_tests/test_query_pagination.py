@@ -29,6 +29,7 @@ from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import compare_graphql, generate_schema_graph
 from ..test_input_data import CommonTestData
+from ..test_testing_invariants import get_function_names_from_module
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -1214,7 +1215,7 @@ class QueryPaginationTests(unittest.TestCase):
             "[String]": ["string_1", "string_2"],
         }
 
-        for test_name in dir(test_input_data):
+        for test_name in get_function_names_from_module(test_input_data):
             method = getattr(test_input_data, test_name)
             if hasattr(method, "__annotations__"):
                 output_type = method.__annotations__.get("return")
