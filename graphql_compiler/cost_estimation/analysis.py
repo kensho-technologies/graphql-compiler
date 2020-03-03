@@ -57,7 +57,18 @@ def _convert_int_interval_to_field_value_interval(
 def get_single_field_filters(
     schema_info: QueryPlanningSchemaInfo, query_metadata: QueryMetadataTable,
 ) -> Dict[PropertyPath, Set[FilterInfo]]:
-    """Find the single field filters for each field. Filters like name_or_alias are excluded."""
+    """Find the single field filters for each field.
+
+    Filters that apply to multiple fields, like name_or_alias, are ignored.
+    Filters inside fold scopes are not considered.
+
+    Args:
+        schema_info: QueryPlanningSchemaInfo
+        query_metadata: info on locations, inputs, outputs, and tags in the query
+
+    Returns:
+        A set of filters for each field.
+    """
     single_field_filters = {}
     for location, location_info in query_metadata.registered_locations:
         if not isinstance(location, Location):
