@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 from cached_property import cached_property
 from graphql.language.printer import print_ast
@@ -9,6 +9,7 @@ from graphql.language.printer import print_ast
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import Location, get_edge_direction_and_name
+from .helpers import is_uuid4_type
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -23,6 +24,7 @@ from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
     adjust_counts_for_filters,
     get_integer_interval_for_filters_on_field,
+    filter_uses_only_runtime_parameters
 )
 
 
@@ -53,9 +55,68 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
+def get_single_field_filters(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+) -> Dict[PropertyPath, List[FilterInfo]]:
+    """Find the single field filters for each field. Filters like name_or_alias are excluded."""
+    single_field_filters = {}
+    for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
+
+        filter_infos = query_metadata.get_filter_infos(location)
+        vertex_type_name = location_info.type.name
+
+        # Group filters by field
+        single_field_filters_for_vertex: Dict[str, List[FilterInfo]] = {}
+        for filter_info in filter_infos:
+            if len(filter_info.fields) == 0:
+                raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_type_name}")
+            elif len(filter_info.fields) == 1:
+                single_field_filters_for_vertex.setdefault(
+                    filter_info.fields[0], []).append(filter_info)
+            else:
+                pass  # We don't do anything for multi-field filters yet
+
+        for field_name, filters in single_field_filters_for_vertex.items():
+            property_path = PropertyPath(location.query_path, field_name)
+            single_field_filters[property_path] = filters
+
+    return single_field_filters
+
+
+def get_fields_eligible_for_pagination(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+    single_field_filters: Dict[PropertyPath, List[FilterInfo]]
+) -> Set[PropertyPath]:
+    """Return all the fields we can consider for pagination."""
+    fields_eligible_for_pagination = set()
+    for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
+
+        vertex_type_name = location_info.type.name
+        for field_name, _ in location_info.type.fields.items():
+            property_path = PropertyPath(location.query_path, field_name)
+            filters = single_field_filters.get(property_path, set())
+            eligible_for_pagination = True
+            if not field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
+                eligible_for_pagination = False
+            for filter_info in filters:
+                if not filter_uses_only_runtime_parameters(filter_info):
+                    eligible_for_pagination = False
+            if eligible_for_pagination:
+                fields_eligible_for_pagination.add(property_path)
+
+    return fields_eligible_for_pagination
+
+
 def get_field_value_intervals(
     schema_info: QueryPlanningSchemaInfo,
     query_metadata: QueryMetadataTable,
+    single_field_filters: Dict[PropertyPath, List[FilterInfo]],
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
     """Map the PropertyPath of each supported field with filters to its field value interval.
@@ -76,21 +137,11 @@ def get_field_value_intervals(
         if not isinstance(location, Location):
             continue  # We don't paginate inside folds.
 
-        filter_infos = query_metadata.get_filter_infos(location)
-        vertex_type_name = location_info.type.name
-
-        # Group filters by field
-        single_field_filters: Dict[str, List[FilterInfo]] = {}
-        for filter_info in filter_infos:
-            if len(filter_info.fields) == 0:
-                raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_type_name}")
-            elif len(filter_info.fields) == 1:
-                single_field_filters.setdefault(filter_info.fields[0], []).append(filter_info)
-            else:
-                pass  # We don't do anything for multi-field filters yet
-
         # Find field_value_interval for each field
-        for field_name, filters_on_field in single_field_filters.items():
+        vertex_type_name = location_info.type.name
+        for field_name, _ in location_info.type.fields.items():
+            property_path = PropertyPath(location.query_path, field_name)
+            filters_on_field = single_field_filters.get(property_path, set())
             if field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                 integer_interval = get_integer_interval_for_filters_on_field(
                     schema_info, filters_on_field, vertex_type_name, field_name, parameters
@@ -278,10 +329,23 @@ class QueryPlanningAnalysis:
         )
 
     @cached_property
+    def single_field_filters(self) -> Dict[PropertyPath, List[FilterInfo]]:
+        """Find the single field filters for each field. Filters like name_or_alias are excluded."""
+        return get_single_field_filters(self.schema_info, self.metadata_table)
+
+    @cached_property
+    def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
+        """Return all the fields we can consider for pagination."""
+        return get_fields_eligible_for_pagination(
+            self.schema_info, self.metadata_table, self.single_field_filters
+        )
+
+    @cached_property
     def field_value_intervals(self) -> Dict[PropertyPath, Interval[Any]]:
         """Return the field value intervals for this query."""
         return get_field_value_intervals(
-            self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
+            self.schema_info, self.metadata_table, self.single_field_filters,
+            self.ast_with_parameters.parameters
         )
 
     @cached_property
