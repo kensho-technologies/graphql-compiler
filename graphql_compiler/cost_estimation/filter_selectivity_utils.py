@@ -4,7 +4,7 @@ from __future__ import division
 import bisect
 from collections import namedtuple
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 import six
 
@@ -293,7 +293,7 @@ def filter_uses_only_runtime_parameters(filter_info: FilterInfo) -> bool:
 
 def get_integer_interval_for_filters_on_field(
     schema_info: QueryPlanningSchemaInfo,
-    filters_on_field: List[FilterInfo],
+    filters_on_field: Set[FilterInfo],
     location_name: str,
     field_name: str,
     parameters: Dict[str, Any],
@@ -336,12 +336,13 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         Selectivity object
     """
     # Group filters by field
+    # TODO this is already computed in QueryPlanningAnalysis.single_field_filters
     single_field_filters = {}
     for filter_info in filter_infos:
         if len(filter_info.fields) == 0:
             raise AssertionError(u"Got filter on 0 fields {} {}".format(filter_info, location_name))
         elif len(filter_info.fields) == 1:
-            single_field_filters.setdefault(filter_info.fields[0], []).append(filter_info)
+            single_field_filters.setdefault(filter_info.fields[0], set()).add(filter_info)
         else:
             pass  # We don't do anything for multi-field filters yet
 
