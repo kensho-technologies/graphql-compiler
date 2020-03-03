@@ -107,6 +107,8 @@ def get_fields_eligible_for_pagination(
             for filter_info in filters:
                 if not filter_uses_only_runtime_parameters(filter_info):
                     eligible_for_pagination = False
+            if is_meta_field(field_name):
+                eligible_for_pagination = False
             if eligible_for_pagination:
                 fields_eligible_for_pagination.add(property_path)
 
@@ -224,6 +226,7 @@ def get_distinct_result_set_estimates(
 
 def get_pagination_capacities(
     schema_info: QueryPlanningSchemaInfo,
+    fields_eligible_for_pagination: Set[PropertyPath],
     field_value_intervals: Dict[PropertyPath, Interval[Any]],
     distinct_result_set_estimates: Dict[VertexPath, float],
     query_metadata: QueryMetadataTable,
@@ -255,46 +258,48 @@ def get_pagination_capacities(
 
         for field_name, _ in location_info.type.fields.items():
             property_path = PropertyPath(location.query_path, field_name)
-            if not is_meta_field(field_name):
-                if is_uuid4_type(schema_info, vertex_type_name, field_name):
-                    pagination_capacities[property_path] = int(
-                        distinct_result_set_estimates[location.query_path]
-                    )
-                elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
-                    field_value_interval = field_value_intervals.get(
-                        property_path, Interval(None, None)
-                    )
-                    quantiles = schema_info.statistics.get_field_quantiles(
-                        vertex_type_name, field_name
-                    )
-                    if quantiles is not None:
+            if property_path not in fields_eligible_for_pagination:
+                continue
 
-                        # The first and last values of the quantiles are the minimum and maximum
-                        # observed values. We call all other values the proper quantiles. We don't
-                        # directly use the minimum and maximum values as page boundaries since we
-                        # will most likely generate empty pages.
-                        proper_quantiles = quantiles[1:-1]
+            if is_uuid4_type(schema_info, vertex_type_name, field_name):
+                pagination_capacities[property_path] = int(
+                    distinct_result_set_estimates[location.query_path]
+                )
+            elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
+                field_value_interval = field_value_intervals.get(
+                    property_path, Interval(None, None)
+                )
+                quantiles = schema_info.statistics.get_field_quantiles(
+                    vertex_type_name, field_name
+                )
+                if quantiles is not None:
 
-                        # Get the relevant quantiles (ones inside the field_value_interval)
-                        min_quantile = 0
-                        max_quantile = len(proper_quantiles)
-                        if field_value_interval.lower_bound is not None:
-                            min_quantile = bisect.bisect_left(
-                                proper_quantiles, field_value_interval.lower_bound
-                            )
-                        if field_value_interval.upper_bound is not None:
-                            max_quantile = bisect.bisect_left(
-                                proper_quantiles, field_value_interval.upper_bound
-                            )
-                        relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
+                    # The first and last values of the quantiles are the minimum and maximum
+                    # observed values. We call all other values the proper quantiles. We don't
+                    # directly use the minimum and maximum values as page boundaries since we
+                    # will most likely generate empty pages.
+                    proper_quantiles = quantiles[1:-1]
 
-                        # TODO(bojanserafimov): If the relevant quantiles contain duplicates, the
-                        #                       pagination capacity would be lower.
-
-                        pagination_capacities[property_path] = min(
-                            len(relevant_quantiles) + 1,
-                            int(distinct_result_set_estimates[location.query_path]),
+                    # Get the relevant quantiles (ones inside the field_value_interval)
+                    min_quantile = 0
+                    max_quantile = len(proper_quantiles)
+                    if field_value_interval.lower_bound is not None:
+                        min_quantile = bisect.bisect_left(
+                            proper_quantiles, field_value_interval.lower_bound
                         )
+                    if field_value_interval.upper_bound is not None:
+                        max_quantile = bisect.bisect_left(
+                            proper_quantiles, field_value_interval.upper_bound
+                        )
+                    relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
+
+                    # TODO(bojanserafimov): If the relevant quantiles contain duplicates, the
+                    #                       pagination capacity would be lower.
+
+                    pagination_capacities[property_path] = min(
+                        len(relevant_quantiles) + 1,
+                        int(distinct_result_set_estimates[location.query_path]),
+                    )
 
     return pagination_capacities
 
@@ -360,6 +365,7 @@ class QueryPlanningAnalysis:
         """Return the pagination capacities for this query."""
         return get_pagination_capacities(
             self.schema_info,
+            self.fields_eligible_for_pagination,
             self.field_value_intervals,
             self.distinct_result_set_estimates,
             self.metadata_table,
