@@ -98,7 +98,7 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
-def _make_uuid_mssql_compatible(uuid_value: str) -> str:
+def _get_nearest_db_agnostic_uuid(uuid_value: str) -> str:
     """Return the nearest db-agnostic uuid.
 
     Most databases compare uuids by considering the leftmost digist most significant.
@@ -166,7 +166,7 @@ def _compute_parameters_for_uuid_field(
         convert_int_to_field_value(schema_info, vertex_type, field, int_value)
         for int_value in int_value_splits
     )
-    return (_make_uuid_mssql_compatible(uuid_value) for uuid_value in uuid_value_splits)
+    return (_get_nearest_db_agnostic_uuid(uuid_value) for uuid_value in uuid_value_splits)
 
 
 def _compute_parameters_for_non_uuid_field(
