@@ -98,6 +98,13 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
+def _make_uuid_mssql_compatible(uuid_value: str) -> str:
+    # TODO document
+    segments = uuid_value.split("-")
+    segments[4] = segments[0] + segments[1]
+    return "-".join(segments)
+
+
 def _compute_parameters_for_uuid_field(
     schema_info: QueryPlanningSchemaInfo,
     integer_interval: Interval[int],
@@ -135,9 +142,12 @@ def _compute_parameters_for_uuid_field(
         )
         for i in range(1, vertex_partition.number_of_splits)
     )
-    return (
+    uuid_value_splits = (
         convert_int_to_field_value(schema_info, vertex_type, field, int_value)
         for int_value in int_value_splits
+    )
+    return (
+        _make_uuid_mssql_compatible(uuid_value) for uuid_value in uuid_value_splits
     )
 
 

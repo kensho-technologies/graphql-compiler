@@ -271,7 +271,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
+            {"__paged_param_0": "40000000-0000-0000-0000-400000000000",},
         )
 
         expected_remainder = QueryStringWithParameters(
@@ -281,7 +281,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
+            {"__paged_param_0": "40000000-0000-0000-0000-400000000000",},
         )
 
         # Check that the correct first page and remainder are generated
@@ -311,8 +311,8 @@ class QueryPaginationTests(unittest.TestCase):
                 }
             }""",
             {
-                "__paged_param_0": "40000000-0000-0000-0000-000000000000",
-                "__paged_param_1": "80000000-0000-0000-0000-000000000000",
+                "__paged_param_0": "40000000-0000-0000-0000-400000000000",
+                "__paged_param_1": "80000000-0000-0000-0000-800000000000",
             },
         )
         expected_remainder = QueryStringWithParameters(
@@ -322,7 +322,7 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_1": "80000000-0000-0000-0000-000000000000",},
+            {"__paged_param_1": "80000000-0000-0000-0000-800000000000",},
         )
 
         # Check that the correct queries are generated
@@ -913,9 +913,9 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         expected_parameters = [
-            "40000000-0000-0000-0000-000000000000",
-            "80000000-0000-0000-0000-000000000000",
-            "c0000000-0000-0000-0000-000000000000",
+            "40000000-0000-0000-0000-400000000000",
+            "80000000-0000-0000-0000-800000000000",
+            "c0000000-0000-0000-0000-c00000000000",
         ]
         self.assertEqual(expected_parameters, list(generated_parameters))
 
