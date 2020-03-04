@@ -166,6 +166,9 @@ def _compute_parameters_for_uuid_field(
         convert_int_to_field_value(schema_info, vertex_type, field, int_value)
         for int_value in int_value_splits
     )
+
+    # There are 2^80 db-agnostic uuid values. Since we don't expect the number of pages
+    # to be even near that number, there shouldn't be any loss of precision from this.
     return (_get_nearest_db_agnostic_uuid(uuid_value) for uuid_value in uuid_value_splits)
 
 
