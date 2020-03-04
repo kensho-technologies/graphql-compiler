@@ -154,6 +154,9 @@ def get_field_value_intervals(
         for field_name, _ in location_info.type.fields.items():
             property_path = PropertyPath(location.query_path, field_name)
             filters_on_field: Set[FilterInfo] = single_field_filters.get(property_path, set())
+            if not filters_on_field:
+                continue
+
             if field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                 integer_interval = get_integer_interval_for_filters_on_field(
                     schema_info, filters_on_field, vertex_type_name, field_name, parameters
