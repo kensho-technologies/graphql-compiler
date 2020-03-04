@@ -99,8 +99,28 @@ def _convert_int_interval_to_field_value_interval(
 
 
 def _make_uuid_mssql_compatible(uuid_value: str) -> str:
-    # TODO document
+    """Return the nearest db-agnostic uuid.
+
+    Most databases compare uuids by considering the leftmost digist most significant.
+    MSSQL considers the last 6 bytes (12 hex digits) of the uuid most significant.
+    This difference becomes a problem when using the "<" filter operator.
+
+    We call a uuid db-agnostic if filters that use it as a parameter behave exactly the same
+    in all our db backends. It can be derived that the db-agnostic uuids are precisely the
+    uuids that have their first 12 hex digits and their last hex digits equal.
+
+    Args:
+        uuid_value: The desired uuid value
+
+    Returns:
+        The nearest uuid to the desired uuid value that is compatible with mssql.
+    """
     segments = uuid_value.split("-")
+    segment_lengths = tuple(len(segment) for segment in segments)
+    expected_segment_lengths = (8, 4, 4, 4, 12)
+    if expected_segment_lengths != segment_lengths:
+        raise AssertionError(f"Unexpected segment lengths {segment_lengths} in {uuid_value}")
+
     segments[4] = segments[0] + segments[1]
     return "-".join(segments)
 
@@ -146,9 +166,7 @@ def _compute_parameters_for_uuid_field(
         convert_int_to_field_value(schema_info, vertex_type, field, int_value)
         for int_value in int_value_splits
     )
-    return (
-        _make_uuid_mssql_compatible(uuid_value) for uuid_value in uuid_value_splits
-    )
+    return (_make_uuid_mssql_compatible(uuid_value) for uuid_value in uuid_value_splits)
 
 
 def _compute_parameters_for_non_uuid_field(
