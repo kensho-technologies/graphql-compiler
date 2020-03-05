@@ -67,7 +67,7 @@ def get_single_field_filters(
         query_metadata: info on locations, inputs, outputs, and tags in the query
 
     Returns:
-        A set of filters for each field.
+        dict mapping fields to their set of filters.
     """
     single_field_filters = {}
     for location, location_info in query_metadata.registered_locations:
