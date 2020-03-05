@@ -87,7 +87,7 @@ def get_single_field_filters(
                     filter_info
                 )
             else:
-                pass  # We don't do anything for multi-field filters yet
+                pass
 
         for field_name, filters in single_field_filters_for_vertex.items():
             property_path = PropertyPath(location.query_path, field_name)
