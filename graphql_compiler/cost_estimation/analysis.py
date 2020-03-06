@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 from dataclasses import dataclass
-from typing import Any, Dict, List
+from typing import Any, Dict, Set
 
 from cached_property import cached_property
 from graphql.language.printer import print_ast
@@ -14,7 +14,6 @@ from ..cost_estimation.cardinality_estimator import estimate_query_result_cardin
 from ..cost_estimation.int_value_conversion import (
     convert_int_to_field_value,
     field_supports_range_reasoning,
-    is_uuid4_type,
 )
 from ..cost_estimation.interval import Interval
 from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
@@ -22,8 +21,10 @@ from ..schema import is_meta_field
 from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
     adjust_counts_for_filters,
+    filter_uses_only_runtime_parameters,
     get_integer_interval_for_filters_on_field,
 )
+from .helpers import is_uuid4_type
 
 
 def _convert_int_interval_to_field_value_interval(
@@ -53,9 +54,81 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
+def get_single_field_filters(
+    schema_info: QueryPlanningSchemaInfo, query_metadata: QueryMetadataTable,
+) -> Dict[PropertyPath, Set[FilterInfo]]:
+    """Find the single field filters for each field.
+
+    Filters that apply to multiple fields, like name_or_alias, are ignored.
+    Filters inside fold scopes are not considered.
+
+    Args:
+        schema_info: QueryPlanningSchemaInfo
+        query_metadata: info on locations, inputs, outputs, and tags in the query
+
+    Returns:
+        dict mapping fields to their set of filters.
+    """
+    single_field_filters = {}
+    for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
+
+        filter_infos = query_metadata.get_filter_infos(location)
+        vertex_type_name = location_info.type.name
+
+        # Group filters by field
+        single_field_filters_for_vertex: Dict[str, Set[FilterInfo]] = {}
+        for filter_info in filter_infos:
+            if len(filter_info.fields) == 0:
+                raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_type_name}")
+            elif len(filter_info.fields) == 1:
+                single_field_filters_for_vertex.setdefault(filter_info.fields[0], set()).add(
+                    filter_info
+                )
+            else:
+                pass
+
+        for field_name, filters in single_field_filters_for_vertex.items():
+            property_path = PropertyPath(location.query_path, field_name)
+            single_field_filters[property_path] = filters
+
+    return single_field_filters
+
+
+def get_fields_eligible_for_pagination(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+    single_field_filters: Dict[PropertyPath, Set[FilterInfo]],
+) -> Set[PropertyPath]:
+    """Return all the fields we can consider for pagination."""
+    fields_eligible_for_pagination = set()
+    for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
+
+        vertex_type_name = location_info.type.name
+        for field_name, _ in location_info.type.fields.items():
+            property_path = PropertyPath(location.query_path, field_name)
+            filters: Set[FilterInfo] = single_field_filters.get(property_path, set())
+            eligible_for_pagination = True
+            if not field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
+                eligible_for_pagination = False
+            for filter_info in filters:
+                if not filter_uses_only_runtime_parameters(filter_info):
+                    eligible_for_pagination = False
+            if is_meta_field(field_name):
+                eligible_for_pagination = False
+            if eligible_for_pagination:
+                fields_eligible_for_pagination.add(property_path)
+
+    return fields_eligible_for_pagination
+
+
 def get_field_value_intervals(
     schema_info: QueryPlanningSchemaInfo,
     query_metadata: QueryMetadataTable,
+    single_field_filters: Dict[PropertyPath, Set[FilterInfo]],
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
     """Map the PropertyPath of each supported field with filters to its field value interval.
@@ -76,21 +149,14 @@ def get_field_value_intervals(
         if not isinstance(location, Location):
             continue  # We don't paginate inside folds.
 
-        filter_infos = query_metadata.get_filter_infos(location)
-        vertex_type_name = location_info.type.name
-
-        # Group filters by field
-        single_field_filters: Dict[str, List[FilterInfo]] = {}
-        for filter_info in filter_infos:
-            if len(filter_info.fields) == 0:
-                raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_type_name}")
-            elif len(filter_info.fields) == 1:
-                single_field_filters.setdefault(filter_info.fields[0], []).append(filter_info)
-            else:
-                pass  # We don't do anything for multi-field filters yet
-
         # Find field_value_interval for each field
-        for field_name, filters_on_field in single_field_filters.items():
+        vertex_type_name = location_info.type.name
+        for field_name, _ in location_info.type.fields.items():
+            property_path = PropertyPath(location.query_path, field_name)
+            filters_on_field: Set[FilterInfo] = single_field_filters.get(property_path, set())
+            if not filters_on_field:
+                continue
+
             if field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                 integer_interval = get_integer_interval_for_filters_on_field(
                     schema_info, filters_on_field, vertex_type_name, field_name, parameters
@@ -173,6 +239,7 @@ def get_distinct_result_set_estimates(
 
 def get_pagination_capacities(
     schema_info: QueryPlanningSchemaInfo,
+    fields_eligible_for_pagination: Set[PropertyPath],
     field_value_intervals: Dict[PropertyPath, Interval[Any]],
     distinct_result_set_estimates: Dict[VertexPath, float],
     query_metadata: QueryMetadataTable,
@@ -204,46 +271,46 @@ def get_pagination_capacities(
 
         for field_name, _ in location_info.type.fields.items():
             property_path = PropertyPath(location.query_path, field_name)
-            if not is_meta_field(field_name):
-                if is_uuid4_type(schema_info, vertex_type_name, field_name):
-                    pagination_capacities[property_path] = int(
-                        distinct_result_set_estimates[location.query_path]
-                    )
-                elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
-                    field_value_interval = field_value_intervals.get(
-                        property_path, Interval(None, None)
-                    )
-                    quantiles = schema_info.statistics.get_field_quantiles(
-                        vertex_type_name, field_name
-                    )
-                    if quantiles is not None:
+            if property_path not in fields_eligible_for_pagination:
+                continue
 
-                        # The first and last values of the quantiles are the minimum and maximum
-                        # observed values. We call all other values the proper quantiles. We don't
-                        # directly use the minimum and maximum values as page boundaries since we
-                        # will most likely generate empty pages.
-                        proper_quantiles = quantiles[1:-1]
+            if is_uuid4_type(schema_info, vertex_type_name, field_name):
+                pagination_capacities[property_path] = int(
+                    distinct_result_set_estimates[location.query_path]
+                )
+            elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
+                field_value_interval = field_value_intervals.get(
+                    property_path, Interval(None, None)
+                )
+                quantiles = schema_info.statistics.get_field_quantiles(vertex_type_name, field_name)
+                if quantiles is not None:
 
-                        # Get the relevant quantiles (ones inside the field_value_interval)
-                        min_quantile = 0
-                        max_quantile = len(proper_quantiles)
-                        if field_value_interval.lower_bound is not None:
-                            min_quantile = bisect.bisect_left(
-                                proper_quantiles, field_value_interval.lower_bound
-                            )
-                        if field_value_interval.upper_bound is not None:
-                            max_quantile = bisect.bisect_left(
-                                proper_quantiles, field_value_interval.upper_bound
-                            )
-                        relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
+                    # The first and last values of the quantiles are the minimum and maximum
+                    # observed values. We call all other values the proper quantiles. We don't
+                    # directly use the minimum and maximum values as page boundaries since we
+                    # will most likely generate empty pages.
+                    proper_quantiles = quantiles[1:-1]
 
-                        # TODO(bojanserafimov): If the relevant quantiles contain duplicates, the
-                        #                       pagination capacity would be lower.
-
-                        pagination_capacities[property_path] = min(
-                            len(relevant_quantiles) + 1,
-                            int(distinct_result_set_estimates[location.query_path]),
+                    # Get the relevant quantiles (ones inside the field_value_interval)
+                    min_quantile = 0
+                    max_quantile = len(proper_quantiles)
+                    if field_value_interval.lower_bound is not None:
+                        min_quantile = bisect.bisect_left(
+                            proper_quantiles, field_value_interval.lower_bound
                         )
+                    if field_value_interval.upper_bound is not None:
+                        max_quantile = bisect.bisect_left(
+                            proper_quantiles, field_value_interval.upper_bound
+                        )
+                    relevant_quantiles = proper_quantiles[min_quantile:max_quantile]
+
+                    # TODO(bojanserafimov): If the relevant quantiles contain duplicates, the
+                    #                       pagination capacity would be lower.
+
+                    pagination_capacities[property_path] = min(
+                        len(relevant_quantiles) + 1,
+                        int(distinct_result_set_estimates[location.query_path]),
+                    )
 
     return pagination_capacities
 
@@ -278,10 +345,25 @@ class QueryPlanningAnalysis:
         )
 
     @cached_property
+    def single_field_filters(self) -> Dict[PropertyPath, Set[FilterInfo]]:
+        """Find the single field filters for each field. Filters like name_or_alias are excluded."""
+        return get_single_field_filters(self.schema_info, self.metadata_table)
+
+    @cached_property
+    def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
+        """Return all the fields we can consider for pagination."""
+        return get_fields_eligible_for_pagination(
+            self.schema_info, self.metadata_table, self.single_field_filters
+        )
+
+    @cached_property
     def field_value_intervals(self) -> Dict[PropertyPath, Interval[Any]]:
         """Return the field value intervals for this query."""
         return get_field_value_intervals(
-            self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
+            self.schema_info,
+            self.metadata_table,
+            self.single_field_filters,
+            self.ast_with_parameters.parameters,
         )
 
     @cached_property
@@ -296,6 +378,7 @@ class QueryPlanningAnalysis:
         """Return the pagination capacities for this query."""
         return get_pagination_capacities(
             self.schema_info,
+            self.fields_eligible_for_pagination,
             self.field_value_intervals,
             self.distinct_result_set_estimates,
             self.metadata_table,

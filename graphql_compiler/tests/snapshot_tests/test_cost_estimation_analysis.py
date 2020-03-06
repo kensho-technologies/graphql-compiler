@@ -259,3 +259,44 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             (("Animal",), "uuid"): 1000,
         }
         self.assertEqual(expected_capacities, capacities)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_eligible_fields(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_fields=uuid4_fields,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                uuid @tag(tag_name: "uuid_tag")
+                name @output(out_name: "animal_name")
+                out_Animal_ParentOf @fold {
+                    name @output(out_name: "child_names")
+                }
+                in_Animal_ParentOf {
+                    uuid @filter(op_name: ">=", value: ["%uuid_tag"])
+                }
+            }
+        }""",
+            {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
+        )
+        analysis = analyze_query_string(schema_info, query)
+        eligible_fields = analysis.fields_eligible_for_pagination
+        expected_eligible_fields = {
+            (("Animal",), "uuid"),
+            (("Animal",), "birthday"),
+            (("Animal", "in_Animal_ParentOf"), "birthday"),
+        }
+        self.assertEqual(expected_eligible_fields, eligible_fields)

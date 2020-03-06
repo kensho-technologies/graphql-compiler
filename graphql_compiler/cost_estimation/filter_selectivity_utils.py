@@ -4,7 +4,7 @@ from __future__ import division
 import bisect
 from collections import namedtuple
 import sys
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Set
 
 import six
 
@@ -283,7 +283,7 @@ def _get_selectivity_fraction_of_interval(
     return float(interval_size) / domain_interval_size
 
 
-def _filter_uses_only_runtime_parameters(filter_info: FilterInfo) -> bool:
+def filter_uses_only_runtime_parameters(filter_info: FilterInfo) -> bool:
     """Return whether the filter uses only runtime parameters."""
     for filter_argument in filter_info.args:
         if not is_runtime_parameter(filter_argument):
@@ -293,7 +293,7 @@ def _filter_uses_only_runtime_parameters(filter_info: FilterInfo) -> bool:
 
 def get_integer_interval_for_filters_on_field(
     schema_info: QueryPlanningSchemaInfo,
-    filters_on_field: List[FilterInfo],
+    filters_on_field: Set[FilterInfo],
     location_name: str,
     field_name: str,
     parameters: Dict[str, Any],
@@ -302,7 +302,7 @@ def get_integer_interval_for_filters_on_field(
     interval = Interval[int](None, None)
     for filter_info in filters_on_field:
         if filter_info.op_name in INEQUALITY_OPERATORS:
-            if not _filter_uses_only_runtime_parameters(filter_info):
+            if not filter_uses_only_runtime_parameters(filter_info):
                 continue  # We can't reason about tagged parameters in inequality filters
 
             parameter_values = [
@@ -336,12 +336,13 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         Selectivity object
     """
     # Group filters by field
+    # TODO this is already computed in QueryPlanningAnalysis.single_field_filters
     single_field_filters = {}
     for filter_info in filter_infos:
         if len(filter_info.fields) == 0:
             raise AssertionError(u"Got filter on 0 fields {} {}".format(filter_info, location_name))
         elif len(filter_info.fields) == 1:
-            single_field_filters.setdefault(filter_info.fields[0], []).append(filter_info)
+            single_field_filters.setdefault(filter_info.fields[0], set()).add(filter_info)
         else:
             pass  # We don't do anything for multi-field filters yet
 
@@ -400,7 +401,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
         # Process in_collection filters
         for filter_info in filters_on_field:
             if filter_info.op_name == "in_collection":
-                if not _filter_uses_only_runtime_parameters(filter_info):
+                if not filter_uses_only_runtime_parameters(filter_info):
                     continue  # We can't reason about tagged parameters in in_collection filters
 
                 # TODO(bojanserafimov): Check if the filter values are in the interval selected

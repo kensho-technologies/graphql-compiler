@@ -1148,10 +1148,10 @@ class QueryPaginationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_impossible_pagination(self):
-        """Ensure pagination is not done when not needed."""
+        """Ensure no unwanted error is raised when pagination is needed but stats are missing."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {}
+        pagination_keys = {}  # No pagination keys, so the planner has no options
         uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
         original_query = QueryStringWithParameters(
             """{

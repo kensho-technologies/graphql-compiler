@@ -238,9 +238,9 @@ def generate_parameters_for_vertex_partition(
     query_location = Location(vertex_partition.query_path)
     vertex_type = query_metadata.get_location_info(query_location).type.name
     filter_infos = query_metadata.get_filter_infos(query_location)
-    filters_on_field = [
+    filters_on_field = {
         filter_info for filter_info in filter_infos if filter_info.fields == (pagination_field,)
-    ]
+    }
 
     # Get the value interval currently imposed by existing filters
     integer_interval = get_integer_interval_for_filters_on_field(
