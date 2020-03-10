@@ -25,7 +25,7 @@ from ...query_pagination.parameter_generator import (
     generate_parameters_for_vertex_partition,
 )
 from ...query_pagination.query_parameterizer import generate_parameterized_queries
-from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
+from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import compare_graphql, generate_schema_graph, get_function_names_from_module
 from ..test_input_data import CommonTestData
@@ -43,7 +43,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -52,7 +55,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Check that the correct plan is generated when it's obvious (page the root)
@@ -77,7 +80,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -86,7 +92,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = QueryStringWithParameters(
@@ -115,7 +121,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         edge_constraints = {"Animal_ParentOf": EdgeConstraint.AtMostOneSource}
@@ -125,7 +134,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
             edge_constraints=edge_constraints,
         )
 
@@ -160,7 +169,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
@@ -172,7 +184,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Check that the paginator generates a plan paginating on an int field
@@ -199,7 +211,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(class_counts)
@@ -209,7 +224,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Check that the paginator detects a lack of quantile data for Species.limbs
@@ -236,7 +251,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         query = QueryStringWithParameters(
             """{
             Animal {
@@ -257,7 +275,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
@@ -344,7 +362,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Event": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -358,7 +379,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = QueryStringWithParameters(
@@ -444,7 +465,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Event": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -458,7 +482,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         local_datetime = datetime.datetime(2050, 1, 1, 0, 0)
@@ -511,7 +535,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Event": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -525,7 +552,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = QueryStringWithParameters(
@@ -581,7 +608,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
@@ -592,7 +622,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -616,7 +646,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 10000000}
         statistics = LocalStatistics(
             class_counts, field_quantiles={("Species", "limbs"): [0, 10, 20, 30,],}
@@ -627,7 +660,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -663,7 +696,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
@@ -674,7 +710,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -699,7 +735,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts, field_quantiles={("Species", "limbs"): list(range(0, 101, 10))},
@@ -710,7 +749,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -735,7 +774,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
@@ -746,7 +788,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -771,7 +813,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
@@ -782,7 +827,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -810,7 +855,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts, field_quantiles={("Species", "limbs"): list(range(0, 1001, 10))}
@@ -821,7 +869,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -847,7 +895,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Event": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -861,7 +912,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -888,7 +939,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -897,7 +951,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -920,12 +974,96 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_parameter_value_generation_mssql_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = """{
+            Animal {
+                name @output(out_name: "animal_name")
+            }
+        }"""
+        args = {}
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        )
+
+        expected_parameters = [
+            "00000000-0000-0000-0000-400000000000",
+            "00000000-0000-0000-0000-800000000000",
+            "00000000-0000-0000-0000-c00000000000",
+        ]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_parameter_value_generation_mssql_uuid_with_existing_filter(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = """{
+            Animal {
+                uuid @filter(op_name: ">=", value: ["$uuid_lower"])
+                name @output(out_name: "animal_name")
+            }
+        }"""
+        args = {
+            "uuid_lower": "00000000-0000-0000-0000-800000000000",
+        }
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        )
+
+        expected_parameters = [
+            "00000000-0000-0000-0000-a00000000000",
+            "00000000-0000-0000-0000-c00000000000",
+            "00000000-0000-0000-0000-e00000000000",
+        ]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_consecutive(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -937,7 +1075,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -962,7 +1100,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -974,7 +1115,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -1010,7 +1151,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -1022,7 +1166,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -1061,7 +1205,10 @@ class QueryPaginationTests(unittest.TestCase):
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
             class_counts,
@@ -1073,7 +1220,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         query = """{
@@ -1113,7 +1260,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         original_query = QueryStringWithParameters(
             """{
             Animal {
@@ -1134,7 +1284,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, original_query, 10)
@@ -1152,7 +1302,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {}  # No pagination keys, so the planner has no options
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         original_query = QueryStringWithParameters(
             """{
             Animal {
@@ -1173,7 +1326,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, original_query, 10)
@@ -1191,7 +1344,10 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         count_data = {vertex_name: 100 for vertex_name in schema_graph.vertex_class_names}
         count_data.update({edge_name: 100 for edge_name in schema_graph.edge_class_names})
         statistics = LocalStatistics(count_data)
@@ -1201,7 +1357,7 @@ class QueryPaginationTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         arbitrary_value_for_type = {

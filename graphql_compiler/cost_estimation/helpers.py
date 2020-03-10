@@ -11,7 +11,7 @@ from graphql import (
 
 from ..global_utils import is_same_type
 from ..schema import GraphQLDate, GraphQLDateTime
-from ..schema.schema_info import QueryPlanningSchemaInfo
+from ..schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
 
 
 def _get_property_field_type(
@@ -51,4 +51,14 @@ def is_int_field_type(
 
 def is_uuid4_type(schema_info: QueryPlanningSchemaInfo, vertex_name: str, field_name: str) -> bool:
     """Return whether the field is a uniformly distributed uuid4 type."""
-    return field_name in schema_info.uuid4_fields.get(vertex_name, {})
+    return field_name in schema_info.uuid4_field_info.get(vertex_name, {})
+
+
+def get_uuid_ordering(
+    schema_info: QueryPlanningSchemaInfo, vertex_name: str, field_name: str
+) -> UUIDOrdering:
+    """Return the ordering of the uuid4 field."""
+    ordering = schema_info.uuid4_field_info.get(vertex_name, {}).get(field_name)
+    if ordering is None:
+        raise AssertionError(f"{vertex_name}.{field_name} is not a uniform uuid4 field.")
+    return ordering
