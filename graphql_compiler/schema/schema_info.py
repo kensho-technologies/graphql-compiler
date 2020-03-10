@@ -392,10 +392,9 @@ class QueryPlanningSchemaInfo:
     #                       during schema generation.
     pagination_keys: Dict[str, str]
 
-    # Dict mapping vertex names in the graphql schema to a set of property names that
-    # are known to contain uniformly distributed uppercase uuid values. The types of those
-    # fields are expected to be ID or String.
-    # TODO update docstring
+    # Dict mapping vertex names in the graphql schema to a dict mapping property names that
+    # are known to contain uniformly distributed uuid values to the ordering method used for
+    # them in the database. The types of these fields are expected to be ID or String.
     uuid4_field_info: Dict[str, Dict[str, UUIDOrdering]]
 
     # Map edge names to constraints inferred for them.

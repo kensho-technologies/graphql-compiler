@@ -38,6 +38,7 @@ DATETIME_EPOCH_TZ_NAIVE = datetime.datetime(1970, 1, 1)
 
 
 def _flip_uuid(uuid_string):
+    """Swap the first 12 and last 12 hex digits of a uuid string."""
     segments = uuid_string.split("-")
     segment_lengths = tuple(len(segment) for segment in segments)
     expected_segment_lengths = (8, 4, 4, 4, 12)
