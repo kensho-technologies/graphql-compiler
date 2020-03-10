@@ -24,7 +24,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -58,7 +61,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -95,7 +101,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -126,7 +135,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -157,7 +169,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
@@ -193,7 +208,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
@@ -230,7 +248,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(
@@ -265,7 +286,10 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         class_counts = {"Animal": 1000}
         statistics = LocalStatistics(class_counts)
         schema_info = QueryPlanningSchemaInfo(

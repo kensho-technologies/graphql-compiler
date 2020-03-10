@@ -4,7 +4,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum, Flag, auto, unique
 from functools import partial
-from typing import Dict, Optional, Set
+from typing import Dict, Optional
 
 from graphql.type import GraphQLSchema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType

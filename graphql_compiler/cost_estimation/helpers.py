@@ -54,7 +54,9 @@ def is_uuid4_type(schema_info: QueryPlanningSchemaInfo, vertex_name: str, field_
     return field_name in schema_info.uuid4_field_info.get(vertex_name, {})
 
 
-def get_uuid_ordering(schema_info: QueryPlanningSchemaInfo, vertex_name: str, field_name: str) -> UUIDOrdering:
+def get_uuid_ordering(
+    schema_info: QueryPlanningSchemaInfo, vertex_name: str, field_name: str
+) -> UUIDOrdering:
     """Return the ordering of the uuid4 field."""
     ordering = schema_info.uuid4_field_info.get(vertex_name, {}).get(field_name)
     if ordering is None:

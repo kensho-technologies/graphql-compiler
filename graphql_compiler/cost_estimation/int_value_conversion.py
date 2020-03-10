@@ -19,7 +19,13 @@ from uuid import UUID
 
 from ..schema import is_meta_field
 from ..schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
-from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_type, is_uuid4_type, get_uuid_ordering
+from .helpers import (
+    get_uuid_ordering,
+    is_date_field_type,
+    is_datetime_field_type,
+    is_int_field_type,
+    is_uuid4_type,
+)
 
 
 # UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
@@ -36,7 +42,7 @@ def _flip_uuid(uuid_string):
     segment_lengths = tuple(len(segment) for segment in segments)
     expected_segment_lengths = (8, 4, 4, 4, 12)
     if expected_segment_lengths != segment_lengths:
-        raise AssertionError(f"Unexpected segment lengths {segment_lengths} in {uuid_value}")
+        raise AssertionError(f"Unexpected segment lengths {segment_lengths} in {uuid_string}")
 
     new_segments = [
         segments[4][:8],
@@ -94,8 +100,8 @@ def convert_int_to_field_value(
     elif is_uuid4_type(schema_info, vertex_class, property_field):
         if not MIN_UUID_INT <= int_value <= MAX_UUID_INT:
             raise AssertionError(
-                u"Integer value {} could not be converted to UUID, as it "
-                u"is not in the range of valid UUIDs {} - {}: {} {}".format(
+                "Integer value {} could not be converted to UUID, as it "
+                "is not in the range of valid UUIDs {} - {}: {} {}".format(
                     int_value, MIN_UUID_INT, MAX_UUID_INT, vertex_class, property_field
                 )
             )
@@ -107,16 +113,18 @@ def convert_int_to_field_value(
         elif ordering == UUIDOrdering.LastSixBytesFirst:
             return _flip_uuid(uuid_string)
         else:
-            raise AssertionError(f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}")
+            raise AssertionError(
+                f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}"
+            )
     elif field_supports_range_reasoning(schema_info, vertex_class, property_field):
         raise AssertionError(
-            u"Could not represent int {} as {} {}, but should be able to.".format(
+            "Could not represent int {} as {} {}, but should be able to.".format(
                 int_value, vertex_class, property_field
             )
         )
     else:
         raise NotImplementedError(
-            u"Could not represent int {} as {} {}.".format(int_value, vertex_class, property_field)
+            "Could not represent int {} as {} {}.".format(int_value, vertex_class, property_field)
         )
 
 
@@ -139,16 +147,16 @@ def convert_field_value_to_int(
         elif ordering == UUIDOrdering.LastSixBytesFirst:
             return UUID(_flip_uuid(value)).int
         else:
-            raise AssertionError(f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}")
+            raise AssertionError(
+                f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}"
+            )
     elif field_supports_range_reasoning(schema_info, vertex_class, property_field):
         raise AssertionError(
-            u"Could not represent {} {} value {} as int, but should be able to".format(
+            "Could not represent {} {} value {} as int, but should be able to".format(
                 vertex_class, property_field, value
             )
         )
     else:
         raise NotImplementedError(
-            u"Could not represent {} {} value {} as int.".format(
-                vertex_class, property_field, value
-            )
+            "Could not represent {} {} value {} as int.".format(vertex_class, property_field, value)
         )
