@@ -24,7 +24,7 @@ from ...cost_estimation.int_value_conversion import (
 from ...cost_estimation.interval import Interval, intersect_int_intervals
 from ...cost_estimation.statistics import LocalStatistics, Statistics
 from ...global_utils import QueryStringWithParameters
-from ...schema.schema_info import QueryPlanningSchemaInfo
+from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ...schema_generation.schema_graph import SchemaGraph
 from ..test_helpers import generate_schema_graph
@@ -35,14 +35,14 @@ def _make_schema_info_and_estimate_cardinality(
 ) -> float:
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-    uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+    uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
         pagination_keys=pagination_keys,
-        uuid4_fields=uuid4_fields,
+        uuid4_field_info=uuid4_field_info,
     )
     analysis = analyze_query_string(schema_info, QueryStringWithParameters(graphql_input, args))
     return analysis.cardinality_estimate
@@ -900,14 +900,14 @@ def _make_schema_info_and_get_filter_selectivity(
 ) -> Selectivity:
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-    uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+    uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
         pagination_keys=pagination_keys,
-        uuid4_fields=uuid4_fields,
+        uuid4_field_info=uuid4_field_info,
     )
     return get_selectivity_of_filters_at_vertex(
         schema_info, [filter_info], parameters, location_name
@@ -1109,7 +1109,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
         classname = "Animal"
         between_filter = FilterInfo(
             fields=("uuid",), op_name="between", args=("$uuid_lower", "$uuid_upper",)
@@ -1128,7 +1128,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=empty_statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         result_counts = adjust_counts_for_filters(
@@ -1190,7 +1190,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
         statistics = LocalStatistics(
             dict(), field_quantiles={("Species", "limbs"): [3, 6, 7, 9, 11, 55, 80],}
         )
@@ -1200,7 +1200,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Test <= filter in the middle
@@ -1289,7 +1289,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=small_statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Test with <=
@@ -1318,7 +1318,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
         statistics = LocalStatistics(
             dict(),
             field_quantiles={
@@ -1336,7 +1336,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Test <= filter in the middle
@@ -1450,7 +1450,7 @@ class IntegerIntervalTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
         statistics = LocalStatistics({})
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1458,7 +1458,41 @@ class IntegerIntervalTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        uuid_values = [
+            "00000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000001",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        ]
+        for uuid_value in uuid_values:
+            int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
+            recovered_uuid = convert_int_to_field_value(schema_info, "Event", "uuid", int_value)
+            self.assertEqual(uuid_value, recovered_uuid)
+
+        invalid_uuid_values = [
+            "80000000-0000-",
+        ]
+        for uuid_value in invalid_uuid_values:
+            with self.assertRaises(Exception):
+                int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_int_value_conversion_mssql_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst} for vertex_name in schema_graph.vertex_class_names}
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
         )
 
         uuid_values = [
@@ -1484,7 +1518,7 @@ class IntegerIntervalTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
         statistics = LocalStatistics({})
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1492,7 +1526,7 @@ class IntegerIntervalTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         datetime_values = [
@@ -1518,7 +1552,7 @@ class IntegerIntervalTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {vertex_name: {"uuid": UUIDOrdering.LeftToRight} for vertex_name in schema_graph.vertex_class_names}
         statistics = LocalStatistics({})
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1526,7 +1560,7 @@ class IntegerIntervalTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         date_values = [

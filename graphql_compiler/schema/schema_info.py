@@ -2,7 +2,7 @@
 from abc import ABCMeta
 from collections import namedtuple
 from dataclasses import dataclass, field
-from enum import Flag, auto, unique
+from enum import Enum, Flag, auto, unique
 from functools import partial
 from typing import Dict, Optional, Set
 
@@ -337,6 +337,19 @@ class EdgeConstraint(Flag):
     AtMostOneDestination = auto()
 
 
+@unique
+class UUIDOrdering(Enum):
+    """Specifies how the database would compare two uuid values."""
+
+    # Leftmost digits are most significant. This is the usual comparison method in
+    # Postgres, Orientdb, and likely many other databases.
+    LeftToRight = auto()
+
+    # The most significant digits are the last 12 hex digits (6 bytes), followed
+    # by the first digits, left to right. This is the comparison method in MSSQL.
+    LastSixBytesFirst = auto()
+
+
 @dataclass
 class QueryPlanningSchemaInfo:
     """All schema information sufficient for query cost estimation and auto pagination."""
@@ -382,7 +395,8 @@ class QueryPlanningSchemaInfo:
     # Dict mapping vertex names in the graphql schema to a set of property names that
     # are known to contain uniformly distributed uppercase uuid values. The types of those
     # fields are expected to be ID or String.
-    uuid4_fields: Dict[str, Set[str]]
+    # TODO update docstring
+    uuid4_field_info: Dict[str, Dict[str, UUIDOrdering]]
 
     # Map edge names to constraints inferred for them.
     edge_constraints: Dict[str, EdgeConstraint] = field(default_factory=dict)

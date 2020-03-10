@@ -18,8 +18,8 @@ from typing import Any
 from uuid import UUID
 
 from ..schema import is_meta_field
-from ..schema.schema_info import QueryPlanningSchemaInfo
-from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_type, is_uuid4_type
+from ..schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
+from .helpers import is_date_field_type, is_datetime_field_type, is_int_field_type, is_uuid4_type, get_uuid_ordering
 
 
 # UUIDs are defined in RFC-4122 as a 128-bit identifier. This means that the minimum UUID value
@@ -29,6 +29,23 @@ MAX_UUID_INT = 2 ** 128 - 1
 
 
 DATETIME_EPOCH_TZ_NAIVE = datetime.datetime(1970, 1, 1)
+
+
+def _flip_uuid(uuid_string):
+    segments = uuid_string.split("-")
+    segment_lengths = tuple(len(segment) for segment in segments)
+    expected_segment_lengths = (8, 4, 4, 4, 12)
+    if expected_segment_lengths != segment_lengths:
+        raise AssertionError(f"Unexpected segment lengths {segment_lengths} in {uuid_value}")
+
+    new_segments = [
+        segments[4][:8],
+        segments[4][8:],
+        segments[2],
+        segments[3],
+        segments[0] + segments[1],
+    ]
+    return "-".join(new_segments)
 
 
 def field_supports_range_reasoning(
@@ -83,7 +100,14 @@ def convert_int_to_field_value(
                 )
             )
 
-        return str(UUID(int=int(int_value)))
+        uuid_string = str(UUID(int=int(int_value)))
+        ordering = get_uuid_ordering(schema_info, vertex_class, property_field)
+        if ordering == UUIDOrdering.LeftToRight:
+            return uuid_string
+        elif ordering == UUIDOrdering.LastSixBytesFirst:
+            return _flip_uuid(uuid_string)
+        else:
+            raise AssertionError(f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}")
     elif field_supports_range_reasoning(schema_info, vertex_class, property_field):
         raise AssertionError(
             u"Could not represent int {} as {} {}, but should be able to.".format(
@@ -109,7 +133,13 @@ def convert_field_value_to_int(
     elif is_date_field_type(schema_info, vertex_class, property_field):
         return value.toordinal()
     elif is_uuid4_type(schema_info, vertex_class, property_field):
-        return UUID(value).int
+        ordering = get_uuid_ordering(schema_info, vertex_class, property_field)
+        if ordering == UUIDOrdering.LeftToRight:
+            return UUID(value).int
+        elif ordering == UUIDOrdering.LastSixBytesFirst:
+            return UUID(_flip_uuid(value)).int
+        else:
+            raise AssertionError(f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}")
     elif field_supports_range_reasoning(schema_info, vertex_class, property_field):
         raise AssertionError(
             u"Could not represent {} {} value {} as int, but should be able to".format(
