@@ -37,7 +37,7 @@ MAX_UUID_INT = 2 ** 128 - 1
 DATETIME_EPOCH_TZ_NAIVE = datetime.datetime(1970, 1, 1)
 
 
-def _flip_uuid(uuid_string):
+def swap_uuid_prefix_and_suffix(uuid_string):
     """Swap the first 12 and last 12 hex digits of a uuid string."""
     segments = uuid_string.split("-")
     segment_lengths = tuple(len(segment) for segment in segments)
@@ -112,7 +112,7 @@ def convert_int_to_field_value(
         if ordering == UUIDOrdering.LeftToRight:
             return uuid_string
         elif ordering == UUIDOrdering.LastSixBytesFirst:
-            return _flip_uuid(uuid_string)
+            return swap_uuid_prefix_and_suffix(uuid_string)
         else:
             raise AssertionError(
                 f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}"
@@ -146,7 +146,7 @@ def convert_field_value_to_int(
         if ordering == UUIDOrdering.LeftToRight:
             return UUID(value).int
         elif ordering == UUIDOrdering.LastSixBytesFirst:
-            return UUID(_flip_uuid(value)).int
+            return UUID(swap_uuid_prefix_and_suffix(value)).int
         else:
             raise AssertionError(
                 f"Unexpected ordering for {vertex_class}.{property_field}: {ordering}"

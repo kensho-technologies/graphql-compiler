@@ -20,6 +20,7 @@ from ...cost_estimation.filter_selectivity_utils import (
 from ...cost_estimation.int_value_conversion import (
     convert_field_value_to_int,
     convert_int_to_field_value,
+    swap_uuid_prefix_and_suffix
 )
 from ...cost_estimation.interval import Interval, intersect_int_intervals
 from ...cost_estimation.statistics import LocalStatistics, Statistics
@@ -1602,3 +1603,14 @@ class IntegerIntervalTests(unittest.TestCase):
                 schema_info, "Animal", "birthday", int_value
             )
             self.assertEqual(date_value, recovered_date)
+
+    def test_swap_uuid_prefix_and_suffix(self):
+        # Test with a uuid with lots of different characters
+        uuid_string = "01234567-89ab-cdef-0123-456789abcdef"
+        flipped_uuid = swap_uuid_prefix_and_suffix(uuid_string)
+        self.assertEquals("456789ab-cdef-cdef-0123-0123456789ab", flipped_uuid)
+
+        # Test with a different uuid in case repeating characters hid bugs
+        uuid_string = "01234567-89ab-cdef-fedc-ba9876543210"
+        flipped_uuid = swap_uuid_prefix_and_suffix(uuid_string)
+        self.assertEquals("ba987654-3210-cdef-fedc-0123456789ab", flipped_uuid)
