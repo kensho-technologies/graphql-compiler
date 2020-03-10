@@ -37,8 +37,19 @@ MAX_UUID_INT = 2 ** 128 - 1
 DATETIME_EPOCH_TZ_NAIVE = datetime.datetime(1970, 1, 1)
 
 
-def swap_uuid_prefix_and_suffix(uuid_string):
-    """Swap the first 12 and last 12 hex digits of a uuid string."""
+def swap_uuid_prefix_and_suffix(uuid_string: str) -> str:
+    """Swap the first 12 and last 12 hex digits of a uuid string.
+
+    Different databases implement uuid comparison differently (see UUIDOrdering). This function
+    is useful as a helper method to implement the LastSixBytesFirst ordering method based on the
+    LeftToRight ordering method.
+
+    args:
+        uuid_string: uuid string
+
+    Returns:
+        the input with the first and last 12 hex digits swapped
+    """
     segments = uuid_string.split("-")
     segment_lengths = tuple(len(segment) for segment in segments)
     expected_segment_lengths = (8, 4, 4, 4, 12)
