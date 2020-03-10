@@ -1013,6 +1013,48 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_parameters, list(generated_parameters))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_parameter_value_generation_mssql_uuid_with_existing_filter(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = """{
+            Animal {
+                uuid @filter(op_name: ">=", value: ["$uuid_lower"])
+                name @output(out_name: "animal_name")
+            }
+        }"""
+        args = {
+            "uuid_lower": "00000000-0000-0000-0000-800000000000",
+        }
+        query_ast = safe_parse_graphql(query)
+        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        )
+
+        expected_parameters = [
+            "00000000-0000-0000-0000-a00000000000",
+            "00000000-0000-0000-0000-c00000000000",
+            "00000000-0000-0000-0000-e00000000000",
+        ]
+        self.assertEqual(expected_parameters, list(generated_parameters))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_parameter_value_generation_consecutive(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
