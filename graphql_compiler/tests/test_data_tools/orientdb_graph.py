@@ -14,8 +14,8 @@ ORIENTDB_PASSWORD = "root"  # nosec
 
 def get_orientdb_url(database_name: str) -> str:
     """Return an OrientDB path for the specified database on the ORIENTDB_SERVER."""
-    template = "memory://{}/{}"
-    return template.format(ORIENTDB_SERVER, database_name)
+    template = "memory://{}:{}/{}"
+    return template.format(ORIENTDB_SERVER, ORIENTDB_PORT, database_name)
 
 
 def get_test_orientdb_graph(
@@ -28,7 +28,7 @@ def get_test_orientdb_graph(
     config = Config.from_url(url, ORIENTDB_USER, ORIENTDB_PASSWORD, initial_drop=True)
     Graph(config, strict=True)
 
-    client = OrientDB("localhost", ORIENTDB_PORT)
+    client = OrientDB(host="localhost", port=ORIENTDB_PORT)
     client.connect(ORIENTDB_USER, ORIENTDB_PASSWORD)
     client.db_open(graph_name, ORIENTDB_USER, ORIENTDB_PASSWORD, db_type=DB_TYPE_GRAPH)
 
