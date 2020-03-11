@@ -6,7 +6,7 @@ from redisgraph import Graph
 
 
 REDISGRAPH_SERVER = "localhost"
-REDISGRAPH_PORT = 6379
+REDISGRAPH_PORT = 6380
 
 
 def get_test_redisgraph_graph(
