@@ -39,7 +39,8 @@ REDISGRAPH_BACKENDS = {
 
 pyodbc_parameter_string = "DRIVER={driver};SERVER={server};UID={uid};PWD={pwd}".format(  # nosec
     driver="{ODBC Driver 17 for SQL SERVER}",
-    server="127.0.0.1",  # Do not change to 'localhost'. You won't be able to connect with the db.
+    server="127.0.0.1,1434",  # Do not change to 'localhost'.
+                              # You won't be able to connect with the db.
     uid="SA",  # System Administrator.
     pwd="Root-secure1",
 )
