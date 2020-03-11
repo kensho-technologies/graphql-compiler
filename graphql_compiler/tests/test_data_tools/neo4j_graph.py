@@ -5,7 +5,7 @@ from neo4j import GraphDatabase
 
 
 NEO4J_SERVER = "localhost"
-NEO4J_PORT = 7687
+NEO4J_PORT = 7688
 NEO4J_USER = "neo4j"
 NEO4J_PASSWORD = "root"  # nosec
 

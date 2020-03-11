@@ -57,9 +57,9 @@ SQL_BACKEND_TO_CONNECTION_STRING = {
     # test_backend.POSTGRES:
     #     u'postgresql://postgres:{password}@localhost:5433'.format(password=DEFAULT_ROOT_PASSWORD),
     # test_backend.MYSQL:
-    #     u'mysql://root:{password}@127.0.0.1:3306'.format(password=DEFAULT_ROOT_PASSWORD),
-    # test_backend.MARIADB:
     #     u'mysql://root:{password}@127.0.0.1:3307'.format(password=DEFAULT_ROOT_PASSWORD),
+    # test_backend.MARIADB:
+    #     u'mysql://root:{password}@127.0.0.1:3308'.format(password=DEFAULT_ROOT_PASSWORD),
     test_backend.MSSQL: "mssql+pyodbc:///?odbc_connect={}".format(escaped_pyodbc_parameter_string),
     # test_backend.SQLITE:
     #     u'sqlite:///:memory:',
