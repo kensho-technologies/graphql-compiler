@@ -4,8 +4,8 @@ services:
     image: orientdb:2.2.30
     command: server.sh
     ports:
-      - "127.0.0.1:2480:2480"
-      - "127.0.0.1:2424:2424"
+      - "127.0.0.1:2481:2480"
+      - "127.0.0.1:2425:2424"
     environment:
       ORIENTDB_ROOT_PASSWORD: root
   postgres:
@@ -14,7 +14,7 @@ services:
     environment:
       POSTGRES_PASSWORD: root
     ports:
-      - "127.0.0.1:5432:5432"
+      - "127.0.0.1:5433:5432"
   mysql:
     image: mysql:8.0.11
     command: --default-authentication-plugin=mysql_native_password
@@ -34,7 +34,7 @@ services:
     image: mcr.microsoft.com/mssql/server:2017-latest
     restart: always
     ports:
-      - "127.0.0.1:1433:1433"
+      - "127.0.0.1:1434:1433"
     environment:
       ACCEPT_EULA: "yes"
       MSSQL_SA_PASSWORD: Root-secure1  # password requirements are more stringent for MSSQL image
@@ -50,4 +50,4 @@ services:
     image: redislabs/redisgraph:1.2.2
     restart: always
     ports:
-      - "127.0.0.1:6379:6379"
+      - "127.0.0.1:6380:6379"
