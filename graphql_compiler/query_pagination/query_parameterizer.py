@@ -18,6 +18,7 @@ from graphql.language.ast import (
     StringValueNode,
 )
 
+from ..cost_estimation.int_value_conversion import convert_field_value_to_int
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
 from ..cost_estimation.analysis import QueryPlanningAnalysis
@@ -66,7 +67,7 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
 
 def _is_new_filter_stronger(
     query_analysis: QueryPlanningAnalysis,
-    node_vertex_path: VertexPath,
+    property_path: PropertyPath,
     operation: str,
     new_filter_value: Any,
     old_filter_value: Any,
@@ -82,25 +83,24 @@ def _is_new_filter_stronger(
     Returns:
         whether the old filter can be removed with no change in query meaning.
     """
-    if type(new_filter_value) != type(old_filter_value):
-        raise AssertionError(
-            f"Expected {new_filter_value} and {old_filter_value} "
-            f"to have the same type, but got {type(new_filter_value)} "
-            f"and {type(old_filter_value)}."
-        )
-
-    # TODO get vertex class at node_vertex_path
-    # TODO convert field values to int
-    # TODO compare int values
+    vertex_type = query_analysis.types[property_path.vertex_path]
+    new_int_value = convert_field_value_to_int(
+        query_analysis.schema_info,
+        vertex_type,
+        property_path.field_name,
+        new_filter_value,
+    )
+    old_int_value = convert_field_value_to_int(
+        query_analysis.schema_info,
+        vertex_type,
+        property_path.field_name,
+        old_filter_value,
+    )
 
     if operation == "<":
-        if isinstance(old_filter_value, datetime.datetime):
-            return new_filter_value.replace(tzinfo=None) <= old_filter_value.replace(tzinfo=None)
-        return new_filter_value <= old_filter_value
+        return new_int_value <= old_int_value
     elif operation == ">=":
-        if isinstance(old_filter_value, datetime.datetime):
-            return new_filter_value.replace(tzinfo=None) >= old_filter_value.replace(tzinfo=None)
-        return new_filter_value >= old_filter_value
+        return new_int_value >= old_int_value
     else:
         raise AssertionError(f"Expected operation to be < or >=, got {operation}.")
 
@@ -173,7 +173,7 @@ def _add_pagination_filter_at_node(
                     parameter_value = new_parameters[parameter_name]
                     if not _is_new_filter_stronger(
                         query_analysis,
-                        node_vertex_path,
+                        PropertyPath(node_vertex_path, pagination_field),
                         operation,
                         new_directive_parameter_value,
                         parameter_value,
@@ -210,6 +210,7 @@ def _add_pagination_filter_at_node(
 def _add_pagination_filter_recursively(
     query_analysis: QueryPlanningAnalysis,
     node_ast: DocumentNode,
+    full_query_path: VertexPath,
     query_path: VertexPath,
     pagination_field: str,
     directive_to_add: DirectiveNode,
@@ -239,7 +240,7 @@ def _add_pagination_filter_recursively(
 
     if len(query_path) == 0:
         return _add_pagination_filter_at_node(
-            query_analysis, query_path, node_ast, pagination_field, directive_to_add, extended_parameters
+            query_analysis, full_query_path, node_ast, pagination_field, directive_to_add, extended_parameters
         )
 
     if node_ast.selection_set is None:
@@ -255,6 +256,7 @@ def _add_pagination_filter_recursively(
             new_selection_ast, new_parameters = _add_pagination_filter_recursively(
                 query_analysis,
                 selection_ast,
+                full_query_path,
                 query_path[1:],
                 pagination_field,
                 directive_to_add,
@@ -323,6 +325,7 @@ def generate_parameterized_queries(
         query_analysis,
         query_root,
         vertex_partition.query_path,
+        vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node("<", param_name),
         extended_parameters,
@@ -330,6 +333,7 @@ def generate_parameterized_queries(
     remainder_root, remainder_parameters = _add_pagination_filter_recursively(
         query_analysis,
         query_root,
+        vertex_partition.query_path,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node(">=", param_name),
