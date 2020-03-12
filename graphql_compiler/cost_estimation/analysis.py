@@ -54,9 +54,7 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
-def get_types(
-    query_metadata: QueryMetadataTable,
-) -> Dict[VertexPath, str]:
+def get_types(query_metadata: QueryMetadataTable,) -> Dict[VertexPath, str]:
     location_types = {}
     for location, location_info in query_metadata.registered_locations:
         if not isinstance(location, Location):

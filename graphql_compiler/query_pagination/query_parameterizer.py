@@ -1,6 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
-import datetime
 import logging
 from typing import Any, Dict, Set, Tuple, cast
 
@@ -18,12 +17,12 @@ from graphql.language.ast import (
     StringValueNode,
 )
 
-from ..cost_estimation.int_value_conversion import convert_field_value_to_int
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
 from ..cost_estimation.analysis import QueryPlanningAnalysis
+from ..cost_estimation.int_value_conversion import convert_field_value_to_int
 from ..exceptions import GraphQLError
-from ..global_utils import ASTWithParameters, VertexPath, PropertyPath
+from ..global_utils import ASTWithParameters, PropertyPath, VertexPath
 from .pagination_planning import VertexPartitionPlan
 
 
@@ -85,16 +84,10 @@ def _is_new_filter_stronger(
     """
     vertex_type = query_analysis.types[property_path.vertex_path]
     new_int_value = convert_field_value_to_int(
-        query_analysis.schema_info,
-        vertex_type,
-        property_path.field_name,
-        new_filter_value,
+        query_analysis.schema_info, vertex_type, property_path.field_name, new_filter_value,
     )
     old_int_value = convert_field_value_to_int(
-        query_analysis.schema_info,
-        vertex_type,
-        property_path.field_name,
-        old_filter_value,
+        query_analysis.schema_info, vertex_type, property_path.field_name, old_filter_value,
     )
 
     if operation == "<":
@@ -240,7 +233,12 @@ def _add_pagination_filter_recursively(
 
     if len(query_path) == 0:
         return _add_pagination_filter_at_node(
-            query_analysis, full_query_path, node_ast, pagination_field, directive_to_add, extended_parameters
+            query_analysis,
+            full_query_path,
+            node_ast,
+            pagination_field,
+            directive_to_add,
+            extended_parameters,
         )
 
     if node_ast.selection_set is None:
