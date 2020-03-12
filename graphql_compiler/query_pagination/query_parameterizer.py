@@ -164,10 +164,10 @@ def _add_pagination_filter_at_node(
                     ):
                         logger.error(
                             f"Pagination filter {print_ast(directive_to_add)} on "
-                            f"{pagination_field} is not stronger than "
-                            f"an existing filter {print_ast(directive)}. This is "
-                            f"likely a bug in parameter generation. "
-                            f"Query string: {query_string}, parameters: "
+                            f"{pagination_field} with param {new_directive_parameter_value} "
+                            f"is not stronger than an existing filter {print_ast(directive)} "
+                            f"with param {parameter_value}. This is likely a bug in parameter "
+                            f"generation. Query string: {query_string}, parameters: "
                             f"{extended_parameters}."
                         )
                     del new_parameters[parameter_name]
