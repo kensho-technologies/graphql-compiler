@@ -22,7 +22,7 @@ from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
 from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..exceptions import GraphQLError
-from ..global_utils import ASTWithParameters
+from ..global_utils import ASTWithParameters, VertexPath, PropertyPath
 from .pagination_planning import VertexPartitionPlan
 
 
@@ -64,7 +64,13 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
     return cast(StringValueNode, filter_directive.arguments[0].value).value
 
 
-def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_value: Any) -> bool:
+def _is_new_filter_stronger(
+    query_analysis: QueryPlanningAnalysis,
+    node_vertex_path: VertexPath,
+    operation: str,
+    new_filter_value: Any,
+    old_filter_value: Any,
+) -> bool:
     """Return if the old filter can be omitted in the presence of the new one.
 
     Args:
@@ -82,6 +88,10 @@ def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_va
             f"to have the same type, but got {type(new_filter_value)} "
             f"and {type(old_filter_value)}."
         )
+
+    # TODO get vertex class at node_vertex_path
+    # TODO convert field values to int
+    # TODO compare int values
 
     if operation == "<":
         if isinstance(old_filter_value, datetime.datetime):
@@ -108,6 +118,7 @@ def _are_filter_operations_equal_and_possible_to_eliminate(
 
 def _add_pagination_filter_at_node(
     query_analysis: QueryPlanningAnalysis,
+    node_vertex_path: VertexPath,
     node_ast: DocumentNode,
     pagination_field: str,
     directive_to_add: DirectiveNode,
@@ -117,6 +128,7 @@ def _add_pagination_filter_at_node(
 
     Args:
         query_analysis: the query with any query analysis needed for pagination
+        node_vertex_path: Path to the node_ast
         node_ast: Part of the entire query, rooted at the location where we are
                   adding a filter.
         pagination_field: The field on which we are adding a filter
@@ -160,7 +172,11 @@ def _add_pagination_filter_at_node(
                     parameter_name = _get_binary_filter_node_parameter(directive)
                     parameter_value = new_parameters[parameter_name]
                     if not _is_new_filter_stronger(
-                        operation, new_directive_parameter_value, parameter_value
+                        query_analysis,
+                        node_vertex_path,
+                        operation,
+                        new_directive_parameter_value,
+                        parameter_value,
                     ):
                         logger.error(
                             "Pagination filter %s on %s with param %s is not stronger than "
@@ -194,7 +210,7 @@ def _add_pagination_filter_at_node(
 def _add_pagination_filter_recursively(
     query_analysis: QueryPlanningAnalysis,
     node_ast: DocumentNode,
-    query_path: Tuple[str, ...],
+    query_path: VertexPath,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
@@ -223,7 +239,7 @@ def _add_pagination_filter_recursively(
 
     if len(query_path) == 0:
         return _add_pagination_filter_at_node(
-            query_analysis, node_ast, pagination_field, directive_to_add, extended_parameters
+            query_analysis, query_path, node_ast, pagination_field, directive_to_add, extended_parameters
         )
 
     if node_ast.selection_set is None:
