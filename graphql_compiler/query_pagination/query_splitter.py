@@ -39,8 +39,6 @@ def split_into_page_query_and_remainder_query(
     first_param = next(parameter_generator)
 
     page_query, remainder_query = generate_parameterized_queries(
-        query_analysis,
-        pagination_plan.vertex_partitions[0],
-        first_param,
+        query_analysis, pagination_plan.vertex_partitions[0], first_param,
     )
     return page_query, remainder_query

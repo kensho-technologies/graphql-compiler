@@ -1118,17 +1118,18 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
             }
-        }""", {})
+        }""",
+            {},
+        )
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
 
         analysis = analyze_query_string(schema_info, query)
-        next_page, remainder = generate_parameterized_queries(
-            analysis, vertex_partition, 100
-        )
+        next_page, remainder = generate_parameterized_queries(analysis, vertex_partition, 100)
 
         expected_next_page = """{
             Species {
@@ -1169,18 +1170,19 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
                      @filter(op_name: "!=", value: ["$__paged_param_0"])
             }
-        }""", {"__paged_param_0": "Cow"})
+        }""",
+            {"__paged_param_0": "Cow"},
+        )
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
 
         analysis = analyze_query_string(schema_info, query)
-        next_page, remainder = generate_parameterized_queries(
-            analysis, vertex_partition, 100
-        )
+        next_page, remainder = generate_parameterized_queries(analysis, vertex_partition, 100)
 
         expected_next_page = """{
             Species {
@@ -1223,20 +1225,19 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 limbs @filter(op_name: ">=", value: ["$limbs_more_than"])
                 name @output(out_name: "species_name")
             }
-        }""", {
-            "limbs_more_than": 100,
-        })
+        }""",
+            {"limbs_more_than": 100,},
+        )
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
 
         analysis = analyze_query_string(schema_info, query)
-        next_page, remainder = generate_parameterized_queries(
-            analysis, vertex_partition, 100
-        )
+        next_page, remainder = generate_parameterized_queries(analysis, vertex_partition, 100)
 
         expected_next_page = """{
             Species {

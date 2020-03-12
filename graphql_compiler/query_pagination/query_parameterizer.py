@@ -18,12 +18,11 @@ from graphql.language.ast import (
     StringValueNode,
 )
 
-from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
+from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..exceptions import GraphQLError
 from ..global_utils import ASTWithParameters
-from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
 
 
@@ -161,9 +160,7 @@ def _add_pagination_filter_at_node(
                     parameter_name = _get_binary_filter_node_parameter(directive)
                     parameter_value = new_parameters[parameter_name]
                     if not _is_new_filter_stronger(
-                        operation,
-                        new_directive_parameter_value,
-                        parameter_value
+                        operation, new_directive_parameter_value, parameter_value
                     ):
                         logger.error(
                             "Pagination filter %s on %s with param %s is not stronger than "
@@ -207,7 +204,6 @@ def _add_pagination_filter_recursively(
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
-        schema_info: QueryPlanningSchemaInfo
         query_ast: The query in which we are adding a filter
         query_path: The path to the pagination vertex
         pagination_field: The field on which we are adding a filter
