@@ -60,37 +60,6 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
     return cast(StringValueNode, filter_directive.arguments[0].value).value
 
 
-def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_value: Any) -> bool:
-    """Return if the old filter can be omitted in the presence of the new one.
-
-    Args:
-        operation: the operation that both filters share. One of "<" and ">=".
-        new_filter_value: the value of the new filter
-        old_filter_value: the value of the old filter. Must be the exact same type
-                          as the value of the new filter.
-
-    Returns:
-        whether the old filter can be removed with no change in query meaning.
-    """
-    if type(new_filter_value) != type(old_filter_value):
-        raise AssertionError(
-            f"Expected {new_filter_value} and {old_filter_value} "
-            f"to have the same type, but got {type(new_filter_value)} "
-            f"and {type(old_filter_value)}."
-        )
-
-    if operation == "<":
-        if isinstance(old_filter_value, datetime.datetime):
-            return new_filter_value.replace(tzinfo=None) <= old_filter_value.replace(tzinfo=None)
-        return new_filter_value <= old_filter_value
-    elif operation == ">=":
-        if isinstance(old_filter_value, datetime.datetime):
-            return new_filter_value.replace(tzinfo=None) >= old_filter_value.replace(tzinfo=None)
-        return new_filter_value >= old_filter_value
-    else:
-        raise AssertionError(f"Expected operation to be < or >=, got {operation}.")
-
-
 def _are_filter_operations_equal_and_possible_to_eliminate(
     filter_operation_1: str, filter_operation_2: str
 ) -> bool:
@@ -155,16 +124,6 @@ def _add_pagination_filter_at_node(
                 ):
                     parameter_name = _get_binary_filter_node_parameter(directive)
                     parameter_value = new_parameters[parameter_name]
-                    if not _is_new_filter_stronger(
-                        operation, new_directive_parameter_value, parameter_value
-                    ):
-                        raise AssertionError(
-                            f"Pagination filter {directive_to_add} on "
-                            f"{pagination_field} is not stronger than "
-                            f"an existing filter {directive}. This is "
-                            f"likely a bug in parameter generation. "
-                            f"Query string: {query_string}"
-                        )
                     del new_parameters[parameter_name]
                 else:
                     new_directives.append(directive)
