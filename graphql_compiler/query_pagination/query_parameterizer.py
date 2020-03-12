@@ -18,6 +18,7 @@ from graphql.language.ast import (
     StringValueNode,
 )
 
+from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
 from ..exceptions import GraphQLError
@@ -160,7 +161,9 @@ def _add_pagination_filter_at_node(
                     parameter_name = _get_binary_filter_node_parameter(directive)
                     parameter_value = new_parameters[parameter_name]
                     if not _is_new_filter_stronger(
-                        operation, new_directive_parameter_value, parameter_value
+                        operation,
+                        new_directive_parameter_value,
+                        parameter_value
                     ):
                         logger.error(
                             "Pagination filter %s on %s with param %s is not stronger than "
@@ -204,6 +207,7 @@ def _add_pagination_filter_recursively(
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
+        schema_info: QueryPlanningSchemaInfo
         query_ast: The query in which we are adding a filter
         query_path: The path to the pagination vertex
         pagination_field: The field on which we are adding a filter
@@ -271,8 +275,7 @@ def _make_binary_filter_directive_node(op_name: str, param_name: str) -> Directi
 
 
 def generate_parameterized_queries(
-    schema_info: QueryPlanningSchemaInfo,
-    query: ASTWithParameters,
+    query_analysis: QueryPlanningAnalysis,
     vertex_partition: VertexPartitionPlan,
     parameter_value: Any,
 ) -> Tuple[ASTWithParameters, ASTWithParameters]:
@@ -288,8 +291,7 @@ def generate_parameterized_queries(
     a value inside the range of initial possible values for that field.
 
     Args:
-        schema_info: QueryPlanningSchemaInfo
-        query: the query to parameterize
+        query_analysis: the query with any query analysis needed for pagination
         vertex_partition: pagination plan dictating where to insert the filter
         parameter_value: the value of the parameter used for pagination
 
@@ -299,6 +301,7 @@ def generate_parameterized_queries(
         remainder: AST and params for the remainder query that returns all results
                    not on the next page.
     """
+    query = query_analysis.ast_with_parameters
     query_string = print_ast(query.query_ast)
     query_root = get_only_query_definition(query.query_ast, GraphQLError)
 
