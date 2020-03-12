@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
-import logging
 import datetime
+import logging
 from typing import Any, Dict, Set, Tuple, cast
 
 from graphql import print_ast
