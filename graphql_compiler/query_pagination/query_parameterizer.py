@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
+import logging
 import datetime
 from typing import Any, Dict, Set, Tuple, cast
 
@@ -23,6 +24,9 @@ from ..exceptions import GraphQLError
 from ..global_utils import ASTWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
+
+
+logger = logging.getLogger(__name__)
 
 
 def _generate_new_name(base_name: str, taken_names: Set[str]) -> str:
@@ -58,6 +62,37 @@ def _get_binary_filter_node_parameter(filter_directive: DirectiveNode) -> str:
 def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
     """Return the @filter's op_name as a string."""
     return cast(StringValueNode, filter_directive.arguments[0].value).value
+
+
+def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_value: Any) -> bool:
+    """Return if the old filter can be omitted in the presence of the new one.
+
+    Args:
+        operation: the operation that both filters share. One of "<" and ">=".
+        new_filter_value: the value of the new filter
+        old_filter_value: the value of the old filter. Must be the exact same type
+                          as the value of the new filter.
+
+    Returns:
+        whether the old filter can be removed with no change in query meaning.
+    """
+    if type(new_filter_value) != type(old_filter_value):
+        raise AssertionError(
+            f"Expected {new_filter_value} and {old_filter_value} "
+            f"to have the same type, but got {type(new_filter_value)} "
+            f"and {type(old_filter_value)}."
+        )
+
+    if operation == "<":
+        if isinstance(old_filter_value, datetime.datetime):
+            return new_filter_value.replace(tzinfo=None) <= old_filter_value.replace(tzinfo=None)
+        return new_filter_value <= old_filter_value
+    elif operation == ">=":
+        if isinstance(old_filter_value, datetime.datetime):
+            return new_filter_value.replace(tzinfo=None) >= old_filter_value.replace(tzinfo=None)
+        return new_filter_value >= old_filter_value
+    else:
+        raise AssertionError(f"Expected operation to be < or >=, got {operation}.")
 
 
 def _are_filter_operations_equal_and_possible_to_eliminate(
@@ -124,6 +159,17 @@ def _add_pagination_filter_at_node(
                 ):
                     parameter_name = _get_binary_filter_node_parameter(directive)
                     parameter_value = new_parameters[parameter_name]
+                    if not _is_new_filter_stronger(
+                        operation, new_directive_parameter_value, parameter_value
+                    ):
+                        logger.error(
+                            f"Pagination filter {print_ast(directive_to_add)} on "
+                            f"{pagination_field} is not stronger than "
+                            f"an existing filter {print_ast(directive)}. This is "
+                            f"likely a bug in parameter generation. "
+                            f"Query string: {query_string}, parameters: "
+                            f"{extended_parameters}."
+                        )
                     del new_parameters[parameter_name]
                 else:
                     new_directives.append(directive)
