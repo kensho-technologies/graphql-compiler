@@ -108,7 +108,7 @@ def _are_filter_operations_equal_and_possible_to_eliminate(
 
 def _add_pagination_filter_at_node(
     query_analysis: QueryPlanningAnalysis,
-    query_ast: DocumentNode,
+    node_ast: DocumentNode,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
@@ -117,8 +117,8 @@ def _add_pagination_filter_at_node(
 
     Args:
         query_analysis: the query with any query analysis needed for pagination
-        query_ast: Part of the entire query, rooted at the location where we are
-                   adding a filter.
+        node_ast: Part of the entire query, rooted at the location where we are
+                  adding a filter.
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
         extended_parameters: The original parameters of the query along with
@@ -130,9 +130,9 @@ def _add_pagination_filter_at_node(
                  the same operation removed.
         new_parameters: The parameters to use with the new_ast
     """
-    if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
+    if not isinstance(node_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
-            f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
+            f'Input AST is of type "{type(node_ast).__name__}", which should not be a selection.'
         )
 
     new_directive_operation = _get_filter_node_operation(directive_to_add)
@@ -143,7 +143,7 @@ def _add_pagination_filter_at_node(
     new_parameters = dict(extended_parameters)
     new_selections = []
     found_field = False
-    for selection_ast in query_ast.selection_set.selections:
+    for selection_ast in node_ast.selection_set.selections:
         new_selection_ast = selection_ast
         field_name = get_ast_field_name(selection_ast)
         if field_name == pagination_field:
@@ -186,14 +186,14 @@ def _add_pagination_filter_at_node(
             0, FieldNode(name=NameNode(value=pagination_field), directives=[directive_to_add])
         )
 
-    new_ast = copy(query_ast)
+    new_ast = copy(node_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
     return new_ast, new_parameters
 
 
 def _add_pagination_filter_recursively(
     query_analysis: QueryPlanningAnalysis,
-    query_ast: DocumentNode,
+    node_ast: DocumentNode,
     query_path: Tuple[str, ...],
     pagination_field: str,
     directive_to_add: DirectiveNode,
@@ -203,7 +203,7 @@ def _add_pagination_filter_recursively(
 
     Args:
         query_analysis: the query with any query analysis needed for pagination
-        query_ast: The query in which we are adding a filter
+        node_ast: Part of the entire query, the location where we are adding a filter
         query_path: The path to the pagination vertex
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
@@ -216,22 +216,22 @@ def _add_pagination_filter_recursively(
                  the same operation removed.
         new_parameters: The parameters to use with the new_ast
     """
-    if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
+    if not isinstance(node_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
-            f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
+            f'Input AST is of type "{type(node_ast).__name__}", which should not be a selection.'
         )
 
     if len(query_path) == 0:
         return _add_pagination_filter_at_node(
-            query_analysis, query_ast, pagination_field, directive_to_add, extended_parameters
+            query_analysis, node_ast, pagination_field, directive_to_add, extended_parameters
         )
 
-    if query_ast.selection_set is None:
-        raise AssertionError(f"Invalid query path {query_path} {query_ast}.")
+    if node_ast.selection_set is None:
+        raise AssertionError(f"Invalid query path {query_path} {node_ast}.")
 
     found_field = False
     new_selections = []
-    for selection_ast in query_ast.selection_set.selections:
+    for selection_ast in node_ast.selection_set.selections:
         new_selection_ast = selection_ast
         field_name = get_ast_field_name(selection_ast)
         if field_name == query_path[0]:
@@ -247,9 +247,9 @@ def _add_pagination_filter_recursively(
         new_selections.append(new_selection_ast)
 
     if not found_field:
-        raise AssertionError(f"Invalid query path {query_path} {query_ast}.")
+        raise AssertionError(f"Invalid query path {query_path} {node_ast}.")
 
-    new_ast = copy(query_ast)
+    new_ast = copy(node_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
     return new_ast, new_parameters
 
