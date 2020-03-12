@@ -107,22 +107,22 @@ def _are_filter_operations_equal_and_possible_to_eliminate(
 
 
 def _add_pagination_filter_at_node(
+    query_analysis: QueryPlanningAnalysis,
     query_ast: DocumentNode,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-    query_string: str,
 ) -> Tuple[DocumentNode, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
+        query_analysis: the query with any query analysis needed for pagination
         query_ast: Part of the entire query, rooted at the location where we are
                    adding a filter.
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
         extended_parameters: The original parameters of the query along with
                              the parameter used in directive_to_add
-        query_string: The entire original query. Used in error messages only.
 
     Returns:
         tuple (new_ast, removed_parameters)
@@ -165,15 +165,13 @@ def _add_pagination_filter_at_node(
                         logger.error(
                             "Pagination filter %s on %s with param %s is not stronger than "
                             "existing filter %s with param %s. This is either a bug in parameter "
-                            "generation, or this assertion is outdated. Query string: %s, "
-                            "parameters: %s",
+                            "generation, or this assertion is outdated. Query: %s, ",
                             print_ast(directive_to_add),
                             pagination_field,
                             new_directive_parameter_value,
                             print_ast(directive),
                             parameter_value,
-                            query_string,
-                            extended_parameters,
+                            query_analysis.query_string_with_parameters,
                         )
                     del new_parameters[parameter_name]
                 else:
@@ -194,23 +192,23 @@ def _add_pagination_filter_at_node(
 
 
 def _add_pagination_filter_recursively(
+    query_analysis: QueryPlanningAnalysis,
     query_ast: DocumentNode,
     query_path: Tuple[str, ...],
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-    query_string: str,
 ) -> Tuple[DocumentNode, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
+        query_analysis: the query with any query analysis needed for pagination
         query_ast: The query in which we are adding a filter
         query_path: The path to the pagination vertex
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
         extended_parameters: The original parameters of the query along with
                              the parameter used in directive_to_add
-        query_string: The entire original query. Used in error messages only.
 
     Returns:
         tuple (new_ast, removed_parameters)
@@ -225,7 +223,7 @@ def _add_pagination_filter_recursively(
 
     if len(query_path) == 0:
         return _add_pagination_filter_at_node(
-            query_ast, pagination_field, directive_to_add, extended_parameters, query_string
+            query_analysis, query_ast, pagination_field, directive_to_add, extended_parameters
         )
 
     if query_ast.selection_set is None:
@@ -239,12 +237,12 @@ def _add_pagination_filter_recursively(
         if field_name == query_path[0]:
             found_field = True
             new_selection_ast, new_parameters = _add_pagination_filter_recursively(
+                query_analysis,
                 selection_ast,
                 query_path[1:],
                 pagination_field,
                 directive_to_add,
                 extended_parameters,
-                query_string,
             )
         new_selections.append(new_selection_ast)
 
@@ -298,7 +296,6 @@ def generate_parameterized_queries(
                    not on the next page.
     """
     query = query_analysis.ast_with_parameters
-    query_string = print_ast(query.query_ast)
     query_root = get_only_query_definition(query.query_ast, GraphQLError)
 
     # Create extended parameters that include the pagination parameter value
@@ -307,20 +304,20 @@ def generate_parameterized_queries(
     extended_parameters[param_name] = parameter_value
 
     next_page_root, next_page_parameters = _add_pagination_filter_recursively(
+        query_analysis,
         query_root,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node("<", param_name),
         extended_parameters,
-        query_string,
     )
     remainder_root, remainder_parameters = _add_pagination_filter_recursively(
+        query_analysis,
         query_root,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node(">=", param_name),
         extended_parameters,
-        query_string,
     )
 
     next_page = ASTWithParameters(DocumentNode(definitions=[next_page_root]), next_page_parameters)
