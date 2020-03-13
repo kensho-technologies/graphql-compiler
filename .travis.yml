@@ -34,19 +34,19 @@ matrix:
     python: "3.6"
     script:
       - docker-compose up -d  # Only start the database docker containers for tests, not for lint.
-      #  -Werror: turn warnings into errors, so they can't be accidentally missed and not noticed
-      - python -Werror -m pytest --cov=graphql_compiler graphql_compiler/tests
+      #  -W error::Warning: turn warnings into errors, so they can't be accidentally missed and not noticed
+      - pytest -W error::Warning --cov=graphql_compiler graphql_compiler/tests
   - name: "Python 3.7 unit tests"
     python: "3.7"
     script:
       - docker-compose up -d  # Only start the database docker containers for tests, not for lint.
-      #  -Werror: turn warnings into errors, so they can't be accidentally missed and not noticed
-      - python -Werror -m pytest --cov=graphql_compiler graphql_compiler/tests
+      #  -W error::Warning: turn warnings into errors, so they can't be accidentally missed and not noticed
+      - pytest -W error::Warning --cov=graphql_compiler graphql_compiler/tests
   - name: "Python 3.8 unit tests"
     python: "3.8"
     script:
       - docker-compose up -d  # Only start the database docker containers for tests, not for lint.
-      #  -Werror: turn warnings into errors, so they can't be accidentally missed and not noticed
-      - python -Werror -m pytest --cov=graphql_compiler graphql_compiler/tests
+      #  -W error::Warning: turn warnings into errors, so they can't be accidentally missed and not noticed
+      - pytest -W error::Warning --cov=graphql_compiler graphql_compiler/tests
 after_success:
   - codecov
