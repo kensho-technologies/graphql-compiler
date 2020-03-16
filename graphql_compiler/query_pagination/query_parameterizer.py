@@ -174,15 +174,19 @@ def _add_pagination_filter_at_node(
                         parameter_value,
                     ):
                         logger.error(
-                            "Pagination filter %s on %s with param %s is not stronger than "
-                            "existing filter %s with param %s. This is either a bug in parameter "
-                            "generation, or this assertion is outdated. Query: %s",
-                            print_ast(directive_to_add),
-                            pagination_field,
-                            new_directive_parameter_value,
-                            print_ast(directive),
-                            parameter_value,
-                            query_analysis.query_string_with_parameters,
+                            "Pagination filter %(new_filter)s on %(pagination_field)s with param "
+                            "%(new_filter_param)s is not stronger than existing filter "
+                            "%(existing_filter)s with param %(existing_param)s. This is either a "
+                            "bug in parameter generation, or this assertion is outdated. "
+                            "Query: %(query)s",
+                            {
+                                "new_filter": print_ast(directive_to_add),
+                                "pagination_field": pagination_field,
+                                "new_filter_param": new_directive_parameter_value,
+                                "existing_filter": print_ast(directive),
+                                "existing_param": parameter_value,
+                                "query": query_analysis.query_string_with_parameters,
+                            },
                         )
                     del new_parameters[parameter_name]
                 else:
