@@ -47,7 +47,7 @@ Or Ubuntu with:
 
 .. code:: bash
 
-    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
     add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
     apt-get update
     ACCEPT_EULA=Y apt-get install msodbcsql17
