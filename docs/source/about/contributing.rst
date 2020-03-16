@@ -27,8 +27,8 @@ or on Ubuntu with:
 
 .. code:: bash
 
-   sudo apt-get install libmysqlclient-dev
-   sudo apt-get install python-mysqldb
+   apt-get install libmysqlclient-dev
+   apt-get install python-mysqldb
 
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
