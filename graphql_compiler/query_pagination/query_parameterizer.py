@@ -120,13 +120,13 @@ def _add_pagination_filter_at_node(
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
-        query_analysis: the query with any query analysis needed for pagination
-        node_vertex_path: Path to the node_ast
-        node_ast: Part of the entire query, rooted at the location where we are
+        query_analysis: the entire query with any query analysis needed for pagination
+        node_vertex_path: path to the node_ast from the query root
+        node_ast: part of the entire query, rooted at the location where we are
                   adding a filter.
-        pagination_field: The field on which we are adding a filter
-        directive_to_add: The filter directive to add
-        extended_parameters: The original parameters of the query along with
+        pagination_field: field on which we are adding a filter
+        directive_to_add: filter directive to add
+        extended_parameters: original parameters of the query along with
                              the parameter used in directive_to_add
 
     Returns:
@@ -174,7 +174,7 @@ def _add_pagination_filter_at_node(
                         logger.error(
                             "Pagination filter %s on %s with param %s is not stronger than "
                             "existing filter %s with param %s. This is either a bug in parameter "
-                            "generation, or this assertion is outdated. Query: %s, ",
+                            "generation, or this assertion is outdated. Query: %s",
                             print_ast(directive_to_add),
                             pagination_field,
                             new_directive_parameter_value,
@@ -212,9 +212,10 @@ def _add_pagination_filter_recursively(
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
-        query_analysis: the query with any query analysis needed for pagination
+        query_analysis: the entire query with any query analysis needed for pagination
         node_ast: Part of the entire query, the location where we are adding a filter
-        query_path: The path to the pagination vertex
+        full_query_path: path to the pagination vertex from the root
+        query_path: path to the pagination vertex from this node (node_ast)
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
         extended_parameters: The original parameters of the query along with
