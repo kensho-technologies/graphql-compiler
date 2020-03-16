@@ -55,6 +55,16 @@ def _convert_int_interval_to_field_value_interval(
 
 
 def get_types(query_metadata: QueryMetadataTable,) -> Dict[VertexPath, str]:
+    """Find the type at each VertexPath.
+
+    Fold scopes are not considered.
+
+    Args:
+        query_metadata: info on locations, inputs, outputs, and tags in the query
+
+    Returns:
+        dict mapping nodes to their type names
+    """
     location_types = {}
     for location, location_info in query_metadata.registered_locations:
         if not isinstance(location, Location):
@@ -348,6 +358,7 @@ class QueryPlanningAnalysis:
 
     @cached_property
     def types(self) -> Dict[VertexPath, str]:
+        """Find the type at each VertexPath."""
         return get_types(self.metadata_table)
 
     @cached_property
