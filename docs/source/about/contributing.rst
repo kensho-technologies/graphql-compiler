@@ -11,8 +11,9 @@ consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 Database Driver Installations
 -----------------------------
 
-Integration tests are run against multiple databases, some of which
-require that you install specific drivers.
+Integration tests are run against multiple databases, some of which require that you install specific drivers. Below
+you'll find the installation instructions for these drivers for Ubuntu and OSX. You might need to run some of the
+commands with :code:`sudo` depending on your local setup.
 
 MySQL Driver
 ~~~~~~~~~~~~
