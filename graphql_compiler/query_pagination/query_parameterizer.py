@@ -74,6 +74,8 @@ def _is_new_filter_stronger(
     """Return if the old filter can be omitted in the presence of the new one.
 
     Args:
+        query_analysis: the entire query with any query analysis needed for pagination
+        property_path: path to the filtered field from the query root
         operation: the operation that both filters share. One of "<" and ">=".
         new_filter_value: the value of the new filter
         old_filter_value: the value of the old filter. Must be the exact same type
