@@ -27,7 +27,8 @@ or on Ubuntu with:
 
 .. code:: bash
 
-   apt-get install python-mysqldb
+   sudo apt-get install libmysqlclient-dev
+   sudo apt-get install python-mysqldb
 
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
@@ -46,6 +47,7 @@ Or Ubuntu with:
 
 .. code:: bash
 
+    sudo apt-get install unixodbc unixodbc-dev
     wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
     sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
     sudo apt-get update
