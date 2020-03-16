@@ -27,8 +27,7 @@ or on Ubuntu with:
 
 .. code:: bash
 
-   apt-get install libmysqlclient-dev
-   apt-get install python-mysqldb
+   apt-get install libmysqlclient-dev python-mysqldb
 
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
@@ -47,12 +46,11 @@ Or Ubuntu with:
 
 .. code:: bash
 
-    sudo apt-get install unixodbc unixodbc-dev
-    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-    sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
-    sudo apt-get update
-    sudo ACCEPT_EULA=Y apt-get install msodbcsql17
-    sudo apt-get install unixodbc-dev
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | apt-key add -
+    add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
+    apt-get update
+    ACCEPT_EULA=Y apt-get install msodbcsql17
+    apt-get install unixodbc-dev
 
 To see the installation instructions for other operating systems, please follow this `link
 <https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.
