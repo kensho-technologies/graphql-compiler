@@ -376,6 +376,7 @@ class QueryPlanningAnalysis:
 
     @cached_property
     def filters(self) -> Dict[VertexPath, Set[FilterInfo]]:
+        """Get the filters at each VertexPath."""
         return get_filters(self.schema_info, self.metadata_table)
 
     @cached_property
