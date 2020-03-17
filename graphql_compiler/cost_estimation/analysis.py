@@ -76,13 +76,24 @@ def get_types(
     return location_types
 
 
-# TODO get filter infos at vertex. Use in:
-# - get_single_field_filters
-# - unique counts fix
+def get_filters(
+    schema_info: QueryPlanningSchemaInfo, query_metadata: QueryMetadataTable,
+) -> Dict[VertexPath, Set[FilterInfo]]:
+    filters = {}
+    for location, location_info in query_metadata.registered_locations:
+        if not isinstance(location, Location):
+            continue  # We don't paginate inside folds.
+
+        filter_infos = query_metadata.get_filter_infos(location)
+        vertex_type_name = location_info.type.name
+        filters.setdefault(location.query_path, set()).update(filter_infos)
+
+    return filters
 
 
 def get_single_field_filters(
-    schema_info: QueryPlanningSchemaInfo, query_metadata: QueryMetadataTable,
+    types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
+    filters: Dict[VertexPath, Set[FilterInfo]],
 ) -> Dict[PropertyPath, Set[FilterInfo]]:
     """Find the single field filters for each field.
 
@@ -97,12 +108,8 @@ def get_single_field_filters(
         dict mapping fields to their set of filters.
     """
     single_field_filters = {}
-    for location, location_info in query_metadata.registered_locations:
-        if not isinstance(location, Location):
-            continue  # We don't paginate inside folds.
-
-        filter_infos = query_metadata.get_filter_infos(location)
-        vertex_type_name = location_info.type.name
+    for vertex_path, vertex_type in types.items():
+        filter_infos = filters[vertex_path]
 
         # Group filters by field
         single_field_filters_for_vertex: Dict[str, Set[FilterInfo]] = {}
@@ -116,9 +123,9 @@ def get_single_field_filters(
             else:
                 pass
 
-        for field_name, filters in single_field_filters_for_vertex.items():
-            property_path = PropertyPath(location.query_path, field_name)
-            single_field_filters[property_path] = filters
+        for field_name, field_filters in single_field_filters_for_vertex.items():
+            property_path = PropertyPath(vertex_path, field_name)
+            single_field_filters[property_path] = field_filters
 
     return single_field_filters
 
@@ -370,9 +377,13 @@ class QueryPlanningAnalysis:
         )
 
     @cached_property
+    def filters(self) -> Dict[VertexPath, Set[FilterInfo]]:
+        return get_filters(self.schema_info, self.metadata_table)
+
+    @cached_property
     def single_field_filters(self) -> Dict[PropertyPath, Set[FilterInfo]]:
         """Find the single field filters for each field. Filters like name_or_alias are excluded."""
-        return get_single_field_filters(self.schema_info, self.metadata_table)
+        return get_single_field_filters(self.types, self.filters)
 
     @cached_property
     def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
