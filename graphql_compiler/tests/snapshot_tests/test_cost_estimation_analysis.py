@@ -272,7 +272,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 }
             }
         }""",
-            {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
+            {},
         )
         analysis = analyze_query_string(schema_info, query)
         capacities = analysis.pagination_capacities
@@ -314,7 +314,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 }
             }
         }""",
-            {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
+            {},
         )
         analysis = analyze_query_string(schema_info, query)
         eligible_fields = analysis.fields_eligible_for_pagination
