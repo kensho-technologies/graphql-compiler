@@ -79,20 +79,29 @@ def get_types(
 def get_filters(
     schema_info: QueryPlanningSchemaInfo, query_metadata: QueryMetadataTable,
 ) -> Dict[VertexPath, Set[FilterInfo]]:
-    filters = {}
-    for location, location_info in query_metadata.registered_locations:
+    """Get the filters at each VertexPath.
+
+    Fold scopes are not considered.
+
+    Args:
+        schema_info: QueryPlanningSchemaInfo
+        query_metadata: info on locations, inputs, outputs, and tags in the query
+
+    Returns:
+        dict mapping nodes to their filters
+    """
+    filters: Dict[VertexPath, Set[FilterInfo]] = {}
+    for location, _ in query_metadata.registered_locations:
         if not isinstance(location, Location):
             continue  # We don't paginate inside folds.
 
         filter_infos = query_metadata.get_filter_infos(location)
-        vertex_type_name = location_info.type.name
         filters.setdefault(location.query_path, set()).update(filter_infos)
 
     return filters
 
 
 def get_single_field_filters(
-    types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
     filters: Dict[VertexPath, Set[FilterInfo]],
 ) -> Dict[PropertyPath, Set[FilterInfo]]:
     """Find the single field filters for each field.
@@ -101,21 +110,18 @@ def get_single_field_filters(
     Filters inside fold scopes are not considered.
 
     Args:
-        schema_info: QueryPlanningSchemaInfo
-        query_metadata: info on locations, inputs, outputs, and tags in the query
+        filters: the set of filters at each node
 
     Returns:
         dict mapping fields to their set of filters.
     """
     single_field_filters = {}
-    for vertex_path, vertex_type in types.items():
-        filter_infos = filters[vertex_path]
-
+    for vertex_path, filter_infos in filters.items():
         # Group filters by field
         single_field_filters_for_vertex: Dict[str, Set[FilterInfo]] = {}
         for filter_info in filter_infos:
             if len(filter_info.fields) == 0:
-                raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_type_name}")
+                raise AssertionError(f"Got filter on 0 fields {filter_info} on {vertex_path}")
             elif len(filter_info.fields) == 1:
                 single_field_filters_for_vertex.setdefault(filter_info.fields[0], set()).add(
                     filter_info
@@ -169,7 +175,8 @@ def get_field_value_intervals(
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        query_metadata: info on locations, inputs, outputs, and tags in the query
+        types: the type at each node
+        filters: the set of filters at each node
         parameters: parameters used for the query
 
     Returns:
@@ -214,7 +221,8 @@ def get_distinct_result_set_estimates(
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        query_metadata: info on locations, inputs, outputs, and tags in the query
+        types: the type at each node
+        filters: the set of filters at each node
         parameters: the query parameters
 
     Returns:
@@ -376,7 +384,7 @@ class QueryPlanningAnalysis:
     @cached_property
     def single_field_filters(self) -> Dict[PropertyPath, Set[FilterInfo]]:
         """Find the single field filters for each field. Filters like name_or_alias are excluded."""
-        return get_single_field_filters(self.types, self.filters)
+        return get_single_field_filters(self.filters)
 
     @cached_property
     def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
