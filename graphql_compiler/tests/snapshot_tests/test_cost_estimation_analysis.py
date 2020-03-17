@@ -324,3 +324,45 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             (("Animal", "in_Animal_ParentOf"), "birthday"),
         }
         self.assertEqual(expected_eligible_fields, eligible_fields)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_distinct_result_set_estimates_with_revisit_counts(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @filter(op_name: "=", value: ["$animal_name"])
+                in_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                    in_Animal_ParentOf {
+                        name @output(out_name: "grandchild_name")
+                    }
+                }
+            }
+        }""",
+            {"animal_name": "Joe",},
+        )
+        estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
+        expected_estimates = {
+            ("Animal",): 1.0,
+            ("Animal", "in_Animal_ParentOf"): 1000.0,
+            ("Animal", "in_Animal_ParentOf", "in_Animal_ParentOf"): 1000.0,
+        }
+        self.assertEqual(expected_estimates, estimates)

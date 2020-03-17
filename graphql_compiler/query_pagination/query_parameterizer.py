@@ -84,7 +84,7 @@ def _is_new_filter_stronger(
     Returns:
         whether the old filter can be removed with no change in query meaning.
     """
-    vertex_type = query_analysis.types[property_path.vertex_path]
+    vertex_type = query_analysis.types[property_path.vertex_path].name
     new_int_value = convert_field_value_to_int(
         query_analysis.schema_info, vertex_type, property_path.field_name, new_filter_value,
     )
