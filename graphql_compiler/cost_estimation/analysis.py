@@ -76,6 +76,11 @@ def get_types(
     return location_types
 
 
+# TODO get filter infos at vertex. Use in:
+# - get_single_field_filters
+# - unique counts fix
+
+
 def get_single_field_filters(
     schema_info: QueryPlanningSchemaInfo, query_metadata: QueryMetadataTable,
 ) -> Dict[PropertyPath, Set[FilterInfo]]:
@@ -120,18 +125,15 @@ def get_single_field_filters(
 
 def get_fields_eligible_for_pagination(
     schema_info: QueryPlanningSchemaInfo,
-    query_metadata: QueryMetadataTable,
+    types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
     single_field_filters: Dict[PropertyPath, Set[FilterInfo]],
 ) -> Set[PropertyPath]:
     """Return all the fields we can consider for pagination."""
     fields_eligible_for_pagination = set()
-    for location, location_info in query_metadata.registered_locations:
-        if not isinstance(location, Location):
-            continue  # We don't paginate inside folds.
-
-        vertex_type_name = location_info.type.name
-        for field_name, _ in location_info.type.fields.items():
-            property_path = PropertyPath(location.query_path, field_name)
+    for vertex_path, vertex_type in types.items():
+        vertex_type_name = vertex_type.name
+        for field_name, _ in vertex_type.fields.items():
+            property_path = PropertyPath(vertex_path, field_name)
             filters: Set[FilterInfo] = single_field_filters.get(property_path, set())
             eligible_for_pagination = True
             if not field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
@@ -149,7 +151,7 @@ def get_fields_eligible_for_pagination(
 
 def get_field_value_intervals(
     schema_info: QueryPlanningSchemaInfo,
-    query_metadata: QueryMetadataTable,
+    types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
     single_field_filters: Dict[PropertyPath, Set[FilterInfo]],
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, Interval[Any]]:
@@ -167,14 +169,10 @@ def get_field_value_intervals(
         dict mapping some PropertyPath objects to their interval of allowed values
     """
     field_value_intervals = {}
-    for location, location_info in query_metadata.registered_locations:
-        if not isinstance(location, Location):
-            continue  # We don't paginate inside folds.
-
-        # Find field_value_interval for each field
-        vertex_type_name = location_info.type.name
-        for field_name, _ in location_info.type.fields.items():
-            property_path = PropertyPath(location.query_path, field_name)
+    for vertex_path, vertex_type in types.items():
+        vertex_type_name = vertex_type.name
+        for field_name, _ in vertex_type.fields.items():
+            property_path = PropertyPath(vertex_path, field_name)
             filters_on_field: Set[FilterInfo] = single_field_filters.get(property_path, set())
             if not filters_on_field:
                 continue
@@ -186,7 +184,7 @@ def get_field_value_intervals(
                 field_value_interval = _convert_int_interval_to_field_value_interval(
                     schema_info, vertex_type_name, field_name, integer_interval
                 )
-                property_path = PropertyPath(location.query_path, field_name)
+                property_path = PropertyPath(vertex_path, field_name)
                 field_value_intervals[property_path] = field_value_interval
     return field_value_intervals
 
@@ -380,7 +378,7 @@ class QueryPlanningAnalysis:
     def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
         """Return all the fields we can consider for pagination."""
         return get_fields_eligible_for_pagination(
-            self.schema_info, self.metadata_table, self.single_field_filters
+            self.schema_info, self.types, self.single_field_filters
         )
 
     @cached_property
@@ -388,7 +386,7 @@ class QueryPlanningAnalysis:
         """Return the field value intervals for this query."""
         return get_field_value_intervals(
             self.schema_info,
-            self.metadata_table,
+            self.types,
             self.single_field_filters,
             self.ast_with_parameters.parameters,
         )
