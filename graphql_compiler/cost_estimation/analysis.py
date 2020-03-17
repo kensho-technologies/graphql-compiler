@@ -198,7 +198,8 @@ def get_field_value_intervals(
 
 def get_distinct_result_set_estimates(
     schema_info: QueryPlanningSchemaInfo,
-    query_metadata: QueryMetadataTable,
+    types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
+    filters: Dict[VertexPath, Set[FilterInfo]],
     parameters: Dict[str, Any],
 ) -> Dict[VertexPath, float]:
     """Map each VertexPath in the query to its distinct result set estimate.
@@ -220,28 +221,20 @@ def get_distinct_result_set_estimates(
         the distinct result set estimate for each VertexPath
     """
     distinct_result_set_estimates = {}
-    for location, location_info in query_metadata.registered_locations:
-        if not isinstance(location, Location):
-            continue  # We don't paginate inside folds.
-        vertex_type_name = location_info.type.name
-        filter_infos = query_metadata.get_filter_infos(location)
+    for vertex_path, vertex_type in types.items():
+        vertex_type_name = vertex_type.name
+        filter_infos = filters[vertex_path]
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
-        distinct_result_set_estimates[location.query_path] = adjust_counts_for_filters(
+        distinct_result_set_estimates[vertex_path] = adjust_counts_for_filters(
             schema_info, filter_infos, parameters, vertex_type_name, class_count
         )
 
     single_destination_traversals = set()
-    for location, _ in query_metadata.registered_locations:
-        if not isinstance(location, Location):
-            # TODO(bojanserafimov): We currently ignore FoldScopeLocations. However, a unique
-            #                       filter on a FoldScopeLocation also uniquely filters the
-            #                       enclosing scope.
-            continue
-
-        if len(location.query_path) > 1:
-            from_path = location.query_path[:-1]
-            to_path = location.query_path
-            edge_direction, edge_name = get_edge_direction_and_name(location.query_path[-1])
+    for vertex_path, _ in types.items():
+        if len(vertex_path) > 1:
+            from_path = vertex_path[:-1]
+            to_path = vertex_path
+            edge_direction, edge_name = get_edge_direction_and_name(vertex_path[-1])
             no_constraints = EdgeConstraint(0)  # unset all bits of the flag
             edge_constraints = schema_info.edge_constraints.get(edge_name, no_constraints)
             if edge_direction == "in":
@@ -406,7 +399,7 @@ class QueryPlanningAnalysis:
     def distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
         """Return the distinct result set estimates for this query."""
         return get_distinct_result_set_estimates(
-            self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
+            self.schema_info, self.types, self.filters, self.ast_with_parameters.parameters
         )
 
     @cached_property
