@@ -11,6 +11,7 @@ from .. import test_input_data
 from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.analysis import analyze_query_string
 from ...cost_estimation.statistics import LocalStatistics
+from ...exceptions import GraphQLInvalidArgumentError
 from ...global_utils import ASTWithParameters, QueryStringWithParameters
 from ...query_pagination import paginate_query
 from ...query_pagination.pagination_planning import (
@@ -74,6 +75,75 @@ class QueryPaginationTests(unittest.TestCase):
         expected_advisories: Tuple[PaginationAdvisory, ...] = tuple()
         self.assertEqual([w.message for w in expected_advisories], [w.message for w in advisories])
         self.assertEqual(expected_plan, pagination_plan)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_planning_invalid_extra_args(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        # Check that the correct plan is generated when it's obvious (page the root)
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal_name")
+            }
+        }""",
+            {"country": "USA"},
+        )
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            number_of_pages = 10
+            analysis = analyze_query_string(schema_info, query)
+            get_pagination_plan(analysis, number_of_pages)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_planning_invalid_missing_args(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        # Check that the correct plan is generated when it's obvious (page the root)
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal_name")
+                     @filter(op_name: "=", value: ["$animal_name"])
+            }
+        }""",
+            {},
+        )
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            number_of_pages = 10
+            analysis = analyze_query_string(schema_info, query)
+            get_pagination_plan(analysis, number_of_pages)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_planning_unique_filter(self) -> None:
