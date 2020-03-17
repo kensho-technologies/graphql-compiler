@@ -345,7 +345,8 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @filter(op_name: "=", value: ["$animal_name"])
                 in_Animal_ParentOf @optional {
@@ -355,13 +356,13 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                     }
                 }
             }
-        }""", {
-            "animal_name": "Joe",
-        })
+        }""",
+            {"animal_name": "Joe",},
+        )
         estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
         expected_estimates = {
-            ('Animal',): 1.0,
-            ('Animal', 'in_Animal_ParentOf'): 1000.0,
-            ('Animal', 'in_Animal_ParentOf', 'in_Animal_ParentOf'): 1000.0,
+            ("Animal",): 1.0,
+            ("Animal", "in_Animal_ParentOf"): 1000.0,
+            ("Animal", "in_Animal_ParentOf", "in_Animal_ParentOf"): 1000.0,
         }
         self.assertEqual(expected_estimates, estimates)

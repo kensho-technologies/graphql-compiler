@@ -1,9 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import bisect
 from dataclasses import dataclass
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set, Union
 
 from cached_property import cached_property
+from graphql import GraphQLInterfaceType, GraphQLObjectType
 from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
@@ -54,7 +55,9 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
-def get_types(query_metadata: QueryMetadataTable,) -> Dict[VertexPath, str]:
+def get_types(
+    query_metadata: QueryMetadataTable,
+) -> Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]]:
     """Find the type at each VertexPath.
 
     Fold scopes are not considered.
@@ -69,7 +72,7 @@ def get_types(query_metadata: QueryMetadataTable,) -> Dict[VertexPath, str]:
     for location, location_info in query_metadata.registered_locations:
         if not isinstance(location, Location):
             continue
-        location_types[location.query_path] = location_info.type.name
+        location_types[location.query_path] = location_info.type
     return location_types
 
 
@@ -357,7 +360,7 @@ class QueryPlanningAnalysis:
         ).query_metadata_table
 
     @cached_property
-    def types(self) -> Dict[VertexPath, str]:
+    def types(self) -> Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]]:
         """Find the type at each VertexPath."""
         return get_types(self.metadata_table)
 
