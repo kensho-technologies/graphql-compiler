@@ -267,10 +267,10 @@ def get_distinct_result_set_estimates(
 
 def get_pagination_capacities(
     schema_info: QueryPlanningSchemaInfo,
+    types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
     fields_eligible_for_pagination: Set[PropertyPath],
     field_value_intervals: Dict[PropertyPath, Interval[Any]],
     distinct_result_set_estimates: Dict[VertexPath, float],
-    query_metadata: QueryMetadataTable,
     parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, int]:
     """Get the pagination capacity for each eligible pagination field.
@@ -283,28 +283,25 @@ def get_pagination_capacities(
 
     Args:
         schema_info: QueryPlanningSchemaInfo
+        types: the type at each node
         field_value_intervals: see get_field_value_intervals
         distinct_result_set_estimates: see get_distinct_result_set_estimates
-        query_metadata: info on locations, inputs, outputs, and tags in the query
         parameters: the query parameters
 
     Returns:
         the pagination capacity of each PropertyPath
     """
     pagination_capacities = {}
-    for location, location_info in query_metadata.registered_locations:
-        vertex_type_name = location_info.type.name
-        if not isinstance(location, Location):
-            continue  # We don't paginate inside folds.
-
-        for field_name, _ in location_info.type.fields.items():
-            property_path = PropertyPath(location.query_path, field_name)
+    for vertex_path, vertex_type in types.items():
+        vertex_type_name = vertex_type.name
+        for field_name, _ in vertex_type.fields.items():
+            property_path = PropertyPath(vertex_path, field_name)
             if property_path not in fields_eligible_for_pagination:
                 continue
 
             if is_uuid4_type(schema_info, vertex_type_name, field_name):
                 pagination_capacities[property_path] = int(
-                    distinct_result_set_estimates[location.query_path]
+                    distinct_result_set_estimates[vertex_path]
                 )
             elif field_supports_range_reasoning(schema_info, vertex_type_name, field_name):
                 field_value_interval = field_value_intervals.get(
@@ -337,7 +334,7 @@ def get_pagination_capacities(
 
                     pagination_capacities[property_path] = min(
                         len(relevant_quantiles) + 1,
-                        int(distinct_result_set_estimates[location.query_path]),
+                        int(distinct_result_set_estimates[vertex_path]),
                     )
 
     return pagination_capacities
@@ -415,10 +412,10 @@ class QueryPlanningAnalysis:
         """Return the pagination capacities for this query."""
         return get_pagination_capacities(
             self.schema_info,
+            self.types,
             self.fields_eligible_for_pagination,
             self.field_value_intervals,
             self.distinct_result_set_estimates,
-            self.metadata_table,
             self.ast_with_parameters.parameters,
         )
 
