@@ -607,6 +607,7 @@ class CostEstimationTests(unittest.TestCase):
             }
         }"""
         params = {
+            "name": "Joe",
             "uuid": "00000000-0000-0000-0000-000000000000",
             "worth": 100.0,
         }

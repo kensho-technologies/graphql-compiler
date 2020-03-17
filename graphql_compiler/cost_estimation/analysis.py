@@ -8,7 +8,7 @@ from graphql import GraphQLInterfaceType, GraphQLObjectType
 from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
-from ..compiler.compiler_frontend import graphql_to_ir
+from ..compiler.compiler_frontend import ast_to_ir
 from ..compiler.helpers import Location, get_edge_direction_and_name
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
@@ -18,6 +18,7 @@ from ..cost_estimation.int_value_conversion import (
 )
 from ..cost_estimation.interval import Interval
 from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
+from ..query_formatting.common import ensure_arguments_are_provided
 from ..schema import is_meta_field
 from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
@@ -356,11 +357,15 @@ class QueryPlanningAnalysis:
     @cached_property
     def metadata_table(self):
         """Return the metadata table for this query."""
-        return graphql_to_ir(
+        ir_and_metadata = ast_to_ir(
             self.schema_info.schema,
-            self.query_string_with_parameters.query_string,
+            self.ast_with_parameters.query_ast,
             type_equivalence_hints=self.schema_info.type_equivalence_hints,
-        ).query_metadata_table
+        )
+        ensure_arguments_are_provided(
+            ir_and_metadata.input_metadata, self.ast_with_parameters.parameters
+        )
+        return ir_and_metadata.query_metadata_table
 
     @cached_property
     def types(self) -> Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]]:
