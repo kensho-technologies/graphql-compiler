@@ -1521,6 +1521,50 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(0, len(remainder))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_impossible_pagination_strong_filters_few_repeated_quantiles(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Species": 1000000000000}
+        statistics = LocalStatistics(
+            class_counts, field_quantiles={
+                ("Species", "limbs"): list(i for i in range(0, 101, 10) for _ in range(10000))
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = QueryStringWithParameters("""{
+            Species {
+                name @output(out_name: "species_name")
+                limbs @filter(op_name: "between", value: ["$limbs_lower", "$limbs_upper"])
+            }
+        }""", {
+            "limbs_lower": 10,
+            "limbs_upper": 14,
+        })
+
+        first_page_and_remainder, _ = paginate_query(schema_info, query, 10)
+        first = first_page_and_remainder.one_page
+        remainder = first_page_and_remainder.remainder
+
+        # Query should be split, but there's not enough quantiles
+        compare_graphql(self, query.query_string, first.query_string)
+        self.assertEqual(query.parameters, first.parameters)
+        self.assertEqual(0, len(remainder))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_with_compiler_tests(self):
         """Test that pagination doesn't crash on any of the queries from the compiler tests."""
         schema_graph = generate_schema_graph(self.orientdb_client)
