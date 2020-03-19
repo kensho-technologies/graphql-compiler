@@ -1,47 +1,20 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import OrderedDict
-from copy import copy
 from itertools import chain
 
-from graphql import (
-    DirectiveLocation, GraphQLArgument, GraphQLDirective, GraphQLNonNull, GraphQLString
-)
+from graphql.type import GraphQLSchema
 
 from ...schema import (
-    FilterDirective, FoldDirective, OptionalDirective, RecurseDirective, TagDirective
+    FilterDirective,
+    FoldDirective,
+    MacroEdgeDefinitionDirective,
+    MacroEdgeDirective,
+    MacroEdgeTargetDirective,
+    OptionalDirective,
+    RecurseDirective,
+    TagDirective,
+    check_for_nondefault_directive_names,
 )
 
-
-MacroEdgeDirective = GraphQLDirective(
-    name='macro_edge',
-    locations=[
-        # Used to mark edges that are defined via macros in the schema.
-        DirectiveLocation.FIELD_DEFINITION,
-    ],
-)
-
-
-MacroEdgeDefinitionDirective = GraphQLDirective(
-    name='macro_edge_definition',
-    args=OrderedDict([
-        ('name', GraphQLArgument(
-            type=GraphQLNonNull(GraphQLString),
-            description='Name of the filter operation to perform.',
-        )),
-    ]),
-    locations=[
-        DirectiveLocation.FIELD,
-    ],
-)
-
-
-MacroEdgeTargetDirective = GraphQLDirective(
-    name='macro_edge_target',
-    locations=[
-        DirectiveLocation.FIELD,
-        DirectiveLocation.INLINE_FRAGMENT,
-    ],
-)
 
 # Directives reserved for macro edges
 MACRO_EDGE_DIRECTIVES = (
@@ -50,34 +23,41 @@ MACRO_EDGE_DIRECTIVES = (
     MacroEdgeTargetDirective,
 )
 
-# Directives required present in a macro edge definition
-DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset({
-    MacroEdgeDefinitionDirective,
-    MacroEdgeTargetDirective
-})
+# Names of directives required present in a macro edge definition
+DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION = frozenset(
+    {MacroEdgeDefinitionDirective.name, MacroEdgeTargetDirective.name}
+)
 
-# Directives allowed within a macro edge definition
-DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset({
-    FoldDirective,
-    FilterDirective,
-    OptionalDirective,
-    TagDirective,
-    RecurseDirective,
-}.union(DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
+# Names of directives allowed within a macro edge definition
+DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION = frozenset(
+    {
+        FoldDirective.name,
+        FilterDirective.name,
+        OptionalDirective.name,
+        TagDirective.name,
+        RecurseDirective.name,
+    }.union(DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION)
+)
 
 
 def get_schema_for_macro_edge_definitions(querying_schema):
     """Given a schema object used for querying, create a schema used for macro edge definitions."""
-    new_directives = list(chain(
-        querying_schema.get_directives(), DIRECTIVES_REQUIRED_IN_MACRO_EDGE_DEFINITION))
+    original_directives = querying_schema.directives
+    check_for_nondefault_directive_names(original_directives)
 
-    # Unfortunately, GraphQLSchema objects do not easily allow creating derived schemas,
-    # since the GraphQLSchema constructor takes a "types" parameter whose value is not preserved
-    # in any of the constructed object's fields. To work around this, we rely on copying and
-    # altering the object's internals directly.
-    macro_edge_schema = copy(querying_schema)
-    # pylint: disable=protected-access
-    macro_edge_schema._directives = new_directives
-    # pylint: enable=protected-access
+    directives_required_in_macro_edge_definition = [
+        MacroEdgeDefinitionDirective,
+        MacroEdgeTargetDirective,
+    ]
+
+    new_directives = [
+        directive
+        for directive in chain(original_directives, directives_required_in_macro_edge_definition)
+        if directive.name in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION
+    ]
+
+    schema_arguments = querying_schema.to_kwargs()
+    schema_arguments["directives"] = new_directives
+    macro_edge_schema = GraphQLSchema(**schema_arguments)
 
     return macro_edge_schema

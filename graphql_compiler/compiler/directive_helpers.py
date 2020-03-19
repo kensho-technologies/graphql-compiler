@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Helper functions for dealing with GraphQL directives."""
 
-from graphql.language.ast import InlineFragment
+from graphql.language.ast import InlineFragmentNode
 import six
 
 from ..ast_manipulation import get_ast_field_name, get_ast_field_name_or_none
@@ -10,16 +10,18 @@ from .filters import is_filter_with_outer_scope_vertex_field_operator
 from .helpers import FilterOperationInfo, get_vertex_field_type, is_vertex_field_type
 
 
-ALLOWED_DUPLICATED_DIRECTIVES = frozenset({'filter'})
-VERTEX_ONLY_DIRECTIVES = frozenset({'optional', 'output_source', 'recurse', 'fold'})
-PROPERTY_ONLY_DIRECTIVES = frozenset({'tag', 'output'})
-VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT = frozenset({'optional', 'recurse', 'fold'})
+ALLOWED_DUPLICATED_DIRECTIVES = frozenset({"filter"})
+VERTEX_ONLY_DIRECTIVES = frozenset({"optional", "output_source", "recurse", "fold"})
+PROPERTY_ONLY_DIRECTIVES = frozenset({"tag", "output"})
+VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT = frozenset({"optional", "recurse", "fold"})
 
 
 if not (VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT <= VERTEX_ONLY_DIRECTIVES):
-    raise AssertionError(u'The set of directives prohibited on the root vertex is not a subset '
-                         u'of the set of vertex directives: {}'
-                         u'{}'.format(VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT, VERTEX_ONLY_DIRECTIVES))
+    raise AssertionError(
+        u"The set of directives prohibited on the root vertex is not a subset "
+        u"of the set of vertex directives: {}"
+        u"{}".format(VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT, VERTEX_ONLY_DIRECTIVES)
+    )
 
 
 def get_unique_directives(ast):
@@ -44,8 +46,10 @@ def get_unique_directives(ast):
         if directive_name in ALLOWED_DUPLICATED_DIRECTIVES:
             pass  # We don't return these.
         elif directive_name in result:
-            raise GraphQLCompilationError(u'Directive was unexpectedly applied twice in the same '
-                                          u'location: {} {}'.format(directive_name, ast.directives))
+            raise GraphQLCompilationError(
+                u"Directive was unexpectedly applied twice in the same "
+                u"location: {} {}".format(directive_name, ast.directives)
+            )
         else:
             result[directive_name] = directive_obj
 
@@ -76,7 +80,7 @@ def get_local_filter_directives(ast, current_schema_type, inner_vertex_fields):
         for directive_obj in ast.directives:
             # Of all filters that appear *on the field itself*, only the ones that apply
             # to the outer scope are not considered "local" and are not to be returned.
-            if directive_obj.name.value == 'filter':
+            if directive_obj.name.value == "filter":
                 filtered_field_name = get_ast_field_name_or_none(ast)
                 if is_filter_with_outer_scope_vertex_field_operator(directive_obj):
                     # We found a filter that affects the outer scope vertex. Let's make sure
@@ -84,20 +88,25 @@ def get_local_filter_directives(ast, current_schema_type, inner_vertex_fields):
                     # that is a compilation error.
                     if not is_vertex_field_type(current_schema_type):
                         raise GraphQLCompilationError(
-                            u'Found disallowed filter on a property field: {} {} '
-                            u'{}'.format(directive_obj, current_schema_type, filtered_field_name))
-                    elif isinstance(ast, InlineFragment):
+                            u"Found disallowed filter on a property field: {} {} "
+                            u"{}".format(directive_obj, current_schema_type, filtered_field_name)
+                        )
+                    elif isinstance(ast, InlineFragmentNode):
                         raise GraphQLCompilationError(
-                            u'Found disallowed filter on a type coercion: {} '
-                            u'{}'.format(directive_obj, current_schema_type))
+                            u"Found disallowed filter on a type coercion: {} "
+                            u"{}".format(directive_obj, current_schema_type)
+                        )
                     else:
                         # The filter is valid and non-local, since it is applied at this AST node
                         # but affects the outer scope vertex field. Skip over it.
                         pass
                 else:
                     operation = FilterOperationInfo(
-                        directive=directive_obj, field_name=filtered_field_name,
-                        field_type=current_schema_type, field_ast=ast)
+                        directive=directive_obj,
+                        field_name=filtered_field_name,
+                        field_type=current_schema_type,
+                        field_ast=ast,
+                    )
                     result.append(operation)
 
     if inner_vertex_fields:  # allow the argument to be None
@@ -109,11 +118,15 @@ def get_local_filter_directives(ast, current_schema_type, inner_vertex_fields):
                     # The inner AST must not be an InlineFragment, so it must have a field name.
                     filtered_field_name = get_ast_field_name(inner_ast)
                     filtered_field_type = get_vertex_field_type(
-                        current_schema_type, filtered_field_name)
+                        current_schema_type, filtered_field_name
+                    )
 
                     operation = FilterOperationInfo(
-                        directive=directive_obj, field_name=filtered_field_name,
-                        field_type=filtered_field_type, field_ast=inner_ast)
+                        directive=directive_obj,
+                        field_name=filtered_field_name,
+                        field_type=filtered_field_type,
+                        field_ast=inner_ast,
+                    )
                     result.append(operation)
 
     return result
@@ -124,7 +137,8 @@ def validate_property_directives(directives):
     for directive_name in six.iterkeys(directives):
         if directive_name in VERTEX_ONLY_DIRECTIVES:
             raise GraphQLCompilationError(
-                u'Found vertex-only directive {} set on property.'.format(directive_name))
+                u"Found vertex-only directive {} set on property.".format(directive_name)
+            )
 
 
 def validate_vertex_directives(directives):
@@ -132,7 +146,8 @@ def validate_vertex_directives(directives):
     for directive_name in six.iterkeys(directives):
         if directive_name in PROPERTY_ONLY_DIRECTIVES:
             raise GraphQLCompilationError(
-                u'Found property-only directive {} set on vertex.'.format(directive_name))
+                u"Found property-only directive {} set on vertex.".format(directive_name)
+            )
 
 
 def validate_root_vertex_directives(root_ast):
@@ -142,88 +157,118 @@ def validate_root_vertex_directives(root_ast):
         directive_name = directive_obj.name.value
 
         if is_filter_with_outer_scope_vertex_field_operator(directive_obj):
-            raise GraphQLCompilationError(u'Found a filter directive with an operator that is not'
-                                          u'allowed on the root vertex: {}'.format(directive_obj))
+            raise GraphQLCompilationError(
+                u"Found a filter directive with an operator that is not"
+                u"allowed on the root vertex: {}".format(directive_obj)
+            )
 
         directives_present_at_root.add(directive_name)
 
     disallowed_directives = directives_present_at_root & VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT
     if disallowed_directives:
-        raise GraphQLCompilationError(u'Found prohibited directives on root vertex: '
-                                      u'{}'.format(disallowed_directives))
+        raise GraphQLCompilationError(
+            u"Found prohibited directives on root vertex: " u"{}".format(disallowed_directives)
+        )
 
 
 def validate_vertex_field_directive_interactions(parent_location, vertex_field_name, directives):
     """Ensure that the specified vertex field directives are not mutually disallowed."""
-    fold_directive = directives.get('fold', None)
-    optional_directive = directives.get('optional', None)
-    output_source_directive = directives.get('output_source', None)
-    recurse_directive = directives.get('recurse', None)
+    fold_directive = directives.get("fold", None)
+    optional_directive = directives.get("optional", None)
+    output_source_directive = directives.get("output_source", None)
+    recurse_directive = directives.get("recurse", None)
 
     if fold_directive and optional_directive:
-        raise GraphQLCompilationError(u'@fold and @optional may not appear at the same '
-                                      u'vertex field! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@fold and @optional may not appear at the same "
+            u"vertex field! Parent location: {}, vertex field name: {}".format(
+                parent_location, vertex_field_name
+            )
+        )
 
     if fold_directive and output_source_directive:
-        raise GraphQLCompilationError(u'@fold and @output_source may not appear at the same '
-                                      u'vertex field! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@fold and @output_source may not appear at the same "
+            u"vertex field! Parent location: {}, vertex field name: {}".format(
+                parent_location, vertex_field_name
+            )
+        )
 
     if fold_directive and recurse_directive:
-        raise GraphQLCompilationError(u'@fold and @recurse may not appear at the same '
-                                      u'vertex field! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@fold and @recurse may not appear at the same "
+            u"vertex field! Parent location: {}, vertex field name: {}".format(
+                parent_location, vertex_field_name
+            )
+        )
 
     if optional_directive and output_source_directive:
-        raise GraphQLCompilationError(u'@optional and @output_source may not appear at the same '
-                                      u'vertex field! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@optional and @output_source may not appear at the same "
+            u"vertex field! Parent location: {}, vertex field name: {}".format(
+                parent_location, vertex_field_name
+            )
+        )
 
     if optional_directive and recurse_directive:
-        raise GraphQLCompilationError(u'@optional and @recurse may not appear at the same '
-                                      u'vertex field! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@optional and @recurse may not appear at the same "
+            u"vertex field! Parent location: {}, vertex field name: {}".format(
+                parent_location, vertex_field_name
+            )
+        )
 
 
-def validate_vertex_field_directive_in_context(parent_location, vertex_field_name,
-                                               directives, context):
+def validate_vertex_field_directive_in_context(
+    parent_location, vertex_field_name, directives, context
+):
     """Ensure that the specified vertex field directives are allowed in the current context."""
-    fold_directive = directives.get('fold', None)
-    optional_directive = directives.get('optional', None)
-    recurse_directive = directives.get('recurse', None)
-    output_source_directive = directives.get('output_source', None)
+    fold_directive = directives.get("fold", None)
+    optional_directive = directives.get("optional", None)
+    recurse_directive = directives.get("recurse", None)
+    output_source_directive = directives.get("output_source", None)
 
-    fold_context = 'fold' in context
-    optional_context = 'optional' in context
-    output_source_context = 'output_source' in context
+    fold_context = "fold" in context
+    optional_context = "optional" in context
+    output_source_context = "output_source" in context
 
     if fold_directive and fold_context:
-        raise GraphQLCompilationError(u'@fold is not allowed within a @fold traversal! '
-                                      u'Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@fold is not allowed within a @fold traversal! "
+            u"Parent location: {}, vertex field name: {}".format(parent_location, vertex_field_name)
+        )
     if optional_directive and fold_context:
-        raise GraphQLCompilationError(u'@optional is not allowed within a @fold traversal! '
-                                      u'Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@optional is not allowed within a @fold traversal! "
+            u"Parent location: {}, vertex field name: {}".format(parent_location, vertex_field_name)
+        )
     if output_source_directive and fold_context:
-        raise GraphQLCompilationError(u'@output_source is not allowed within a @fold traversal! '
-                                      u'Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@output_source is not allowed within a @fold traversal! "
+            u"Parent location: {}, vertex field name: {}".format(parent_location, vertex_field_name)
+        )
     if recurse_directive and fold_context:
-        raise GraphQLCompilationError(u'@recurse is not allowed within a @fold traversal! '
-                                      u'Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@recurse is not allowed within a @fold traversal! "
+            u"Parent location: {}, vertex field name: {}".format(parent_location, vertex_field_name)
+        )
 
     if output_source_context and not fold_directive:
-        raise GraphQLCompilationError(u'Found non-fold vertex field after the vertex marked '
-                                      u'output source! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"Found non-fold vertex field after the vertex marked "
+            u"output source! Parent location: {}, vertex field name: {}".format(
+                parent_location, vertex_field_name
+            )
+        )
     if optional_context and fold_directive:
-        raise GraphQLCompilationError(u'@fold is not allowed within a @optional traversal! '
-                                      u'Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@fold is not allowed within a @optional traversal! "
+            u"Parent location: {}, vertex field name: {}".format(parent_location, vertex_field_name)
+        )
     if optional_context and output_source_directive:
-        raise GraphQLCompilationError(u'@output_source is not allowed within a @optional '
-                                      u'traversal! Parent location: {}, vertex field name: {}'
-                                      .format(parent_location, vertex_field_name))
+        raise GraphQLCompilationError(
+            u"@output_source is not allowed within a @optional "
+            u"traversal! Parent location: {}, vertex field name: {}".format(
+                parent_location, vertex_field_name
+            )
+        )

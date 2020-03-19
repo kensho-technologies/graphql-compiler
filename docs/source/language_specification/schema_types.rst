@@ -46,8 +46,11 @@ since we will immediately proceed to dissect the schema.
     scalar Decimal
 
     type Animal implements Entity {
+        _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
+        color: String
         birthday: Date
         net_worth: Decimal
         in_Animal_ParentOf: [Animal]
@@ -59,6 +62,8 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Food implements Entity {
+        _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -67,9 +72,10 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Species implements Entity {
+        _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
-        description: String
         in_Animal_OfSpecies: [Animal]
         in_Entity_Related: [Entity]
         out_Entity_Related: [Entity]
@@ -78,11 +84,15 @@ since we will immediately proceed to dissect the schema.
     }
 
     type Toy {
+        _x_count: Int
+        uuid: ID
         name: String
         in_Animal_PlaysWith: [Animal]
     }
 
     interface Entity {
+        _x_count: Int
+        uuid: ID
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -110,12 +120,15 @@ Lets go over a toy example of a GraphQL object type:
 .. code::
 
     type Toy {
+        _x_count: Int
         name: String
         in_Animal_PlaysWith: [Animal]
     }
 
 Here are some of the details:
 
+- :code:`_x_count`: is a `meta field <meta_fields>`__. Meta fields are an advanced compiler
+  feature.
 - :code:`name` is a **property field** that represents concrete data.
 - :code:`in_Animal_PlaysWith` is a **vertex field** representing an inbound edge.
 - :code:`String` is a built-in GraphQL scalar type.
@@ -193,6 +206,7 @@ implementation in the GraphQL schema to model the abstract inheritance in the un
 .. code::
 
    interface Entity {
+        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -200,6 +214,7 @@ implementation in the GraphQL schema to model the abstract inheritance in the un
     }
 
     type Food implements Entity {
+        _x_count: Int
         name: String
         alias: [String]
         in_Entity_Related: [Entity]
@@ -207,7 +222,7 @@ implementation in the GraphQL schema to model the abstract inheritance in the un
         in_Species_Eats: [Species]
     }
 
-Querying an interface type without any `type coercion <#type-coercion>`__ returns all of the
+Querying an interface type without any `type coercion <type_coercion>`__ returns all of the
 the objects implemented by the interface. For instance, the following query returns the name of all
 :code:`Food`, :code:`Species` and :code:`Animal` objects.
 
@@ -248,6 +263,8 @@ as well an entry in :code:`type_equivalence_hints` mapping :code:`Food` to
 
 To query an union type, one must always type coerce to one of the encompassed object types as
 illustrated in the section below.
+
+.. _type_coercion:
 
 Type coercions
 ~~~~~~~~~~~~~~
@@ -298,3 +315,212 @@ and discarded.
 In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
 However, the query only wants to return results where the related entity
 is a :code:`Species`, which :code:`... on Species` ensures is the case.
+
+.. _meta_fields:
+
+Meta fields
+-----------
+
+Meta fields are fields that do not represent a property/column in the underlying vertex type.
+They are also an advanced compiler feature. Before continuing, readers should familiarize
+themselves with the various :doc:`query directives <query_directives>` supported by the compiler.
+
+\_\_typename
+~~~~~~~~~~~~
+
+The compiler supports the standard GraphQL meta field :code:`__typename`,
+which returns the runtime type of the scope where the field is found.
+Assuming the GraphQL schema matches the database's schema, the runtime
+type will always be a subtype of (or exactly equal to) the static type
+of the scope determined by the GraphQL type system. Below, we provide an
+example query in which the runtime type is a subtype of the static type,
+but is not equal to it.
+
+The :code:`__typename` field is treated as a property field of type
+:code:`String`, and supports all directives that can be applied to any other
+property field.
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Entity {
+            __typename @output(out_name: "entity_type")
+            name @output(out_name: "entity_name")
+        }
+    }
+
+This query returns one row for each :code:`Entity` vertex. The scope in
+which :code:`__typename` appears is of static type :code:`Entity`. However,
+:code:`Animal` is a type of :code:`Entity`, as are :code:`Species`, :code:`Food`, and
+others. Vertices of all subtypes of :code:`Entity` will therefore be
+returned, and the :code:`entity_type` column that outputs the :code:`__typename`
+field will show their runtime type: :code:`Animal`, :code:`Species`, :code:`Food`,
+etc.
+
+.. _x_count:
+
+\_x\_count
+~~~~~~~~~~
+
+The :code:`_x_count` meta field is a non-standard meta field defined by the
+GraphQL compiler that makes it possible to interact with the *number* of
+elements in a scope marked :code:`@fold`. By applying directives like
+:code:`@output` and :code:`@filter` to this meta field, queries can output the
+number of elements captured in the :code:`@fold` and filter down results to
+select only those with the desired fold sizes.
+
+We use the :code:`_x_` prefix to signify that this is an extension meta
+field introduced by the compiler, and not part of the canonical set of
+GraphQL meta fields defined by the GraphQL specification. We do not use
+the GraphQL standard double-underscore (:code:`__`) prefix for meta fields,
+since all names with that prefix are `explicitly reserved and prohibited
+from being
+used <https://facebook.github.io/graphql/draft/#sec-Reserved-Names>`__
+in directives, fields, or any other artifacts.
+
+Example Use
+^^^^^^^^^^^
+
+.. code::
+
+    {
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @fold {
+                _x_count @output(out_name: "number_of_children")
+                name @output(out_name: "child_names")
+            }
+        }
+    }
+
+This query returns one row for each :code:`Animal` vertex. Each row contains
+its name, and the number and names of its children. While the output
+type of the :code:`child_names` selection is a list of strings, the output
+type of the :code:`number_of_children` selection is an integer.
+
+.. code::
+
+    {
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @fold {
+                _x_count @filter(op_name: ">=", value: ["$min_children"])
+                        @output(out_name: "number_of_children")
+                name @filter(op_name: "has_substring", value: ["$substr"])
+                     @output(out_name: "child_names")
+            }
+        }
+    }
+
+Here, we've modified the above query to add two more filtering
+constraints to the returned rows:
+
+- child :code:`Animal` vertices must contain the value of :code:`$substr` as a substring in their
+  name, and
+- :code:`Animal` vertices must have at least :code:`$min_children` children that
+  satisfy the above filter.
+
+Importantly, any filtering on :code:`_x_count` is applied *after* any other
+filters and type coercions that are present in the :code:`@fold` in
+question. This order of operations matters a lot: selecting :code:`Animal`
+vertices with 3+ children, then filtering the children based on their
+names is not the same as filtering the children first, and then
+selecting :code:`Animal` vertices that have 3+ children that matched the
+earlier filter.
+
+Constraints and Rules
+^^^^^^^^^^^^^^^^^^^^^
+
+-  The :code:`_x_count` field is only allowed to appear within a vertex
+   field marked :code:`@fold`.
+-  Filtering on :code:`_x_count` is always applied *after* any other filters
+   and type coercions present in that :code:`@fold`.
+-  Filtering or outputting the value of the :code:`_x_count` field must
+   always be done at the innermost scope of the :code:`@fold`. It is invalid
+   to expand vertex fields within a :code:`@fold` after filtering or
+   outputting the value of the :code:`_x_count` meta field.
+
+How is filtering on :code:`_x_count` different from :code:`@filter` with :code:`has_edge_degree`?
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The :code:`has_edge_degree` filter allows filtering based on the number of
+edges of a particular type. There are situations in which filtering with
+:code:`has_edge_degree` and filtering using :code:`=` on :code:`_x_count` produce
+equivalent queries. Here is one such pair of queries:
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "name")
+            in_Animal_OfSpecies @filter(op_name: "has_edge_degree", value: ["$num_animals"]) {
+                uuid
+            }
+        }
+    }
+
+and
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "name")
+            in_Animal_OfSpecies @fold {
+                _x_count @filter(op_name: "=", value: ["$num_animals"])
+            }
+        }
+    }
+
+In both of these queries, we ask for the names of the :code:`Species`
+vertices that have precisely :code:`$num_animals` members. However, we have
+expressed this question in two different ways: once as a property of the
+:code:`Species` vertex ("the degree of the :code:`in_Animal_OfSpecies` is
+:code:`$num_animals`"), and once as a property of the list of :code:`Animal`
+vertices produced by the :code:`@fold` ("the number of elements in the
+:code:`@fold` is :code:`$num_animals`").
+
+When we add additional filtering within the :code:`Animal` vertices of the
+:code:`in_Animal_OfSpecies` vertex field, this distinction becomes very
+important. Compare the following two queries:
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "name")
+            in_Animal_OfSpecies @filter(op_name: "has_edge_degree", value: ["$num_animals"]) {
+                out_Animal_LivesIn {
+                    name @filter(op_name: "=", value: ["$location"])
+                }
+            }
+        }
+    }
+
+versus
+
+.. code::
+
+    {
+        Species {
+            name @output(out_name: "name")
+            in_Animal_OfSpecies @fold {
+                out_Animal_LivesIn {
+                    _x_count @filter(op_name: "=", value: ["$num_animals"])
+                    name @filter(op_name: "=", value: ["$location"])
+                }
+            }
+        }
+    }
+
+In the first, for the purposes of the :code:`has_edge_degree` filtering, the
+location where the animals live is irrelevant: the :code:`has_edge_degree`
+only makes sure that the :code:`Species` vertex has the correct number of
+edges of type :code:`in_Animal_OfSpecies`, and that's it. In contrast, the
+second query ensures that only :code:`Species` vertices that have
+:code:`$num_animals` animals that live in the selected location are returned
+-- the location matters since the :code:`@filter` on the :code:`_x_count` field
+applies to the number of elements in the :code:`@fold` scope.

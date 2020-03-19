@@ -11,25 +11,24 @@ from .exceptions import IllegalSchemaStateError, InvalidClassError, InvalidPrope
 ILLEGAL_PROPERTY_NAME_PREFIXES = (
     # Prefixes that would make the GraphQL schema ambiguous,
     # since this is how it represents adjacent vertices.
-    'out_',
-    'in_',
-
+    "out_",
+    "in_",
     # Prefixes reserved for future extensions to the GraphQL schema,
     # in case we want to, e.g., add edge-based traversals, or "both()"-style traversals.
-    'outE',
-    'inE',
-    'outV',
-    'inV',
-    'both_',
-    'bothE_',
-    'bothV_',
+    "outE",
+    "inE",
+    "outV",
+    "inV",
+    "both_",
+    "bothE_",
+    "bothV_",
 )
 
 
 ILLEGAL_PROPERTY_NAMES = (
     # Names we reserve for referencing base connections as fields of an IndexDefinition object.
-    'out',
-    'in',
+    "out",
+    "in",
 )
 
 
@@ -99,7 +98,7 @@ class SchemaGraph(object):
     def get_element_by_class_name_or_raise(self, class_name):
         """Return the SchemaElement for the specified class name, asserting that it exists."""
         if class_name not in self._elements:
-            raise InvalidClassError(u'Class does not exist: {}'.format(class_name))
+            raise InvalidClassError(u"Class does not exist: {}".format(class_name))
 
         return self._elements[class_name]
 
@@ -108,7 +107,7 @@ class SchemaGraph(object):
         schema_element = self.get_element_by_class_name_or_raise(vertex_classname)
 
         if not schema_element.is_vertex:
-            raise InvalidClassError(u'Non-vertex class provided: {}'.format(vertex_classname))
+            raise InvalidClassError(u"Non-vertex class provided: {}".format(vertex_classname))
 
         return schema_element
 
@@ -117,17 +116,19 @@ class SchemaGraph(object):
         schema_element = self.get_element_by_class_name_or_raise(edge_classname)
 
         if not schema_element.is_edge:
-            raise InvalidClassError(u'Non-edge class provided: {}'.format(edge_classname))
+            raise InvalidClassError(u"Non-edge class provided: {}".format(edge_classname))
 
         return schema_element
 
     def get_unique_indexes_for_class(self, cls):
         """Return a frozenset of IndexDefinitions of unique indexes that apply to this class."""
-        return frozenset({
-            index_definition
-            for index_definition in self.get_all_indexes_for_class(cls)
-            if index_definition.unique
-        })
+        return frozenset(
+            {
+                index_definition
+                for index_definition in self.get_all_indexes_for_class(cls)
+                if index_definition.unique
+            }
+        )
 
     def get_properties_captured_by_index(self, index_definition, classname, props):
         """Return the dict of values captured by the index, or None if the index does not apply.
@@ -147,10 +148,7 @@ class SchemaGraph(object):
         if classname not in indexed_classes:
             return None
 
-        covered_props = {
-            field_name: props[field_name]
-            for field_name in index_definition.fields
-        }
+        covered_props = {field_name: props[field_name] for field_name in index_definition.fields}
 
         if index_definition.ignore_nulls:
             for value in six.itervalues(covered_props):
@@ -178,16 +176,18 @@ class SchemaGraph(object):
         element = self.get_vertex_schema_element_or_raise(vertex_classname)
 
         if element.abstract:
-            raise InvalidClassError(u'Expected a non-abstract vertex class, but {} is abstract'
-                                    .format(vertex_classname))
+            raise InvalidClassError(
+                u"Expected a non-abstract vertex class, but {} is abstract".format(vertex_classname)
+            )
 
     def validate_is_non_abstract_edge_type(self, edge_classname):
         """Validate that a edge classname corresponds to a non-abstract edge class."""
         element = self.get_edge_schema_element_or_raise(edge_classname)
 
         if element.abstract:
-            raise InvalidClassError(u'Expected a non-abstract vertex class, but {} is abstract'
-                                    .format(edge_classname))
+            raise InvalidClassError(
+                u"Expected a non-abstract vertex class, but {} is abstract".format(edge_classname)
+            )
 
     def validate_properties_exist(self, classname, property_names):
         """Validate that the specified property names are indeed defined on the given class."""
@@ -199,7 +199,8 @@ class SchemaGraph(object):
         if non_existent_properties:
             raise InvalidPropertyError(
                 u'Class "{}" does not have definitions for properties "{}": '
-                u'{}'.format(classname, non_existent_properties, property_names))
+                u"{}".format(classname, non_existent_properties, property_names)
+            )
 
     @property
     def class_names(self):
@@ -229,11 +230,9 @@ class SchemaGraph(object):
     @property
     def unique_indexes(self):
         """Return the set of all unique indexes in the schema."""
-        return frozenset({
-            index_definition
-            for index_definition in self._all_indexes
-            if index_definition.unique
-        })
+        return frozenset(
+            {index_definition for index_definition in self._all_indexes if index_definition.unique}
+        )
 
     def _get_class_to_indexes(self):
         """Return a dict mapping class name to the class indexes."""
@@ -302,7 +301,7 @@ class SchemaElement(object):
             properties,
             class_fields,
             self.in_connections,
-            self.out_connections
+            self.out_connections,
         ) + args
         self._print_kwargs = kwargs
 
@@ -350,14 +349,14 @@ class SchemaElement(object):
         """Return a human-readable unicode representation of this SchemaElement."""
         printed_args = []
         if self._print_args:
-            printed_args.append('{args}')
+            printed_args.append("{args}")
         if self._print_kwargs:
-            printed_args.append('{kwargs}')
+            printed_args.append("{kwargs}")
 
-        template = u'{cls_name}(' + u', '.join(printed_args) + u')'
-        return template.format(cls_name=type(self).__name__,
-                               args=self._print_args,
-                               kwargs=self._print_kwargs)
+        template = u"{cls_name}(" + u", ".join(printed_args) + u")"
+        return template.format(
+            cls_name=type(self).__name__, args=self._print_args, kwargs=self._print_kwargs
+        )
 
     def __repr__(self):
         """Return a human-readable str representation of the SchemaElement object."""
@@ -371,8 +370,15 @@ class VertexType(SchemaElement):
 
 
 class EdgeType(SchemaElement):
-    def __init__(self, class_name, abstract, properties, class_fields,
-                 base_in_connection=None, base_out_connection=None):
+    def __init__(
+        self,
+        class_name,
+        abstract,
+        properties,
+        class_fields,
+        base_in_connection=None,
+        base_out_connection=None,
+    ):
         """Create a new EdgeType object.
 
         Args:
@@ -390,12 +396,14 @@ class EdgeType(SchemaElement):
         Returns:
             a EdgeType with the given parameters
         """
-        super(EdgeType, self).__init__(class_name, abstract, properties, class_fields,
-                                       base_in_connection, base_out_connection)
+        super(EdgeType, self).__init__(
+            class_name, abstract, properties, class_fields, base_in_connection, base_out_connection
+        )
 
         if not abstract:
             _validate_non_abstract_edge_has_defined_base_connections(
-                class_name, base_in_connection, base_out_connection)
+                class_name, base_in_connection, base_out_connection
+            )
         self._base_in_connection = base_in_connection
         self._base_out_connection = base_out_connection
 
@@ -417,29 +425,34 @@ class NonGraphElement(SchemaElement):
 
 
 def _validate_non_abstract_edge_has_defined_base_connections(
-        class_name, base_in_connection, base_out_connection):
+    class_name, base_in_connection, base_out_connection
+):
     """Validate that the non-abstract edge has its in/out base connections defined."""
     if not (base_in_connection and base_out_connection):
-        raise IllegalSchemaStateError(u'Found a non-abstract edge class with undefined or illegal '
-                                      u'in/out base_connection: {} {} {}'
-                                      .format(class_name, base_in_connection, base_out_connection))
+        raise IllegalSchemaStateError(
+            u"Found a non-abstract edge class with undefined or illegal "
+            u"in/out base_connection: {} {} {}".format(
+                class_name, base_in_connection, base_out_connection
+            )
+        )
 
 
 def _validate_property_names(class_name, properties):
     """Validate that properties do not have names that may cause problems in the GraphQL schema."""
     for property_name in properties:
         is_illegal_name = (
-            not property_name or
-            property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES) or
-            property_name in ILLEGAL_PROPERTY_NAMES
+            not property_name
+            or property_name.startswith(ILLEGAL_PROPERTY_NAME_PREFIXES)
+            or property_name in ILLEGAL_PROPERTY_NAMES
         )
         if is_illegal_name:
-            raise IllegalSchemaStateError(u'Class "{}" has a property with an illegal name: '
-                                          u'{}'.format(class_name, property_name))
+            raise IllegalSchemaStateError(
+                u'Class "{}" has a property with an illegal name: '
+                u"{}".format(class_name, property_name)
+            )
 
 
 class InheritanceStructure(object):
-
     def __init__(self, direct_superclass_sets):
         """Create a new InheritanceStructure object.
 
@@ -475,6 +488,7 @@ def _get_toposorted_direct_superclass_sets(direct_superclass_sets):
     Return:
         an OrderedDict toposorted by class inheritance. Each class appears before its subclasses.
     """
+
     def get_class_topolist(class_name, processed_classes, current_trace):
         """Return a topologically sorted list of this class's superclasses and the class itself.
 
@@ -492,7 +506,8 @@ def _get_toposorted_direct_superclass_sets(direct_superclass_sets):
 
         if class_name in current_trace:
             raise AssertionError(
-                'Encountered self-reference in dependency chain of {}'.format(class_name))
+                "Encountered self-reference in dependency chain of {}".format(class_name)
+            )
 
         class_list = []
         # Recursively process superclasses
@@ -509,8 +524,9 @@ def _get_toposorted_direct_superclass_sets(direct_superclass_sets):
     toposorted = []
     for name in direct_superclass_sets.keys():
         toposorted.extend(get_class_topolist(name, set(), set()))
-    return OrderedDict((class_name, direct_superclass_sets[class_name])
-                       for class_name in toposorted)
+    return OrderedDict(
+        (class_name, direct_superclass_sets[class_name]) for class_name in toposorted
+    )
 
 
 def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
@@ -526,10 +542,11 @@ def _get_transitive_superclass_sets(toposorted_direct_superclass_sets):
         # the current class should have already been processed.
         # A KeyError on the following line would mean that the input
         # was not topologically sorted.
-        superclass_set.update(chain.from_iterable(
-            superclass_sets[superclass_name]
-            for superclass_name in direct_superclass_set
-        ))
+        superclass_set.update(
+            chain.from_iterable(
+                superclass_sets[superclass_name] for superclass_name in direct_superclass_set
+            )
+        )
 
         # Freeze the superclass set so it can't ever be modified again.
         superclass_sets[class_name] = frozenset(superclass_set)
@@ -554,11 +571,7 @@ def _get_subclass_sets_from_superclass_sets(superclass_sets):
 
 def _get_element_names_of_class(elements, cls):
     """Return a frozenset of the names of the elements are instances of the class."""
-    return frozenset({
-        name
-        for name, element in elements.items()
-        if isinstance(element, cls)
-    })
+    return frozenset({name for name, element in elements.items() if isinstance(element, cls)})
 
 
 def link_schema_elements(elements, inheritance_structure):
@@ -591,11 +604,11 @@ def link_schema_elements(elements, inheritance_structure):
 #   - type: GraphQLType, the type of this property
 #   - default: the default value for the property, used when a record is inserted without an
 #              explicit value for this property. Set to None if no default is given in the schema.
-PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
+PropertyDescriptor = namedtuple("PropertyDescriptor", ("type", "default"))
 
 
 # A way to describe an index:
-#   - name: string, the name of the index.
+#   - name: Optional[string], the name of the index or None if the index does not have a name.
 #   - base_classname: string, the name of the class on which the index is defined.
 #   - fields: frozenset of strings, indicating which objects the index encompasses.
 #             The 'in' and 'out' strings refer to the base connections.
@@ -604,5 +617,5 @@ PropertyDescriptor = namedtuple('PropertyDescriptor', ('type', 'default'))
 #   - ordered: bool, indicating whether this index is ordered.
 #   - ignore_nulls: bool, indicating if the index ignores null values.
 IndexDefinition = namedtuple(
-    'IndexDefinition',
-    ('name', 'base_classname', 'fields', 'unique', 'ordered', 'ignore_nulls'))
+    "IndexDefinition", ("name", "base_classname", "fields", "unique", "ordered", "ignore_nulls")
+)

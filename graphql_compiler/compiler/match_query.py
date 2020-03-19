@@ -4,8 +4,18 @@
 from collections import namedtuple
 
 from .blocks import (
-    Backtrack, CoerceType, ConstructResult, Filter, Fold, GlobalOperationsStart, MarkLocation,
-    OutputSource, QueryRoot, Recurse, Traverse, Unfold
+    Backtrack,
+    CoerceType,
+    ConstructResult,
+    Filter,
+    Fold,
+    GlobalOperationsStart,
+    MarkLocation,
+    OutputSource,
+    QueryRoot,
+    Recurse,
+    Traverse,
+    Unfold,
 )
 from .ir_lowering_common.common import extract_folds_from_ir_blocks
 
@@ -19,7 +29,7 @@ from .ir_lowering_common.common import extract_folds_from_ir_blocks
 #            not including the Fold and Unfold blocks that signal the start and end of the @fold.
 #   - output_block: a ConstructResult IR block, which defines how the query's results are returned.
 #   - where_block: an optional Filter block, which determines the WHERE statement for the query.
-MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_block', 'where_block'))
+MatchQuery = namedtuple("MatchQuery", ("match_traversals", "folds", "output_block", "where_block"))
 
 
 ###
@@ -30,7 +40,7 @@ MatchQuery = namedtuple('MatchQuery', ('match_traversals', 'folds', 'output_bloc
 #   - coerce_type_block: a CoerceType block, which acts as a "where_block" on the type of the step
 #   - where_block: an optional Filter block that corresponds to the 'where' clause in the MATCH step
 #   - as_block: an optional MarkLocation block that corresponds to the 'as' clause in the MATCH step
-MatchStep = namedtuple('MatchStep', ('root_block', 'coerce_type_block', 'where_block', 'as_block'))
+MatchStep = namedtuple("MatchStep", ("root_block", "coerce_type_block", "where_block", "as_block"))
 
 
 root_block_types = (QueryRoot, Traverse, Recurse, Backtrack)
@@ -40,8 +50,9 @@ def _per_location_tuple_to_step(ir_tuple):
     """Construct a MatchStep from a tuple of its constituent blocks."""
     root_block = ir_tuple[0]
     if not isinstance(root_block, root_block_types):
-        raise AssertionError(u'Unexpected root block type for MatchStep: '
-                             u'{} {}'.format(root_block, ir_tuple))
+        raise AssertionError(
+            u"Unexpected root block type for MatchStep: " u"{} {}".format(root_block, ir_tuple)
+        )
 
     coerce_type_block = None
     where_block = None
@@ -49,38 +60,48 @@ def _per_location_tuple_to_step(ir_tuple):
     for block in ir_tuple[1:]:
         if isinstance(block, CoerceType):
             if coerce_type_block is not None:
-                raise AssertionError(u'Unexpectedly found two blocks eligible for "class" clause: '
-                                     u'{} {} {}'.format(block, coerce_type_block, ir_tuple))
+                raise AssertionError(
+                    u'Unexpectedly found two blocks eligible for "class" clause: '
+                    u"{} {} {}".format(block, coerce_type_block, ir_tuple)
+                )
             coerce_type_block = block
         elif isinstance(block, MarkLocation):
             if as_block is not None:
-                raise AssertionError(u'Unexpectedly found two blocks eligible for "as" clause: '
-                                     u'{} {} {}'.format(block, as_block, ir_tuple))
+                raise AssertionError(
+                    u'Unexpectedly found two blocks eligible for "as" clause: '
+                    u"{} {} {}".format(block, as_block, ir_tuple)
+                )
             as_block = block
         elif isinstance(block, Filter):
             if where_block is not None:
-                raise AssertionError(u'Unexpectedly found two blocks eligible for "where" clause: '
-                                     u'{} {} {}'.format(block, as_block, ir_tuple))
+                raise AssertionError(
+                    u'Unexpectedly found two blocks eligible for "where" clause: '
+                    u"{} {} {}".format(block, as_block, ir_tuple)
+                )
 
             # Filter always comes before MarkLocation in a given MatchStep.
             if as_block is not None:
-                raise AssertionError(u'Unexpectedly found MarkLocation before Filter in '
-                                     u'MatchStep: {} {} {}'.format(block, where_block, ir_tuple))
+                raise AssertionError(
+                    u"Unexpectedly found MarkLocation before Filter in "
+                    u"MatchStep: {} {} {}".format(block, where_block, ir_tuple)
+                )
 
             where_block = block
         else:
-            raise AssertionError(u'Unexpected block encountered: {} {}'.format(block, ir_tuple))
+            raise AssertionError(u"Unexpected block encountered: {} {}".format(block, ir_tuple))
 
-    step = MatchStep(root_block=root_block,
-                     coerce_type_block=coerce_type_block,
-                     where_block=where_block,
-                     as_block=as_block)
+    step = MatchStep(
+        root_block=root_block,
+        coerce_type_block=coerce_type_block,
+        where_block=where_block,
+        as_block=as_block,
+    )
 
     # MatchSteps with Backtrack as the root block should only contain MarkLocation,
     # and not do filtering or type coercion.
     if isinstance(root_block, Backtrack):
         if where_block is not None or coerce_type_block is not None:
-            raise AssertionError(u'Unexpected blocks in Backtrack-based MatchStep: {}'.format(step))
+            raise AssertionError(u"Unexpected blocks in Backtrack-based MatchStep: {}".format(step))
 
     return step
 
@@ -109,11 +130,13 @@ def _split_ir_into_match_steps(pruned_ir_blocks):
         elif isinstance(block, (CoerceType, Filter, MarkLocation)):
             current_tuple += (block,)
         else:
-            raise AssertionError(u'Unexpected block type when converting to MATCH query: '
-                                 u'{} {}'.format(block, pruned_ir_blocks))
+            raise AssertionError(
+                u"Unexpected block type when converting to MATCH query: "
+                u"{} {}".format(block, pruned_ir_blocks)
+            )
 
     if current_tuple is None:
-        raise AssertionError(u'current_tuple was unexpectedly None: {}'.format(pruned_ir_blocks))
+        raise AssertionError(u"current_tuple was unexpectedly None: {}".format(pruned_ir_blocks))
     output.append(current_tuple)
 
     return [_per_location_tuple_to_step(x) for x in output]
@@ -132,7 +155,7 @@ def _split_match_steps_into_match_traversals(match_steps):
             current_list.append(step)
 
     if current_list is None:
-        raise AssertionError(u'current_list was unexpectedly None: {}'.format(match_steps))
+        raise AssertionError(u"current_list was unexpectedly None: {}".format(match_steps))
     output.append(current_list)
 
     return output
@@ -158,9 +181,12 @@ def _extract_global_operations(ir_blocks_except_output_and_folds):
 
     for block in ir_blocks_except_output_and_folds:
         if isinstance(block, (ConstructResult, Fold, Unfold)):
-            raise AssertionError(u'Received unexpected block of type {}. No ConstructResult or '
-                                 u'Fold/Unfold blocks should be present: {}'
-                                 .format(type(block).__name__, ir_blocks_except_output_and_folds))
+            raise AssertionError(
+                u"Received unexpected block of type {}. No ConstructResult or "
+                u"Fold/Unfold blocks should be present: {}".format(
+                    type(block).__name__, ir_blocks_except_output_and_folds
+                )
+            )
         elif isinstance(block, GlobalOperationsStart):
             in_global_operations_scope = True
         elif in_global_operations_scope:
@@ -175,12 +201,15 @@ def _extract_global_operations(ir_blocks_except_output_and_folds):
 # Public API #
 ##############
 
+
 def convert_to_match_query(ir_blocks):
     """Convert the list of IR blocks into a MatchQuery object, for easier manipulation."""
     output_block = ir_blocks[-1]
     if not isinstance(output_block, ConstructResult):
-        raise AssertionError(u'Expected last IR block to be ConstructResult, found: '
-                             u'{} {}'.format(output_block, ir_blocks))
+        raise AssertionError(
+            u"Expected last IR block to be ConstructResult, found: "
+            u"{} {}".format(output_block, ir_blocks)
+        )
     ir_except_output = ir_blocks[:-1]
 
     folds, ir_except_output_and_folds = extract_folds_from_ir_blocks(ir_except_output)
@@ -189,12 +218,15 @@ def convert_to_match_query(ir_blocks):
     global_operation_ir_blocks_tuple = _extract_global_operations(ir_except_output_and_folds)
     global_operation_blocks, pruned_ir_blocks = global_operation_ir_blocks_tuple
     if len(global_operation_blocks) > 1:
-        raise AssertionError(u'Received IR blocks with multiple global operation blocks. Only one '
-                             u'is allowed: {} {}'.format(global_operation_blocks, ir_blocks))
+        raise AssertionError(
+            u"Received IR blocks with multiple global operation blocks. Only one "
+            u"is allowed: {} {}".format(global_operation_blocks, ir_blocks)
+        )
     if len(global_operation_blocks) == 1:
         if not isinstance(global_operation_blocks[0], Filter):
-            raise AssertionError(u'Received non-Filter global operation block. {}'
-                                 .format(global_operation_blocks[0]))
+            raise AssertionError(
+                u"Received non-Filter global operation block. {}".format(global_operation_blocks[0])
+            )
         where_block = global_operation_blocks[0]
     else:
         where_block = None

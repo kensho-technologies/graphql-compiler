@@ -4,8 +4,9 @@ from ...exceptions import GraphQLInvalidMacroError
 from .validation import get_and_validate_macro_edge_info
 
 
-def make_macro_edge_descriptor(schema, subclass_sets, macro_edge_graphql, macro_edge_args,
-                               type_equivalence_hints=None):
+def make_macro_edge_descriptor(
+    schema, subclass_sets, macro_edge_graphql, macro_edge_args, type_equivalence_hints=None
+):
     """Validate the GraphQL macro edge definition, and return a MacroEdgeDescriptor describing it.
 
     Args:
@@ -40,7 +41,11 @@ def make_macro_edge_descriptor(schema, subclass_sets, macro_edge_graphql, macro_
     definition_ast = get_only_query_definition(root_ast, GraphQLInvalidMacroError)
 
     macro_edge_descriptor = get_and_validate_macro_edge_info(
-        schema, subclass_sets, definition_ast, macro_edge_args,
-        type_equivalence_hints=type_equivalence_hints)
+        schema,
+        subclass_sets,
+        definition_ast,
+        macro_edge_args,
+        type_equivalence_hints=type_equivalence_hints,
+    )
 
     return macro_edge_descriptor

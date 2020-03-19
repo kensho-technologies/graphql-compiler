@@ -30,14 +30,14 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
                               each row. This parameter should be used to amend SQLAlchemy Table
                               objects with such non-explicitly enforced primary keys.
     """
-    database_name, schema_name = schema.split('.')
+    database_name, schema_name = schema.split(".")
 
-    name_pattern = re.compile(r'^[a-zA-Z][_\-a-zA-Z0-9]*')
+    name_pattern = re.compile(r"^[a-zA-Z][_\-a-zA-Z0-9]*")
     # Sanity check to prevent against SQL injection.
     if not name_pattern.match(database_name):
-        raise AssertionError('Invalid database name {}'.format(database_name))
+        raise AssertionError("Invalid database name {}".format(database_name))
     if not name_pattern.match(schema_name):
-        raise AssertionError('Invalid schema name {}'.format(schema_name))
+        raise AssertionError("Invalid schema name {}".format(schema_name))
 
     table_to_column_metadata = _get_table_to_column_metadata(engine, database_name, schema_name)
     table_to_explicit_primary_key_columns = _get_table_to_explicit_primary_key_columns(
@@ -50,8 +50,8 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
         primary_key_columns = table_to_primary_key_columns[table_name]
         sqlalchemy_columns = []
         for column in column_metadata:
-            column_name = column['COLUMN_NAME']
-            data_type = column['DATA_TYPE']
+            column_name = column["COLUMN_NAME"]
+            data_type = column["DATA_TYPE"]
             # Ignore custom database types.
             maybe_sqlalchemy_type = ischema_names.get(data_type)
             if maybe_sqlalchemy_type:
@@ -63,8 +63,10 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
                     )
                 )
             else:
-                warnings.warn('Ignoring column {} with custom data type {} in table {} '
-                              'of schema {}.'.format(column_name, data_type, table_name, schema))
+                warnings.warn(
+                    "Ignoring column {} with custom data type {} in table {} "
+                    "of schema {}.".format(column_name, data_type, table_name, schema)
+                )
         # Insert specified table into MetaData object
         Table(table_name, metadata, *sqlalchemy_columns, schema=schema)
 
@@ -86,50 +88,57 @@ def get_first_column_in_table(table_name, column_metadata):
         string set with one element: the first column of the table.
     """
     for column in column_metadata:
-        if column['ORDINAL_POSITION'] == 1:
-            return {column['COLUMN_NAME']}
+        if column["ORDINAL_POSITION"] == 1:
+            return {column["COLUMN_NAME"]}
 
 
 def _get_table_to_column_metadata(engine, database_name, schema_name):
     """Return a dict mapping the name of each table to a list of column metadata dicts."""
-    columns_query = text('''
-    SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
-    FROM {database}.INFORMATION_SCHEMA.COLUMNS
-    WHERE TABLE_SCHEMA = '{schema}';
-    '''.format(database=database_name, schema=schema_name)  # nosec
+    columns_query = text(
+        """
+        SELECT TABLE_NAME, COLUMN_NAME, DATA_TYPE, ORDINAL_POSITION
+        FROM {database}.INFORMATION_SCHEMA.COLUMNS
+        WHERE TABLE_SCHEMA = '{schema}';
+        """.format(  # nosec
+            database=database_name, schema=schema_name
+        )
     )
 
     result_proxy = engine.execute(columns_query)
     table_to_column_metadata = {}
     for value in result_proxy:
-        table_to_column_metadata.setdefault(value['TABLE_NAME'], []).append(value)
+        table_to_column_metadata.setdefault(value["TABLE_NAME"], []).append(value)
     return table_to_column_metadata
 
 
 def _get_table_to_explicit_primary_key_columns(engine, database_name, schema_name):
     """Return a dict mapping each table to its set of explicit primary key columns."""
-    primary_key_query = text('''
-    SELECT KU.table_name as TABLE_NAME,column_name as PRIMARY_KEY_COLUMN
-    FROM {database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
-    INNER JOIN
-        {database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KU
-              ON TC.CONSTRAINT_TYPE = 'PRIMARY KEY' AND
-                 TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME
-    WHERE KU.CONSTRAINT_SCHEMA = '{schema}'
-    '''.format(database=database_name, schema=schema_name)  # nosec
+    primary_key_query = text(
+        """
+        SELECT KU.table_name as TABLE_NAME,column_name as PRIMARY_KEY_COLUMN
+        FROM {database}.INFORMATION_SCHEMA.TABLE_CONSTRAINTS AS TC
+        INNER JOIN
+            {database}.INFORMATION_SCHEMA.KEY_COLUMN_USAGE AS KU
+                  ON TC.CONSTRAINT_TYPE = 'PRIMARY KEY' AND
+                     TC.CONSTRAINT_NAME = KU.CONSTRAINT_NAME
+        WHERE KU.CONSTRAINT_SCHEMA = '{schema}'
+        """.format(  # nosec
+            database=database_name, schema=schema_name
+        )
     )
 
     result_proxy = engine.execute(primary_key_query)
     table_to_explicit_primary_key_columns = {}
     for value in result_proxy:
-        table_to_explicit_primary_key_columns.setdefault(value['TABLE_NAME'], set()).add(
-            value['PRIMARY_KEY_COLUMN']
+        table_to_explicit_primary_key_columns.setdefault(value["TABLE_NAME"], set()).add(
+            value["PRIMARY_KEY_COLUMN"]
         )
     return table_to_explicit_primary_key_columns
 
 
 def _get_table_to_primary_key_columns(
-        table_to_column_metadata, table_to_explicit_primary_key_columns, primary_key_selector):
+    table_to_column_metadata, table_to_explicit_primary_key_columns, primary_key_selector
+):
     """Return the set of primary key columns for each table."""
     table_to_primary_key_columns = {}
     for table_name in table_to_column_metadata:
@@ -140,8 +149,8 @@ def _get_table_to_primary_key_columns(
         else:
             if primary_key_selector is None:
                 raise AssertionError(
-                    'Table {} does not have a primary key nor a primary key '
-                    'selector'.format(table_name)
+                    "Table {} does not have a primary key nor a primary key "
+                    "selector".format(table_name)
                 )
             table_to_primary_key_columns[table_name] = primary_key_selector(
                 table_name, table_to_column_metadata[table_name]

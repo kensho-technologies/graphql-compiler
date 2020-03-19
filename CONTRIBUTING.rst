@@ -4,17 +4,21 @@ Contributing
 Thank you for taking the time to contribute to this project!
 
 To get started, make sure that you have :code:`pipenv`, :code:`docker` and
-:code:`docker-compose` installed on your computer. Additionally, since this
-is a package that supports both Python 2 and Python 3, please make sure
-you have Python 2.7.15+ and Python 3.6+ installed locally. This project
-assumes that they are available on the system as :code:`python2` and
-:code:`python3`, respectively. If you do not already have them installed,
+:code:`docker-compose` installed on your computer. Please make sure
+you have Python 3.8+ installed locally. If you do not already have it installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 
-Integration tests are run against multiple SQL databases, some of which
-require dialect specific installations to be available in the
-development environment. Currently this affects MySQL. A compatible
-driver can be installed on OSX with:
+Database Driver Installations
+-----------------------------
+
+Integration tests are run against multiple databases, some of which require that you install specific drivers. Below
+you'll find the installation instructions for these drivers for Ubuntu and OSX. You might need to run some of the
+commands with :code:`sudo` depending on your local setup.
+
+MySQL Driver
+~~~~~~~~~~~~
+
+For MySQL a compatible driver can be installed on OSX with:
 
 .. code:: bash
 
@@ -24,13 +28,38 @@ or on Ubuntu with:
 
 .. code:: bash
 
-   apt-get install python-mysqldb
+   apt-get install libmysqlclient-dev python-mysqldb
 
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
 
-Once the dev environment is prepared, from the root of the repository,
-run:
+Microsoft SQL Server ODBC Driver
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+For MSSQL, you can install the required ODBC driver on OSX with:
+
+.. code:: bash
+
+    brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release
+    brew install msodbcsql17 mssql-tools
+
+Or Ubuntu with:
+
+.. code:: bash
+
+    wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
+    add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
+    apt-get update
+    ACCEPT_EULA=Y apt-get install msodbcsql17
+    apt-get install unixodbc-dev
+
+To see the installation instructions for other operating systems, please follow this `link
+<https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.
+
+Running tests
+-------------
+
+Once the dev environment is prepared, you can run the tests, from the root repository, with:
 
 ::
 
@@ -38,15 +67,14 @@ run:
    pipenv sync --dev
    pipenv shell
 
-   py.test graphql_compiler/tests
+   pytest graphql_compiler/tests
 
 Some snapshot and integration tests take longer to setup, run, and
-teardown. These can be optionally skipped during development by running
-the tests with the :code:`--skip-slow` flag:
+teardown. These can be optionally skipped during development by running:
 
 .. code:: bash
 
-   py.test graphql_compiler/tests --skip-slow
+   pytest -m 'no-slow'
 
 If you run into any issues, please consult the TROUBLESHOOTING.md file.
 If you encounter and resolve an issue that is not already part of the
@@ -60,7 +88,7 @@ Code of Conduct
 ---------------
 
 This project adheres to the Contributor Covenant `code of
-conduct <CODE_OF_CONDUCT.md>`__. By participating, you are expected to
+conduct <CODE_OF_CONDUCT.rst>`__. By participating, you are expected to
 uphold this code. Please report unacceptable behavior at
 graphql-compiler-maintainer@kensho.com.
 
@@ -86,7 +114,8 @@ If the style guides differ on a convention, the PEP 8 style guide is preferred.
 Additionally, any contributions must pass the linter :code:`scripts/lint.sh`
 when executed from a pipenv shell (i.e. after running :code:`pipenv shell`).
 To run the linter on changed files only, commit your changes and run
-:code:`scripts/lint.sh --diff`.
+:code:`scripts/lint.sh --diff`. Some linters can automatically fix errors.
+Use :code:`scripts/fix_lint.sh` to run the automatic fixes.
 
 Finally, all python files in the repository must display the copyright
 of the project, to protect the terms of the license. Please make sure
@@ -96,62 +125,20 @@ that your files start with a line like:
 
    # Copyright 20xx-present Kensho Technologies, LLC.
 
-Python 2 vs Python 3
---------------------
-
-In order to ensure that tests run with a fixed set of packages in both
-Python 2 and Python 3, we always run the tests in a virtualenv managed
-by pipenv. However, since some of our dependencies have different
-requirements for Python 2 and Python 3, we have to keep two pipenv
-lockfiles -- one per Python version.
-
-We have chosen to make the Python 3 lockfile the default (hence named
-:code:`Pipfile.lock`), since Python 3 offers better performance and we like
-our tests and linters running quickly. The Python 2 lockfile is named
-:code:`Pipfile.py2.lock`.
-
-If you need to set up a Python 2 virtualenv locally, simply run the
-following script:
-
-::
-
-   ./scripts/make_py2_venv.sh
-
-If you change the Pipfile or the package requirements, please make sure
-to regenerate the lockfiles for both Python versions. The easiest way to
-do so is with the following script:
-
-::
-
-   ./scripts/make_pipenv_lockfiles.sh
-
-Then, re-run
-
-::
-
-   pipenv sync --dev
-
-to install the relevant dependencies.
-
 Read the Docs
 -------------
 
 We are currently in the process of moving most of our documentation to
 Read the Docs, a web utility that makes it easy to view and present
-documentation. We first plan to get the Read the Docs documentation up
-to date with the markdown documentation present as of commit
-16fd083e78551f866a0cf0c7397542aea1c214d9 and then working on adding the
-documentation added since that commit.
+documentation.
 
-Since Read the Docs does not currently `support
-Pipfiles <https://github.com/readthedocs/readthedocs.org/issues/3181>`__
-the package requirements are in:
+Since Read the Docs does not currently `support Pipfiles
+<https://github.com/readthedocs/readthedocs.org/issues/3181>`__, we must keep the
+documentation building requirements in both the repository's :code:`Pipfile`, which we use for
+continuous integration and local development, and in :code:`docs/requirements.txt`, which we use
+for Read The Docs.
 
-::
-
-   docs/requirements.txt
-
-The relevant source code lives in:
+The relevant documentation source code lives in:
 
 ::
 
@@ -161,7 +148,9 @@ To build the website run:
 
 ::
 
+   pipenv shell
    cd docs
+   make clean
    make html
 
 Then open :code:`docs/build/index.html` with a web browser to view it.

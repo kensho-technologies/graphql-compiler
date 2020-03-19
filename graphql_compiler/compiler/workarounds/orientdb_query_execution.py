@@ -46,37 +46,35 @@ The process of applying the optimizations is as follows:
 
 from ..blocks import CoerceType, Filter, QueryRoot, Recurse, Traverse
 from ..expressions import (
-    BinaryComposition, ContextField, ContextFieldExistence, Literal, LocalField
+    BinaryComposition,
+    ContextField,
+    ContextFieldExistence,
+    Literal,
+    LocalField,
 )
 from ..helpers import get_only_element_from_collection
 
 
 def _is_local_filter(filter_block):
     """Return True if the Filter block references no non-local fields, and False otherwise."""
-    # We need the "result" value of this function to be mutated within the "visitor_fn".
-    # Since we support both Python 2 and Python 3, we can't use the "nonlocal" keyword here:
-    # https://www.python.org/dev/peps/pep-3104/
-    # Instead, we use a dict to store the value we need mutated, since the "visitor_fn"
-    # can mutate state in the parent scope, but not rebind variables in it without "nonlocal".
-    # TODO(predrag): Revisit this if we drop support for Python 2.
-    result = {
-        'is_local_filter': True
-    }
+    is_local_filter = True
     filter_predicate = filter_block.predicate
 
     def visitor_fn(expression):
         """Expression visitor function that looks for uses of non-local fields."""
+        nonlocal is_local_filter
+
         non_local_expression_types = (ContextField, ContextFieldExistence)
 
         if isinstance(expression, non_local_expression_types):
-            result['is_local_filter'] = False
+            is_local_filter = False
 
         # Don't change the expression.
         return expression
 
     filter_predicate.visit_and_update(visitor_fn)
 
-    return result['is_local_filter']
+    return is_local_filter
 
 
 def _classify_query_locations(match_query):
@@ -105,8 +103,10 @@ def _classify_query_locations(match_query):
     # The first step in this traversal must be a QueryRoot.
     first_match_step = match_query.match_traversals[0][0]
     if not isinstance(first_match_step.root_block, QueryRoot):
-        raise AssertionError(u'First step of first traversal unexpectedly was not QueryRoot: '
-                             u'{} {}'.format(first_match_step, match_query))
+        raise AssertionError(
+            u"First step of first traversal unexpectedly was not QueryRoot: "
+            u"{} {}".format(first_match_step, match_query)
+        )
 
     # The first step in the first traversal cannot possibly be inside an optional, recursion,
     # or fold. Its location is always an eligible start location for a query.
@@ -119,10 +119,13 @@ def _classify_query_locations(match_query):
             #                Either the locally-scoped tag will have to generate a LocalField
             #                instead of a ContextField, or we'll have to rework the local filter
             #                detection code in this module.
-            raise AssertionError(u'The first step of the first traversal somehow had a non-local '
-                                 u'filter. This should not be possible, since there is nowhere '
-                                 u'for the tagged value to have come from. Values: {} {}'
-                                 .format(first_match_step, match_query))
+            raise AssertionError(
+                u"The first step of the first traversal somehow had a non-local "
+                u"filter. This should not be possible, since there is nowhere "
+                u"for the tagged value to have come from. Values: {} {}".format(
+                    first_match_step, match_query
+                )
+            )
     else:
         eligible_locations.add(first_match_step.as_block.location)
 
@@ -135,20 +138,26 @@ def _classify_query_locations(match_query):
             current_step_location = match_step.as_block.location
 
             if isinstance(match_step.root_block, QueryRoot):
-                already_encountered_location = any((
-                    current_step_location in preferred_locations,
-                    current_step_location in eligible_locations,
-                    current_step_location in ineligible_locations,
-                ))
+                already_encountered_location = any(
+                    (
+                        current_step_location in preferred_locations,
+                        current_step_location in eligible_locations,
+                        current_step_location in ineligible_locations,
+                    )
+                )
 
                 if not already_encountered_location:
-                    raise AssertionError(u'Unexpectedly encountered a location in QueryRoot whose '
-                                         u'status has not been determined: {} {} {}'
-                                         .format(current_step_location, match_step, match_query))
+                    raise AssertionError(
+                        u"Unexpectedly encountered a location in QueryRoot whose "
+                        u"status has not been determined: {} {} {}".format(
+                            current_step_location, match_step, match_query
+                        )
+                    )
 
                 at_eligible_or_preferred_location = (
-                    current_step_location in preferred_locations or
-                    current_step_location in eligible_locations)
+                    current_step_location in preferred_locations
+                    or current_step_location in eligible_locations
+                )
 
                 # This location has already been encountered and processed.
                 # Other than setting the "at_eligible_or_preferred_location" state for the sake of
@@ -165,8 +174,11 @@ def _classify_query_locations(match_query):
                 if match_step.root_block.optional:
                     at_eligible_or_preferred_location = False
             else:
-                raise AssertionError(u'Unreachable condition reached: {} {} {}'
-                                     .format(match_step.root_block, match_step, match_query))
+                raise AssertionError(
+                    u"Unreachable condition reached: {} {} {}".format(
+                        match_step.root_block, match_step, match_query
+                    )
+                )
 
             if not at_eligible_or_preferred_location:
                 ineligible_locations.add(current_step_location)
@@ -206,19 +218,26 @@ def _calculate_type_bound_at_step(match_step):
         return None
 
 
-def _assert_type_bounds_are_not_conflicting(current_type_bound, previous_type_bound,
-                                            location, match_query):
+def _assert_type_bounds_are_not_conflicting(
+    current_type_bound, previous_type_bound, location, match_query
+):
     """Ensure that the two bounds either are an exact match, or one of them is None."""
-    if all((current_type_bound is not None,
+    if all(
+        (
+            current_type_bound is not None,
             previous_type_bound is not None,
-            current_type_bound != previous_type_bound)):
+            current_type_bound != previous_type_bound,
+        )
+    ):
         raise AssertionError(
-            u'Conflicting type bounds calculated at location {}: {} vs {} '
-            u'for query {}'.format(location, previous_type_bound, current_type_bound, match_query))
+            u"Conflicting type bounds calculated at location {}: {} vs {} "
+            u"for query {}".format(location, previous_type_bound, current_type_bound, match_query)
+        )
 
 
-def _expose_only_preferred_locations(match_query, location_types, coerced_locations,
-                                     preferred_locations, eligible_locations):
+def _expose_only_preferred_locations(
+    match_query, location_types, coerced_locations, preferred_locations, eligible_locations
+):
     """Return a MATCH query where only preferred locations are valid as query start locations."""
     preferred_location_types = dict()
     eligible_location_types = dict()
@@ -242,7 +261,8 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                     # not have any type bounds (e.g. via QueryRoot or CoerceType blocks),
                     # or has type bounds that match the previously-decided type bound.
                     _assert_type_bounds_are_not_conflicting(
-                        current_type_bound, previous_type_bound, current_step_location, match_query)
+                        current_type_bound, previous_type_bound, current_step_location, match_query
+                    )
                 else:
                     # The location is not yet known to be valid. If it does not have
                     # a type bound in this MATCH step, add a type coercion to the type
@@ -250,7 +270,8 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                     if current_type_bound is None:
                         current_type_bound = location_types[current_step_location].name
                         new_step = match_step._replace(
-                            coerce_type_block=CoerceType({current_type_bound}))
+                            coerce_type_block=CoerceType({current_type_bound})
+                        )
 
                     preferred_location_types[current_step_location] = current_type_bound
             elif current_step_location in eligible_locations:
@@ -262,7 +283,8 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                 if current_type_bound is not None:
                     # There is a type bound here that we need to neutralize.
                     _assert_type_bounds_are_not_conflicting(
-                        current_type_bound, previous_type_bound, current_step_location, match_query)
+                        current_type_bound, previous_type_bound, current_step_location, match_query
+                    )
 
                     # Record the deduced type bound, so that if we encounter this location again,
                     # we ensure that we again infer the same type bound.
@@ -278,20 +300,24 @@ def _expose_only_preferred_locations(match_query, location_types, coerced_locati
                     new_where_block = match_step.where_block
 
                     # If needed, add a type bound that emits an INSTANCEOF in the "where:" clause
-                    if (previous_type_bound is None and current_type_bound is not None):
+                    if previous_type_bound is None and current_type_bound is not None:
                         instanceof_predicate = BinaryComposition(
-                            u'INSTANCEOF', LocalField('@this', None), Literal(current_type_bound))
+                            u"INSTANCEOF", LocalField("@this", None), Literal(current_type_bound)
+                        )
                         if match_step.where_block:
                             # TODO(bojanserafimov): This branch needs test coverage
-                            new_where_block = Filter(BinaryComposition(
-                                u'&&', instanceof_predicate, match_step.where_block.predicate))
+                            new_where_block = Filter(
+                                BinaryComposition(
+                                    u"&&", instanceof_predicate, match_step.where_block.predicate
+                                )
+                            )
                         else:
                             new_where_block = Filter(instanceof_predicate)
 
                     new_step = match_step._replace(
                         root_block=new_root_block,
                         coerce_type_block=new_coerce_type_block,
-                        where_block=new_where_block
+                        where_block=new_where_block,
                     )
             else:
                 # This location is neither preferred nor eligible.
@@ -329,7 +355,8 @@ def _expose_all_eligible_locations(match_query, location_types, eligible_locatio
                     # There is a type bound here. We simply ensure that the bound is not conflicting
                     # with any other type bound at a different MATCH step with the same location.
                     _assert_type_bounds_are_not_conflicting(
-                        current_type_bound, previous_type_bound, current_step_location, match_query)
+                        current_type_bound, previous_type_bound, current_step_location, match_query
+                    )
 
                 # Record the deduced type bound, so that if we encounter this location again,
                 # we ensure that we again infer the same type bound.
@@ -345,8 +372,9 @@ def _expose_all_eligible_locations(match_query, location_types, eligible_locatio
     return match_query._replace(match_traversals=new_match_traversals)
 
 
-def expose_ideal_query_execution_start_points(compound_match_query, location_types,
-                                              coerced_locations):
+def expose_ideal_query_execution_start_points(
+    compound_match_query, location_types, coerced_locations
+):
     """Ensure that OrientDB only considers desirable query start points in query planning."""
     new_queries = []
 
@@ -361,18 +389,25 @@ def expose_ideal_query_execution_start_points(compound_match_query, location_typ
             # to the location. We remove it by converting the class check into
             # an "INSTANCEOF" Filter block, which OrientDB is unable to optimize away.
             new_query = _expose_only_preferred_locations(
-                match_query, location_types, coerced_locations,
-                preferred_locations, eligible_locations)
+                match_query,
+                location_types,
+                coerced_locations,
+                preferred_locations,
+                eligible_locations,
+            )
         elif eligible_locations:
             # Make sure that all eligible locations have a "class:" clause by adding
             # a CoerceType block that is a no-op as guaranteed by the schema. This merely
             # ensures that OrientDB is able to use each of these locations as a query start point,
             # and will choose the one whose class is of lowest cardinality.
             new_query = _expose_all_eligible_locations(
-                match_query, location_types, eligible_locations)
+                match_query, location_types, eligible_locations
+            )
         else:
-            raise AssertionError(u'This query has no preferred or eligible query start locations. '
-                                 u'This is almost certainly a bug: {}'.format(match_query))
+            raise AssertionError(
+                u"This query has no preferred or eligible query start locations. "
+                u"This is almost certainly a bug: {}".format(match_query)
+            )
 
         new_queries.append(new_query)
 

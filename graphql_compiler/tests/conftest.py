@@ -5,10 +5,13 @@ import pytest
 import six
 
 from .test_data_tools.data_tool import (
-    generate_neo4j_integration_data, generate_orient_integration_data,
-    generate_orient_snapshot_data, generate_redisgraph_integration_data,
-    generate_sql_integration_data, init_sql_integration_test_backends,
-    tear_down_integration_test_backends
+    generate_neo4j_integration_data,
+    generate_orient_integration_data,
+    generate_orient_snapshot_data,
+    generate_redisgraph_integration_data,
+    generate_sql_integration_data,
+    init_sql_integration_test_backends,
+    tear_down_integration_test_backends,
 )
 from .test_data_tools.neo4j_graph import get_test_neo4j_graph
 from .test_data_tools.orientdb_graph import get_test_orientdb_graph
@@ -16,7 +19,7 @@ from .test_data_tools.redisgraph_graph import get_test_redisgraph_graph
 from .test_data_tools.schema import load_schema
 
 
-GRAPH_NAME = 'animals'  # Name for integration test database
+GRAPH_NAME = "animals"  # Name for integration test database
 
 
 # Pytest fixtures depend on name redefinitions to work,
@@ -24,13 +27,13 @@ GRAPH_NAME = 'animals'  # Name for integration test database
 # pylint: disable=redefined-outer-name
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def init_snapshot_orientdb_client():
     """Return a client for an initialized db, with all test data imported."""
     return _init_orientdb_client(load_schema, generate_orient_snapshot_data)
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def init_integration_orientdb_client():
     """Return a client for an initialized db, with all test data imported."""
     return _init_orientdb_client(load_schema, generate_orient_integration_data)
@@ -47,7 +50,7 @@ def _init_orientdb_client(load_schema_func, generate_data_func):
     return orientdb_client
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def init_integration_neo4j_client():
     """Return a client for an initialized db, with all test data imported."""
     return _init_neo4j_client(generate_neo4j_integration_data)
@@ -62,7 +65,7 @@ def _init_neo4j_client(generate_data_func):
     return neo4j_client
 
 
-@pytest.fixture(scope='session')
+@pytest.fixture(scope="session")
 def init_integration_redisgraph_client():
     """Return a client for an initialized db, with all test data imported."""
     return _init_redisgraph_client(generate_redisgraph_integration_data)
@@ -77,31 +80,31 @@ def _init_redisgraph_client(generate_data_func):
     return redisgraph_client
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def snapshot_orientdb_client(request, init_snapshot_orientdb_client):
     """Get a client for an initialized db, with all test data imported."""
     request.cls.orientdb_client = init_snapshot_orientdb_client
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def integration_orientdb_client(request, init_integration_orientdb_client):
     """Get a client for an initialized db, with all test data imported."""
     request.cls.orientdb_client = init_integration_orientdb_client
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def integration_neo4j_client(request, init_integration_neo4j_client):
     """Get a client for an initialized db, with all test data imported."""
     request.cls.neo4j_client = init_integration_neo4j_client
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def integration_redisgraph_client(request, init_integration_redisgraph_client):
     """Get a client for an initialized db, with all test data imported."""
     request.cls.redisgraph_client = init_integration_redisgraph_client
 
 
-@pytest.fixture(scope='class')
+@pytest.fixture(scope="class")
 def sql_integration_data(request):
     """Generate integration data for SQL backends."""
     # initialize each SQL backend
@@ -122,16 +125,25 @@ def sql_integration_data(request):
 
 def pytest_addoption(parser):
     """Add command line options to py.test to allow for slow tests to be skipped."""
-    parser.addoption('--skip-slow', action='store_true', default=False, help='Skip slow tests.')
+    parser.addoption("--skip-slow", action="store_true", default=False, help="Skip slow tests.")
+
+
+def pytest_configure(config):
+    """Initialize the pytest configuration. Executed prior to any tests."""
+    config.addinivalue_line(
+        # Define the "slow" pytest mark, to avoid PytestUnknownMarkWarning being generated.
+        "markers",
+        "slow: marks tests as slow (deselect with '-m \"not slow\"' or --skip-slow)",
+    )
 
 
 def pytest_collection_modifyitems(config, items):
     """Modify py.test behavior based on command line options."""
-    if not config.getoption('--skip-slow'):
+    if not config.getoption("--skip-slow"):
         return
 
     # skip tests market with the @pytest.mark.slow decorator
-    skip_slow = pytest.mark.skip(reason='--skip-slow command line argument supplied')
+    skip_slow = pytest.mark.skip(reason="--skip-slow command line argument supplied")
     for item in items:
-        if 'slow' in item.keywords:
+        if "slow" in item.keywords:
             item.add_marker(skip_slow)

@@ -4,8 +4,19 @@
 from collections import namedtuple
 
 from .blocks import (
-    Backtrack, CoerceType, ConstructResult, EndOptional, Filter, Fold, GlobalOperationsStart,
-    MarkLocation, OutputSource, QueryRoot, Recurse, Traverse, Unfold
+    Backtrack,
+    CoerceType,
+    ConstructResult,
+    EndOptional,
+    Filter,
+    Fold,
+    GlobalOperationsStart,
+    MarkLocation,
+    OutputSource,
+    QueryRoot,
+    Recurse,
+    Traverse,
+    Unfold,
 )
 from .helpers import get_only_element_from_collection
 from .ir_lowering_common.common import extract_folds_from_ir_blocks
@@ -21,9 +32,7 @@ from .ir_lowering_common.common import extract_folds_from_ir_blocks
 #                         applied after pattern matching to uphold the compiler's semantics, or
 #                         None if no post-filtering is required
 #   - output_block: ConstructResult block that describes the outputs returned by the query
-CypherQuery = namedtuple(
-    'CypherQuery',
-    ('steps', 'folds', 'global_where_block', 'output_block'))
+CypherQuery = namedtuple("CypherQuery", ("steps", "folds", "global_where_block", "output_block"))
 
 
 ###
@@ -37,8 +46,8 @@ CypherQuery = namedtuple(
 #                  or None if no filtering is required
 #   - as_block: MarkLocation block describing the location of the query step
 CypherStep = namedtuple(
-    'CypherStep',
-    ('linked_location', 'step_block', 'step_types', 'where_block', 'as_block'))
+    "CypherStep", ("linked_location", "step_block", "step_types", "where_block", "as_block")
+)
 
 
 step_block_types = (Traverse, Recurse)
@@ -59,7 +68,8 @@ def _make_cypher_step(query_metadata_table, linked_location, current_step_blocks
 
     if isinstance(step_block, QueryRoot):
         return _make_query_root_cypher_step(
-            query_metadata_table, linked_location, current_step_blocks)
+            query_metadata_table, linked_location, current_step_blocks
+        )
 
     remaining_block_types = tuple(type(block) for block in remaining_blocks)
     if remaining_block_types == (CoerceType, Filter, MarkLocation):
@@ -68,15 +78,20 @@ def _make_cypher_step(query_metadata_table, linked_location, current_step_blocks
         where_block = None
         coercion_block, as_block = remaining_blocks
     else:
-        raise AssertionError(u'Unexpected current_step_blocks received: {}'
-                             .format(current_step_blocks))
+        raise AssertionError(
+            u"Unexpected current_step_blocks received: {}".format(current_step_blocks)
+        )
 
     exact_step_type = get_only_element_from_collection(coercion_block.target_class)
     step_types = _get_all_supertypes_of_exact_type(query_metadata_table, exact_step_type)
 
     return CypherStep(
-        linked_location=linked_location, step_block=step_block, step_types=step_types,
-        where_block=where_block, as_block=as_block)
+        linked_location=linked_location,
+        step_block=step_block,
+        step_types=step_types,
+        where_block=where_block,
+        as_block=as_block,
+    )
 
 
 def _make_query_root_cypher_step(query_metadata_table, linked_location, current_step_blocks):
@@ -92,15 +107,20 @@ def _make_query_root_cypher_step(query_metadata_table, linked_location, current_
         where_block = None
         step_block, as_block = current_step_blocks
     else:
-        raise AssertionError(u'Unexpected current_step_blocks received: {}'
-                             .format(current_step_blocks))
+        raise AssertionError(
+            u"Unexpected current_step_blocks received: {}".format(current_step_blocks)
+        )
 
     exact_step_type = get_only_element_from_collection(step_block.start_class)
     step_types = _get_all_supertypes_of_exact_type(query_metadata_table, exact_step_type)
 
     return CypherStep(
-        linked_location=linked_location, step_block=step_block, step_types=step_types,
-        where_block=where_block, as_block=as_block)
+        linked_location=linked_location,
+        step_block=step_block,
+        step_types=step_types,
+        where_block=where_block,
+        as_block=as_block,
+    )
 
 
 def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, query_metadata_table):
@@ -126,8 +146,9 @@ def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, qu
             # MarkLocation is the last block needed for the next CypherStep object.
             continue
 
-        cypher_step = _make_cypher_step(query_metadata_table, linked_location,
-                                        current_step_ir_blocks)
+        cypher_step = _make_cypher_step(
+            query_metadata_table, linked_location, current_step_ir_blocks
+        )
         folded_cypher_steps.append(cypher_step)
 
         linked_location = block.location
@@ -137,17 +158,21 @@ def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, qu
         # The complete list of IR blocks need not end with a MarkLocation block, e.g. if you
         # have a Backtrack block at the end. That's fine; Backtrack is unused here anyways.
         # What we want to avoid is having any leftover blocks here that we should've used.
-        if block not in discarded_block_types and not(isinstance(block, Backtrack)):
-            raise AssertionError(u'Expected leftover blocks in folded scope after generating'
-                                 u'CypherSteps to all be of discarded type or Backtrack type.'
-                                 u'Instead, got block {} in list of leftover blocks {}'
-                                 .format(block, current_step_ir_blocks))
+        if block not in discarded_block_types and not (isinstance(block, Backtrack)):
+            raise AssertionError(
+                u"Expected leftover blocks in folded scope after generating"
+                u"CypherSteps to all be of discarded type or Backtrack type."
+                u"Instead, got block {} in list of leftover blocks {}".format(
+                    block, current_step_ir_blocks
+                )
+            )
     return folded_cypher_steps
 
 
 ##############
 # Public API #
 ##############
+
 
 def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hints=None):
     """Convert the list of IR blocks into a CypherQuery object, for easier manipulation."""
@@ -161,7 +186,7 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
         fold_scope_location: _generate_cypher_step_list_from_ir_blocks(
             fold_scope_location,
             fold_scope_ir_blocks_dict[fold_scope_location],
-            query_metadata_table
+            query_metadata_table,
         )
         for fold_scope_location in fold_scope_ir_blocks_dict
     }
@@ -174,7 +199,8 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
             # and we are about to start the global operations section. Finish adding
             # the last CypherStep, then break out of the loop.
             cypher_step = _make_cypher_step(
-                query_metadata_table, linked_location, current_step_blocks)
+                query_metadata_table, linked_location, current_step_blocks
+            )
             steps.append(cypher_step)
             current_step_blocks = None
 
@@ -182,14 +208,16 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
             break
         elif isinstance(block, QueryRoot):
             if current_step_blocks is not None:
-                raise AssertionError(u'Unexpectedly encountered a QueryRoot block that was not '
-                                     u'the first block in the IR: {} {}'
-                                     .format(block, remaining_ir_blocks))
+                raise AssertionError(
+                    u"Unexpectedly encountered a QueryRoot block that was not "
+                    u"the first block in the IR: {} {}".format(block, remaining_ir_blocks)
+                )
 
             current_step_blocks = [block]
         elif isinstance(block, step_block_types):
             cypher_step = _make_cypher_step(
-                query_metadata_table, linked_location, current_step_blocks)
+                query_metadata_table, linked_location, current_step_blocks
+            )
             steps.append(cypher_step)
 
             linked_location = next_linked_location
@@ -206,14 +234,15 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
         elif isinstance(block, (Filter, CoerceType)):
             current_step_blocks.append(block)
         else:
-            raise AssertionError(u'Unexpected block encountered: {} {}'
-                                 .format(block, ir_blocks))
+            raise AssertionError(u"Unexpected block encountered: {} {}".format(block, ir_blocks))
 
     if global_operations_index is None:
-        raise AssertionError(u'Unexpectedly, no GlobalOperationsStart block was found in '
-                             u'the IR blocks: {}'.format(remaining_ir_blocks))
+        raise AssertionError(
+            u"Unexpectedly, no GlobalOperationsStart block was found in "
+            u"the IR blocks: {}".format(remaining_ir_blocks)
+        )
 
-    global_operations_blocks = remaining_ir_blocks[global_operations_index + 1:]
+    global_operations_blocks = remaining_ir_blocks[global_operations_index + 1 :]
     global_operations_types = tuple(type(block) for block in global_operations_blocks)
 
     # Global operations might include a Filter block (e.g. when enforcing the semantics of
@@ -225,8 +254,12 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
         global_where_block = None
         output_block = global_operations_blocks[0]
     else:
-        raise AssertionError(u'Unexpected global operations blocks in IR: {} {}'
-                             .format(global_operations_blocks, ir_blocks))
+        raise AssertionError(
+            u"Unexpected global operations blocks in IR: {} {}".format(
+                global_operations_blocks, ir_blocks
+            )
+        )
 
     return CypherQuery(
-        steps=steps, folds=folds, global_where_block=global_where_block, output_block=output_block)
+        steps=steps, folds=folds, global_where_block=global_where_block, output_block=output_block
+    )

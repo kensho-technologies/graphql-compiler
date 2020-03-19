@@ -12,7 +12,11 @@ The workaround should fix the problem starting with OrientDB 2.2.18.
 """
 from ..blocks import Filter
 from ..expressions import (
-    BinaryComposition, ContextField, ContextFieldExistence, NullLiteral, TernaryConditional
+    BinaryComposition,
+    ContextField,
+    ContextFieldExistence,
+    NullLiteral,
+    TernaryConditional,
 )
 
 
@@ -71,18 +75,22 @@ def _process_filter_block(query_metadata_table, block):
     # The returned "updated" value must be the exact same as the original.
     return_value = base_predicate.visit_and_update(find_ternary_conditionals)
     if return_value is not base_predicate:
-        raise AssertionError(u'Read-only visitor function "find_ternary_conditionals" '
-                             u'caused state to change: '
-                             u'{} {}'.format(base_predicate, return_value))
+        raise AssertionError(
+            u'Read-only visitor function "find_ternary_conditionals" '
+            u"caused state to change: "
+            u"{} {}".format(base_predicate, return_value)
+        )
 
     for ternary in ternary_conditionals:
         # We aren't modifying the ternary itself, just traversing it.
         # The returned "updated" value must be the exact same as the original.
         return_value = ternary.visit_and_update(extract_locations_visitor)
         if return_value is not ternary:
-            raise AssertionError(u'Read-only visitor function "extract_locations_visitor" '
-                                 u'caused state to change: '
-                                 u'{} {}'.format(ternary, return_value))
+            raise AssertionError(
+                u'Read-only visitor function "extract_locations_visitor" '
+                u"caused state to change: "
+                u"{} {}".format(ternary, return_value)
+            )
 
     tautologies = [
         _create_tautological_expression_for_location(query_metadata_table, location)
@@ -94,7 +102,7 @@ def _process_filter_block(query_metadata_table, block):
 
     final_predicate = base_predicate
     for tautology in tautologies:
-        final_predicate = BinaryComposition(u'&&', final_predicate, tautology)
+        final_predicate = BinaryComposition(u"&&", final_predicate, tautology)
     return Filter(final_predicate)
 
 
@@ -102,8 +110,8 @@ def _create_tautological_expression_for_location(query_metadata_table, location)
     """For a given location, create a BinaryComposition that always evaluates to 'true'."""
     location_type = query_metadata_table.get_location_info(location).type
 
-    location_exists = BinaryComposition(
-        u'!=', ContextField(location, location_type), NullLiteral)
+    location_exists = BinaryComposition(u"!=", ContextField(location, location_type), NullLiteral)
     location_does_not_exist = BinaryComposition(
-        u'=', ContextField(location, location_type), NullLiteral)
-    return BinaryComposition(u'||', location_exists, location_does_not_exist)
+        u"=", ContextField(location, location_type), NullLiteral
+    )
+    return BinaryComposition(u"||", location_exists, location_does_not_exist)

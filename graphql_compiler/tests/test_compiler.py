@@ -8,18 +8,36 @@ import six
 
 from . import test_input_data
 from ..compiler import (
-    OutputMetadata, compile_graphql_to_cypher, compile_graphql_to_gremlin, compile_graphql_to_match,
-    compile_graphql_to_sql
+    OutputMetadata,
+    compile_graphql_to_cypher,
+    compile_graphql_to_gremlin,
+    compile_graphql_to_match,
+    compile_graphql_to_sql,
 )
+from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..schema.schema_info import CommonSchemaInfo
 from .test_helpers import (
-    SKIP_TEST, compare_cypher, compare_gremlin, compare_input_metadata, compare_match, compare_sql,
-    get_schema, get_sqlalchemy_schema_info
+    SKIP_TEST,
+    compare_cypher,
+    compare_gremlin,
+    compare_input_metadata,
+    compare_match,
+    compare_sql,
+    get_schema,
+    get_sqlalchemy_schema_info,
 )
 
 
 def check_test_data(
-        test_case, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher):
+    test_case,
+    test_data,
+    expected_match,
+    expected_gremlin,
+    expected_mssql,
+    expected_cypher,
+    expected_postgresql=SKIP_TEST,
+):
     """Assert that the GraphQL input generates all expected output queries data."""
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
@@ -31,52 +49,66 @@ def check_test_data(
     else:
         schema_based_type_equivalence_hints = None
 
-    result = compile_graphql_to_match(test_case.schema, test_data.graphql_input,
-                                      type_equivalence_hints=schema_based_type_equivalence_hints)
+    common_schema_info = CommonSchemaInfo(test_case.schema, schema_based_type_equivalence_hints)
+    graphql_query = test_data.graphql_input
 
-    compare_match(test_case, expected_match, result.query)
-    test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-    compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    if expected_match == SKIP_TEST:
+        pass
+    else:
+        result = compile_graphql_to_match(common_schema_info, test_data.graphql_input)
+        compare_match(test_case, expected_match, result.query)
+        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
     # Allow features to not be implemented in Gremlin and SQL, and instead raise compilation errors.
-    if expected_gremlin == NotImplementedError:
+    if expected_gremlin == SKIP_TEST:
+        pass
+    elif expected_gremlin == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_gremlin(
-                test_case.schema, test_data.graphql_input,
-                type_equivalence_hints=schema_based_type_equivalence_hints)
+            compile_graphql_to_gremlin(common_schema_info, graphql_query)
     else:
-        result = compile_graphql_to_gremlin(
-            test_case.schema, test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
+        result = compile_graphql_to_gremlin(common_schema_info, graphql_query)
         compare_gremlin(test_case, expected_gremlin, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
-    if expected_sql == SKIP_TEST:
+    if expected_mssql == SKIP_TEST:
         pass
-    elif expected_sql == NotImplementedError:
+    elif expected_mssql == NotImplementedError:
         not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
         with test_case.assertRaises(not_supported):
-            compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
+            compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
     else:
-        result = compile_graphql_to_sql(test_case.sql_schema_info, test_data.graphql_input)
-        string_result = str(result.query.compile(dialect=test_case.sql_schema_info.dialect))
-        compare_sql(test_case, expected_sql, string_result)
+        result = compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
+        string_result = print_sqlalchemy_query_string(
+            result.query, test_case.mssql_schema_info.dialect
+        )
+        compare_sql(test_case, expected_mssql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata,
-                               result.input_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+
+    if expected_postgresql == SKIP_TEST:
+        pass
+    elif expected_postgresql == NotImplementedError:
+        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
+        with test_case.assertRaises(not_supported):
+            compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
+    else:
+        result = compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
+        string_result = print_sqlalchemy_query_string(
+            result.query, test_case.postgresql_schema_info.dialect
+        )
+        compare_sql(test_case, expected_postgresql, string_result)
+        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
     if expected_cypher == SKIP_TEST:
         pass
     elif expected_cypher == NotImplementedError:
         with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_cypher(
-                test_case.schema, test_data.graphql_input,
-                type_equivalence_hints=schema_based_type_equivalence_hints)
+            compile_graphql_to_cypher(common_schema_info, graphql_query)
     else:
-        result = compile_graphql_to_cypher(
-            test_case.schema, test_data.graphql_input,
-            type_equivalence_hints=schema_based_type_equivalence_hints)
+        result = compile_graphql_to_cypher(common_schema_info, graphql_query)
         compare_cypher(test_case, expected_cypher, result.query)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -87,12 +119,13 @@ class CompilerTests(unittest.TestCase):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
-        self.sql_schema_info = get_sqlalchemy_schema_info()
+        self.mssql_schema_info = get_sqlalchemy_schema_info(dialect="mssql")
+        self.postgresql_schema_info = get_sqlalchemy_schema_info(dialect="postgresql")
 
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -102,32 +135,33 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             RETURN Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_immediate_output_custom_scalars(self):
         test_data = test_input_data.immediate_output_custom_scalars()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.birthday.format("yyyy-MM-dd") AS `birthday`,
                 Animal___1.net_worth AS `net_worth`
@@ -138,31 +172,32 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 birthday: m.Animal___1.birthday.format("yyyy-MM-dd"),
                 net_worth: m.Animal___1.net_worth
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].birthday AS birthday,
                 [Animal_1].net_worth AS net_worth
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_immediate_output_with_custom_scalar_filter(self):
         test_data = test_input_data.immediate_output_with_custom_scalar_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -173,32 +208,33 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (it.net_worth >= $min_worth)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
                 [Animal_1].net_worth >= :min_worth
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_colocated_filter_and_tag(self):
         test_data = test_input_data.colocated_filter_and_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
                 as: Animal___1
@@ -207,8 +243,8 @@ class CompilerTests(unittest.TestCase):
                 where: ((alias CONTAINS name)),
                 as: Animal__out_Entity_Related___1
             }} RETURN $matches)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .out('Entity_Related')
@@ -218,22 +254,95 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
                 WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
             RETURN Animal__out_Entity_Related___1.name AS `related_name`
-        '''
+        """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
+
+    def test_colocated_filter_with_differently_named_column_and_tag(self):
+        test_data = test_input_data.colocated_filter_with_differently_named_column_and_tag()
+
+        expected_match = """
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        """
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        """
+        expected_sql = NotImplementedError
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        """
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
+
+    def test_colocated_filter_and_tag_sharing_name_with_other_column(self):
+        test_data = test_input_data.colocated_filter_and_tag_sharing_name_with_other_column()
+
+        expected_match = """
+            SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
+                where: ((@this INSTANCEOF 'Animal')),
+                as: Animal___1
+            }}.out('Entity_Related') {{
+                class: Entity,
+                where: ((alias CONTAINS name)),
+                as: Animal__out_Entity_Related___1
+            }} RETURN $matches)
+        """
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+                .out('Entity_Related')
+                .filter{it, m -> it.alias.contains(it.name)}
+                .as('Animal__out_Entity_Related___1')
+            .back('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                related_name: m.Animal__out_Entity_Related___1.name
+            ])}
+        """
+        expected_sql = NotImplementedError
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
+                WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
+            RETURN Animal__out_Entity_Related___1.name AS `related_name`
+        """
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_colocated_out_of_order_filter_and_tag(self):
         test_data = test_input_data.colocated_out_of_order_filter_and_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT Animal__out_Entity_Related___1.name AS `related_name` FROM (MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
                 as: Animal___1
@@ -242,8 +351,8 @@ class CompilerTests(unittest.TestCase):
                 where: ((alias CONTAINS name)),
                 as: Animal__out_Entity_Related___1
             }} RETURN $matches)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .out('Entity_Related')
@@ -253,32 +362,35 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
                 WHERE (Animal__out_Entity_Related___1.name IN Animal__out_Entity_Related___1.alias)
             RETURN Animal__out_Entity_Related___1.name AS `related_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.
-        comparison_operators = {u'=', u'!=', u'>', u'<', u'>=', u'<='}
+        comparison_operators = {u"=", u"!=", u">", u"<", u">=", u"<="}
 
         for operator in comparison_operators:
-            graphql_input = '''{
+            graphql_input = """{
                 Animal {
                     name @filter(op_name: "%s", value: ["$wanted"]) @output(out_name: "animal_name")
                 }
-            }''' % (operator,)
+            }""" % (
+                operator,
+            )
 
             # In MATCH, inequality comparisons use the SQL standard "<>" rather than "!=".
-            match_operator = u'<>' if operator == u'!=' else operator
-            expected_match = '''
+            match_operator = u"<>" if operator == u"!=" else operator
+            expected_match = """
                 SELECT
                     Animal___1.name AS `animal_name`
                 FROM (
@@ -289,55 +401,65 @@ class CompilerTests(unittest.TestCase):
                     }}
                     RETURN $matches
                 )
-            ''' % {'operator': match_operator}  # nosec, the operators are hardcoded above
+            """ % {  # nosec, the operators are hardcoded above
+                "operator": match_operator
+            }
 
             # In Gremlin, equality comparisons use two equal signs instead of one.
-            gremlin_operator = u'==' if operator == u'=' else operator
-            expected_gremlin = '''
+            gremlin_operator = u"==" if operator == u"=" else operator
+            expected_gremlin = """
                 g.V('@class', 'Animal')
                 .filter{it, m -> (it.name %(operator)s $wanted)}
                 .as('Animal___1')
                 .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                     animal_name: m.Animal___1.name
                 ])}
-            ''' % {'operator': gremlin_operator}
+            """ % {  # nosec, the operators are hardcoded above
+                "operator": gremlin_operator
+            }
 
-            expected_sql = '''
+            expected_sql = """
                 SELECT
                     [Animal_1].name AS animal_name
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
                 WHERE
                     [Animal_1].name %(operator)s :wanted
-            ''' % {'operator': operator}  # nosec, the operators are hardcoded above
+            """ % {  # nosec, the operators are hardcoded above
+                "operator": operator
+            }
 
             # In Cypher, inequality comparisons use "<>" instead of "!=".
-            cypher_operator = u'<>' if operator == u'!=' else operator
-            expected_cypher = '''
+            cypher_operator = u"<>" if operator == u"!=" else operator
+            expected_cypher = """
                 MATCH (Animal___1:Animal)
                     WHERE (Animal___1.name %(operator)s $wanted)
                 RETURN Animal___1.name AS `animal_name`
-            ''' % {'operator': cypher_operator}  # nosec, the operators are hardcoded above
+            """ % {  # nosec, the operators are hardcoded above
+                "operator": cypher_operator
+            }
 
             expected_output_metadata = {
-                'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+                "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
             }
             expected_input_metadata = {
-                'wanted': GraphQLString,
+                "wanted": GraphQLString,
             }
             test_data = test_input_data.CommonTestData(
                 graphql_input=graphql_input,
                 expected_output_metadata=expected_output_metadata,
                 expected_input_metadata=expected_input_metadata,
-                type_equivalence_hints=None)
+                type_equivalence_hints=None,
+            )
 
-            check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                            expected_cypher)
+            check_test_data(
+                self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+            )
 
     def test_multiple_filters(self):
         test_data = test_input_data.multiple_filters()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -348,17 +470,17 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> ((it.name >= $lower_bound) && (it.name < $upper_bound))}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
@@ -366,23 +488,24 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_1].name >= :lower_bound
                 AND [Animal_1].name < :upper_bound
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (
                     (Animal___1.name >= $lower_bound) AND
                     (Animal___1.name < $upper_bound)
                 )
             RETURN Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_and_output(self):
         test_data = test_input_data.traverse_and_output()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
             FROM (
@@ -395,8 +518,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
@@ -405,28 +528,29 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS parent_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
                 JOIN db_1.schema_1.[Animal] AS [Animal_1]
                     ON [Animal_2].uuid = [Animal_1].parent
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             RETURN Animal__out_Animal_ParentOf___1.name AS `parent_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_traverse_after_mandatory_traverse(self):
         test_data = test_input_data.optional_traverse_after_mandatory_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 if(eval("(Animal__out_Animal_ParentOf___1 IS NOT null)"),
                     Animal__out_Animal_ParentOf___1.name, null) AS `child_name`,
@@ -455,8 +579,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__out_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_OfSpecies')
@@ -472,8 +596,8 @@ class CompilerTests(unittest.TestCase):
                     m.Animal__out_Animal_ParentOf___1.name : null),
                 species_name: m.Animal__out_Animal_OfSpecies___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS child_name,
                 [Species_1].name AS species_name
@@ -483,8 +607,8 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_2].species = [Species_1].uuid
                 LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
                     ON [Animal_2].uuid = [Animal_1].parent
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_OfSpecies]->(Animal__out_Animal_OfSpecies___1:Species)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -496,15 +620,16 @@ class CompilerTests(unittest.TestCase):
                     END
                 ) AS `child_name`,
                 Animal__out_Animal_OfSpecies___1.name AS `species_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_filter_and_output(self):
         test_data = test_input_data.traverse_filter_and_output()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
             FROM (
@@ -518,8 +643,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
@@ -529,9 +654,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (
@@ -539,15 +664,16 @@ class CompilerTests(unittest.TestCase):
                     ($wanted IN Animal__out_Animal_ParentOf___1.alias)
                 )
             RETURN Animal__out_Animal_ParentOf___1.name AS `parent_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_name_or_alias_filter_on_interface_type(self):
         test_data = test_input_data.name_or_alias_filter_on_interface_type()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Entity_Related___1.name AS `related_entity`
             FROM (
@@ -561,8 +687,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Entity_Related')
@@ -572,9 +698,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 related_entity: m.Animal__out_Entity_Related___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Entity_Related]->(Animal__out_Entity_Related___1:Entity)
                 WHERE (
@@ -582,15 +708,16 @@ class CompilerTests(unittest.TestCase):
                     ($wanted IN Animal__out_Entity_Related___1.alias)
                 )
             RETURN Animal__out_Entity_Related___1.name AS `related_entity`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_output_source_and_complex_output(self):
         test_data = test_input_data.output_source_and_complex_output()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
@@ -604,8 +731,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (it.name == $wanted)}
             .as('Animal___1')
@@ -615,25 +742,26 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name,
                 parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (Animal___1.name = $wanted)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             RETURN
                 Animal___1.name AS `animal_name`,
                 Animal__out_Animal_ParentOf___1.name AS `parent_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_variable_equality(self):
         # The operand in the @filter directive originates from an optional block.
         test_data = test_input_data.filter_on_optional_variable_equality()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -667,8 +795,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
@@ -687,18 +815,19 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_variable_name_or_alias(self):
         # The operand in the @filter directive originates from an optional block.
         test_data = test_input_data.filter_on_optional_variable_name_or_alias()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `animal_name`
             FROM (
@@ -732,8 +861,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -752,17 +881,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_in_optional_block(self):
         test_data = test_input_data.filter_in_optional_block()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 if(eval("(Animal__out_Animal_ParentOf___1 IS NOT null)"),
@@ -789,8 +919,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__out_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .ifThenElse{it.out_Animal_ParentOf == null}{null}{it.out('Animal_ParentOf')}
@@ -805,8 +935,9 @@ class CompilerTests(unittest.TestCase):
                 uuid: ((m.Animal__out_Animal_ParentOf___1 != null) ?
                           m.Animal__out_Animal_ParentOf___1.uuid : null)
             ])}
-        '''
-        expected_sql = '''
+        """
+
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name,
                 [Animal_2].name AS parent_name,
@@ -817,8 +948,8 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].uuid = [Animal_2].parent
             WHERE
                 [Animal_2].name = :name OR [Animal_2].parent IS NULL
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             WITH
@@ -842,15 +973,16 @@ class CompilerTests(unittest.TestCase):
                     ELSE null
                     END
                 ) AS `uuid`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_in_optional_and_count(self):
         test_data = test_input_data.filter_in_optional_and_count()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Species___1.name AS `species_name`
             FROM (
@@ -880,20 +1012,47 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             )
-        '''
+        """
         expected_gremlin = NotImplementedError
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+        expected_postgresql = """
+            SELECT
+                "Species_1".name AS species_name
+            FROM schema_1."Species" AS "Species_1"
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_1"
+            ON "Species_1".uuid = "Animal_1".species
+            JOIN (
+                SELECT
+                    "Species_2".uuid AS uuid,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Species" AS "Species_2"
+                JOIN schema_1."Species" AS "Species_3"
+                ON "Species_2".uuid = "Species_3".eats
+                GROUP BY "Species_2".uuid
+              ) AS folded_subquery_1
+            ON "Species_1".uuid = folded_subquery_1.uuid
+            WHERE
+                ("Animal_1".name = %(animal_name)s OR "Animal_1".species IS NULL) AND
+                folded_subquery_1.fold_output__x_count >= %(predators)s
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_between_filter_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a simple scalar (a String).
         test_data = test_input_data.between_filter_on_simple_scalar()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`
             FROM (
@@ -904,16 +1063,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> ((it.name >= $lower) && (it.name <= $upper))}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS name
             FROM
@@ -921,23 +1080,24 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_1].name >= :lower
                 AND [Animal_1].name <= :upper
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE ((Animal___1.name >= $lower) AND (Animal___1.name <= $upper))
             RETURN
                 Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_filter_on_date(self):
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a custom scalar (Date).
         test_data = test_input_data.between_filter_on_date()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.birthday.format("yyyy-MM-dd") AS `birthday`
             FROM (
@@ -951,8 +1111,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (
                 (it.birthday >= Date.parse("yyyy-MM-dd", $lower)) &&
@@ -962,8 +1122,8 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 birthday: m.Animal___1.birthday.format("yyyy-MM-dd")
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].birthday AS birthday
             FROM
@@ -971,24 +1131,25 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_1].birthday >= :lower
                 AND [Animal_1].birthday <= :upper
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE ((Animal___1.birthday >= $lower) AND
                        (Animal___1.birthday <= $upper))
             RETURN
                 Animal___1.birthday AS `birthday`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_filter_on_datetime(self):
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a custom scalar (DateTime).
         test_data = test_input_data.between_filter_on_datetime()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `event_date`
             FROM (
@@ -1003,8 +1164,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Event')
             .filter{it, m -> (
                 (it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $lower)) &&
@@ -1014,8 +1175,8 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Event_1].event_date AS event_date
             FROM
@@ -1023,24 +1184,25 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Event_1].event_date >= :lower
                 AND [Event_1].event_date <= :upper
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Event___1:Event)
                 WHERE ((Event___1.event_date >= $lower) AND
                        (Event___1.event_date <= $upper))
             RETURN
                 Event___1.event_date AS `event_date`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_lowering_on_simple_scalar(self):
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a simple scalar (a String).
         test_data = test_input_data.between_lowering_on_simple_scalar()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`
             FROM (
@@ -1051,16 +1213,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> ((it.name <= $upper) && (it.name >= $lower))}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS name
             FROM
@@ -1068,21 +1230,22 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_1].name <= :upper
                 AND [Animal_1].name >= :lower
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE ((Animal___1.name <= $upper) AND (Animal___1.name >= $lower))
             RETURN
                 Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_lowering_with_extra_filters(self):
         test_data = test_input_data.between_lowering_with_extra_filters()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`
             FROM (
@@ -1101,8 +1264,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (
                 (
@@ -1117,8 +1280,8 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS name
             FROM
@@ -1126,10 +1289,10 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_1].name <= :upper
                 AND ([Animal_1].name LIKE '%' + :substring + '%')
-                AND [Animal_1].name IN ([EXPANDING_fauna])
+                AND [Animal_1].name IN :fauna
                 AND [Animal_1].name >= :lower
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (
                     (
@@ -1139,15 +1302,16 @@ class CompilerTests(unittest.TestCase):
                 )
             RETURN
                 Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_no_between_lowering_on_simple_scalar(self):
         test_data = test_input_data.no_between_lowering_on_simple_scalar()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`
             FROM (
@@ -1158,16 +1322,16 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
            g.V('@class', 'Animal')
            .filter{it, m -> (((it.name <= $upper) && (it.name >= $lower0)) && (it.name >= $lower1))}
            .as('Animal___1')
            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                name: m.Animal___1.name
            ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS name
             FROM
@@ -1176,8 +1340,8 @@ class CompilerTests(unittest.TestCase):
                 [Animal_1].name <= :upper
                 AND [Animal_1].name >= :lower0
                 AND [Animal_1].name >= :lower1
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (
                     ((Animal___1.name <= $upper) AND (Animal___1.name >= $lower0)) AND
@@ -1185,17 +1349,18 @@ class CompilerTests(unittest.TestCase):
                 )
             RETURN
                 Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_optional_variables(self):
         # The operands in the @filter directives originate from an optional block,
         # in addition to having very complex filtering logic.
         test_data = test_input_data.complex_optional_variables()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 if(
                     eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
@@ -1291,8 +1456,8 @@ class CompilerTests(unittest.TestCase):
                         IS NOT null)
                 )
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .out('Animal_ParentOf')
@@ -1355,8 +1520,8 @@ class CompilerTests(unittest.TestCase):
                     null
                 )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [FeedingEvent_1].event_date AS child_fed_at,
                 [FeedingEvent_2].event_date AS grandparent_fed_at,
@@ -1385,8 +1550,8 @@ class CompilerTests(unittest.TestCase):
                 [FeedingEvent_1].uuid IS NULL OR
                 [FeedingEvent_2].event_date <= [FeedingEvent_1].event_date
             )
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH (Animal__out_Animal_ParentOf___1)-[:Animal_FedAt]->
@@ -1439,17 +1604,18 @@ class CompilerTests(unittest.TestCase):
                     ELSE null
                     END
                 ) AS `other_parent_fed_at`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_optional_variables_with_starting_filter(self):
         # The operands in the @filter directives originate from an optional block,
         # in addition to having very complex filtering logic.
         test_data = test_input_data.complex_optional_variables_with_starting_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 if(
                     eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
@@ -1543,8 +1709,8 @@ class CompilerTests(unittest.TestCase):
                         IS NOT null)
                 )
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (it.name == $animal_name)}
             .as('Animal___1')
@@ -1608,8 +1774,8 @@ class CompilerTests(unittest.TestCase):
                     null
                 )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [FeedingEvent_1].event_date AS child_fed_at,
                 [FeedingEvent_2].event_date AS grandparent_fed_at,
@@ -1639,16 +1805,17 @@ class CompilerTests(unittest.TestCase):
                     [FeedingEvent_1].uuid IS NULL OR
                     [FeedingEvent_2].event_date <= [FeedingEvent_1].event_date
                 )
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_fragment(self):
         test_data = test_input_data.simple_fragment()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 Animal__out_Entity_Related___1.name AS `related_animal_name`,
@@ -1667,8 +1834,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Entity_Related')
@@ -1683,17 +1850,18 @@ class CompilerTests(unittest.TestCase):
                 related_animal_name: m.Animal__out_Entity_Related___1.name,
                 related_animal_species: m.Animal__out_Entity_Related__out_Animal_OfSpecies___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_typename_output(self):
         test_data = test_input_data.typename_output()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.@class AS `base_cls`,
                 Animal__out_Animal_OfSpecies___1.@class AS `child_cls`
@@ -1707,8 +1875,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_OfSpecies')
@@ -1718,17 +1886,18 @@ class CompilerTests(unittest.TestCase):
                 base_cls: m.Animal___1['@class'],
                 child_cls: m.Animal__out_Animal_OfSpecies___1['@class']
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_typename_filter(self):
         test_data = test_input_data.typename_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Entity___1.name AS `entity_name`
             FROM (
@@ -1739,25 +1908,26 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Entity')
             .filter{it, m -> (it['@class'] == $base_cls)}
             .as('Entity___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 entity_name: m.Entity___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_recurse(self):
         test_data = test_input_data.simple_recurse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `relation_name`
             FROM (
@@ -1770,8 +1940,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .copySplit(
@@ -1784,8 +1954,8 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 relation_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
                     [Animal_2].name AS name,
@@ -1814,20 +1984,21 @@ class CompilerTests(unittest.TestCase):
                 db_1.schema_1.[Animal] AS [Animal_1]
                 JOIN anon_1
                     ON [Animal_1].uuid = anon_1.__cte_key
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf*0..1]->(Animal__out_Animal_ParentOf___1:Animal)
             RETURN Animal__out_Animal_ParentOf___1.name AS `relation_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_then_recurse(self):
         test_data = test_input_data.traverse_then_recurse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
                 Animal___1.name AS `animal_name`,
@@ -1848,9 +2019,9 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ImportantEvent')
@@ -1870,9 +2041,9 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name,
                 important_event: m.Animal__out_Animal_ImportantEvent___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH
                 (Animal___1)-[:Animal_ImportantEvent]->(Animal__out_Animal_ImportantEvent___1:Event)
@@ -1881,15 +2052,16 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
                 Animal___1.name AS `animal_name`,
                 Animal__out_Animal_ImportantEvent___1.name AS `important_event`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_then_traverse_and_recurse(self):
         test_data = test_input_data.filter_then_traverse_and_recurse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
                 Animal___1.name AS `animal_name`,
@@ -1917,9 +2089,9 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (
                 (it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias)
@@ -1942,9 +2114,9 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name,
                 important_event: m.Animal__out_Animal_ImportantEvent___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (
                     (Animal___1.name = $animal_name_or_alias) OR
@@ -1957,15 +2129,16 @@ class CompilerTests(unittest.TestCase):
                 Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
                 Animal___1.name AS `animal_name`,
                 Animal__out_Animal_ImportantEvent___1.name AS `important_event`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_two_consecutive_recurses(self):
         test_data = test_input_data.two_consecutive_recurses()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `ancestor_name`,
                 Animal___1.name AS `animal_name`,
@@ -2000,9 +2173,9 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (
                 (it.name == $animal_name_or_alias) || it.alias.contains($animal_name_or_alias)
@@ -2034,9 +2207,9 @@ class CompilerTests(unittest.TestCase):
                 descendent_name: m.Animal__in_Animal_ParentOf___1.name,
                 important_event: m.Animal__out_Animal_ImportantEvent___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (
                     (Animal___1.name = $animal_name_or_alias) OR
@@ -2051,15 +2224,16 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`,
                 Animal__in_Animal_ParentOf___1.name AS `descendent_name`,
                 Animal__out_Animal_ImportantEvent___1.name AS `important_event`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recurse_within_fragment(self):
         test_data = test_input_data.recurse_within_fragment()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Food__in_Entity_Related___1.name AS `animal_name`,
                 Food___1.name AS `food_name`,
@@ -2077,8 +2251,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Food')
             .as('Food___1')
             .in('Entity_Related')
@@ -2099,17 +2273,18 @@ class CompilerTests(unittest.TestCase):
                 food_name: m.Food___1.name,
                 relation_name: m.Food__in_Entity_Related__out_Animal_ParentOf___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_within_recurse(self):
         test_data = test_input_data.filter_within_recurse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Animal_ParentOf___1.name AS `relation_name`
             FROM (
@@ -2123,8 +2298,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .copySplit(
@@ -2140,8 +2315,8 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 relation_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             WITH anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
                SELECT
                    [Animal_2].color AS color,
@@ -2174,16 +2349,17 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].uuid = anon_1.__cte_key
             WHERE
                 anon_1.color = :wanted
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recurse_with_immediate_type_coercion(self):
         test_data = test_input_data.recurse_with_immediate_type_coercion()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__in_Entity_Related___1.name AS `name`
             FROM (
@@ -2197,8 +2373,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .copySplit(
@@ -2216,17 +2392,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal__in_Entity_Related___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recurse_with_immediate_type_coercion_and_filter(self):
         test_data = test_input_data.recurse_with_immediate_type_coercion_and_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__in_Entity_Related___1.name AS `name`
             FROM (
@@ -2240,8 +2417,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .copySplit(
@@ -2259,17 +2436,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal__in_Entity_Related___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_in_collection_op_filter_with_variable(self):
         test_data = test_input_data.in_collection_op_filter_with_variable()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2280,37 +2458,38 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> $wanted.contains(it.name)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                [Animal_1].name IN ([EXPANDING_wanted])
-        '''
-        expected_cypher = '''
+                [Animal_1].name IN :wanted
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (Animal___1.name IN $wanted)
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_in_collection_op_filter_with_tag(self):
         test_data = test_input_data.in_collection_op_filter_with_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2323,8 +2502,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
@@ -2334,23 +2513,24 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (Animal__out_Animal_ParentOf___1.name IN Animal___1.alias)
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_in_collection_op_filter_with_optional_tag(self):
         test_data = test_input_data.in_collection_op_filter_with_optional_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2382,8 +2562,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -2400,9 +2580,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2410,15 +2590,16 @@ class CompilerTests(unittest.TestCase):
                     (Animal__out_Animal_ParentOf___1.name IN Animal__in_Animal_ParentOf___1.alias))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_in_collection_op_filter_with_variable(self):
         test_data = test_input_data.not_in_collection_op_filter_with_variable()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2429,37 +2610,38 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> !$wanted.contains(it.name)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
-                [Animal_1].name NOT IN ([EXPANDING_wanted])
-        '''
-        expected_cypher = '''
+                [Animal_1].name NOT IN :wanted
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (NOT(Animal___1.name IN $wanted))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_in_collection_op_filter_with_tag(self):
         test_data = test_input_data.not_in_collection_op_filter_with_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2472,8 +2654,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
@@ -2483,22 +2665,23 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (NOT(Animal__out_Animal_ParentOf___1.name IN Animal___1.alias))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_in_collection_op_filter_with_optional_tag(self):
         test_data = test_input_data.not_in_collection_op_filter_with_optional_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2530,8 +2713,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -2548,9 +2731,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2559,15 +2742,16 @@ class CompilerTests(unittest.TestCase):
                         Animal__in_Animal_ParentOf___1.alias)))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_intersects_op_filter_with_variable(self):
         test_data = test_input_data.intersects_op_filter_with_variable()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2578,25 +2762,26 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (!it.alias.intersect($wanted).empty)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_intersects_op_filter_with_tag(self):
         test_data = test_input_data.intersects_op_filter_with_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2609,8 +2794,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
@@ -2620,17 +2805,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_intersects_op_filter_with_optional_tag(self):
         test_data = test_input_data.intersects_op_filter_with_optional_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2663,8 +2849,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -2681,17 +2867,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_contains_op_filter_with_variable(self):
         test_data = test_input_data.contains_op_filter_with_variable()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2702,31 +2889,32 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.alias.contains($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         # the alias list valued column is not yet supported by the SQL backend
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE ($wanted IN Animal___1.alias)
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_contains_op_filter_with_tag(self):
         test_data = test_input_data.contains_op_filter_with_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2739,8 +2927,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .in('Animal_ParentOf')
@@ -2750,23 +2938,24 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
                 WHERE (Animal___1.name IN Animal__in_Animal_ParentOf___1.alias)
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_contains_op_filter_with_optional_tag(self):
         test_data = test_input_data.contains_op_filter_with_optional_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2798,8 +2987,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -2818,9 +3007,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2828,15 +3017,16 @@ class CompilerTests(unittest.TestCase):
                     (Animal__in_Animal_ParentOf___1.name IN Animal__out_Animal_ParentOf___1.alias))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_contains_op_filter_with_variable(self):
         test_data = test_input_data.not_contains_op_filter_with_variable()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2847,33 +3037,34 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> !it.alias.contains($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
 
         # the alias list valued column is not yet supported by the SQL backend
         expected_sql = NotImplementedError
 
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (NOT($wanted IN Animal___1.alias))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_contains_op_filter_with_tag(self):
         test_data = test_input_data.not_contains_op_filter_with_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2886,8 +3077,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .in('Animal_ParentOf')
@@ -2897,23 +3088,24 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
                 WHERE (NOT(Animal___1.name IN Animal__in_Animal_ParentOf___1.alias))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_not_contains_op_filter_with_optional_tag(self):
         test_data = test_input_data.not_contains_op_filter_with_optional_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2945,8 +3137,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -2965,9 +3157,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -2976,15 +3168,16 @@ class CompilerTests(unittest.TestCase):
                         Animal__out_Animal_ParentOf___1.alias)))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher)
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_starts_with_op_filter(self):
         test_data = test_input_data.starts_with_op_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -2995,37 +3188,38 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.name.startsWith($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
                 ([Animal_1].name LIKE :wanted + '%')
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (Animal___1.name STARTS WITH $wanted)
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_ends_with_op_filter(self):
         test_data = test_input_data.ends_with_op_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -3036,37 +3230,38 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.name.endsWith($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
                 ([Animal_1].name LIKE '%' + :wanted)
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (Animal___1.name ENDS WITH $wanted)
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter(self):
         test_data = test_input_data.has_substring_op_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -3077,42 +3272,43 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.name.contains($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
                 ([Animal_1].name LIKE '%' + :wanted + '%')
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (Animal___1.name CONTAINS $wanted)
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter_with_variable(self):
-        graphql_input = '''{
+        graphql_input = """{
             Animal {
                 name @filter(op_name: "has_substring", value: ["$wanted"])
                      @output(out_name: "animal_name")
             }
-        }'''
+        }"""
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -3123,52 +3319,54 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.name.contains($wanted)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
             WHERE
                 ([Animal_1].name LIKE '%' + :wanted + '%')
-        '''
+        """
         expected_cypher = SKIP_TEST
 
         expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {
-            'wanted': GraphQLString,
+            "wanted": GraphQLString,
         }
 
         test_data = test_input_data.CommonTestData(
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter_with_tag(self):
-        graphql_input = '''{
+        graphql_input = """{
             Animal {
                 name @output(out_name: "animal_name") @tag(tag_name: "root_name")
                 out_Animal_ParentOf {
                     name @filter(op_name: "has_substring", value: ["%root_name"])
                 }
             }
-        }'''
+        }"""
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -3181,8 +3379,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Animal_ParentOf')
@@ -3192,9 +3390,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {}
 
@@ -3202,9 +3400,10 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
-        expected_sql = '''
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
@@ -3213,14 +3412,15 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].uuid = [Animal_2].parent
             WHERE
                 ([Animal_2].name LIKE '%' + [Animal_1].name + '%')
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_substring_op_filter_with_optional_tag(self):
-        graphql_input = '''{
+        graphql_input = """{
             Animal {
                 name @output(out_name: "animal_name")
                 in_Animal_ParentOf @optional {
@@ -3230,9 +3430,9 @@ class CompilerTests(unittest.TestCase):
                     name @filter(op_name: "has_substring", value: ["%parent_name"])
                 }
             }
-        }'''
+        }"""
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -3263,8 +3463,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -3281,9 +3481,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_output_metadata = {
-            'animal_name': OutputMetadata(type=GraphQLString, optional=False),
+            "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {}
 
@@ -3291,9 +3491,10 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
-        expected_sql = '''
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
@@ -3305,16 +3506,17 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Animal_2].uuid IS NULL OR
                 ([Animal_3].name LIKE '%' + [Animal_2].name + '%')
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter(self):
         test_data = test_input_data.has_edge_degree_op_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 Animal__in_Animal_ParentOf___1.name AS `child_name`
@@ -3332,8 +3534,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (
                 (($child_count == 0) && (it.in_Animal_ParentOf == null)) ||
@@ -3347,17 +3549,18 @@ class CompilerTests(unittest.TestCase):
                 animal_name: m.Animal___1.name,
                 child_name: m.Animal__in_Animal_ParentOf___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter_with_optional(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_optional()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 if(eval("(Species__in_Animal_OfSpecies__in_Animal_ParentOf___1 IS NOT null)"),
                    Species__in_Animal_OfSpecies__in_Animal_ParentOf___1.name,
@@ -3392,8 +3595,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Species__in_Animal_OfSpecies__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Species')
             .as('Species___1')
             .in('Animal_OfSpecies')
@@ -3415,17 +3618,18 @@ class CompilerTests(unittest.TestCase):
                 parent_name: m.Species__in_Animal_OfSpecies___1.name,
                 species_name: m.Species___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter_with_optional_and_between(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_between()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
                 $optional__0 = (
@@ -3485,8 +3689,8 @@ class CompilerTests(unittest.TestCase):
                     )
                 ),
                 $result = UNIONALL($optional__0, $optional__1)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (
                 (
@@ -3518,17 +3722,18 @@ class CompilerTests(unittest.TestCase):
                     null
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_has_edge_degree_op_filter_with_fold(self):
         test_data = test_input_data.has_edge_degree_op_filter_with_fold()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 $Species__in_Animal_OfSpecies___1___in_Animal_ParentOf.name AS `child_names`,
                 Species__in_Animal_OfSpecies___1.name AS `parent_name`,
@@ -3550,8 +3755,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Species__in_Animal_OfSpecies___1___in_Animal_ParentOf =
                     Species__in_Animal_OfSpecies___1.in("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Species')
             .as('Species___1')
             .in('Animal_OfSpecies')
@@ -3572,17 +3777,18 @@ class CompilerTests(unittest.TestCase):
                 parent_name: m.Species__in_Animal_OfSpecies___1.name,
                 species_name: m.Species___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # has_edge_degree not implemented for Cypher yet.
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_is_null_op_filter(self):
         test_data = test_input_data.is_null_op_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`
             FROM (
@@ -3593,36 +3799,37 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (it.net_worth == null)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal___1.name
             ])}
-        '''
+        """
 
-        expected_sql = '''
+        expected_sql = """
             SELECT [Animal_1].name AS name
             FROM db_1.schema_1.[Animal] AS [Animal_1]
             WHERE [Animal_1].net_worth IS NULL
-        '''
+        """
 
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             WHERE (Animal___1.net_worth IS null)
             RETURN Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_is_not_null_op_filter(self):
         test_data = test_input_data.is_not_null_op_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`
             FROM (
@@ -3633,36 +3840,119 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (it.net_worth != null)}
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.Animal___1.name
             ])}
-        '''
+        """
 
-        expected_sql = '''
+        expected_sql = """
             SELECT [Animal_1].name AS name
             FROM db_1.schema_1.[Animal] AS [Animal_1]
             WHERE [Animal_1].net_worth IS NOT NULL
-        '''
+        """
 
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             WHERE (Animal___1.net_worth IS NOT null)
             RETURN Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
+
+    def test_is_not_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_not_null_op_filter_missing_value_argument()
+
+        expected_match = """
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((net_worth IS NOT null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        """
+
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth != null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        """
+
+        expected_sql = """
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NOT NULL
+        """
+
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS NOT null)
+            RETURN Animal___1.name AS `name`
+        """
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
+
+    def test_is_null_op_filter_missing_value_argument(self):
+        test_data = test_input_data.is_null_op_filter_missing_value_argument()
+
+        expected_match = """
+            SELECT
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    where: ((net_worth IS null)),
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+        """
+
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .filter{it, m -> (it.net_worth == null)}
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                name: m.Animal___1.name
+            ])}
+        """
+
+        expected_sql = """
+            SELECT [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            WHERE [Animal_1].net_worth IS NULL
+        """
+
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            WHERE (Animal___1.net_worth IS null)
+            RETURN Animal___1.name AS `name`
+        """
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_union(self):
         test_data = test_input_data.simple_union()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Species__out_Species_Eats___1.name AS `food_name`,
                 Species___1.name AS `species_name`
@@ -3676,8 +3966,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Species')
             .as('Species___1')
             .out('Species_Eats')
@@ -3688,17 +3978,18 @@ class CompilerTests(unittest.TestCase):
                 food_name: m.Species__out_Species_Eats___1.name,
                 species_name: m.Species___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_then_apply_fragment(self):
         test_data = test_input_data.filter_then_apply_fragment()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Species__out_Species_Eats___1.name AS `food_name`,
                 Species___1.name AS `species_name`
@@ -3713,8 +4004,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Species')
             .filter{it, m -> $species.contains(it.name)}
             .as('Species___1')
@@ -3726,17 +4017,18 @@ class CompilerTests(unittest.TestCase):
                 food_name: m.Species__out_Species_Eats___1.name,
                 species_name: m.Species___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_then_apply_fragment_with_multiple_traverses(self):
         test_data = test_input_data.filter_then_apply_fragment_with_multiple_traverses()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Species__out_Species_Eats__out_Entity_Related___1.name AS `entity_related_to_food`,
                 Species__out_Species_Eats___1.name AS `food_name`,
@@ -3759,8 +4051,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Species')
             .filter{it, m -> $species.contains(it.name)}
             .as('Species___1')
@@ -3780,17 +4072,18 @@ class CompilerTests(unittest.TestCase):
                 food_related_to_entity: m.Species__out_Species_Eats__in_Entity_Related___1.name,
                 species_name: m.Species___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_fragment_in_union(self):
         test_data = test_input_data.filter_on_fragment_in_union()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Species__out_Species_Eats___1.name AS `food_name`,
                 Species___1.name AS `species_name`
@@ -3805,8 +4098,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Species')
             .as('Species___1')
             .out('Species_Eats')
@@ -3818,17 +4111,18 @@ class CompilerTests(unittest.TestCase):
                 food_name: m.Species__out_Species_Eats___1.name,
                 species_name: m.Species___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_on_union(self):
         test_data = test_input_data.optional_on_union()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 if(eval("(Species__out_Species_Eats___1 IS NOT null)"),
                     Species__out_Species_Eats___1.name,
@@ -3855,8 +4149,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Species__out_Species_Eats___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Species')
             .as('Species___1')
             .ifThenElse{it.out_Species_Eats == null}{null}{it.out('Species_Eats')}
@@ -3869,15 +4163,16 @@ class CompilerTests(unittest.TestCase):
                             m.Species__out_Species_Eats___1.name : null),
                 species_name: m.Species___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_gremlin_type_hints(self):
-        graphql_input = '''{
+        graphql_input = """{
             Animal {
                 out_Entity_Related {
                     ... on Event {
@@ -3885,12 +4180,10 @@ class CompilerTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
-        type_equivalence_hints = {
-            'Event': 'Union__BirthEvent__Event__FeedingEvent'
-        }
+        }"""
+        type_equivalence_hints = {"Event": "Union__BirthEvent__Event__FeedingEvent"}
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal__out_Entity_Related___1.name AS `related_event`
             FROM (
@@ -3903,8 +4196,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .out('Entity_Related')
@@ -3914,9 +4207,9 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 related_event: m.Animal__out_Entity_Related___1.name
             ])}
-        '''
+        """
         expected_output_metadata = {
-            'related_event': OutputMetadata(type=GraphQLString, optional=False),
+            "related_event": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
         expected_input_metadata = {}
 
@@ -3924,13 +4217,15 @@ class CompilerTests(unittest.TestCase):
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=type_equivalence_hints)
+            type_equivalence_hints=type_equivalence_hints,
+        )
 
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_unnecessary_traversal_elimination(self):
         # This test case caught a bug in the optimization pass that eliminates unnecessary
@@ -3947,7 +4242,7 @@ class CompilerTests(unittest.TestCase):
         # This test ensures that all N=3 of the QueryRoots are eliminated away, rather than just 2.
         # See the complementary optimization-pass-only version of the test
         # in test_ir_lowering.py for more details.
-        graphql_input = '''{
+        graphql_input = """{
             Animal {
                 uuid @filter(op_name: "=", value: ["$uuid"])
                 out_Animal_ParentOf @optional {
@@ -3960,9 +4255,9 @@ class CompilerTests(unittest.TestCase):
                     uuid @output(out_name: "event_uuid")
                 }
             }
-        }'''
+        }"""
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 if(eval("(Animal__out_Animal_ParentOf___1 IS NOT null)"),
                    Animal__out_Animal_ParentOf___1.uuid, null) AS `child_uuid`,
@@ -4026,8 +4321,8 @@ class CompilerTests(unittest.TestCase):
                     (Animal__out_Animal_FedAt___1 IS NOT null)
                 )
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> (it.uuid == $uuid)}
             .as('Animal___1')
@@ -4051,23 +4346,24 @@ class CompilerTests(unittest.TestCase):
                 species_uuid: ((m.Animal__out_Animal_OfSpecies___1 != null) ?
                                 m.Animal__out_Animal_OfSpecies___1.uuid : null)
             ])}
-        '''
+        """
         expected_output_metadata = {
-            'child_uuid': OutputMetadata(type=GraphQLID, optional=True),
-            'event_uuid': OutputMetadata(type=GraphQLID, optional=True),
-            'species_uuid': OutputMetadata(type=GraphQLID, optional=True),
+            "child_uuid": OutputMetadata(type=GraphQLID, optional=True, folded=False),
+            "event_uuid": OutputMetadata(type=GraphQLID, optional=True, folded=False),
+            "species_uuid": OutputMetadata(type=GraphQLID, optional=True, folded=False),
         }
         expected_input_metadata = {
-            'uuid': GraphQLID,
+            "uuid": GraphQLID,
         }
 
         test_data = test_input_data.CommonTestData(
             graphql_input=graphql_input,
             expected_output_metadata=expected_output_metadata,
             expected_input_metadata=expected_input_metadata,
-            type_equivalence_hints=None)
+            type_equivalence_hints=None,
+        )
 
-        expected_sql = '''
+        expected_sql = """
             SELECT
                 [Animal_1].uuid AS child_uuid,
                 [FeedingEvent_1].uuid AS event_uuid,
@@ -4082,16 +4378,17 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_2].fed_at = [FeedingEvent_1].uuid
             WHERE
                 [Animal_2].uuid = :uuid
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_on_output_variable(self):
         test_data = test_input_data.fold_on_output_variable()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_names_list`
@@ -4104,8 +4401,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___out_Animal_ParentOf =
                     Animal___1.out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4116,9 +4413,25 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
-        expected_sql = NotImplementedError
-        expected_cypher = '''
+        """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list
+            FROM
+                schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3" ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY
+                    "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             WITH
@@ -4127,15 +4440,301 @@ class CompilerTests(unittest.TestCase):
             RETURN
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`
-        '''
+        """
+        expected_mssql = """
+            SELECT
+              [Animal_1].name AS animal_name,
+              folded_subquery_1.fold_output_name AS child_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN(
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_3]
+                        WHERE
+                            [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')
+                    ), '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_fold_on_many_to_one_edge(self):
+        test_data = test_input_data.fold_on_many_to_one_edge()
+
+        # Even though out_Animal_LivesIn is a many to one edge, primary key should
+        # be the join predicate for the folded subquery.
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS homes_list
+            FROM
+                schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Location_1".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Location" AS "Location_1" ON "Animal_2".lives_in = "Location_1".uuid
+                GROUP BY
+                    "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS homes_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN(
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Location_1].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Location] AS [Location_1]
+                        WHERE
+                            [Animal_2].lives_in = [Location_1].uuid FOR XML PATH('')
+                    ), '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_fold_on_two_output_variables(self):
+        test_data = test_input_data.fold_on_two_output_variables()
+
+        expected_postgresql = """
+            SELECT
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_color, ARRAY[]::VARCHAR[]) AS child_color_list,
+              coalesce(
+                folded_subquery_1.fold_output_name,
+                ARRAY [] :: VARCHAR []
+              ) AS child_names_list
+            FROM
+                schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    array_agg("Animal_3".color) AS fold_output_color
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3" ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY
+                    "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_color AS child_color_list,
+                folded_subquery_1.fold_output_name AS child_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN(
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_3]
+                        WHERE
+                            [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')),
+                    '') AS fold_output_name,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].color, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_3]
+                        WHERE
+                            [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')),
+                    '') AS fold_output_color
+                FROM
+                  db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_fold_same_edge_type_in_different_locations(self):
+        test_data = test_input_data.fold_same_edge_type_in_different_locations()
+
+        expected_postgresql = """
+            SELECT
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                AS child_names_list,
+              coalesce(folded_subquery_2.fold_output_name, ARRAY[]::VARCHAR[])
+                AS sibling_and_self_names_list
+            FROM
+              schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM
+                  schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3" ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY
+                  "Animal_2".uuid
+            ) AS folded_subquery_1 ON "Animal_1".uuid = folded_subquery_1.uuid
+            JOIN schema_1."Animal" AS "Animal_4" ON "Animal_1".parent = "Animal_4".uuid
+            JOIN (
+                SELECT
+                    "Animal_5".uuid AS uuid,
+                    array_agg("Animal_6".name) AS fold_output_name
+                FROM
+                  schema_1."Animal" AS "Animal_5"
+                JOIN schema_1."Animal" AS "Animal_6" ON "Animal_5".uuid = "Animal_6".parent
+                GROUP BY
+                  "Animal_5".uuid
+            ) AS folded_subquery_2 ON "Animal_4".uuid = folded_subquery_2.uuid
+        """
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list,
+                folded_subquery_2.fold_output_name AS sibling_and_self_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN(
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_3]
+                        WHERE
+                            [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')),
+                    '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+            JOIN db_1.schema_1.[Animal] AS [Animal_4] ON [Animal_1].parent = [Animal_4].uuid
+            JOIN(
+                SELECT
+                    [Animal_5].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_6].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_6]
+                        WHERE
+                            [Animal_5].uuid = [Animal_6].parent FOR XML PATH('')),
+                    '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_5]
+            ) AS folded_subquery_2 ON [Animal_4].uuid = folded_subquery_2.uuid
+        """
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_fold_after_traverse(self):
         test_data = test_input_data.fold_after_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name
@@ -4152,8 +4751,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf =
                     Animal__in_Animal_ParentOf___1.out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .in('Animal_ParentOf')
@@ -4169,9 +4768,28 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
-        expected_sql = NotImplementedError
-        expected_cypher = '''
+        """
+        expected_postgresql = """
+            SELECT
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                AS sibling_and_self_names_list
+            FROM
+              schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Animal" AS "Animal_2"
+            ON "Animal_1".parent = "Animal_2".uuid
+            JOIN(
+                SELECT
+                    "Animal_3".uuid AS uuid,
+                    array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                GROUP BY "Animal_3".uuid
+            ) AS folded_subquery_1
+            ON "Animal_2".uuid = folded_subquery_1.uuid
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
@@ -4186,15 +4804,182 @@ class CompilerTests(unittest.TestCase):
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
                 `sibling_and_self_names_list`
-        '''
+        """
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS sibling_and_self_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN db_1.schema_1.[Animal] AS [Animal_2] ON [Animal_1].parent = [Animal_2].uuid
+            JOIN(
+                SELECT
+                    [Animal_3].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_4].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_4]
+                        WHERE
+                            [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')),
+                    '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
+        """
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+    def test_fold_after_traverse_different_types(self):
+        test_data = test_input_data.fold_after_traverse_different_types()
+
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN db_1.schema_1.[Location] AS [Location_1] ON [Animal_1].lives_in = [Location_1].uuid
+            JOIN(
+                SELECT
+                    [Location_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_2].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_2]
+                        WHERE
+                            [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')),
+                    '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Location] AS [Location_2]
+            ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
+        """
+        expected_postgresql = """
+            SELECT
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                  AS neighbor_and_self_names_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Location" AS "Location_1"
+            ON "Animal_1".lives_in = "Location_1".uuid
+            JOIN (
+                SELECT
+                  "Location_2".uuid AS uuid,
+                  array_agg("Animal_2".name) AS fold_output_name
+                FROM schema_1."Location" AS "Location_2"
+                JOIN schema_1."Animal" AS "Animal_2"
+                ON "Location_2".uuid = "Animal_2".lives_in
+                GROUP BY "Location_2".uuid
+            ) AS folded_subquery_1
+            ON "Location_1".uuid = folded_subquery_1.uuid
+        """
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_fold_after_traverse_no_output_on_root(self):
+        test_data = test_input_data.fold_after_traverse_no_output_on_root()
+
+        expected_postgresql = """
+            SELECT
+                "Location_1".name AS location_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS neighbor_and_self_names_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Location" AS "Location_1"
+            ON "Animal_1".lives_in = "Location_1".uuid
+            JOIN (
+                SELECT
+                    "Location_2".uuid AS uuid,
+                    array_agg("Animal_2".name) AS fold_output_name
+                FROM schema_1."Location" AS "Location_2"
+                JOIN schema_1."Animal" AS "Animal_2"
+                ON "Location_2".uuid = "Animal_2".lives_in
+                GROUP BY "Location_2".uuid
+            ) AS folded_subquery_1
+            ON "Location_1".uuid = folded_subquery_1.uuid
+        """
+        expected_mssql = """
+            SELECT
+                [Location_1].name AS location_name,
+                folded_subquery_1.fold_output_name AS neighbor_and_self_names_list
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN db_1.schema_1.[Location] AS [Location_1] ON [Animal_1].lives_in = [Location_1].uuid
+            JOIN(
+                SELECT
+                    [Location_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_2].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_2]
+                        WHERE
+                            [Location_2].uuid = [Animal_2].lives_in FOR XML PATH('')),
+                    '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Location] AS [Location_2]
+            ) AS folded_subquery_1 ON [Location_1].uuid = folded_subquery_1.uuid
+        """
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_fold_and_traverse(self):
         test_data = test_input_data.fold_and_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___in_Animal_ParentOf.name
@@ -4208,8 +4993,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___in_Animal_ParentOf =
                     Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4229,9 +5014,30 @@ class CompilerTests(unittest.TestCase):
                             .collect{entry -> entry.name}
                     ))
             ])}
-        '''
+        """
+        # TODO: implement multiple traversals in a separate PR
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        # expected_sql = '''
+        #     SELECT
+        #         [Animal_1].name as animal_name,
+        #         coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+        #             AS sibling_and_self_names_list
+        #     FROM
+        #         db_1.schema_1.[Animal] AS [Animal_1]
+        #     LEFT JOIN (
+        #         SELECT
+        #             [Animal_2].uuid,
+        #             array_agg([Animal_4].name) as sibling_and_self_names_list
+        #         FROM db_1.schema_1.[Animal] AS [Animal_2]
+        #         JOIN db_1.schema_1.[Animal] AS [Animal_3]
+        #         ON [Animal_2].parent = [Animal_3].uuid
+        #         JOIN db_1.schema_1.[Animal] AS [Animal_4]
+        #         ON [Animal_3].uuid = [Animal_4].parent
+        #         GROUP BY [Animal_2].uuid
+        #     ) AS folded_subquery_1
+        #     ON [Animal_1].uuid = folded_subquery_1.uuid
+        # '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
@@ -4247,15 +5053,16 @@ class CompilerTests(unittest.TestCase):
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
                 `sibling_and_self_names_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_and_deep_traverse(self):
         test_data = test_input_data.fold_and_deep_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_species_list`
@@ -4271,8 +5078,8 @@ class CompilerTests(unittest.TestCase):
                               .out("Animal_ParentOf")
                               .out("Animal_OfSpecies")
                               .asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4293,9 +5100,9 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
@@ -4317,15 +5124,16 @@ class CompilerTests(unittest.TestCase):
               [x IN
                 collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
                 | x.name] AS `sibling_and_self_species_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_and_fold_and_traverse(self):
         test_data = test_input_data.traverse_and_fold_and_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal__in_Animal_ParentOf___1___out_Animal_ParentOf.name
@@ -4344,8 +5152,8 @@ class CompilerTests(unittest.TestCase):
                     Animal__in_Animal_ParentOf___1
                         .out("Animal_ParentOf")
                         .out("Animal_OfSpecies").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .in('Animal_ParentOf')
@@ -4368,9 +5176,9 @@ class CompilerTests(unittest.TestCase):
                             .collect{entry -> entry.name}
                     ))
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
@@ -4391,15 +5199,16 @@ class CompilerTests(unittest.TestCase):
               [x IN
                 collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
                 | x.name] AS `sibling_and_self_species_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_outputs_in_same_fold(self):
         test_data = test_input_data.multiple_outputs_in_same_fold()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
@@ -4412,8 +5221,8 @@ class CompilerTests(unittest.TestCase):
                 RETURN $matches
             ) LET
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4431,9 +5240,9 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
             WITH
@@ -4443,15 +5252,16 @@ class CompilerTests(unittest.TestCase):
               Animal___1.name AS `animal_name`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.uuid] AS `child_uuids_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_outputs_in_same_fold_and_traverse(self):
         test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_names_list`,
@@ -4465,8 +5275,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___in_Animal_ParentOf =
                     Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4496,9 +5306,9 @@ class CompilerTests(unittest.TestCase):
                             .collect{entry -> entry.uuid}
                     ))
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
@@ -4515,15 +5325,16 @@ class CompilerTests(unittest.TestCase):
                 `sibling_and_self_names_list`,
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.uuid] AS
                 `sibling_and_self_uuids_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_folds(self):
         test_data = test_input_data.multiple_folds()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
@@ -4539,8 +5350,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___in_Animal_ParentOf = Animal___1.in("Animal_ParentOf").asList(),
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4566,9 +5377,9 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             WITH
@@ -4585,15 +5396,16 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.uuid] AS `child_uuids_list`,
               [x IN collected_Animal__in_Animal_ParentOf___1 | x.name] AS `parent_names_list`,
               [x IN collected_Animal__in_Animal_ParentOf___1 | x.uuid] AS `parent_uuids_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_folds_and_traverse(self):
         test_data = test_input_data.multiple_folds_and_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___in_Animal_ParentOf.name AS `sibling_and_self_names_list`,
@@ -4611,8 +5423,8 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.in("Animal_ParentOf").out("Animal_ParentOf").asList(),
                 $Animal___1___out_Animal_ParentOf =
                     Animal___1.out("Animal_ParentOf").in("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4662,9 +5474,9 @@ class CompilerTests(unittest.TestCase):
                         .collect{entry -> entry.uuid}
                 ))
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH (Animal__in_Animal_ParentOf___1)-[:Animal_ParentOf]->
@@ -4696,15 +5508,16 @@ class CompilerTests(unittest.TestCase):
                 `spouse_and_self_names_list`,
               [x IN collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 | x.uuid] AS
                 `spouse_and_self_uuids_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_date_and_datetime_fields(self):
         test_data = test_input_data.fold_date_and_datetime_fields()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.birthday.format("yyyy-MM-dd")
@@ -4720,8 +5533,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___out_Animal_FedAt = Animal___1.out("Animal_FedAt").asList(),
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4729,21 +5542,55 @@ class CompilerTests(unittest.TestCase):
                 child_birthdays_list: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
                         m.Animal___1.out_Animal_ParentOf.collect{
-                            entry -> entry.inV.next().birthday.format("yyyy-MM-dd")
+                            entry -> entry.inV
+                                .next().birthday
+                                .format("yyyy-MM-dd")
                         }
                     )
                 ),
                 fed_at_datetimes_list: (
                     (m.Animal___1.out_Animal_FedAt == null) ? [] : (
                         m.Animal___1.out_Animal_FedAt.collect{
-                            entry -> entry.inV.next().event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                            entry ->
+                                entry.inV.next()
+                                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
                         }
                     )
                 )
             ])}
-        '''
+        """
+        # TODO: implement date times in a separate PR
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        # '''
+        #     SELECT
+        #         [Animal_1].name AS animal_name,
+        #         coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
+        #             AS child_birthdays_list,
+        #         coalesce(folded_subquery_2.fold_output_1, ARRAY[]::VARCHAR[])
+        #             AS fed_at_datetimes_list
+        #     FROM db_1.schema_1.[Animal] AS [Animal_1]
+        #     LEFT OUTER JOIN (
+        #         SELECT
+        #             array_agg([Animal_2].birthday) AS fold_output_1,
+        #             [Animal_3].uuid AS uuid
+        #         FROM db_1.schema_1.[Animal] AS [Animal_3]
+        #         JOIN db_1.schema_1.[Animal] AS [Animal_2]
+        #         ON [Animal_3].uuid = [Animal_2].parent
+        #         GROUP BY [Animal_3].uuid
+        #     ) AS folded_subquery_1
+        #     ON [Animal_1].uuid = folded_subquery_1.uuid
+        #     LEFT OUTER JOIN (
+        #         SELECT
+        #             array_agg([FeedingEvent_1].event_date) AS fold_output_2,
+        #             [Animal_4].uuid AS uuid
+        #         FROM db_1.schema_1.[Animal] AS [Animal_4]
+        #         JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+        #         ON [Animal_4].fed_at = [FeedingEvent_1].uuid
+        #         GROUP BY [Animal_4].uuid
+        #     ) AS folded_subquery_2
+        #     ON [Animal_1].uuid = folded_subquery_1.uuid
+        # '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_FedAt]->(Animal__out_Animal_FedAt___1:FeedingEvent)
             WITH
@@ -4760,17 +5607,18 @@ class CompilerTests(unittest.TestCase):
                 `child_birthdays_list`,
               [x IN collected_Animal__out_Animal_FedAt___1 | x.event_date] AS
                 `fed_at_datetimes_list`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_to_union_base_type_inside_fold(self):
         # Given type_equivalence_hints = { Event: Union__BirthEvent__Event__FeedingEvent },
         # the coercion should be optimized away as a no-op.
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ImportantEvent.name AS `important_events`
@@ -4783,8 +5631,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___out_Animal_ImportantEvent =
                     Animal___1.out("Animal_ImportantEvent").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4797,18 +5645,19 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_no_op_coercion_inside_fold(self):
         # The type where the coercion is applied is already Entity, so the coercion is a no-op.
         test_data = test_input_data.no_op_coercion_inside_fold()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Entity_Related.name AS `related_entities`
@@ -4820,8 +5669,8 @@ class CompilerTests(unittest.TestCase):
                 RETURN $matches
             ) LET
                 $Animal___1___out_Entity_Related = Animal___1.out("Entity_Related").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4834,17 +5683,34 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
-        expected_sql = NotImplementedError
+        """
+        # TODO Not working b/c join descriptors for hyper edges not working properly
+        expected_sql = SKIP_TEST
+        # '''
+        # SELECT
+        #     [Animal_1].name AS animal_name,
+        #     coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[]) AS related_entities
+        # FROM db_1.schema_1.[Animal] AS [Animal_1]
+        # LEFT OUTER JOIN (
+        #     SELECT
+        #         array_agg([Entity_1].name) AS fold_output_1,
+        #         [Animal_2].uuid AS uuid
+        #     FROM db_1.schema_1.[Animal] AS [Animal_2]
+        #     JOIN db_1.schema_1.[Entity] AS [Entity_1]
+        #     ON [Animal_2].uuid = [Entity_1].related_entity
+        #     GROUP BY [Animal_2].uuid
+        # ) AS folded_subquery_1
+        # ON [Animal_1].uuid = folded_subquery_1.uuid'''
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_no_op_coercion_with_eligible_subpath(self):
         test_data = test_input_data.no_op_coercion_with_eligible_subpath()
 
-        expected_match = '''
+        expected_match = """
             SELECT Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
                 AS `animal_name` FROM (MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
@@ -4861,8 +5727,8 @@ class CompilerTests(unittest.TestCase):
                 where: (({entity_names} CONTAINS name)),
                 as: Animal__out_Animal_ParentOf__out_Entity_Related___1
             }} RETURN $matches)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .out('Animal_ParentOf')
@@ -4878,8 +5744,8 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal__out_Animal_ParentOf__out_Animal_ParentOf___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
@@ -4891,17 +5757,18 @@ class CompilerTests(unittest.TestCase):
                 JOIN db_1.schema_1.[Entity] AS [Entity_1]
                     ON [Animal_3].related_entity = [Entity_1].uuid
             WHERE
-                [Entity_1].name IN ([EXPANDING_entity_names])
-        '''
+                [Entity_1].name IN :entity_names
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_within_fold_scope(self):
         test_data = test_input_data.filter_within_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 $Animal___1___out_Animal_ParentOf.description AS `child_descriptions`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_list`,
@@ -4915,8 +5782,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___out_Animal_ParentOf =
                     Animal___1.out("Animal_ParentOf")[(name = {desired})].asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4938,9 +5805,29 @@ class CompilerTests(unittest.TestCase):
                 ),
                 name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = NotImplementedError
-        expected_cypher = '''
+        """
+        expected_mssql = NotImplementedError
+        expected_postgresql = """
+            SELECT
+                coalesce(folded_subquery_1.fold_output_description, ARRAY[]::VARCHAR[])
+                    AS child_descriptions,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_list,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    array_agg("Animal_3".description) AS fold_output_description
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                WHERE "Animal_3".name = %(desired)s
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (
@@ -4955,15 +5842,22 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS
                 `child_list`,
               Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_filter_on_fold_scope(self):
         test_data = test_input_data.filter_on_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 $Animal___1___out_Animal_ParentOf.name AS `child_list`,
                 Animal___1.name AS `name`
@@ -4977,8 +5871,8 @@ class CompilerTests(unittest.TestCase):
                 $Animal___1___out_Animal_ParentOf =
                     Animal___1.out("Animal_ParentOf")[((name = {desired})
                                                       OR (alias CONTAINS {desired}))].asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -4993,9 +5887,9 @@ class CompilerTests(unittest.TestCase):
                 ),
                 name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (
@@ -5008,15 +5902,16 @@ class CompilerTests(unittest.TestCase):
             RETURN
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_list`,
               Animal___1.name AS `name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_interface_within_fold_scope(self):
         test_data = test_input_data.coercion_on_interface_within_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`,
                 $Animal___1___out_Entity_Related.name AS `related_animals`
@@ -5029,8 +5924,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___out_Entity_Related =
                     Animal___1.out("Entity_Related")[(@this INSTANCEOF 'Animal')].asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -5044,17 +5939,18 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_interface_within_fold_traversal(self):
         test_data = test_input_data.coercion_on_interface_within_fold_traversal()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___in_Animal_ParentOf.name AS `related_animal_species`
@@ -5069,8 +5965,8 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.in("Animal_ParentOf")
                               .out("Entity_Related")[(@this INSTANCEOF 'Animal')]
                               .out("Animal_OfSpecies").asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -5090,17 +5986,18 @@ class CompilerTests(unittest.TestCase):
                     .collect{entry -> entry.name}
                 ))
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_union_within_fold_scope(self):
         test_data = test_input_data.coercion_on_union_within_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 $Animal___1___out_Animal_ImportantEvent.name AS `birth_events`,
                 Animal___1.name AS `name`
@@ -5113,8 +6010,8 @@ class CompilerTests(unittest.TestCase):
             ) LET
                 $Animal___1___out_Animal_ImportantEvent =
                    Animal___1.out("Animal_ImportantEvent")[(@this INSTANCEOF 'BirthEvent')].asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -5128,17 +6025,18 @@ class CompilerTests(unittest.TestCase):
                 ),
                 name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`,
                 $Animal___1___out_Entity_Related.name AS `related_animals`,
@@ -5157,8 +6055,8 @@ class CompilerTests(unittest.TestCase):
                         (@this INSTANCEOF 'Animal') AND
                         ((name LIKE ('%' + ({substring} + '%'))) AND
                         (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -5186,17 +6084,18 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_filters_and_multiple_outputs_within_fold_traversal(self):
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`,
                 $Animal___1___in_Animal_ParentOf.name AS `related_animals`,
@@ -5216,8 +6115,8 @@ class CompilerTests(unittest.TestCase):
                             (@this INSTANCEOF 'Animal') AND
                             ((name LIKE ('%' + ({substring} + '%'))) AND
                             (birthday <= date({latest}, "yyyy-MM-dd"))))].asList()
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
@@ -5253,17 +6152,18 @@ class CompilerTests(unittest.TestCase):
                     )
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # Type coercion not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_output_count_in_fold_scope(self):
         test_data = test_input_data.output_count_in_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 $Animal___1___out_Animal_ParentOf.name AS `child_names`,
                 Animal___1.name AS `name`,
@@ -5277,19 +6177,44 @@ class CompilerTests(unittest.TestCase):
             )
             LET
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
-        '''
+        """
         expected_gremlin = NotImplementedError
+        expected_mssql = SKIP_TEST
+        expected_postgresql = """
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name,
+                folded_subquery_1.fold_output__x_count AS number_of_children
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+              ) AS folded_subquery_1
+              ON "Animal_1".uuid = folded_subquery_1.uuid
+              """
 
-        expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_filter_count_with_runtime_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 $Animal___1___out_Animal_ParentOf.name AS `child_names`,
                 Animal___1.name AS `name`
@@ -5304,19 +6229,202 @@ class CompilerTests(unittest.TestCase):
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
             WHERE
                 ($Animal___1___out_Animal_ParentOf.size() >= {min_children})
-        '''
+        """
         expected_gremlin = NotImplementedError
 
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = """
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE folded_subquery_1.fold_output__x_count >= %(min_children)s
+        """
+
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_filter_field_with_tagged_optional_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_field_with_tagged_optional_parameter_in_fold_scope()
+
+        expected_match = """
+            SELECT
+                $Animal___1___in_Animal_ParentOf.name AS `children_with_higher_net_worth`,
+                Animal___1.name AS `name`
+            FROM  (
+                MATCH  {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_ParentOf') {{
+                    optional: true,
+                    as: Animal__out_Animal_ParentOf___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___in_Animal_ParentOf =
+                    Animal___1.in("Animal_ParentOf")[((
+                        $matched.Animal__out_Animal_ParentOf___1 IS null) OR
+                        (net_worth >= $matched.Animal__out_Animal_ParentOf___1.net_worth
+                    ))].asList()
+            WHERE (
+                ((Animal___1.out_Animal_ParentOf IS null) OR
+                (Animal___1.out_Animal_ParentOf.size() = 0)) OR
+                (Animal__out_Animal_ParentOf___1 IS NOT null)
+            )
+        """
+
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .ifThenElse{
+                it.out_Animal_ParentOf == null
+            }{
+                null
+            }{
+                it.out('Animal_ParentOf')
+            }.as('Animal__out_Animal_ParentOf___1')
+            .optional('Animal___1').as('Animal___2')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                children_with_higher_net_worth: ((
+                    m.Animal___2.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___2.in_Animal_ParentOf.collect{
+                            entry -> entry.outV.next()
+                        }.findAll{
+                            entry -> ((m.Animal__out_Animal_ParentOf___1 == null) ||
+                                (entry.net_worth >= m.Animal__out_Animal_ParentOf___1.net_worth))
+                        }.collect{entry -> entry.name})), name: m.Animal___1.name
+                ])
+            }
+        """
+
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            WHERE (
+                (Animal__out_Animal_ParentOf___1 IS null) OR
+                (Animal__in_Animal_ParentOf___2.net_worth >=
+                Animal__out_Animal_ParentOf___1.net_worth))
+            WITH
+                Animal___1 AS Animal___1,
+                Animal__out_Animal_ParentOf___1 AS Animal__out_Animal_ParentOf___1,
+                collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1
+            RETURN
+                [x IN collected_Animal__in_Animal_ParentOf___1 | x.name]
+                AS `children_with_higher_net_worth`,
+                Animal___1.name AS `name`
+        """
+
+        expected_mssql = NotImplementedError
+
+        expected_postgresql = NotImplementedError
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_filter_count_with_tagged_optional_parameter_in_fold_scope(self):
+        test_data = test_input_data.filter_count_with_tagged_optional_parameter_in_fold_scope()
+
+        expected_match = """
+            SELECT
+                $Animal___1___out_Animal_ParentOf.name AS `child_names`,
+                Animal___1.name AS `name`
+            FROM  (
+                MATCH  {{
+                    class: Animal,
+                    as: Animal___1
+                }}.out('Animal_OfSpecies') {{
+                    optional: true,
+                    as: Animal__out_Animal_OfSpecies___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
+            WHERE (
+                (
+                    ($matched.Animal__out_Animal_OfSpecies___1 IS null) OR
+                    ($Animal___1___out_Animal_ParentOf.size() >=
+                    Animal__out_Animal_OfSpecies___1.limbs)
+                ) AND (
+                    ((Animal___1.out_Animal_OfSpecies IS null) OR
+                    (Animal___1.out_Animal_OfSpecies.size() = 0)) OR
+                    (Animal__out_Animal_OfSpecies___1 IS NOT null)
+                )
+            )
+        """
+        expected_gremlin = NotImplementedError
+
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = """
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN schema_1."Species" AS "Species_1"
+            ON "Animal_1".species = "Species_1".uuid
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE
+                "Species_1".uuid IS NULL OR
+                "Species_1".limbs <= folded_subquery_1.fold_output__x_count
+        """
+
+        expected_cypher = NotImplementedError  # _x_count not implemented for Cypher
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_filter_count_with_tagged_parameter_in_fold_scope(self):
         test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 $Animal___1___out_Animal_ParentOf.name AS `child_names`,
                 Animal___1.name AS `name`
@@ -5334,19 +6442,47 @@ class CompilerTests(unittest.TestCase):
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
             WHERE
                 ($Animal___1___out_Animal_ParentOf.size() >= Animal__out_Animal_OfSpecies___1.limbs)
-        '''
+        """
         expected_gremlin = NotImplementedError
 
-        expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_mssql = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        expected_postgresql = """
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Species" AS "Species_1"
+            ON "Animal_1".species = "Species_1".uuid
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE "Species_1".limbs <= folded_subquery_1.fold_output__x_count
+        """
+        expected_cypher = NotImplementedError  # _x_count not implemented for Cypher
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_filter_count_and_other_filters_in_fold_scope(self):
         test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`,
                 $Animal___1___out_Animal_ParentOf.size() AS `number_of_children`
@@ -5362,18 +6498,19 @@ class CompilerTests(unittest.TestCase):
                     Animal___1.out("Animal_ParentOf")[(alias CONTAINS {expected_alias})].asList()
             WHERE
                 ($Animal___1___out_Animal_ParentOf.size() >= {min_children})
-        '''
+        """
         expected_gremlin = NotImplementedError
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_filters_on_count(self):
         test_data = test_input_data.multiple_filters_on_count()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `name`
             FROM (
@@ -5393,19 +6530,55 @@ class CompilerTests(unittest.TestCase):
                     ($Animal___1___out_Animal_ParentOf.size() >= {min_children}) AND
                     ($Animal___1___out_Entity_Related.size() >= {min_related})
                 )
-        '''
+        """
         expected_gremlin = NotImplementedError
 
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            JOIN (
+                SELECT
+                    "Animal_4".uuid AS uuid,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Animal" AS "Animal_4"
+                JOIN schema_1."Entity" AS "Entity_1"
+                ON "Animal_4".related_entity = "Entity_1".uuid
+                GROUP BY "Animal_4".uuid
+            ) AS folded_subquery_2
+            ON "Animal_1".uuid = folded_subquery_2.uuid
+            WHERE
+                folded_subquery_1.fold_output__x_count >= %(min_children)s AND
+                folded_subquery_2.fold_output__x_count >= %(min_related)s
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_filter_on_count_with_nested_filter(self):
         test_data = test_input_data.filter_on_count_with_nested_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Species___1.name AS `name`
             FROM (
@@ -5420,19 +6593,20 @@ class CompilerTests(unittest.TestCase):
 .out("Animal_LivesIn")[(name = {location})].asList()
             WHERE
                 ($Species___1___in_Animal_OfSpecies.size() = {num_animals})
-        '''
+        """
         expected_gremlin = NotImplementedError
 
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_traverse(self):
         test_data = test_input_data.optional_and_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
                 $optional__0 = (
@@ -5472,8 +6646,8 @@ class CompilerTests(unittest.TestCase):
                     )
                 ),
                 $result = UNIONALL($optional__0, $optional__1)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -5494,8 +6668,8 @@ class CompilerTests(unittest.TestCase):
                 ),
                 name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS child_name,
                 [Animal_2].name AS grandchild_name,
@@ -5508,16 +6682,17 @@ class CompilerTests(unittest.TestCase):
                     ON [Animal_1].parent = [Animal_2].uuid
             WHERE
                 [Animal_2].uuid IS NOT NULL OR [Animal_1].uuid IS NULL
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_traverse_after_filter(self):
         test_data = test_input_data.optional_and_traverse_after_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
                 $optional__0 = (
@@ -5560,8 +6735,8 @@ class CompilerTests(unittest.TestCase):
                     )
                 ),
                 $result = UNIONALL($optional__0, $optional__1)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.name.contains($wanted)}
             .as('Animal___1')
@@ -5583,8 +6758,8 @@ class CompilerTests(unittest.TestCase):
                 ),
                 name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS child_name,
                 [Animal_2].name AS grandchild_name,
@@ -5601,16 +6776,17 @@ class CompilerTests(unittest.TestCase):
                 [Animal_2].uuid IS NOT NULL OR
                 [Animal_1].uuid IS NULL
             )
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_deep_traverse(self):
         test_data = test_input_data.optional_and_deep_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -5656,8 +6832,8 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -5689,8 +6865,8 @@ class CompilerTests(unittest.TestCase):
                         : null
                 )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name,
                 [Animal_2].name AS child_name,
@@ -5711,16 +6887,17 @@ class CompilerTests(unittest.TestCase):
                 [Species_1].uuid IS NOT NULL OR
                 [Animal_3].parent IS NULL
             )
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_traverse_and_optional_and_traverse(self):
         test_data = test_input_data.traverse_and_optional_and_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -5770,8 +6947,8 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class',
                 'Animal')
             .as('Animal___1')
@@ -5801,8 +6978,8 @@ class CompilerTests(unittest.TestCase):
                         : null
                 )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name,
                 [Animal_2].name AS child_name,
@@ -5819,16 +6996,17 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 [Species_1].uuid IS NOT NULL OR [Animal_3].parent IS NULL
 
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_optional_traversals_with_starting_filter(self):
         test_data = test_input_data.multiple_optional_traversals_with_starting_filter()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -5946,9 +7124,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1, $optional__2, $optional__3)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.name.contains($wanted)}
             .as('Animal___1')
@@ -5985,8 +7163,8 @@ class CompilerTests(unittest.TestCase):
                         m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                 )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name,
                 [Animal_2].name AS child_name,
@@ -6012,16 +7190,17 @@ class CompilerTests(unittest.TestCase):
                 [Species_1].uuid IS NOT NULL OR
                 [Animal_3].parent IS NULL
             )
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_traversal_and_optional_without_traversal(self):
         test_data = test_input_data.optional_traversal_and_optional_without_traversal()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -6102,9 +7281,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m -> it.name.contains($wanted)}
             .as('Animal___1')
@@ -6134,8 +7313,8 @@ class CompilerTests(unittest.TestCase):
                         m.Animal__out_Animal_ParentOf__out_Animal_OfSpecies___1.name : null
                 )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name,
                 [Animal_2].name AS child_name,
@@ -6155,16 +7334,17 @@ class CompilerTests(unittest.TestCase):
                 [Species_1].uuid IS NOT NULL OR
                 [Animal_3].parent IS NULL
             )
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_on_interface_within_optional_traversal(self):
         test_data = test_input_data.coercion_on_interface_within_optional_traversal()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -6207,9 +7387,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -6233,17 +7413,18 @@ class CompilerTests(unittest.TestCase):
                             __out_Animal_OfSpecies___1.name : null
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_traversal_equality(self):
         test_data = test_input_data.filter_on_optional_traversal_equality()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -6305,9 +7486,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class',
                 'Animal')
             .as('Animal___1')
@@ -6335,17 +7516,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                     animal_name: m.Animal___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_filter_on_optional_traversal_name_or_alias(self):
         test_data = test_input_data.filter_on_optional_traversal_name_or_alias()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -6406,9 +7588,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class',
                 'Animal')
             .as('Animal___1')
@@ -6433,17 +7615,18 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                     parent_name: m.Animal__out_Animal_ParentOf___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_optional_traversal_variables(self):
         test_data = test_input_data.complex_optional_traversal_variables()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -6588,9 +7771,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
            g.V('@class',
                'Animal')
            .filter{it, m -> (it.name == $animal_name)}
@@ -6658,8 +7841,8 @@ class CompilerTests(unittest.TestCase):
                    )
                ])
            }
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [FeedingEvent_1].event_date AS grandchild_fed_at,
                 [FeedingEvent_2].event_date AS other_child_fed_at,
@@ -6692,16 +7875,17 @@ class CompilerTests(unittest.TestCase):
                      [FeedingEvent_3].uuid IS NULL OR
                      [FeedingEvent_1].event_date <= [FeedingEvent_3].event_date
                 )
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_simple_optional_recurse(self):
         test_data = test_input_data.simple_optional_recurse()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -6743,9 +7927,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -6773,8 +7957,8 @@ class CompilerTests(unittest.TestCase):
                             m.Animal__in_Animal_ParentOf__out_Animal_ParentOf___1.name : null
                     )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
                     [Animal_3].name AS name,
@@ -6808,16 +7992,17 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN anon_1 ON [Animal_1].uuid = anon_1.__cte_key
             WHERE
                 anon_1.__cte_key IS NOT NULL OR [Animal_1].uuid IS NULL
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_multiple_traverse_within_optional(self):
         test_data = test_input_data.multiple_traverse_within_optional()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -6864,9 +8049,9 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1)
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -6894,8 +8079,8 @@ class CompilerTests(unittest.TestCase):
                 ),
                 name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [FeedingEvent_1].name AS child_feeding_time,
                 [Animal_1].name AS child_name,
@@ -6916,16 +8101,17 @@ class CompilerTests(unittest.TestCase):
                 [FeedingEvent_1].uuid IS NOT NULL OR
                 [Animal_1].uuid IS NULL
             )
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_optional_and_fold(self):
         test_data = test_input_data.optional_and_fold()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
@@ -6954,8 +8140,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -6974,9 +8160,28 @@ class CompilerTests(unittest.TestCase):
                         m.Animal__in_Animal_ParentOf___1.name : null
                 )
             ])}
-        '''
-        expected_sql = NotImplementedError
-        expected_cypher = '''
+        """
+        expected_postgresql = """
+            SELECT
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
+              "Animal_2".name AS parent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN
+                schema_1."Animal" AS "Animal_2"
+            ON "Animal_1".parent = "Animal_2".uuid
+            JOIN (
+                SELECT
+                  "Animal_3".uuid AS uuid,
+                  array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                GROUP BY "Animal_3".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -6992,15 +8197,54 @@ class CompilerTests(unittest.TestCase):
                   THEN Animal__in_Animal_ParentOf___1.name
                   ELSE null
                 END) AS `parent_name`
-        '''
-
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        """
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list,
+                [Animal_2].name AS parent_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN
+                db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_1].parent = [Animal_2].uuid
+            JOIN(
+                SELECT
+                    [Animal_3].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_4].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_4]
+                        WHERE
+                            [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')),
+                    '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+            """
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_fold_and_optional(self):
         test_data = test_input_data.fold_and_optional()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_names_list`,
@@ -7029,8 +8273,8 @@ class CompilerTests(unittest.TestCase):
                 OR
                 (Animal__in_Animal_ParentOf___1 IS NOT null)
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -7049,9 +8293,28 @@ class CompilerTests(unittest.TestCase):
                         m.Animal__in_Animal_ParentOf___1.name : null
                 )
             ])}
-        '''
-        expected_sql = NotImplementedError
-        expected_cypher = '''
+        """
+        expected_postgresql = """
+            SELECT
+              "Animal_1".name AS animal_name,
+              coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names_list,
+              "Animal_2".name AS parent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                  "Animal_3".uuid AS uuid,
+                  array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                GROUP BY "Animal_3".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            LEFT OUTER JOIN
+                schema_1."Animal" AS "Animal_2"
+            ON "Animal_1".parent = "Animal_2".uuid
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -7067,15 +8330,54 @@ class CompilerTests(unittest.TestCase):
                   THEN Animal__in_Animal_ParentOf___1.name
                   ELSE null
                 END) AS `parent_name`
-        '''
-
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        """
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list,
+                [Animal_2].nameASparent_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN(
+                SELECT
+                    [Animal_3].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_4].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Animal] AS [Animal_4]
+                        WHERE
+                            [Animal_3].uuid = [Animal_4].parent FOR XML PATH('')),
+                    '') AS fold_output_name
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+            LEFT OUTER JOIN
+                db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_1].parent = [Animal_2].uuid
+        """
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
 
     def test_optional_traversal_and_fold_traversal(self):
         test_data = test_input_data.optional_traversal_and_fold_traversal()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
                 $optional__0 = (
@@ -7121,8 +8423,8 @@ class CompilerTests(unittest.TestCase):
                         = Animal___1.out("Animal_ParentOf").out("Animal_ParentOf").asList()
                 ),
                 $result = UNIONALL($optional__0, $optional__1)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -7148,9 +8450,9 @@ class CompilerTests(unittest.TestCase):
                         m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name : null
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
@@ -7177,15 +8479,16 @@ class CompilerTests(unittest.TestCase):
                   THEN Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name
                   ELSE null
                 END) AS `grandparent_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_fold_traversal_and_optional_traversal(self):
         test_data = test_input_data.fold_traversal_and_optional_traversal()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
                 $optional__0 = (
@@ -7231,8 +8534,8 @@ class CompilerTests(unittest.TestCase):
                         = Animal___1.out("Animal_ParentOf").out("Animal_ParentOf").asList()
                 ),
                 $result = UNIONALL($optional__0, $optional__1)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -7252,9 +8555,9 @@ class CompilerTests(unittest.TestCase):
                         m.Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name : null
                 )
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
-        expected_cypher = '''
+        expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
             OPTIONAL MATCH
@@ -7282,15 +8585,16 @@ class CompilerTests(unittest.TestCase):
                   THEN Animal__in_Animal_ParentOf__in_Animal_ParentOf___1.name
                   ELSE null
                 END) AS `grandparent_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_between_lowering(self):
         test_data = test_input_data.between_lowering()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `animal_name`
             FROM (
@@ -7305,8 +8609,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .filter{it, m ->
                 (
@@ -7318,8 +8622,8 @@ class CompilerTests(unittest.TestCase):
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 animal_name: m.Animal___1.name
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name
             FROM
@@ -7328,22 +8632,23 @@ class CompilerTests(unittest.TestCase):
                 [Animal_1].uuid >= :uuid_lower
                 AND [Animal_1].uuid <= :uuid_upper
                 AND [Animal_1].birthday >= :earliest_modified_date
-        '''
-        expected_cypher = '''
+        """
+        expected_cypher = """
             MATCH (Animal___1:Animal)
                 WHERE (((Animal___1.uuid >= $uuid_lower) AND (Animal___1.uuid <= $uuid_upper))
                         AND (Animal___1.birthday >= $earliest_modified_date))
             RETURN
                 Animal___1.name AS `animal_name`
-        '''
+        """
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_coercion_and_filter_with_tag(self):
         test_data = test_input_data.coercion_and_filter_with_tag()
 
-        expected_match = '''
+        expected_match = """
             SELECT
                 Animal___1.name AS `origin`,
                 Animal__out_Entity_Related___1.name AS `related_name`
@@ -7358,8 +8663,8 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .out('Entity_Related')
@@ -7376,17 +8681,18 @@ class CompilerTests(unittest.TestCase):
                 origin: m.Animal___1.name,
                 related_name: m.Animal__out_Entity_Related___1.name
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_nested_optional_and_traverse(self):
         test_data = test_input_data.nested_optional_and_traverse()
 
-        expected_match = '''
+        expected_match = """
             SELECT EXPAND($result)
             LET
             $optional__0 = (
@@ -7452,8 +8758,8 @@ class CompilerTests(unittest.TestCase):
                 )
             ),
             $result = UNIONALL($optional__0, $optional__1, $optional__2)
-        '''
-        expected_gremlin = '''
+        """
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -7486,8 +8792,8 @@ class CompilerTests(unittest.TestCase):
                         : null
                 )
             ])}
-        '''
-        expected_sql = '''
+        """
+        expected_sql = """
             SELECT
                 [Animal_1].name AS animal_name,
                 [Animal_2].name AS child_name,
@@ -7502,21 +8808,22 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN db_1.schema_1.[Species] AS [Species_1]
                     ON [Animal_3].species = [Species_1].uuid
             WHERE [Species_1].uuid IS NOT NULL OR [Animal_3].parent IS NULL
-        '''
+        """
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_complex_nested_optionals(self):
         test_data = test_input_data.complex_nested_optionals()
 
         # The correct MATCH output is outrageously long, and is stored in a separate file.
-        match_output_file = './complex_nested_optionals_output.sql'
+        match_output_file = "./complex_nested_optionals_output.sql"
         with open(os.path.join(os.path.dirname(__file__), match_output_file)) as f:
             expected_match = f.read()
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
                 .ifThenElse{it.in_Animal_ParentOf == null}{null}{it.in('Animal_ParentOf')}
@@ -7591,18 +8898,19 @@ class CompilerTests(unittest.TestCase):
                     (m.Animal__out_Animal_ParentOf___1 != null) ?
                     m.Animal__out_Animal_ParentOf___1.name : null)
             ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
 
     def test_recursive_field_type_is_subtype_of_parent_field(self):
         """Ensure recursion can occur on an edge assigned to a supertype of the current scope."""
         test_data = test_input_data.recursive_field_type_is_subtype_of_parent_field()
 
-        expected_match = '''
+        expected_match = """
             SELECT BirthEvent__out_Event_RelatedEvent___1.name AS `related_event_name`
             FROM (
                 MATCH {{
@@ -7614,9 +8922,9 @@ class CompilerTests(unittest.TestCase):
                 }}
                 RETURN $matches
             )
-        '''
+        """
 
-        expected_gremlin = '''
+        expected_gremlin = """
             g.V('@class', 'BirthEvent')
             .as('BirthEvent___1')
             .copySplit(_(),_()
@@ -7627,9 +8935,10 @@ class CompilerTests(unittest.TestCase):
             .back('BirthEvent___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 related_event_name: m.BirthEvent__out_Event_RelatedEvent___1.name ])}
-        '''
+        """
         expected_sql = NotImplementedError
         expected_cypher = SKIP_TEST
 
-        check_test_data(self, test_data, expected_match, expected_gremlin, expected_sql,
-                        expected_cypher)
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )

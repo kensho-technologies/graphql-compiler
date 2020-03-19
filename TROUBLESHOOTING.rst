@@ -131,3 +131,18 @@ This error might happen even if you've run
    apt-get install python-mysqldb
 
 because that only installs the interface to MySQL.
+
+Issues with pyodbc
+------------------
+
+If you have any issues installing :Code:`pydobc` when running :code:`pipenv install`, then it might
+mean that you have failed to correctly install the ODBC driver.
+
+Another reason that your `pyodbc` installation might fail is because your python installation
+did not include the required header files. This issue has only affected Ubuntu users so far and
+can be resolved on Ubuntu by running:
+
+.. bash::
+
+    # Please modify command to match the version of python you use for development.
+    sudo apt-get install python3.8-dev

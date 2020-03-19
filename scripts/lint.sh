@@ -28,9 +28,12 @@ done
 # Make sure the current working directory for this script is the root directory.
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
-# Get into the graphql-compiler virtualenv. "pipenv shell" returns exit code 1 if already there,
-# which doesn't matter to us so we avoid crashing the script by adding "|| true".
-pipenv shell || true
+# Assert script is running inside pipenv shell
+if [[ "$VIRTUAL_ENV" == "" ]]
+then
+    echo "Please run pipenv shell first"
+    exit 1
+fi
 
 # Get all python files or directories that need to be linted.
 lintable_locations="."
@@ -53,10 +56,20 @@ isort --check-only --settings-path=setup.cfg --diff --recursive $lintable_locati
 isort_exit_code=$?
 echo -e "\n*** End of isort run; exit: $isort_exit_code ***\n"
 
+echo -e '*** Running black... ***\n'
+black --check --diff .
+black_exit_code=$?
+echo -e "\n*** End of black run; exit: $black_exit_code ***\n"
+
 echo -e '*** Running flake8... ***\n'
 flake8 --config=setup.cfg $lintable_locations
 flake_exit_code=$?
 echo -e "\n*** End of flake8 run, exit: $flake_exit_code ***\n"
+
+echo -e '*** Running mypy... ***\n'
+mypy $lintable_locations
+mypy_exit_code=$?
+echo -e "\n*** End of mypy run, exit: $mypy_exit_code ***\n"
 
 echo -e '\n*** Running pydocstyle... ***\n'
 pydocstyle --config=.pydocstyle $lintable_locations
@@ -73,23 +86,46 @@ pylint $pylint_lintable_locations
 pylint_exit_code=$?
 echo -e "\n*** End of pylint run, exit: $pylint_exit_code ***\n"
 
+echo -e '\n*** Running sphinx-build to test documentation... ***\n'
+# Arguments:
+# -n: Runs in nit-picky mode. Currently, this generates warnings for all missing references.
+# -q: Do not output anything on standard output, only write warnings and errors to standard error.
+# -W: Turn warnings into errors. This means that the build stops at the first warning and
+#     sphinx-build exits with exit status 1.
+# -b <buildername>: Selects a builder. In this case we are using the dummy builder. Note that it
+#                   doesn't produce any output but still needs a build directory parameter.
+# --keep-going: With -W option, keep going processing when getting warnings to the end of build,
+#               and sphinx-build exits with exit status 1.
+# For more info see: https://www.sphinx-doc.org/en/master/man/sphinx-build.html
+sphinx-build -n -q -W -b dummy docs/source/ docs/build/ --keep-going
+sphinx_build_exit_code=$?
+echo -e "\n*** End of sphinx-build, exit: $sphinx_build_exit_code ***\n"
+
 echo -e '\n*** Running bandit... ***\n'
 bandit -r $lintable_locations
 bandit_exit_code=$?
 echo -e "\n*** End of bandit run, exit: $bandit_exit_code ***\n"
 
-if [[ ("$flake_exit_code" != "0") ||
-      ("$pydocstyle_exit_code" != "0") ||
-      ("$pydocstyle_test_exit_code" != "0") ||
-      ("$pylint_exit_code" != "0") ||
-      ("$bandit_exit_code" != "0") ||
-      ("$isort_exit_code" != "0") ]]; then
+if  [[
+        ("$flake_exit_code" != "0") ||
+        ("$pydocstyle_exit_code" != "0") ||
+        ("$pydocstyle_test_exit_code" != "0") ||
+        ("$pylint_exit_code" != "0") ||
+        ("$bandit_exit_code" != "0") ||
+        ("$isort_exit_code" != "0") ||
+        ("$black_exit_code" != "0") ||
+        ("$sphinx_build_exit_code" != "0") ||
+        ("$mypy_exit_code" != "0")
+    ]]; then
     echo -e "\n*** Lint failed. ***\n"
     echo -e "isort exit: $isort_exit_code"
+    echo -e "black exit: $black_exit_code"
     echo -e "flake8 exit: $flake_exit_code"
+    echo -e "mypy exit: $mypy_exit_code"
     echo -e "pydocstyle exit: $pydocstyle_exit_code"
     echo -e "pydocstyle on tests exit: $pydocstyle_test_exit_code"
     echo -e "pylint exit: $pylint_exit_code"
+    echo -e "sphinx-build exit: $sphinx_build_exit_code"
     echo -e "bandit exit: $bandit_exit_code"
     exit 1
 fi

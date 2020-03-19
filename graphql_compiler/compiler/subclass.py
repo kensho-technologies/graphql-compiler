@@ -27,12 +27,12 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
     # A class is a subclass of itself.
     subclass_set = {
         classname: {classname}
-        for classname, graphql_type in six.iteritems(schema.get_type_map())
+        for classname, graphql_type in six.iteritems(schema.type_map)
         if isinstance(graphql_type, (GraphQLInterfaceType, GraphQLObjectType))
     }
 
     # A class is a subclass of interfaces it implements.
-    for classname, graphql_type in six.iteritems(schema.get_type_map()):
+    for classname, graphql_type in six.iteritems(schema.type_map):
         if isinstance(graphql_type, GraphQLObjectType):
             for interface in graphql_type.interfaces:
                 subclass_set[interface.name].add(classname)
@@ -43,7 +43,7 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
             for subclass in equivalent_type.types:
                 subclass_set[graphql_type.name].add(subclass.name)
         else:
-            raise AssertionError(u'Unexpected type {}'.format(type(equivalent_type)))
+            raise AssertionError(u"Unexpected type {}".format(type(equivalent_type)))
 
     # Note that the inheritance structure in the GraphQL schema is already transitive. Union types
     # encompass all of the object type subclasses of their equivalent object type and cannot

@@ -9,6 +9,7 @@ from ..ir_lowering_common import common
 
 def _remove_output_context_field_existence(ir_blocks, query_metadata_table):
     """Convert ContextFieldExistence in ConstructResult blocks to TrueLiteral."""
+
     def visitor_fn(expression):
         """Convert ContextFieldExistence expressions to TrueLiteral."""
         if isinstance(expression, expressions.ContextFieldExistence):
@@ -33,10 +34,10 @@ def _find_non_null_columns(schema_info, query_metadata_table):
     for location, location_info in query_metadata_table.registered_locations:
         for child_location in query_metadata_table.get_child_locations(location):
             if isinstance(child_location, FoldScopeLocation):
-                raise NotImplementedError()
+                continue
 
             edge_direction, edge_name = get_edge_direction_and_name(child_location.query_path[-1])
-            vertex_field_name = '{}_{}'.format(edge_direction, edge_name)
+            vertex_field_name = "{}_{}".format(edge_direction, edge_name)
             edge = schema_info.join_descriptors[location_info.type.name][vertex_field_name]
 
             # The value of the column used to join to this table is an indicator of whether
@@ -65,32 +66,44 @@ class ContextColumn(expressions.Expression):
     def validate(self):
         """Validate that the ContextColumn is correctly representable."""
         if not isinstance(self._vertex_query_path, tuple):
-            raise AssertionError(u'vertex_query_path was expected to be a tuple, but was {}: {}'
-                                 .format(type(self._vertex_query_path), self._vertex_query_path))
+            raise AssertionError(
+                u"vertex_query_path was expected to be a tuple, but was {}: {}".format(
+                    type(self._vertex_query_path), self._vertex_query_path
+                )
+            )
 
         if not isinstance(self._column_name, six.string_types):
-            raise AssertionError(u'column_name was expected to be a string, but was {}: {}'
-                                 .format(type(self._column_name), self._column_name))
+            raise AssertionError(
+                u"column_name was expected to be a string, but was {}: {}".format(
+                    type(self._column_name), self._column_name
+                )
+            )
 
     def to_match(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'ContextColumns are not used during the query emission process '
-                             u'in MATCH, so this is a bug. This function should not be called.')
+        raise AssertionError(
+            u"ContextColumns are not used during the query emission process "
+            u"in MATCH, so this is a bug. This function should not be called."
+        )
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'ContextColumns are not used during the query emission process '
-                             u'in Gremlin, so this is a bug. This function should not be called.')
+        raise AssertionError(
+            u"ContextColumns are not used during the query emission process "
+            u"in Gremlin, so this is a bug. This function should not be called."
+        )
 
     def to_cypher(self):
         """Not implemented, should not be used."""
-        raise AssertionError(u'ContextColumns are not used during the query emission process '
-                             u'in cypher, so this is a bug. This function should not be called.')
+        raise AssertionError(
+            u"ContextColumns are not used during the query emission process "
+            u"in cypher, so this is a bug. This function should not be called."
+        )
 
-    def to_sql(self, aliases, current_alias):
+    def to_sql(self, dialect, aliases, current_alias):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         self.validate()
-        return aliases[self._vertex_query_path].c[self._column_name]
+        return aliases[(self._vertex_query_path, None)].c[self._column_name]
 
 
 def _lower_sql_context_field_existence(schema_info, ir_blocks, query_metadata_table):
@@ -104,9 +117,8 @@ def _lower_sql_context_field_existence(schema_info, ir_blocks, query_metadata_ta
 
         query_path = expression.location.query_path
         return expressions.BinaryComposition(
-            u'!=',
-            ContextColumn(query_path, non_null_columns[query_path]),
-            expressions.NullLiteral)
+            u"!=", ContextColumn(query_path, non_null_columns[query_path]), expressions.NullLiteral
+        )
 
     return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
 

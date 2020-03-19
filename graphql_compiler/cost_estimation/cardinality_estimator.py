@@ -1,11 +1,16 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
+from typing import Any, Dict
 
-from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import (
-    INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION, FoldScopeLocation, Location,
-    get_edge_direction_and_name
+    INBOUND_EDGE_DIRECTION,
+    OUTBOUND_EDGE_DIRECTION,
+    FoldScopeLocation,
+    Location,
+    get_edge_direction_and_name,
 )
+from ..compiler.metadata import QueryMetadataTable
+from ..schema.schema_info import QueryPlanningSchemaInfo
 from .filter_selectivity_utils import adjust_counts_for_filters
 
 
@@ -64,7 +69,7 @@ def _get_last_edge_direction_and_name_to_location(location):
     elif isinstance(location, FoldScopeLocation):
         edge_direction, edge_name = location.fold_path[-1]
     else:
-        raise AssertionError(u'Unexpected location encountered: {}'.format(location))
+        raise AssertionError(u"Unexpected location encountered: {}".format(location))
     return edge_direction, edge_name
 
 
@@ -79,13 +84,16 @@ def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_lo
         parent_base_class_name = edge_element.base_in_connection
         child_base_class_name = edge_element.base_out_connection
     else:
-        raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
-                             u'Found: edge {} with direction {}'.format(edge_name, edge_direction))
+        raise AssertionError(
+            u"Expected edge direction to be either inbound or outbound."
+            u"Found: edge {} with direction {}".format(edge_name, edge_direction)
+        )
     return parent_base_class_name, child_base_class_name
 
 
-def _query_statistics_for_vertex_edge_vertex_count(statistics, query_metadata,
-                                                   parent_location, child_location):
+def _query_statistics_for_vertex_edge_vertex_count(
+    statistics, query_metadata, parent_location, child_location
+):
     """Query statistics for the count of edges connecting parent and child_location vertices.
 
     Given a parent location and a child location, there are three constraints on each edge directly
@@ -122,16 +130,20 @@ def _query_statistics_for_vertex_edge_vertex_count(statistics, query_metadata,
         outbound_vertex_name = parent_name_from_location
         inbound_vertex_name = child_name_from_location
     else:
-        raise AssertionError(u'Expected edge direction to be either inbound or outbound.'
-                             u'Found: edge {} with direction {}'.format(edge_name, edge_direction))
+        raise AssertionError(
+            u"Expected edge direction to be either inbound or outbound."
+            u"Found: edge {} with direction {}".format(edge_name, edge_direction)
+        )
 
     query_result = statistics.get_vertex_edge_vertex_count(
-        outbound_vertex_name, edge_name, inbound_vertex_name)
+        outbound_vertex_name, edge_name, inbound_vertex_name
+    )
     return query_result
 
 
 def _estimate_vertex_edge_vertex_count_using_class_count(
-        schema_info, query_metadata, parent_location, child_location):
+    schema_info, query_metadata, parent_location, child_location
+):
     """Estimate the count of edges connecting parent_location and child_location vertices.
 
     Given a parent location of class A and a child location of class B, this function estimates the
@@ -158,32 +170,34 @@ def _estimate_vertex_edge_vertex_count_using_class_count(
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
-    parent_base_class_name, child_base_class_name = (
-        _get_base_class_names_of_parent_and_child_from_edge(
-            schema_info.schema_graph, child_location))
+    (
+        parent_base_class_name,
+        child_base_class_name,
+    ) = _get_base_class_names_of_parent_and_child_from_edge(
+        schema_info.schema_graph, child_location
+    )
 
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division
     #
     # Scale edge_counts if child_location's type is a subclass of the edge's endpoint type.
     if child_name_from_location != child_base_class_name:
-        edge_counts *= (
-            float(schema_info.statistics.get_class_count(child_name_from_location)) /
-            schema_info.statistics.get_class_count(child_base_class_name)
-        )
+        edge_counts *= float(
+            schema_info.statistics.get_class_count(child_name_from_location)
+        ) / schema_info.statistics.get_class_count(child_base_class_name)
     # Scale edge_counts if parent_location's type is a subclass of the edge's endpoint type.
     if parent_name_from_location != parent_base_class_name:
-        edge_counts *= (
-            float(schema_info.statistics.get_class_count(parent_name_from_location)) /
-            schema_info.statistics.get_class_count(parent_base_class_name)
-        )
+        edge_counts *= float(
+            schema_info.statistics.get_class_count(parent_name_from_location)
+        ) / schema_info.statistics.get_class_count(parent_base_class_name)
     # pylint: enable=old-division
 
     return edge_counts
 
 
-def _estimate_edges_to_children_per_parent(schema_info, query_metadata, parameters,
-                                           parent_location, child_location):
+def _estimate_edges_to_children_per_parent(
+    schema_info, query_metadata, parameters, parent_location, child_location
+):
     """Estimate the count of edges per parent_location that connect to child_location vertices.
 
     Given a parent location of type A and child location of type B, assume all AB edges are
@@ -208,7 +222,8 @@ def _estimate_edges_to_children_per_parent(schema_info, query_metadata, paramete
 
     if edge_counts is None:
         edge_counts = _estimate_vertex_edge_vertex_count_using_class_count(
-            schema_info, query_metadata, parent_location, child_location)
+            schema_info, query_metadata, parent_location, child_location
+        )
 
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     # Count the number of parents, over which we assume the edges are uniformly distributed.
@@ -232,14 +247,15 @@ def _estimate_edges_to_children_per_parent(schema_info, query_metadata, paramete
     child_name_from_location = query_metadata.get_location_info(child_location).type.name
     child_filters = query_metadata.get_filter_infos(child_location)
     child_counts_per_parent = adjust_counts_for_filters(
-        schema_info, child_filters, parameters, child_name_from_location,
-        child_counts_per_parent)
+        schema_info, child_filters, parameters, child_name_from_location, child_counts_per_parent
+    )
 
     return child_counts_per_parent
 
 
-def _estimate_subexpansion_cardinality(schema_info, query_metadata, parameters,
-                                       parent_location, child_location):
+def _estimate_subexpansion_cardinality(
+    schema_info, query_metadata, parameters, parent_location, child_location
+):
     """Estimate the cardinality associated with the subexpansion of a child_location vertex.
 
     Args:
@@ -259,10 +275,12 @@ def _estimate_subexpansion_cardinality(schema_info, query_metadata, parameters,
         (expected number of B-vertices) * (expected number of result sets per B-vertex).
     """
     child_counts_per_parent = _estimate_edges_to_children_per_parent(
-        schema_info, query_metadata, parameters, parent_location, child_location)
+        schema_info, query_metadata, parameters, parent_location, child_location
+    )
 
     results_per_child = _estimate_expansion_cardinality(
-        schema_info, query_metadata, parameters, child_location)
+        schema_info, query_metadata, parameters, child_location
+    )
 
     subexpansion_cardinality = child_counts_per_parent * results_per_child
 
@@ -296,81 +314,46 @@ def _estimate_expansion_cardinality(schema_info, query_metadata, parameters, cur
         # each subexpansion (e.g. If we expect each current vertex to have 2 children of type A and
         # 3 children of type B, we'll return 6 distinct result sets per current vertex).
         subexpansion_cardinality = _estimate_subexpansion_cardinality(
-            schema_info, query_metadata, parameters, current_location, child_location)
+            schema_info, query_metadata, parameters, current_location, child_location
+        )
         expansion_cardinality *= subexpansion_cardinality
     return expansion_cardinality
 
 
-def estimate_query_result_cardinality(schema_info, graphql_query, parameters):
+def estimate_query_result_cardinality(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+    parameters: Dict[str, Any],
+) -> float:
     """Estimate the cardinality of a GraphQL query's result using database statistics.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        graphql_query: string, a valid GraphQL query
+        query_metadata: info on locations, inputs, outputs, and tags in the query
         parameters: dict, parameters with which query will be executed.
 
     Returns:
         float, expected query result cardinality. Equal to the number of root vertices multiplied by
         the expected number of result sets per full expansion of a root vertex.
     """
-    query_metadata = graphql_to_ir(
-        schema_info.schema, graphql_query, type_equivalence_hints=schema_info.type_equivalence_hints
-    ).query_metadata_table
-
     root_location = query_metadata.root_location
 
     # First, count the vertices corresponding to the root location that pass relevant filters
     root_name = query_metadata.get_location_info(root_location).type.name
     root_counts = schema_info.statistics.get_class_count(root_name)
     root_counts = adjust_counts_for_filters(
-        schema_info, query_metadata.get_filter_infos(root_location), parameters,
-        root_name, root_counts)
+        schema_info,
+        query_metadata.get_filter_infos(root_location),
+        parameters,
+        root_name,
+        root_counts,
+    )
 
     # Next, find the number of expected result sets per root vertex when fully expanded
     results_per_root = _estimate_expansion_cardinality(
-        schema_info, query_metadata, parameters, root_location)
+        schema_info, query_metadata, parameters, root_location
+    )
 
     expected_query_result_cardinality = root_counts * results_per_root
 
     return expected_query_result_cardinality
-
-
-def estimate_number_of_pages(schema_info, graphql_query, params, page_size):
-    """Estimate how many pages of results will be generated for a given query.
-
-    Using the cardinality estimator, we generate an estimate for the query result cardinality i.e.
-    the number of result rows, then divide (rounding up) by the page_size to get the approximate
-    number of pages that the query will produce.
-    For example, if a query were estimated to return 12000 result rows, and the desired page size is
-    5000, then the query can be divided into ceil(12000/5000)=3 pages, each with a result size below
-    (or equal to) 5000 results.
-
-    Args:
-        schema_info: QueryPlanningSchemaInfo
-        graphql_query: str, valid GraphQL query to be estimated.
-        params: dict, parameters for the given query.
-        page_size: int, desired number of result rows per page.
-
-    Returns:
-        int, estimated number of pages if the query were executed.
-
-    Raises:
-        ValueError if page_size is below 1.
-    """
-    if page_size < 1:
-        raise ValueError(u'Could not estimate number of pages for query {}'
-                         u' with page size lower than 1: {} {}'
-                         .format(graphql_query, page_size, params))
-
-    result_size = estimate_query_result_cardinality(schema_info, graphql_query, params)
-    if result_size < 0.0:
-        raise AssertionError(u'Received negative estimate {} for cardinality of query {}: {}'
-                             .format(result_size, graphql_query, params))
-
-    # Since using a // b returns the fraction rounded down, we instead use (a + b - 1) // b, which
-    # returns the fraction value rounded up, which is the desired functionality.
-    num_pages = int((result_size + page_size - 1) // page_size)
-    if num_pages == 0:
-        num_pages = 1
-
-    return num_pages

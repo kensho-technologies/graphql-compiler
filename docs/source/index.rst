@@ -48,11 +48,6 @@ Directly compiled to the target database language
    Furthermore, by using schema information from the target database, the compiler is able to
    extensively validate queries, often more so than the DB-API, (e.g. :code:`pymssql`).
 
-Designed for cross-database querying
-   Since the query language always has the same semantics regardless of the underlying database,
-   we have been able to build a :doc:`schema stitching <advanced_features/schema_stitching>` system
-   that allows for seamless cross-database querying.
-
 .. _getting-started:
 
 Getting Started
@@ -87,6 +82,8 @@ In the snippet above the are two pieces of schema info:
 - :code:`schema` which represents the database using GraphQL's type system.
 - :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
   (see :doc:`schema types <language_specification/schema_types>` for more info).
+
+When compiling, these will need to be bundled in a :code:`CommonSchemaInfo` object.
 
 Besides representing the database schema, a GraphQL schema includes other metadata such as a list
 of custom scalar types used by the compiler. We'll talk more about this metadata in
@@ -194,6 +191,7 @@ types of database backends:
 
 - :doc:`OrientDB <supported_databases/orientdb>`
 - :doc:`SQL Databases <supported_databases/sql>`, including SQL Server, Postgres and more.
+- :doc:`Neo4j/Redisgraph <supported_databases/neo4j_and_redisgraph>`
 
 .. toctree::
    :caption: Supported Databases
@@ -201,27 +199,47 @@ types of database backends:
 
    OrientDB <supported_databases/orientdb>
    SQL <supported_databases/sql>
+   Neo4j/Redisgraph <supported_databases/neo4j_and_redisgraph>
 
 Advanced Features
 ~~~~~~~~~~~~~~~~~
 
 To learn more about the advanced features in the GraphQL compiler see:
 
-- :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
+- :doc:`Macro System <advanced_features/macro_system>` to learn how to write "macro edges",
   which allow users to define new edges that become part of the GraphQL schema, using existing
   edges as building blocks.
-- :doc:`Schema Stitching <advanced_features/schema_stitching>`, to learn how to stitch-schemas
-  together and execute cross-database queries.
-- :doc:`Schema Transformations <advanced_features/schema_transformations>`, to learn how to
-  rename objects and prevent schema collisions when stitching schemas.
-- :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
+- :doc:`Schema Graph <advanced_features/schema_graph>` for an utility that makes it
   easy to explore the schema of a database, including the databases indexes.
+- :doc:`Additional Tools <advanced_features/additional_tools>` for a list of additional tools
+  included in the package, including a query pretty printer.
 
 .. toctree::
    :caption: Advanced Features
    :hidden:
 
    Macro System <advanced_features/macro_system>
-   Schema Stitching <advanced_features/schema_stitching>
-   Schema Transformations <advanced_features/schema_transformations>
    Schema Graph <advanced_features/schema_graph>
+   Additional Tools <advanced_features/additional_tools>
+
+About the GraphQL Compiler
+~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+To learn more about the GraphQL project see:
+
+- :doc:`Contributing <about/contributing>` for instructions on how you can contribute.
+- :doc:`Code of Conduct <about/code_of_conduct>` for the contributor code of conduct.
+- :doc:`Changelog <about/changelog>` for a history of changes.
+- :doc:`FAQ <about/faq>` for a list of frequently asked questions.
+- :doc:`Execution Model <about/execution_model>` to learn more about the design principles guiding
+  the development of the compiler and the guarantees the compiler provides.
+
+.. toctree::
+   :caption: About the GraphQL Compiler
+   :hidden:
+
+   Contributing <about/contributing>
+   Code of Conduct <about/code_of_conduct>
+   Changelog <about/changelog>
+   FAQ <about/faq>
+   Execution Model <about/execution_model>

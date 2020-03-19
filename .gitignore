@@ -54,6 +54,9 @@ dist/
 # Jupyter notebook checkpoint files
 **/.ipynb_checkpoints/
 
+# Emacs lockfiles
+.#*
+
 # Put anything in this directory to explicitly have it excluded.
 # Jupyter notebook files for local prototyping are a good use case.
 localdata/
