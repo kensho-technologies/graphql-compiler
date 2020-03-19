@@ -19,9 +19,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_empty_string(self):
         """Test empty list is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -43,13 +44,13 @@ class MssqlXmlPathTests(TestCase):
 
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
         }
         """
-        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|",}]
+        query_output = [{"child_names": "|Animal 1|Animal 2||Animal 3|",}]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True
@@ -64,15 +65,16 @@ class MssqlXmlPathTests(TestCase):
     def test_covert_none_result(self):
         """Test "~" is properly decoded to None.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
         }
         """
-        query_output = [{"child_names": "~|Animal 1|~",}]
+        query_output = [{"child_names": "|~|Animal 1|~",}]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True
@@ -87,9 +89,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_caret_encodings(self):
         """Test pipe, tilde, and carets are correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -97,7 +100,7 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_names": "name with a ^e (caret)|"
+                "child_names": "|name with a ^e (caret)|"
                 "name with a ^d (pipe)|"
                 "name with a ^n (tilde)|"
                 "^emany^e^dcaret^nescaped^n^n^dname^e",
@@ -126,9 +129,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_ampersand_encodings(self):
         """Test ampersand, less than, and greater than are correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -136,7 +140,7 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_names": "name with a &amp; (ampersand)|"
+                "child_names": "|name with a &amp; (ampersand)|"
                 "name with a &gt; (greater than)|"
                 "name with a &lt; (less than)|"
                 "&amp;many&amp;&gt;ampersand&lt;escaped&lt;&lt;&gt;name&amp;",
@@ -165,9 +169,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_hex_encodings(self):
         """Test HTML hex encodings are properly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -175,7 +180,7 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_names": "name with a &#x06; (acknowledge)|"
+                "child_names": "|name with a &#x06; (acknowledge)|"
                 "&#x0B;many&#x06;hex&#x0F;&#x07;name&#x08;",
             }
         ]
@@ -195,15 +200,16 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_basic_decimal(self):
         """Test basic XML path encoding for decimals is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     net_worth @output(out_name: "child_net_worths")
                 }
             }
         }
         """
-        query_output = [{"child_net_worths": "500|1000|400|~",}]
+        query_output = [{"child_net_worths": "|500|1000|400|~",}]
         output_metadata = {
             "child_net_worths": OutputMetadata(
                 type=GraphQLList(GraphQLDecimal), optional=False, folded=True
@@ -218,15 +224,16 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_basic_date(self):
         """Test basic XML path encoding for dates is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     birthday @output(out_name: "child_birthdays")
                 }
             }
         }
         """
-        query_output = [{"child_birthdays": "2020-01-01|2000-02-29|~"}]
+        query_output = [{"child_birthdays": "|2020-01-01|2000-02-29|~"}]
         output_metadata = {
             "child_birthdays": OutputMetadata(
                 type=GraphQLList(GraphQLDate), optional=False, folded=True
@@ -243,16 +250,17 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_basic_datetime(self):
         """Test basic XML path encoding for datetimes is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     datetime_field @output(out_name: "child_datetime_fields")
                 }
             }
         }
         """
         query_output = [
-            {"child_datetime_fields": "2020-01-01T05:45:00+04:00|2000-02-29T13:02:27.0018349Z|~"}
+            {"child_datetime_fields": "|2020-01-01T05:45:00+04:00|2000-02-29T13:02:27.0018349Z|~"}
         ]
         output_metadata = {
             "child_datetime_fields": OutputMetadata(
@@ -280,15 +288,16 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_complex(self):
         """Test multiple folds, outputs, and types are correctly decoded.
 
-        Note that multiple outputs inside a fold are not yet implemented.
+        Example query for the given results:
+            - Note that multiple outputs inside a fold are not yet implemented.
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     birthday @output(out_name: "child_birthdays")
                     net_worth @output(out_name: "child_net_worths")
                     name @output(out_name: "child_names")
                 }
-                out_Animal_ParentOf @fold{
+                out_Animal_ParentOf @fold {
                     birthday @output(out_name: "parent_birthdays")
                     net_worth @output(out_name: "parent_net_worths")
                     name @output(out_name: "parent_names")
@@ -298,9 +307,9 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_birthdays": "2020-01-01|2000-02-29|~",
-                "child_net_worths": "200|~|321",
-                "child_names": "^ecomplex&amp;^d^nname&#x06;|~|simple name",
+                "child_birthdays": "|2020-01-01|2000-02-29|~",
+                "child_net_worths": "|200|~|321",
+                "child_names": "|^ecomplex&amp;^d^nname&#x06;|~|simple name",
                 "parent_birthdays": "",
                 "parent_net_worths": "",
                 "parent_names": "",
@@ -340,3 +349,25 @@ class MssqlXmlPathTests(TestCase):
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
+
+    def test_convert_invalid_result(self):
+        """Test invalid result throws error.
+
+        Example query for the given results:
+        {
+            Animal {
+                in_Animal_ParentOf @fold {
+                    name @output(out_name: "child_names")
+                }
+            }
+        }
+        """
+        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|",}]
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
+
+        with self.assertRaises(AssertionError):
+            post_process_mssql_folds(query_output, output_metadata)
