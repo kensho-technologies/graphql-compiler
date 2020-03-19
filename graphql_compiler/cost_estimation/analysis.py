@@ -272,7 +272,6 @@ def get_pagination_capacities(
     fields_eligible_for_pagination: Set[PropertyPath],
     field_value_intervals: Dict[PropertyPath, Interval[Any]],
     distinct_result_set_estimates: Dict[VertexPath, float],
-    parameters: Dict[str, Any],
 ) -> Dict[PropertyPath, int]:
     """Get the pagination capacity for each eligible pagination field.
 
@@ -287,7 +286,6 @@ def get_pagination_capacities(
         types: the type at each node
         field_value_intervals: see get_field_value_intervals
         distinct_result_set_estimates: see get_distinct_result_set_estimates
-        parameters: the query parameters
 
     Returns:
         the pagination capacity of each PropertyPath
@@ -422,7 +420,6 @@ class QueryPlanningAnalysis:
             self.fields_eligible_for_pagination,
             self.field_value_intervals,
             self.distinct_result_set_estimates,
-            self.ast_with_parameters.parameters,
         )
 
 

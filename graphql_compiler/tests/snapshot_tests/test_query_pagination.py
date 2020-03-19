@@ -1532,7 +1532,8 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000000000000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={
+            class_counts,
+            field_quantiles={
                 ("Species", "limbs"): list(i for i in range(0, 101, 10) for _ in range(10000))
             },
         )
@@ -1545,15 +1546,15 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
                 limbs @filter(op_name: "between", value: ["$limbs_lower", "$limbs_upper"])
             }
-        }""", {
-            "limbs_lower": 10,
-            "limbs_upper": 14,
-        })
+        }""",
+            {"limbs_lower": 10, "limbs_upper": 14,},
+        )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 10)
         first = first_page_and_remainder.one_page
@@ -1576,7 +1577,8 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000000000000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={
+            class_counts,
+            field_quantiles={
                 ("Species", "limbs"): list(i for i in range(0, 101, 10) for _ in range(10000))
             },
         )
@@ -1589,15 +1591,15 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
                 limbs @filter(op_name: "between", value: ["$limbs_lower", "$limbs_upper"])
             }
-        }""", {
-            "limbs_lower": 10,
-            "limbs_upper": 14,
-        })
+        }""",
+            {"limbs_lower": 10, "limbs_upper": 14,},
+        )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 10)
         first = first_page_and_remainder.one_page
