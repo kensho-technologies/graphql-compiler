@@ -31,8 +31,9 @@ def _mssql_xml_path_string_to_list(
     # Remove the "|" from the first result in the string representation of the list.
     if xml_path_result[0] != delimiter:
         raise AssertionError(
-            f"Unexpected fold result. All XML path array aggregated lists must start with a '|'. "
-            f"Received a result beginging with a {xml_path_result[0]}: {xml_path_result}"
+            f"Unexpected fold result. All XML path array aggregated lists must start with a "
+            f"'{delimiter}'. Received a result beginning with '{xml_path_result[0]}': "
+            f"{xml_path_result}"
         )
     xml_path_result = xml_path_result[1:]
 
