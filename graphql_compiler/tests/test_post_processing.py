@@ -19,9 +19,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_empty_string(self):
         """Test empty list is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -43,7 +44,7 @@ class MssqlXmlPathTests(TestCase):
 
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -64,9 +65,10 @@ class MssqlXmlPathTests(TestCase):
     def test_covert_none_result(self):
         """Test "~" is properly decoded to None.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -87,9 +89,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_caret_encodings(self):
         """Test pipe, tilde, and carets are correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -126,9 +129,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_ampersand_encodings(self):
         """Test ampersand, less than, and greater than are correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -165,9 +169,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_hex_encodings(self):
         """Test HTML hex encodings are properly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
@@ -195,9 +200,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_basic_decimal(self):
         """Test basic XML path encoding for decimals is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     net_worth @output(out_name: "child_net_worths")
                 }
             }
@@ -218,9 +224,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_basic_date(self):
         """Test basic XML path encoding for dates is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     birthday @output(out_name: "child_birthdays")
                 }
             }
@@ -243,9 +250,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_basic_datetime(self):
         """Test basic XML path encoding for datetimes is correctly decoded.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     datetime_field @output(out_name: "child_datetime_fields")
                 }
             }
@@ -280,15 +288,16 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_complex(self):
         """Test multiple folds, outputs, and types are correctly decoded.
 
-        Note that multiple outputs inside a fold are not yet implemented.
+        Example query for the given results:
+            - Note that multiple outputs inside a fold are not yet implemented.
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     birthday @output(out_name: "child_birthdays")
                     net_worth @output(out_name: "child_net_worths")
                     name @output(out_name: "child_names")
                 }
-                out_Animal_ParentOf @fold{
+                out_Animal_ParentOf @fold {
                     birthday @output(out_name: "parent_birthdays")
                     net_worth @output(out_name: "parent_net_worths")
                     name @output(out_name: "parent_names")
@@ -344,9 +353,10 @@ class MssqlXmlPathTests(TestCase):
     def test_convert_invalid_result(self):
         """Test invalid result throws error.
 
+        Example query for the given results:
         {
             Animal {
-                in_Animal_ParentOf @fold{
+                in_Animal_ParentOf @fold {
                     name @output(out_name: "child_names")
                 }
             }
