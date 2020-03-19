@@ -233,7 +233,8 @@ def get_selectivities(
     for vertex_path, vertex_type in types.items():
         vertex_type_name = vertex_type.name
         filter_infos = filters[vertex_path]
-        # TODO use analysis.field_value_intervals inside this method instead of recomputing it
+        # TODO(bojanserafimov) use analysis.field_value_intervals
+        #                      inside this method instead of recomputing it
         selectivity = get_selectivity_of_filters_at_vertex(
             schema_info, filter_infos, parameters, vertex_type_name
         )
