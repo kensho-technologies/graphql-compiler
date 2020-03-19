@@ -9,7 +9,7 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import ast_to_ir
-from ..compiler.helpers import Location, FoldScopeLocation, get_edge_direction_and_name
+from ..compiler.helpers import FoldScopeLocation, Location, get_edge_direction_and_name
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -23,7 +23,7 @@ from ..schema import is_meta_field
 from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
     Selectivity,
-    adjust_counts_for_filters,
+    adjust_counts_with_selectivity,
     filter_uses_only_runtime_parameters,
     get_integer_interval_for_filters_on_field,
     get_selectivity_of_filters_at_vertex,
@@ -63,9 +63,10 @@ def _get_location_vertex_path(location):
         return location.query_path
     elif isinstance(location, FoldScopeLocation):
         return location.base_location.query_path + tuple(
-            "{}_{}".format(direction, name) for direction, name in location.fold_path)
+            "{}_{}".format(direction, name) for direction, name in location.fold_path
+        )
     else:
-        raise AssertionError(u"Unexpected location encountered: {}".format(location))
+        raise AssertionError("Unexpected location encountered: {}".format(location))
 
 
 def get_types(
@@ -240,7 +241,7 @@ def get_selectivities(
 def get_distinct_result_set_estimates(
     schema_info: QueryPlanningSchemaInfo,
     types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
-    filters: Dict[VertexPath, Set[FilterInfo]],
+    selectivities: Dict[VertexPath, Selectivity],
     parameters: Dict[str, Any],
 ) -> Dict[VertexPath, float]:
     """Map each VertexPath in the query to its distinct result set estimate.
@@ -265,11 +266,10 @@ def get_distinct_result_set_estimates(
     distinct_result_set_estimates = {}
     for vertex_path, vertex_type in types.items():
         vertex_type_name = vertex_type.name
-        filter_infos = filters[vertex_path]
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
         # TODO use analysis.selectivities instead of recomputing this
-        distinct_result_set_estimates[vertex_path] = adjust_counts_for_filters(
-            schema_info, filter_infos, parameters, vertex_type_name, class_count
+        distinct_result_set_estimates[vertex_path] = adjust_counts_with_selectivity(
+            class_count, selectivities[vertex_path]
         )
 
     single_destination_traversals = set()
@@ -407,6 +407,7 @@ class QueryPlanningAnalysis:
     @cached_property
     def cardinality_estimate(self) -> float:
         """Return the cardinality estimate for this query."""
+        # TODO use selectivity analysis pass instead of recomputing it
         return estimate_query_result_cardinality(
             self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
         )
@@ -452,7 +453,7 @@ class QueryPlanningAnalysis:
     def distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
         """Return the distinct result set estimates for this query."""
         return get_distinct_result_set_estimates(
-            self.schema_info, self.types, self.filters, self.ast_with_parameters.parameters
+            self.schema_info, self.types, self.selectivities, self.ast_with_parameters.parameters
         )
 
     @cached_property

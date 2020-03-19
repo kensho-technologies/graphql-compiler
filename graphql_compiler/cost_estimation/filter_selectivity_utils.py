@@ -450,6 +450,15 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
     return combined_selectivity
 
 
+def adjust_counts_with_selectivity(counts, selectivity):
+    adjusted_counts = counts
+    if _is_absolute(selectivity):
+        adjusted_counts = selectivity.value
+    elif _is_fractional(selectivity):
+        adjusted_counts *= selectivity.value
+    return adjusted_counts
+
+
 def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_name, counts):
     """Adjust result counts for filters on a given location by calculating selectivities.
 
@@ -466,10 +475,4 @@ def adjust_counts_for_filters(schema_info, filter_infos, parameters, location_na
     combined_selectivity = get_selectivity_of_filters_at_vertex(
         schema_info, filter_infos, parameters, location_name
     )
-    adjusted_counts = counts
-    if _is_absolute(combined_selectivity):
-        adjusted_counts = combined_selectivity.value
-    elif _is_fractional(combined_selectivity):
-        adjusted_counts *= combined_selectivity.value
-
-    return adjusted_counts
+    return adjust_counts_with_selectivity(counts, combined_selectivity)
