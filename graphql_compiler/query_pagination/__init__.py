@@ -92,15 +92,18 @@ def paginate_query_ast(
         if len(pagination_plan.vertex_partitions) == 0:
             pass
         elif len(pagination_plan.vertex_partitions) == 1:
+            plan_vertex_partition = pagination_plan.vertex_partitions[0]
             parameter_generator = generate_parameters_for_vertex_partition(
                 query_analysis.schema_info,
                 query_analysis.ast_with_parameters,
-                pagination_plan.vertex_partitions[0],
+                plan_vertex_partition,
             )
-            first_param = next(parameter_generator, None)
-            if first_param:
+
+            sentinel = object()
+            first_param = next(parameter_generator, sentinel)
+            if first_param is not sentinel:
                 page_query, remainder_query = generate_parameterized_queries(
-                    query_analysis, pagination_plan.vertex_partitions[0], first_param,
+                    query_analysis, plan_vertex_partition, first_param,
                 )
                 remainder_queries = (remainder_query,)
         else:
