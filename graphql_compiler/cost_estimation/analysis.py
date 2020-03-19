@@ -9,7 +9,12 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import ast_to_ir
-from ..compiler.helpers import FoldScopeLocation, Location, get_edge_direction_and_name
+from ..compiler.helpers import (
+    BaseLocation,
+    FoldScopeLocation,
+    Location,
+    get_edge_direction_and_name,
+)
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -58,7 +63,11 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
-def _get_location_vertex_path(location):
+def _get_location_vertex_path(location: BaseLocation) -> VertexPath:
+    """Get the VertexPath for a BaseLocation pointing at a vertex."""
+    if location.field is not None:
+        raise AssertionError(f"Location {location} represents a field.")
+
     if isinstance(location, Location):
         return location.query_path
     elif isinstance(location, FoldScopeLocation):
@@ -89,16 +98,7 @@ def get_types(
 
 
 def get_filters(query_metadata: QueryMetadataTable) -> Dict[VertexPath, Set[FilterInfo]]:
-    """Get the filters at each VertexPath.
-
-    Fold scopes are not considered.
-
-    Args:
-        query_metadata: info on locations, inputs, outputs, and tags in the query
-
-    Returns:
-        dict mapping nodes to their filters
-    """
+    """Get the filters at each VertexPath."""
     filters: Dict[VertexPath, Set[FilterInfo]] = {}
     for location, _ in query_metadata.registered_locations:
         filter_infos = query_metadata.get_filter_infos(location)
@@ -108,10 +108,13 @@ def get_filters(query_metadata: QueryMetadataTable) -> Dict[VertexPath, Set[Filt
 
 
 def get_fold_scope_roots(query_metadata: QueryMetadataTable) -> Dict[VertexPath, VertexPath]:
+    """Map each VertexPath in the query that's inside a fold to the VertexPath of the fold."""
     fold_scope_roots: Dict[VertexPath, VertexPath] = {}
     for location, _ in query_metadata.registered_locations:
         if isinstance(location, FoldScopeLocation):
-            fold_scope_roots[_get_location_vertex_path(location)] = location.base_location
+            fold_scope_roots[
+                _get_location_vertex_path(location)
+            ] = location.base_location.query_path
     return fold_scope_roots
 
 
@@ -121,7 +124,6 @@ def get_single_field_filters(
     """Find the single field filters for each field.
 
     Filters that apply to multiple fields, like name_or_alias, are ignored.
-    Filters inside fold scopes are not considered.
 
     Args:
         filters: the set of filters at each node
@@ -226,6 +228,7 @@ def get_selectivities(
     filters: Dict[VertexPath, Set[FilterInfo]],
     parameters: Dict[str, Any],
 ) -> Dict[VertexPath, Selectivity]:
+    """Get the combined selectivities of filters at each vertex."""
     selectivities = {}
     for vertex_path, vertex_type in types.items():
         vertex_type_name = vertex_type.name
@@ -418,6 +421,7 @@ class QueryPlanningAnalysis:
 
     @cached_property
     def fold_scope_roots(self) -> Dict[VertexPath, VertexPath]:
+        """Map each VertexPath in the query that's inside a fold to the VertexPath of the fold."""
         return get_fold_scope_roots(self.metadata_table)
 
     @cached_property
@@ -444,6 +448,7 @@ class QueryPlanningAnalysis:
 
     @cached_property
     def selectivities(self) -> Dict[VertexPath, Selectivity]:
+        """Get the combined selectivities of filters at each vertex."""
         return get_selectivities(
             self.schema_info, self.types, self.filters, self.ast_with_parameters.parameters
         )

@@ -451,6 +451,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
 
 
 def adjust_counts_with_selectivity(counts, selectivity):
+    """Apply the selectivity to the unfiltered vertex count and return the result."""
     adjusted_counts = counts
     if _is_absolute(selectivity):
         adjusted_counts = selectivity.value
