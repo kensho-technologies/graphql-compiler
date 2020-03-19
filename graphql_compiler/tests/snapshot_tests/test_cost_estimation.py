@@ -896,10 +896,6 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures('snapshot_orientdb_client')
-    @pytest.mark.xfail(
-        strict=True,
-        reason="Not implemented",
-    )
     def test_ast_rotation_invariance_with_inequality(self):
         """Test that rotating the query preserves the estimate."""
         schema_graph = generate_schema_graph(self.orientdb_client)
@@ -908,7 +904,7 @@ class CostEstimationTests(unittest.TestCase):
                 name @output(out_name: "birth_event")
                 uuid @filter(op_name: "<=", value: ["$uuid_upper"])
                 in_Animal_BornAt {
-                    out_Animal_FedAt @fold {
+                    out_Animal_FedAt {
                         name @output(out_name: "feeding_event")
                     }
                 }
@@ -916,11 +912,11 @@ class CostEstimationTests(unittest.TestCase):
         }'''
         rotated_graphql = '''{
             Animal {
-                out_Animal_BornAt @fold {
+                out_Animal_BornAt {
                     name @output(out_name: "birth_event")
                     uuid @filter(op_name: "<=", value: ["$uuid_upper"])
                 }
-                out_Animal_FedAt @fold {
+                out_Animal_FedAt {
                     name @output(out_name: "feeding_event")
                 }
             }
