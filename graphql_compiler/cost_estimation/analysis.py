@@ -66,7 +66,9 @@ def _convert_int_interval_to_field_value_interval(
 def _get_location_vertex_path(location: BaseLocation) -> VertexPath:
     """Get the VertexPath for a BaseLocation pointing at a vertex."""
     if location.field is not None:
-        raise AssertionError(f"Location {location} represents a field.")
+        raise AssertionError(
+            f"Location {location} represents a field. Expected a location pointing at a vertex."
+        )
 
     if isinstance(location, Location):
         return location.query_path
@@ -74,8 +76,7 @@ def _get_location_vertex_path(location: BaseLocation) -> VertexPath:
         return location.base_location.query_path + tuple(
             "{}_{}".format(direction, name) for direction, name in location.fold_path
         )
-    else:
-        raise AssertionError("Unexpected location encountered: {}".format(location))
+    raise AssertionError("Unexpected location encountered: {}".format(location))
 
 
 def get_types(
@@ -233,7 +234,7 @@ def get_selectivities(
     for vertex_path, vertex_type in types.items():
         vertex_type_name = vertex_type.name
         filter_infos = filters[vertex_path]
-        # TODO(bojanserafimov) use analysis.field_value_intervals
+        # TODO(bojanserafimov) use precomputed field_value_intervals
         #                      inside this method instead of recomputing it
         selectivity = get_selectivity_of_filters_at_vertex(
             schema_info, filter_infos, parameters, vertex_type_name

@@ -450,9 +450,17 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
     return combined_selectivity
 
 
-def adjust_counts_with_selectivity(counts, selectivity):
-    """Apply the selectivity to the unfiltered vertex count and return the result."""
-    adjusted_counts = counts
+def adjust_counts_with_selectivity(result_counts: float, selectivity: Selectivity) -> float:
+    """Apply the selectivity to the unfiltered result count and return the result.
+
+    Args:
+        result_counts: estimated number of results before filters are applied
+        selectivity: combined selectivity of some filters
+
+    Returns:
+        estimated number of results after filters are applied.
+    """
+    adjusted_counts = result_counts
     if _is_absolute(selectivity):
         adjusted_counts = selectivity.value
     elif _is_fractional(selectivity):
