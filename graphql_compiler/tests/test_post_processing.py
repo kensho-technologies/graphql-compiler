@@ -49,7 +49,7 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|",}]
+        query_output = [{"child_names": "|Animal 1|Animal 2||Animal 3|",}]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True
@@ -72,7 +72,7 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_names": "~|Animal 1|~",}]
+        query_output = [{"child_names": "|~|Animal 1|~",}]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True
@@ -97,7 +97,7 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_names": "name with a ^e (caret)|"
+                "child_names": "|name with a ^e (caret)|"
                 "name with a ^d (pipe)|"
                 "name with a ^n (tilde)|"
                 "^emany^e^dcaret^nescaped^n^n^dname^e",
@@ -136,7 +136,7 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_names": "name with a &amp; (ampersand)|"
+                "child_names": "|name with a &amp; (ampersand)|"
                 "name with a &gt; (greater than)|"
                 "name with a &lt; (less than)|"
                 "&amp;many&amp;&gt;ampersand&lt;escaped&lt;&lt;&gt;name&amp;",
@@ -175,7 +175,7 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_names": "name with a &#x06; (acknowledge)|"
+                "child_names": "|name with a &#x06; (acknowledge)|"
                 "&#x0B;many&#x06;hex&#x0F;&#x07;name&#x08;",
             }
         ]
@@ -203,7 +203,7 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_net_worths": "500|1000|400|~",}]
+        query_output = [{"child_net_worths": "|500|1000|400|~",}]
         output_metadata = {
             "child_net_worths": OutputMetadata(
                 type=GraphQLList(GraphQLDecimal), optional=False, folded=True
@@ -226,7 +226,7 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_birthdays": "2020-01-01|2000-02-29|~"}]
+        query_output = [{"child_birthdays": "|2020-01-01|2000-02-29|~"}]
         output_metadata = {
             "child_birthdays": OutputMetadata(
                 type=GraphQLList(GraphQLDate), optional=False, folded=True
@@ -252,7 +252,7 @@ class MssqlXmlPathTests(TestCase):
         }
         """
         query_output = [
-            {"child_datetime_fields": "2020-01-01T05:45:00+04:00|2000-02-29T13:02:27.0018349Z|~"}
+            {"child_datetime_fields": "|2020-01-01T05:45:00+04:00|2000-02-29T13:02:27.0018349Z|~"}
         ]
         output_metadata = {
             "child_datetime_fields": OutputMetadata(
@@ -298,9 +298,9 @@ class MssqlXmlPathTests(TestCase):
         """
         query_output = [
             {
-                "child_birthdays": "2020-01-01|2000-02-29|~",
-                "child_net_worths": "200|~|321",
-                "child_names": "^ecomplex&amp;^d^nname&#x06;|~|simple name",
+                "child_birthdays": "|2020-01-01|2000-02-29|~",
+                "child_net_worths": "|200|~|321",
+                "child_names": "|^ecomplex&amp;^d^nname&#x06;|~|simple name",
                 "parent_birthdays": "",
                 "parent_net_worths": "",
                 "parent_names": "",

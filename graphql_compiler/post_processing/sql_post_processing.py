@@ -24,6 +24,9 @@ def _mssql_xml_path_string_to_list(
     if xml_path_result == "":
         return []
 
+    # Remove the "|" from the first result in the string representation of the list.
+    xml_path_result = xml_path_result[1:]
+
     # Split the XML path result on "|".
     list_result: Sequence[Optional[str]] = xml_path_result.split("|")
 
