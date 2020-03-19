@@ -895,11 +895,11 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1.0) * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
-    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_ast_rotation_invariance_with_inequality(self):
         """Test that rotating the query preserves the estimate."""
         schema_graph = generate_schema_graph(self.orientdb_client)
-        original_graphql = '''{
+        original_graphql = """{
             BirthEvent {
                 name @output(out_name: "birth_event")
                 uuid @filter(op_name: "<=", value: ["$uuid_upper"])
@@ -909,8 +909,8 @@ class CostEstimationTests(unittest.TestCase):
                     }
                 }
             }
-        }'''
-        rotated_graphql = '''{
+        }"""
+        rotated_graphql = """{
             Animal {
                 out_Animal_BornAt {
                     name @output(out_name: "birth_event")
@@ -920,37 +920,38 @@ class CostEstimationTests(unittest.TestCase):
                     name @output(out_name: "feeding_event")
                 }
             }
-        }'''
+        }"""
         params = {
-            'uuid_upper': '7fffffff-ffff-ffff-ffff-ffffffffffff',
+            "uuid_upper": "7fffffff-ffff-ffff-ffff-ffffffffffff",
         }
 
         count_data = {
-            'BirthEvent': 8,
-            'Animal': 8,
-            'Animal_BornAt': 8,
-            'Animal_FedAt': 8,
+            "BirthEvent": 8,
+            "Animal": 8,
+            "Animal_BornAt": 8,
+            "Animal_FedAt": 8,
         }
         statistics = LocalStatistics(count_data)
 
         original_query_estimate = _make_schema_info_and_estimate_cardinality(
-            schema_graph, statistics, original_graphql, params)
+            schema_graph, statistics, original_graphql, params
+        )
         rotated_query_estimate = _make_schema_info_and_estimate_cardinality(
-            schema_graph, statistics, rotated_graphql, params)
+            schema_graph, statistics, rotated_graphql, params
+        )
 
         expected_cardinality_estimate = (8.0 / 2.0) * (8.0 / 8.0) * (8.0 / 8.0)
         self.assertAlmostEqual(expected_cardinality_estimate, original_query_estimate)
         self.assertAlmostEqual(expected_cardinality_estimate, rotated_query_estimate)
 
-    @pytest.mark.usefixtures('snapshot_orientdb_client')
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     @pytest.mark.xfail(
-        strict=True,
-        reason="Not implemented",
+        strict=True, reason="Not implemented",
     )
     def test_ast_rotation_invariance_with_equality(self):
         """Test that rotating the query preserves the estimate."""
         schema_graph = generate_schema_graph(self.orientdb_client)
-        original_graphql = '''{
+        original_graphql = """{
             Animal {
                 uuid @filter(op_name: "=", value:["$uuid"])
                      @output(out_name: "animal_uuid")
@@ -958,29 +959,31 @@ class CostEstimationTests(unittest.TestCase):
                     uuid
                 }
             }
-        }'''
-        rotated_graphql = '''{
+        }"""
+        rotated_graphql = """{
             Animal {
                 in_Animal_ParentOf {
                     uuid @filter(op_name: "=", value:["$uuid"])
                          @output(out_name: "animal_uuid")
                 }
             }
-        }'''
+        }"""
         params = {
-            'uuid': '00000000-0000-0000-0000-000000000000',
+            "uuid": "00000000-0000-0000-0000-000000000000",
         }
 
         count_data = {
-            'Animal': 8,
-            'Animal_ParentOf': 8,
+            "Animal": 8,
+            "Animal_ParentOf": 8,
         }
         statistics = LocalStatistics(count_data)
 
         original_query_estimate = _make_schema_info_and_estimate_cardinality(
-            schema_graph, statistics, original_graphql, params)
+            schema_graph, statistics, original_graphql, params
+        )
         rotated_query_estimate = _make_schema_info_and_estimate_cardinality(
-            schema_graph, statistics, rotated_graphql, params)
+            schema_graph, statistics, rotated_graphql, params
+        )
 
         # There's 8 animals and 8 Animal_ParentOf edges. We expect an arbitrary animal to have
         # one Animal_ParentOf edge.
