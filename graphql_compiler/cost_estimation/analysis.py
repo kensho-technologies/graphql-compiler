@@ -267,7 +267,6 @@ def get_distinct_result_set_estimates(
     for vertex_path, vertex_type in types.items():
         vertex_type_name = vertex_type.name
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
-        # TODO use analysis.selectivities instead of recomputing this
         distinct_result_set_estimates[vertex_path] = adjust_counts_with_selectivity(
             class_count, selectivities[vertex_path]
         )
