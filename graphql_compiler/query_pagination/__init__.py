@@ -7,7 +7,8 @@ from ..cost_estimation.analysis import QueryPlanningAnalysis, analyze_query_stri
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import PaginationAdvisory, get_pagination_plan
-from .query_splitter import split_into_page_query_and_remainder_query
+from .parameter_generator import generate_parameters_for_vertex_partition
+from .query_parameterizer import generate_parameterized_queries
 from .typedefs import PageAndRemainder
 
 
@@ -81,17 +82,35 @@ def paginate_query_ast(
     remainder_queries: Tuple[ASTWithParameters, ...] = tuple()
     advisories: Tuple[PaginationAdvisory, ...] = tuple()
 
+    # Split the query if we should and we can
     result_size = query_analysis.cardinality_estimate
     num_pages = _estimate_number_of_pages(
         query_analysis.query_string_with_parameters, result_size, page_size
     )
     if num_pages > 1:
         pagination_plan, advisories = get_pagination_plan(query_analysis, num_pages)
-        if pagination_plan.vertex_partitions:
-            page_query, remainder_query = split_into_page_query_and_remainder_query(
-                query_analysis, pagination_plan
+        if len(pagination_plan.vertex_partitions) == 0:
+            pass
+        elif len(pagination_plan.vertex_partitions) == 1:
+            plan_vertex_partition = pagination_plan.vertex_partitions[0]
+            parameter_generator = generate_parameters_for_vertex_partition(
+                query_analysis.schema_info,
+                query_analysis.ast_with_parameters,
+                plan_vertex_partition,
             )
-            remainder_queries = (remainder_query,)
+
+            sentinel = object()
+            first_param = next(parameter_generator, sentinel)
+            if first_param is not sentinel:
+                page_query, remainder_query = generate_parameterized_queries(
+                    query_analysis, plan_vertex_partition, first_param,
+                )
+                remainder_queries = (remainder_query,)
+        else:
+            raise NotImplementedError(
+                "We only support pagination plans with one vertex partition. "
+                "Received {}".format(pagination_plan)
+            )
 
     return (
         PageAndRemainder[ASTWithParameters](
