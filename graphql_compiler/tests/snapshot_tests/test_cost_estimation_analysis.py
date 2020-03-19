@@ -4,6 +4,7 @@ import unittest
 import pytest
 
 from ...cost_estimation.analysis import analyze_query_string
+from ...cost_estimation.filter_selectivity_utils import Selectivity
 from ...cost_estimation.interval import Interval
 from ...cost_estimation.statistics import LocalStatistics
 from ...global_utils import QueryStringWithParameters
@@ -165,6 +166,50 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         self.assertEqual(expected_capacities, capacities)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_get_selectivities(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal_name")
+                uuid @filter(op_name: "=", value: ["$animal_uuid"])
+                out_Animal_ParentOf {
+                    uuid @filter(op_name: "<", value: ["$child_uuid_upper_bound"])
+                }
+            }
+        }""",
+            {
+                "animal_uuid": "80000000-0000-0000-0000-000000000000",
+                "child_uuid_upper_bound": "80000000-0000-0000-0000-000000000000",
+            },
+        )
+
+        self.assertEqual(
+            {
+                ("Animal",): Selectivity(kind="absolute", value=1.0),
+                ("Animal", "out_Animal_ParentOf"): Selectivity(kind="fractional", value=0.5),
+            },
+            analyze_query_string(schema_info, query).selectivities,
+        )
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_pagination_capacities_int_field(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
@@ -275,11 +320,20 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {},
         )
         analysis = analyze_query_string(schema_info, query)
-        capacities = analysis.pagination_capacities
-        expected_capacities = {
-            (("Animal",), "uuid"): 1000,
-        }
-        self.assertEqual(expected_capacities, capacities)
+
+        self.assertEqual(
+            {
+                ("Animal",): graphql_schema.get_type("Animal"),
+                ("Animal", "out_Animal_ParentOf"): graphql_schema.get_type("Animal"),
+            },
+            analysis.types,
+        )
+
+        self.assertEqual(
+            {("Animal", "out_Animal_ParentOf"): ("Animal",)}, analysis.fold_scope_roots
+        )
+
+        self.assertEqual({(("Animal",), "uuid"): 1000,}, analysis.pagination_capacities)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_eligible_fields(self) -> None:
