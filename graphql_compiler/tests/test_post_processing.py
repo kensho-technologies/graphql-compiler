@@ -340,3 +340,24 @@ class MssqlXmlPathTests(TestCase):
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
+
+    def test_convert_invalid_result(self):
+        """Test invalid result throws error.
+
+                {
+                    Animal {
+                        in_Animal_ParentOf @fold{
+                            name @output(out_name: "child_names")
+                        }
+                    }
+                }
+                """
+        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|", }]
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLString), optional=False, folded=True
+            ),
+        }
+
+        with self.assertRaises(AssertionError):
+            post_process_mssql_folds(query_output, output_metadata)

@@ -24,23 +24,32 @@ def _mssql_xml_path_string_to_list(
     if xml_path_result == "":
         return []
 
+    # Some of the special characters involved in XML path array aggregation.
+    delimiter = "|"
+    null = "~"
+
     # Remove the "|" from the first result in the string representation of the list.
+    if xml_path_result[0] != delimiter:
+        raise AssertionError(
+            f"Unexpected fold result. All XML path array aggregated lists must start with a '|'. "
+            f"Received a result beginging with a {xml_path_result[0]}: {xml_path_result}"
+        )
     xml_path_result = xml_path_result[1:]
 
     # Split the XML path result on "|".
-    list_result: Sequence[Optional[str]] = xml_path_result.split("|")
+    list_result: Sequence[Optional[str]] = xml_path_result.split(delimiter)
 
     # Convert "~" to None. Note that this must be done before "^n" -> "~".
-    list_result = [None if result == "~" else result for result in list_result]
+    list_result = [None if result == null else result for result in list_result]
 
     # Convert "^d" to "|".
     list_result = [
-        result.replace("^d", "|") if result is not None else None for result in list_result
+        result.replace("^d", delimiter) if result is not None else None for result in list_result
     ]
 
     # Convert "^n" to "~".
     list_result = [
-        result.replace("^n", "~") if result is not None else None for result in list_result
+        result.replace("^n", null) if result is not None else None for result in list_result
     ]
 
     # Convert "^e" to "^". Note that this must be done after the caret escaped characters i.e.
