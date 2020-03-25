@@ -9,7 +9,12 @@ from graphql.language.printer import print_ast
 
 from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import ast_to_ir
-from ..compiler.helpers import Location, get_edge_direction_and_name
+from ..compiler.helpers import (
+    BaseLocation,
+    FoldScopeLocation,
+    Location,
+    get_edge_direction_and_name,
+)
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
 from ..cost_estimation.cardinality_estimator import estimate_query_result_cardinality
 from ..cost_estimation.int_value_conversion import (
@@ -22,9 +27,11 @@ from ..query_formatting.common import ensure_arguments_are_provided
 from ..schema import is_meta_field
 from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
-    adjust_counts_for_filters,
+    Selectivity,
+    adjust_counts_with_selectivity,
     filter_uses_only_runtime_parameters,
     get_integer_interval_for_filters_on_field,
+    get_selectivity_of_filters_at_vertex,
 )
 from .helpers import is_uuid4_type
 
@@ -56,6 +63,22 @@ def _convert_int_interval_to_field_value_interval(
     return Interval(lower_bound, upper_bound)
 
 
+def _get_location_vertex_path(location: BaseLocation) -> VertexPath:
+    """Get the VertexPath for a BaseLocation pointing at a vertex."""
+    if location.field is not None:
+        raise AssertionError(
+            f"Location {location} represents a field. Expected a location pointing at a vertex."
+        )
+
+    if isinstance(location, Location):
+        return location.query_path
+    elif isinstance(location, FoldScopeLocation):
+        return location.base_location.query_path + tuple(
+            "{}_{}".format(direction, name) for direction, name in location.fold_path
+        )
+    raise AssertionError("Unexpected location encountered: {}".format(location))
+
+
 def get_types(
     query_metadata: QueryMetadataTable,
 ) -> Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]]:
@@ -71,35 +94,29 @@ def get_types(
     """
     location_types = {}
     for location, location_info in query_metadata.registered_locations:
-        if not isinstance(location, Location):
-            continue
-        location_types[location.query_path] = location_info.type
+        location_types[_get_location_vertex_path(location)] = location_info.type
     return location_types
 
 
-def get_filters(
-    schema_info: QueryPlanningSchemaInfo, query_metadata: QueryMetadataTable,
-) -> Dict[VertexPath, Set[FilterInfo]]:
-    """Get the filters at each VertexPath.
-
-    Fold scopes are not considered.
-
-    Args:
-        schema_info: QueryPlanningSchemaInfo
-        query_metadata: info on locations, inputs, outputs, and tags in the query
-
-    Returns:
-        dict mapping nodes to their filters
-    """
+def get_filters(query_metadata: QueryMetadataTable) -> Dict[VertexPath, Set[FilterInfo]]:
+    """Get the filters at each VertexPath."""
     filters: Dict[VertexPath, Set[FilterInfo]] = {}
     for location, _ in query_metadata.registered_locations:
-        if not isinstance(location, Location):
-            continue  # We don't paginate inside folds.
-
         filter_infos = query_metadata.get_filter_infos(location)
-        filters.setdefault(location.query_path, set()).update(filter_infos)
+        filters.setdefault(_get_location_vertex_path(location), set()).update(filter_infos)
 
     return filters
+
+
+def get_fold_scope_roots(query_metadata: QueryMetadataTable) -> Dict[VertexPath, VertexPath]:
+    """Map each VertexPath in the query that's inside a fold to the VertexPath of the fold."""
+    fold_scope_roots: Dict[VertexPath, VertexPath] = {}
+    for location, _ in query_metadata.registered_locations:
+        if isinstance(location, FoldScopeLocation):
+            fold_scope_roots[
+                _get_location_vertex_path(location)
+            ] = location.base_location.query_path
+    return fold_scope_roots
 
 
 def get_single_field_filters(
@@ -108,7 +125,6 @@ def get_single_field_filters(
     """Find the single field filters for each field.
 
     Filters that apply to multiple fields, like name_or_alias, are ignored.
-    Filters inside fold scopes are not considered.
 
     Args:
         filters: the set of filters at each node
@@ -141,11 +157,14 @@ def get_fields_eligible_for_pagination(
     schema_info: QueryPlanningSchemaInfo,
     types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
     single_field_filters: Dict[PropertyPath, Set[FilterInfo]],
+    fold_scope_roots: Dict[VertexPath, VertexPath],
 ) -> Set[PropertyPath]:
     """Return all the fields we can consider for pagination."""
     fields_eligible_for_pagination = set()
     for vertex_path, vertex_type in types.items():
         vertex_type_name = vertex_type.name
+        if vertex_path in fold_scope_roots:
+            continue
         for field_name, _ in vertex_type.fields.items():
             property_path = PropertyPath(vertex_path, field_name)
             filters: Set[FilterInfo] = single_field_filters.get(property_path, set())
@@ -204,10 +223,30 @@ def get_field_value_intervals(
     return field_value_intervals
 
 
-def get_distinct_result_set_estimates(
+def get_selectivities(
     schema_info: QueryPlanningSchemaInfo,
     types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
     filters: Dict[VertexPath, Set[FilterInfo]],
+    parameters: Dict[str, Any],
+) -> Dict[VertexPath, Selectivity]:
+    """Get the combined selectivities of filters at each vertex."""
+    selectivities = {}
+    for vertex_path, vertex_type in types.items():
+        vertex_type_name = vertex_type.name
+        filter_infos = filters[vertex_path]
+        # TODO(bojanserafimov) use precomputed field_value_intervals
+        #                      inside this method instead of recomputing it
+        selectivity = get_selectivity_of_filters_at_vertex(
+            schema_info, filter_infos, parameters, vertex_type_name
+        )
+        selectivities[vertex_path] = selectivity
+    return selectivities
+
+
+def get_distinct_result_set_estimates(
+    schema_info: QueryPlanningSchemaInfo,
+    types: Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]],
+    selectivities: Dict[VertexPath, Selectivity],
     parameters: Dict[str, Any],
 ) -> Dict[VertexPath, float]:
     """Map each VertexPath in the query to its distinct result set estimate.
@@ -232,10 +271,9 @@ def get_distinct_result_set_estimates(
     distinct_result_set_estimates = {}
     for vertex_path, vertex_type in types.items():
         vertex_type_name = vertex_type.name
-        filter_infos = filters[vertex_path]
         class_count = schema_info.statistics.get_class_count(vertex_type_name)
-        distinct_result_set_estimates[vertex_path] = adjust_counts_for_filters(
-            schema_info, filter_infos, parameters, vertex_type_name, class_count
+        distinct_result_set_estimates[vertex_path] = adjust_counts_with_selectivity(
+            class_count, selectivities[vertex_path]
         )
 
     single_destination_traversals = set()
@@ -373,6 +411,7 @@ class QueryPlanningAnalysis:
     @cached_property
     def cardinality_estimate(self) -> float:
         """Return the cardinality estimate for this query."""
+        # TODO use selectivity analysis pass instead of recomputing it
         return estimate_query_result_cardinality(
             self.schema_info, self.metadata_table, self.ast_with_parameters.parameters
         )
@@ -380,7 +419,12 @@ class QueryPlanningAnalysis:
     @cached_property
     def filters(self) -> Dict[VertexPath, Set[FilterInfo]]:
         """Get the filters at each VertexPath."""
-        return get_filters(self.schema_info, self.metadata_table)
+        return get_filters(self.metadata_table)
+
+    @cached_property
+    def fold_scope_roots(self) -> Dict[VertexPath, VertexPath]:
+        """Map each VertexPath in the query that's inside a fold to the VertexPath of the fold."""
+        return get_fold_scope_roots(self.metadata_table)
 
     @cached_property
     def single_field_filters(self) -> Dict[PropertyPath, Set[FilterInfo]]:
@@ -391,7 +435,7 @@ class QueryPlanningAnalysis:
     def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
         """Return all the fields we can consider for pagination."""
         return get_fields_eligible_for_pagination(
-            self.schema_info, self.types, self.single_field_filters
+            self.schema_info, self.types, self.single_field_filters, self.fold_scope_roots,
         )
 
     @cached_property
@@ -405,10 +449,17 @@ class QueryPlanningAnalysis:
         )
 
     @cached_property
+    def selectivities(self) -> Dict[VertexPath, Selectivity]:
+        """Get the combined selectivities of filters at each vertex."""
+        return get_selectivities(
+            self.schema_info, self.types, self.filters, self.ast_with_parameters.parameters
+        )
+
+    @cached_property
     def distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
         """Return the distinct result set estimates for this query."""
         return get_distinct_result_set_estimates(
-            self.schema_info, self.types, self.filters, self.ast_with_parameters.parameters
+            self.schema_info, self.types, self.selectivities, self.ast_with_parameters.parameters
         )
 
     @cached_property
