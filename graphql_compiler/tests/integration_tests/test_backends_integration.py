@@ -116,7 +116,7 @@ class IntegrationTests(TestCase):
             )
         except AssertionError as error:
             # intercept and modify error message to indicate which backend(s) failed
-            args = [u'Failure for backend "{}": {}'.format(backend_name, error.args[0])]
+            args = [f'Failure for backend "{backend_name}": {error.args[0]}']
             args.extend(error.args[1:])
             error.args = tuple(args)
             raise
@@ -157,7 +157,7 @@ class IntegrationTests(TestCase):
                 common_schema_info, graphql_query, parameters, cls.redisgraph_client  # type: ignore
             )
         else:
-            raise AssertionError(u"Unknown test backend {}.".format(backend_name))
+            raise AssertionError(f"Unknown test backend {backend_name}.")
         return results, output_metadata
 
     @use_all_backends()
@@ -628,8 +628,8 @@ class IntegrationTests(TestCase):
             self.assertEqual(animal_type.fields["uuid"].type, GraphQLID)
         else:
             raise AssertionError(
-                u'Expected "Animal" to be of type GraphQLObjectType, but was '
-                u"of type {}".format(type(animal_type))
+                f'Expected "Animal" to be of type GraphQLObjectType, but was '
+                f"of type {type(animal_type)}"
             )
 
     @integration_fixtures
