@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
-from typing import Any, Callable, Dict, List, Tuple, Union
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 from unittest import TestCase
 
 from graphql.type import (
@@ -16,6 +16,8 @@ from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
 
+from ...compiler.compiler_frontend import OutputMetadata
+from ...post_processing.sql_post_processing import post_process_mssql_folds
 from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
 from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
@@ -99,7 +101,15 @@ class IntegrationTests(TestCase):
         expected_results: List[Dict[str, Any]],
     ) -> None:
         """Assert that two lists of DB results are equal, independent of order."""
-        backend_results = self.compile_and_run_query(graphql_query, parameters, backend_name)
+        backend_results, output_metadata = self.compile_and_run_query(
+            graphql_query, parameters, backend_name
+        )
+        if backend_name == test_backend.MSSQL:
+            if output_metadata is None:
+                raise AssertionError(
+                    f"No output metadata found to postprocessing {test_backend.MSSQL} results."
+                )
+            post_process_mssql_folds(backend_results, output_metadata)
         try:
             self.assertListEqual(
                 sort_db_results(expected_results), sort_db_results(backend_results)
@@ -128,9 +138,10 @@ class IntegrationTests(TestCase):
         # Mypy doesn't like our decorator magic, we have to manually ignore the type checks
         # on all the properties that we magically added via the integration testing decorator.
         common_schema_info = CommonSchemaInfo(cls.schema, None)  # type: ignore
+        output_metadata: Optional[Dict[str, OutputMetadata]] = None
         if backend_name in SQL_BACKENDS:
             engine = cls.sql_backend_name_to_engine[backend_name]  # type: ignore
-            results = compile_and_run_sql_query(
+            results, output_metadata = compile_and_run_sql_query(
                 cls.sql_schema_info, graphql_query, parameters, engine  # type: ignore
             )
         elif backend_name in MATCH_BACKENDS:
@@ -147,7 +158,7 @@ class IntegrationTests(TestCase):
             )
         else:
             raise AssertionError(u"Unknown test backend {}.".format(backend_name))
-        return results
+        return results, output_metadata
 
     @use_all_backends()
     @integration_fixtures
@@ -422,12 +433,7 @@ class IntegrationTests(TestCase):
         for graphql_query, expected_results in queries:
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
-    @use_all_backends(
-        except_backends=(
-            test_backend.MSSQL,  # Not implemented yet
-            test_backend.REDISGRAPH,  # Not implemented yet
-        )
-    )
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH,))  # Not implemented yet
     @integration_fixtures
     def test_fold_basic(self, backend_name: str) -> None:
         # (query, args, expected_results) tuples.
