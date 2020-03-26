@@ -107,7 +107,7 @@ class IntegrationTests(TestCase):
         if backend_name == test_backend.MSSQL:
             if output_metadata is None:
                 raise AssertionError(
-                    f"No output metadata found to postprocessing {test_backend.MSSQL} results."
+                    f"No output metadata found to postprocess {test_backend.MSSQL} results."
                 )
             post_process_mssql_folds(backend_results, output_metadata)
         try:
