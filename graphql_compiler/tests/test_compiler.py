@@ -2010,6 +2010,8 @@ class CompilerTests(unittest.TestCase):
                     0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
+                WHERE
+                    [Animal_2].name = :animal_name
                 UNION ALL
                     SELECT
                         [Animal_3].name AS name,

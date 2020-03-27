@@ -702,6 +702,7 @@ class CompilationState(object):
         self._from_clause = self._current_alias  # the main sqlalchemy Selectable
         self._outputs = []  # sqlalchemy Columns labelled correctly for output
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
+        self._filters_at_location = {}
 
         self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
         self._fold_vertex_location = None  # location in the IR tree where the fold starts
@@ -785,6 +786,8 @@ class CompilationState(object):
 
     def recurse(self, vertex_field, depth):
         """Execute a Recurse Block."""
+        predicates_on_this_node = self._filters_at_location[self._current_location.query_path]
+
         if self._current_fold is not None:
             raise AssertionError("Recurse inside a fold is not allowed.")
         previous_alias = self._current_alias
@@ -807,6 +810,11 @@ class CompilationState(object):
         primary_key = self._current_alias.primary_key[0].name
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
+        filters_on_this_node = [
+            predicate.to_sql(self._dialect, self._aliases, self._current_alias)
+            for predicate in predicates_on_this_node
+        ]
+
         # Sanitize literal columns to be used in the query
         if not isinstance(depth, int):
             raise AssertionError(
@@ -820,13 +828,17 @@ class CompilationState(object):
         used_columns = sorted(self._used_columns[self._current_location.query_path])
 
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
-        base = sqlalchemy.select(
-            [self._current_alias.c[col] for col in used_columns]
-            + [
-                self._current_alias.c[primary_key].label(CTE_KEY_NAME),
-                literal_0.label(CTE_DEPTH_NAME),
-            ]
-        ).cte(recursive=True)
+        base = (
+            sqlalchemy.select(
+                [self._current_alias.c[col] for col in used_columns]
+                + [
+                    self._current_alias.c[primary_key].label(CTE_KEY_NAME),
+                    literal_0.label(CTE_DEPTH_NAME),
+                ]
+            )
+            .where(sqlalchemy.and_(*filters_on_this_node))
+            .cte(recursive=True)
+        )
 
         # The recursive step selects all needed columns, increments the depth, and joins to the base
         step = self._current_alias.alias()
@@ -880,6 +892,9 @@ class CompilationState(object):
                     sql_expression, self._came_from[self._current_alias].is_(None)
                 )
             self._filters.append(sql_expression)
+            self._filters_at_location.setdefault(self._current_location.query_path, []).append(
+                predicate
+            )
 
     def fold(self, fold_scope_location):
         """Begin execution of a Fold Block."""
