@@ -1995,6 +1995,49 @@ class CompilerTests(unittest.TestCase):
             self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
         )
 
+    def test_filter_then_recurse(self):
+        test_data = test_input_data.filter_then_recurse()
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_sql = """
+            WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    [Animal_2].name AS name,
+                    [Animal_2].parent AS parent,
+                    [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                UNION ALL
+                    SELECT
+                        [Animal_3].name AS name,
+                        [Animal_3].parent AS parent,
+                        [Animal_3].uuid AS uuid,
+                        anon_1.__cte_key AS __cte_key,
+                        anon_1.__cte_depth + 1 AS __cte_depth
+                    FROM
+                        anon_1
+                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                            ON anon_1.uuid = [Animal_3].parent
+                    WHERE anon_1.__cte_depth < 1
+            )
+            SELECT
+                anon_1.name AS relation_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN anon_1
+                    ON [Animal_1].uuid = anon_1.__cte_key
+            WHERE
+                [Animal_1].name = :animal_name
+        """
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+        )
+
     def test_traverse_then_recurse(self):
         test_data = test_input_data.traverse_then_recurse()
 
