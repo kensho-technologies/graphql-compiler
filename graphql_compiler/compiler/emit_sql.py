@@ -790,7 +790,7 @@ class CompilationState(object):
 
         if self._current_fold is not None:
             raise AssertionError("Recurse inside a fold is not allowed.")
-        previous_alias = self._current_alias
+
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         if not self._current_alias.primary_key:
             raise AssertionError(
@@ -808,12 +808,26 @@ class CompilationState(object):
                 )
             )
         primary_key = self._current_alias.primary_key[0].name
-        self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
-        filters_on_this_node = [
-            predicate.to_sql(self._dialect, self._aliases, self._current_alias)
-            for predicate in predicates_on_this_node
+        # Find which columns should be selected
+        used_columns = sorted(self._used_columns[self._current_location.query_path])
+
+        self._current_alias = self.get_query([
+            self._current_alias.c[col] for col in used_columns
+        ] + [
+            self._current_alias.primary_key[0].label("primary_key")
+        ]).cte(recursive=False)
+        self._outputs = [
+            dict(o, from_alias=self._current_alias) for o in self._outputs
         ]
+        self._filters = []
+        previous_alias = self._current_alias
+        self._from_clause = self._current_alias
+        self._aliases = {
+            location: self._current_alias
+            for location, alias in self._aliases.items()
+        }
+        self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
         # Sanitize literal columns to be used in the query
         if not isinstance(depth, int):
@@ -824,19 +838,15 @@ class CompilationState(object):
         literal_0 = sqlalchemy.literal_column("0")
         literal_1 = sqlalchemy.literal_column("1")
 
-        # Find which columns should be selected
-        used_columns = sorted(self._used_columns[self._current_location.query_path])
-
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
         base = (
             sqlalchemy.select(
-                [self._current_alias.c[col] for col in used_columns]
+                [previous_alias.c[col] for col in used_columns]
                 + [
-                    self._current_alias.c[primary_key].label(CTE_KEY_NAME),
+                    previous_alias.c[primary_key].label(CTE_KEY_NAME),
                     literal_0.label(CTE_DEPTH_NAME),
                 ]
             )
-            .where(sqlalchemy.and_(*filters_on_this_node))
             .cte(recursive=True)
         )
 
@@ -863,7 +873,7 @@ class CompilationState(object):
         #                       To optimize for Postgres performance, we should instead wrap the
         #                       part of the query preceding this @recurse into a CTE, and use
         #                       it as the base case.
-        self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
+        # self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""
@@ -985,14 +995,24 @@ class CompilationState(object):
 
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
-        self._outputs.append(
-            field.to_sql(self.dialect, self._aliases, self._current_alias).label(output_name)
-        )
+        # self._outputs.append(
+        #     field.to_sql(self.dialect, self._aliases, self._current_alias).label(output_name)
+        # )
+        self._outputs.append({
+            "from_alias": self._current_alias,
+            "label": output_name,
+            "field": field,
+        })
 
-    def get_query(self):
+    def get_query(self, extra_outputs=None):
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
+        if not extra_outputs:
+            extra_outputs = []
         return (
-            sqlalchemy.select(self._outputs)
+            sqlalchemy.select(extra_outputs + [
+                o["field"].to_sql(self.dialect, self._aliases, o["from_alias"]).label(o["label"])
+                for o in self._outputs
+            ])
             .select_from(self._from_clause)
             .where(sqlalchemy.and_(*self._filters))
         )
