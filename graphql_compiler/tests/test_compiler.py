@@ -8045,6 +8045,7 @@ class CompilerTests(unittest.TestCase):
         # TODO why did the previous query have:
         # WHERE
         #     anon_1.__cte_key IS NOT NULL OR [Animal_1].uuid IS NULL
+        # TODO the name output in anon_1 should come from Animal_2
         expected_cypher = SKIP_TEST
 
         check_test_data(
