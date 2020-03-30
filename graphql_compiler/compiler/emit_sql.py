@@ -813,6 +813,7 @@ class CompilationState(object):
         # TODO not sure if this is all
         # TODO some are unnecessary
         used_columns = sorted(
+            # TODO not all come from self._current_location
             self._used_columns[self._current_location.query_path].union(
                 self._used_columns[self._current_location.query_path + (vertex_field,)]
             )
@@ -825,13 +826,10 @@ class CompilationState(object):
                 + [self._current_alias.primary_key[0].label("primary_key")]
             ).cte(recursive=False)
             self._from_clause = self._current_alias
-            self._aliases = {location: self._current_alias for location, alias in self._aliases.items()}
-
-            # Redirect all outputs to come from the cte
-            self._outputs = [dict(o, from_alias=self._current_alias) for o in self._outputs]
-
-            # The filters are already included in the cte
-            self._filters = []
+            self._aliases = {
+                location: self._current_alias for location, alias in self._aliases.items()
+            }
+            self._filters = []  # The filters are already included in the cte
 
         previous_alias = self._current_alias
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
@@ -989,7 +987,7 @@ class CompilationState(object):
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
         self._outputs.append(
-            {"from_alias": self._current_alias, "label": output_name, "field": field,}
+            field.to_sql(self.dialect, self._aliases, self._current_alias).label(output_name)
         )
 
     def get_query(self, extra_outputs=None):
@@ -997,15 +995,7 @@ class CompilationState(object):
         if not extra_outputs:
             extra_outputs = []
         return (
-            sqlalchemy.select(
-                extra_outputs
-                + [
-                    o["field"]
-                    .to_sql(self.dialect, self._aliases, o["from_alias"])
-                    .label(o["label"])
-                    for o in self._outputs
-                ]
-            )
+            sqlalchemy.select(extra_outputs + self._outputs)
             .select_from(self._from_clause)
             .where(sqlalchemy.and_(*self._filters))
         )
