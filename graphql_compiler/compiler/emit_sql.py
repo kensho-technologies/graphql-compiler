@@ -702,7 +702,6 @@ class CompilationState(object):
         self._from_clause = self._current_alias  # the main sqlalchemy Selectable
         self._outputs = []  # sqlalchemy Columns labelled correctly for output
         self._filters = []  # sqlalchemy Expressions to be used in the where clause
-        self._filters_at_location = {}
 
         self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
         self._fold_vertex_location = None  # location in the IR tree where the fold starts
@@ -786,8 +785,6 @@ class CompilationState(object):
 
     def recurse(self, vertex_field, depth):
         """Execute a Recurse Block."""
-        predicates_on_this_node = self._filters_at_location[self._current_location.query_path]
-
         if self._current_fold is not None:
             raise AssertionError("Recurse inside a fold is not allowed.")
 
@@ -898,9 +895,6 @@ class CompilationState(object):
                     sql_expression, self._came_from[self._current_alias].is_(None)
                 )
             self._filters.append(sql_expression)
-            self._filters_at_location.setdefault(self._current_location.query_path, []).append(
-                predicate
-            )
 
     def fold(self, fold_scope_location):
         """Begin execution of a Fold Block."""
