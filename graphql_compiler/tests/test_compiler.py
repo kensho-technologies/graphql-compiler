@@ -8042,11 +8042,9 @@ class CompilerTests(unittest.TestCase):
             FROM
                 anon_1, anon_2
         """
-        # TODO why did the previous query have:
-        # WHERE
-        #     anon_1.__cte_key IS NOT NULL OR [Animal_1].uuid IS NULL
-        # TODO the name output in anon_1 should come from Animal_2
-        # TODO test with traverse after recurse
+        # TODO Add an integration test for this query to make sure the recurse preserves
+        #      left join misses from the parent optional traversal.
+        # TODO the name output in anon_1 should come from Animal_2. See todos in emit_sql.
         expected_cypher = SKIP_TEST
 
         check_test_data(
