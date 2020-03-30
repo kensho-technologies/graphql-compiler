@@ -827,11 +827,11 @@ class CompilationState(object):
             self._from_clause = self._current_alias
             self._aliases = {location: self._current_alias for location, alias in self._aliases.items()}
 
-        # Redirect all outputs to come from the cte
-        self._outputs = [dict(o, from_alias=self._current_alias) for o in self._outputs]
+            # Redirect all outputs to come from the cte
+            self._outputs = [dict(o, from_alias=self._current_alias) for o in self._outputs]
 
-        # The filters are already included in the cte
-        self._filters = []
+            # The filters are already included in the cte
+            self._filters = []
 
         previous_alias = self._current_alias
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
