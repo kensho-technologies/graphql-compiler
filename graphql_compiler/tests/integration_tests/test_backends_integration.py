@@ -499,6 +499,30 @@ class IntegrationTests(TestCase):
                 {"starting_animal_name": "Animal 4",},
                 [{"child_names": []},],
             ),
+            # Query 5: Multiple outputs in a fold scope.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        name @output(out_name: "child_names")
+                        uuid @output(out_name: "child_uuids")
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1",},
+                [
+                    {
+                        "child_names": ['Animal 1', 'Animal 2', 'Animal 3'],
+                        "child_uuids": [
+                            'cfc6e625-8594-0927-468f-f53d864a7a51',
+                            'cfc6e625-8594-0927-468f-f53d864a7a52',
+                            'cfc6e625-8594-0927-468f-f53d864a7a53'
+                        ]
+                    },
+                ],
+            ),
         ]
 
         for graphql_query, parameters, expected_results in queries:
