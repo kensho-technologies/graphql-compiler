@@ -697,6 +697,7 @@ class CompilationState(object):
         self._aliases = {}
         self._relocate(ir.query_metadata_table.root_location)
         self._came_from = {}  # mapping aliases to the column used to join into them.
+        self._recurse_needs_cte = False
 
         # The query being constructed as the IR is processed
         self._from_clause = self._current_alias  # the main sqlalchemy Selectable
@@ -775,6 +776,8 @@ class CompilationState(object):
 
     def traverse(self, vertex_field, optional):
         """Execute a Traverse Block."""
+        self._recurse_needs_cte = True
+
         if self._current_fold is not None:
             raise NotImplementedError("Traversals inside a fold are not implemented yet.")
         # Follow the edge
@@ -807,19 +810,22 @@ class CompilationState(object):
         primary_key = self._current_alias.primary_key[0].name
 
         # Find which columns should be selected
-        used_columns = sorted(self._used_columns[self._current_location.query_path])
-        import pdb; pdb.set_trace()
-        # TODO union the used columns of all locations so far
-        # used_columns.append('color')
-        # used_columns.append('name')
+        # TODO not sure if this is all
+        # TODO some are unnecessary
+        used_columns = sorted(
+            self._used_columns[self._current_location.query_path].union(
+                self._used_columns[self._current_location.query_path + (vertex_field,)]
+            )
+        )
 
         # Wrap the query so far into a cte. Make sure to select any fields used outside the cte.
-        self._current_alias = self.get_query(
-            [self._current_alias.c[col] for col in used_columns]
-            + [self._current_alias.primary_key[0].label("primary_key")]
-        ).cte(recursive=False)
-        self._from_clause = self._current_alias
-        self._aliases = {location: self._current_alias for location, alias in self._aliases.items()}
+        if self._recurse_needs_cte:
+            self._current_alias = self.get_query(
+                [self._current_alias.c[col] for col in used_columns]
+                + [self._current_alias.primary_key[0].label("primary_key")]
+            ).cte(recursive=False)
+            self._from_clause = self._current_alias
+            self._aliases = {location: self._current_alias for location, alias in self._aliases.items()}
 
         # Redirect all outputs to come from the cte
         self._outputs = [dict(o, from_alias=self._current_alias) for o in self._outputs]
@@ -861,14 +867,7 @@ class CompilationState(object):
             .where(base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
-        # TODO(bojanserafimov): Postgres implements CTEs by executing them ahead of everything
-        #                       else. The onclause into the CTE is not going to filter the
-        #                       recursive base case to a small set of rows, but instead the CTE
-        #                       will be created for all hypothetical starting points.
-        #                       To optimize for Postgres performance, we should instead wrap the
-        #                       part of the query preceding this @recurse into a CTE, and use
-        #                       it as the base case.
-        # self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
+        self._from_clause = self._current_alias
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""
@@ -878,6 +877,8 @@ class CompilationState(object):
 
     def filter(self, predicate):
         """Execute a Filter Block."""
+        self._recurse_needs_cte = True
+
         # If there is an active fold, add the filter to the current fold. Note that this is only for
         # regular fields i.e. non-_x_count fields. Filtering on _x_count will use the COUNT(*)
         # output from the folded subquery and apply the filter in the global WHERE clause.

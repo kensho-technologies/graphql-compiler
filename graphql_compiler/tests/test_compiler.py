@@ -1958,32 +1958,30 @@ class CompilerTests(unittest.TestCase):
         expected_sql = """
             WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    [Animal_2].name AS name,
-                    [Animal_2].parent AS parent,
-                    [Animal_2].uuid AS uuid,
-                    [Animal_2].uuid AS __cte_key,
+                    [Animal_1].name AS name,
+                    [Animal_1].parent AS parent,
+                    [Animal_1].uuid AS uuid,
+                    [Animal_1].uuid AS __cte_key,
                     0 AS __cte_depth
                 FROM
-                    db_1.schema_1.[Animal] AS [Animal_2]
+                    db_1.schema_1.[Animal] AS [Animal_1]
                 UNION ALL
                     SELECT
-                        [Animal_3].name AS name,
-                        [Animal_3].parent AS parent,
-                        [Animal_3].uuid AS uuid,
+                        [Animal_2].name AS name,
+                        [Animal_2].parent AS parent,
+                        [Animal_2].uuid AS uuid,
                         anon_1.__cte_key AS __cte_key,
                         anon_1.__cte_depth + 1 AS __cte_depth
                     FROM
                         anon_1
-                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                            ON anon_1.uuid = [Animal_3].parent
+                        JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                            ON anon_1.uuid = [Animal_2].parent
                     WHERE anon_1.__cte_depth < 1
             )
             SELECT
                 anon_1.name AS relation_name
             FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-                JOIN anon_1
-                    ON [Animal_1].uuid = anon_1.__cte_key
+                anon_1
         """
         expected_cypher = """
             MATCH (Animal___1:Animal)
@@ -2004,15 +2002,17 @@ class CompilerTests(unittest.TestCase):
             WITH anon_2 AS (
                 SELECT
                     [Animal_1].name AS name,
+                    [Animal_1].parent AS parent,
                     [Animal_1].uuid AS uuid,
                     [Animal_1].uuid AS primary_key
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
                 WHERE
                     [Animal_1].name = :animal_name),
-            anon_1(name, uuid, __cte_key, __cte_depth) AS (
+            anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
                     anon_2.name AS name,
+                    anon_2.parent AS parent,
                     anon_2.uuid AS uuid,
                     anon_2.uuid AS __cte_key,
                     0 AS __cte_depth
@@ -2021,6 +2021,7 @@ class CompilerTests(unittest.TestCase):
                 UNION ALL
                 SELECT
                     [Animal_2].name AS name,
+                    [Animal_2].parent AS parent,
                     [Animal_2].uuid AS uuid,
                     anon_1.__cte_key AS __cte_key,
                     anon_1.__cte_depth + 1 AS __cte_depth
@@ -2033,8 +2034,7 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 anon_1.name AS relation_name
             FROM
-                anon_1,
-                anon_2
+                anon_1
         """
         expected_cypher = SKIP_TEST
 
@@ -2365,35 +2365,32 @@ class CompilerTests(unittest.TestCase):
         """
         expected_sql = """
             WITH anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
-               SELECT
-                   [Animal_2].color AS color,
-                   [Animal_2].name AS name,
-                   [Animal_2].parent AS parent,
-                   [Animal_2].uuid AS uuid,
-                   [Animal_2].uuid AS __cte_key,
-                   0 AS __cte_depth
-               FROM
-                   db_1.schema_1.[Animal] AS [Animal_2]
-               UNION ALL
-                   SELECT
-                       [Animal_3].color AS color,
-                       [Animal_3].name AS name,
-                       [Animal_3].parent AS parent,
-                       [Animal_3].uuid AS uuid,
-                       anon_1.__cte_key AS __cte_key,
-                       anon_1.__cte_depth + 1 AS __cte_depth
-                   FROM
-                       anon_1
-                       JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                           ON anon_1.uuid = [Animal_3].parent
-                   WHERE anon_1.__cte_depth < 3
+                SELECT
+                    [Animal_1].color AS color,
+                    [Animal_1].name AS name,
+                    [Animal_1].parent AS parent,
+                    [Animal_1].uuid AS uuid,
+                    [Animal_1].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_1]
+                UNION ALL
+                SELECT
+                    [Animal_2].color AS color,
+                    [Animal_2].name AS name,
+                    [Animal_2].parent AS parent,
+                    [Animal_2].uuid AS uuid,
+                    anon_1.__cte_key AS __cte_key,
+                    anon_1.__cte_depth + 1 AS __cte_depth
+                FROM
+                    anon_1
+                    JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                        ON anon_1.uuid = [Animal_2].parent
+                WHERE anon_1.__cte_depth < 3
             )
             SELECT
                 anon_1.name AS relation_name
-            FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-                JOIN anon_1
-                    ON [Animal_1].uuid = anon_1.__cte_key
+            FROM anon_1
             WHERE
                 anon_1.color = :wanted
         """
@@ -8006,40 +8003,48 @@ class CompilerTests(unittest.TestCase):
             ])}
         """
         expected_sql = """
-            WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+            WITH anon_1 AS (
+                SELECT
+                    [Animal_1].name AS name,
+                    [Animal_1].parent AS parent,
+                    [Animal_1].uuid AS uuid,
+                    [Animal_1].uuid AS primary_key
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                    LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                        ON [Animal_2].parent = [Animal_1].uuid),
+            anon_2(name, parent, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    anon_1.name AS name,
+                    anon_1.parent AS parent,
+                    anon_1.uuid AS uuid,
+                    anon_1.uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    anon_1
+                UNION ALL
                 SELECT
                     [Animal_3].name AS name,
                     [Animal_3].parent AS parent,
                     [Animal_3].uuid AS uuid,
-                    [Animal_3].uuid AS __cte_key,
-                    0 AS __cte_depth
+                    anon_2.__cte_key AS __cte_key,
+                    anon_2.__cte_depth + 1 AS __cte_depth
                 FROM
-                    db_1.schema_1.[Animal] AS [Animal_3]
-                UNION ALL
-                    SELECT
-                        [Animal_4].name AS name,
-                        [Animal_4].parent AS parent,
-                        [Animal_4].uuid AS uuid,
-                        anon_1.__cte_key AS __cte_key,
-                        anon_1.__cte_depth + 1 AS __cte_depth
-                    FROM
-                        anon_1
-                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
-                            ON anon_1.uuid = [Animal_4].parent
-                    WHERE anon_1.__cte_depth < 3
+                    anon_2
+                    JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                        ON anon_2.uuid = [Animal_3].parent
+                WHERE anon_2.__cte_depth < 3
             )
             SELECT
-                [Animal_1].name AS child_name,
-                [Animal_2].name AS name,
-                anon_1.name AS self_and_ancestor_name
+                anon_1.name AS child_name,
+                anon_1.name AS name,
+                anon_2.name AS self_and_ancestor_name
             FROM
-                db_1.schema_1.[Animal] AS [Animal_2]
-                LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                    ON [Animal_2].parent = [Animal_1].uuid
-                LEFT OUTER JOIN anon_1 ON [Animal_1].uuid = anon_1.__cte_key
-            WHERE
-                anon_1.__cte_key IS NOT NULL OR [Animal_1].uuid IS NULL
+                anon_1, anon_2
         """
+        # TODO why did the previous query have:
+        # WHERE
+        #     anon_1.__cte_key IS NOT NULL OR [Animal_1].uuid IS NULL
         expected_cypher = SKIP_TEST
 
         check_test_data(
