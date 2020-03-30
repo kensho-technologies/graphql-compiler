@@ -2001,38 +2001,40 @@ class CompilerTests(unittest.TestCase):
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_sql = """
-            WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+            WITH anon_2 AS (
                 SELECT
-                    [Animal_2].name AS name,
-                    [Animal_2].parent AS parent,
-                    [Animal_2].uuid AS uuid,
-                    [Animal_2].uuid AS __cte_key,
+                    [Animal_1].name AS name,
+                    [Animal_1].uuid AS uuid,
+                    [Animal_1].uuid AS primary_key
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_1]
+                WHERE
+                    [Animal_1].name = :animal_name),
+            anon_1(name, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    anon_2.name AS name,
+                    anon_2.uuid AS uuid,
+                    anon_2.uuid AS __cte_key,
                     0 AS __cte_depth
                 FROM
-                    db_1.schema_1.[Animal] AS [Animal_2]
-                WHERE
-                    [Animal_2].name = :animal_name
+                    anon_2
                 UNION ALL
-                    SELECT
-                        [Animal_3].name AS name,
-                        [Animal_3].parent AS parent,
-                        [Animal_3].uuid AS uuid,
-                        anon_1.__cte_key AS __cte_key,
-                        anon_1.__cte_depth + 1 AS __cte_depth
-                    FROM
-                        anon_1
-                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                            ON anon_1.uuid = [Animal_3].parent
-                    WHERE anon_1.__cte_depth < 1
+                SELECT
+                    [Animal_2].name AS name,
+                    [Animal_2].uuid AS uuid,
+                    anon_1.__cte_key AS __cte_key,
+                    anon_1.__cte_depth + 1 AS __cte_depth
+                FROM
+                    anon_1 JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                        ON anon_1.uuid = [Animal_2].parent
+                WHERE
+                    anon_1.__cte_depth < 1
             )
             SELECT
                 anon_1.name AS relation_name
             FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-                JOIN anon_1
-                    ON [Animal_1].uuid = anon_1.__cte_key
-            WHERE
-                [Animal_1].name = :animal_name
+                anon_1,
+                anon_2
         """
         expected_cypher = SKIP_TEST
 
