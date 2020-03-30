@@ -8046,6 +8046,7 @@ class CompilerTests(unittest.TestCase):
         # WHERE
         #     anon_1.__cte_key IS NOT NULL OR [Animal_1].uuid IS NULL
         # TODO the name output in anon_1 should come from Animal_2
+        # TODO test with traverse after recurse
         expected_cypher = SKIP_TEST
 
         check_test_data(

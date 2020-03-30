@@ -826,6 +826,8 @@ class CompilationState(object):
                 + [self._current_alias.primary_key[0].label("primary_key")]
             ).cte(recursive=False)
             self._from_clause = self._current_alias
+
+            # TODO more clever routing might be needed
             self._aliases = {
                 location: self._current_alias for location, alias in self._aliases.items()
             }
