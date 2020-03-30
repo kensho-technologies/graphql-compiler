@@ -812,21 +812,23 @@ class CompilationState(object):
         # Find which columns should be selected
         used_columns = sorted(self._used_columns[self._current_location.query_path])
 
-        self._current_alias = self.get_query([
-            self._current_alias.c[col] for col in used_columns
-        ] + [
-            self._current_alias.primary_key[0].label("primary_key")
-        ]).cte(recursive=False)
-        self._outputs = [
-            dict(o, from_alias=self._current_alias) for o in self._outputs
-        ]
-        self._filters = []
-        previous_alias = self._current_alias
+        # Wrap the query so far into a cte. Make sure to select any fields used outside
+        # the cte.
+        # TODO Make sure all needed columns are selected
+        self._current_alias = self.get_query(
+            [self._current_alias.c[col] for col in used_columns]
+            + [self._current_alias.primary_key[0].label("primary_key")]
+        ).cte(recursive=False)
         self._from_clause = self._current_alias
-        self._aliases = {
-            location: self._current_alias
-            for location, alias in self._aliases.items()
-        }
+        self._aliases = {location: self._current_alias for location, alias in self._aliases.items()}
+
+        # Redirect all outputs to come from the cte
+        self._outputs = [dict(o, from_alias=self._current_alias) for o in self._outputs]
+
+        # The filters are already included in the cte
+        self._filters = []
+
+        previous_alias = self._current_alias
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
         # Sanitize literal columns to be used in the query
@@ -839,16 +841,10 @@ class CompilationState(object):
         literal_1 = sqlalchemy.literal_column("1")
 
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
-        base = (
-            sqlalchemy.select(
-                [previous_alias.c[col] for col in used_columns]
-                + [
-                    previous_alias.c[primary_key].label(CTE_KEY_NAME),
-                    literal_0.label(CTE_DEPTH_NAME),
-                ]
-            )
-            .cte(recursive=True)
-        )
+        base = sqlalchemy.select(
+            [previous_alias.c[col] for col in used_columns]
+            + [previous_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
+        ).cte(recursive=True)
 
         # The recursive step selects all needed columns, increments the depth, and joins to the base
         step = self._current_alias.alias()
@@ -998,21 +994,24 @@ class CompilationState(object):
         # self._outputs.append(
         #     field.to_sql(self.dialect, self._aliases, self._current_alias).label(output_name)
         # )
-        self._outputs.append({
-            "from_alias": self._current_alias,
-            "label": output_name,
-            "field": field,
-        })
+        self._outputs.append(
+            {"from_alias": self._current_alias, "label": output_name, "field": field,}
+        )
 
     def get_query(self, extra_outputs=None):
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
         if not extra_outputs:
             extra_outputs = []
         return (
-            sqlalchemy.select(extra_outputs + [
-                o["field"].to_sql(self.dialect, self._aliases, o["from_alias"]).label(o["label"])
-                for o in self._outputs
-            ])
+            sqlalchemy.select(
+                extra_outputs
+                + [
+                    o["field"]
+                    .to_sql(self.dialect, self._aliases, o["from_alias"])
+                    .label(o["label"])
+                    for o in self._outputs
+                ]
+            )
             .select_from(self._from_clause)
             .where(sqlalchemy.and_(*self._filters))
         )
