@@ -808,10 +808,12 @@ class CompilationState(object):
 
         # Find which columns should be selected
         used_columns = sorted(self._used_columns[self._current_location.query_path])
+        import pdb; pdb.set_trace()
+        # TODO union the used columns of all locations so far
+        # used_columns.append('color')
+        # used_columns.append('name')
 
-        # Wrap the query so far into a cte. Make sure to select any fields used outside
-        # the cte.
-        # TODO Make sure all needed columns are selected
+        # Wrap the query so far into a cte. Make sure to select any fields used outside the cte.
         self._current_alias = self.get_query(
             [self._current_alias.c[col] for col in used_columns]
             + [self._current_alias.primary_key[0].label("primary_key")]
