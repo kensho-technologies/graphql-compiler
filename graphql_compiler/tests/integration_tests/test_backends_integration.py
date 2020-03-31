@@ -514,12 +514,12 @@ class IntegrationTests(TestCase):
                 {"starting_animal_name": "Animal 1",},
                 [
                     {
-                        "child_names": ['Animal 1', 'Animal 2', 'Animal 3'],
+                        "child_names": ["Animal 1", "Animal 2", "Animal 3"],
                         "child_uuids": [
-                            'cfc6e625-8594-0927-468f-f53d864a7a51',
-                            'cfc6e625-8594-0927-468f-f53d864a7a52',
-                            'cfc6e625-8594-0927-468f-f53d864a7a53'
-                        ]
+                            "cfc6e625-8594-0927-468f-f53d864a7a51",
+                            "cfc6e625-8594-0927-468f-f53d864a7a52",
+                            "cfc6e625-8594-0927-468f-f53d864a7a53",
+                        ],
                     },
                 ],
             ),
