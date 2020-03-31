@@ -5241,7 +5241,52 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_sql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list,
+                folded_subquery_1.fold_output_uuid AS child_uuids_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce(
+                        (
+                            SELECT
+                                '|' + coalesce(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(
+                                                [Animal_3].uuid, '^', '^e'
+                                            ),
+                                        '~', '^n'),
+                                    '|', '^d'),
+                                '~')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')
+                        ),
+                    '') AS fold_output_uuid,
+                    coalesce(
+                        (
+                            SELECT
+                                '|' + coalesce(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(
+                                                [Animal_3].name, '^', '^e'
+                                            ),
+                                        '~', '^n'),
+                                    '|', '^d'),
+                                '~')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')
+                        ),
+                    '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -5255,7 +5300,7 @@ class CompilerTests(unittest.TestCase):
         """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+            self, test_data, expected_match, expected_gremlin, expected_mssql, expected_cypher
         )
 
     def test_multiple_outputs_in_same_fold_and_traverse(self):
@@ -5378,7 +5423,91 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_sql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS child_names_list,
+                folded_subquery_1.fold_output_uuid AS child_uuids_list,
+                folded_subquery_2.fold_output_name AS parent_names_list,
+                folded_subquery_2.fold_output_uuid AS parent_uuids_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce(
+                        (
+                            SELECT
+                                '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(
+                                            [Animal_3].uuid, '^', '^e'
+                                        ),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')
+                        ),
+                    '') AS fold_output_uuid,
+                    coalesce(
+                        (
+                            SELECT '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(
+                                            [Animal_3].name, '^', '^e'
+                                        ),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                            FROM db_1.schema_1.[Animal] AS [Animal_3]
+                            WHERE [Animal_2].uuid = [Animal_3].parent
+                            FOR XML PATH ('')
+                        ),
+                    '') AS fold_output_name
+                    FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+            JOIN (
+                SELECT
+                    [Animal_4].uuid AS uuid,
+                        coalesce(
+                            (
+                                SELECT '|' + coalesce(
+                                    REPLACE(
+                                        REPLACE(
+                                            REPLACE(
+                                                [Animal_5].uuid, '^', '^e'
+                                            ),
+                                        '~', '^n'),
+                                    '|', '^d'),
+                                '~')
+                                FROM db_1.schema_1.[Animal] AS [Animal_5]
+                                WHERE [Animal_4].parent = [Animal_5].uuid
+                                FOR XML PATH ('')
+                            ),
+                        '') AS fold_output_uuid,
+                        coalesce(
+                            (
+                                SELECT
+                                    '|' + coalesce(
+                                        REPLACE(
+                                            REPLACE(
+                                                REPLACE(
+                                                    [Animal_5].name, '^', '^e'
+                                                ),
+                                            '~', '^n'),
+                                        '|', '^d'),
+                                    '~')
+                                FROM db_1.schema_1.[Animal] AS [Animal_5]
+                                WHERE [Animal_4].parent = [Animal_5].uuid
+                                FOR XML PATH ('')
+                            ),
+                        '') AS fold_output_name
+                        FROM db_1.schema_1.[Animal] AS [Animal_4]
+                ) AS folded_subquery_2 ON [Animal_1].uuid = folded_subquery_2.uuid
+                """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -5399,7 +5528,7 @@ class CompilerTests(unittest.TestCase):
         """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+            self, test_data, expected_match, expected_gremlin, expected_mssql, expected_cypher
         )
 
     def test_multiple_folds_and_traverse(self):
@@ -5559,8 +5688,56 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        # TODO: implement date times in a separate PR
-        expected_sql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_birthday AS child_birthdays_list,
+                folded_subquery_2.fold_output_event_date AS fed_at_datetimes_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce(
+                        (
+                            SELECT '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(
+                                            [Animal_3].birthday, '^', '^e'
+                                        ),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_3]
+                        WHERE [Animal_2].uuid = [Animal_3].parent
+                        FOR XML PATH ('') ), ''
+                    ) AS fold_output_birthday
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
+            JOIN (
+                SELECT
+                    [Animal_4].uuid AS uuid,
+                    coalesce(
+                        (
+                            SELECT '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE(
+                                            [FeedingEvent_1].event_date, '^', '^e'
+                                        ),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                            FROM db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
+                            WHERE [Animal_4].fed_at = [FeedingEvent_1].uuid
+                            FOR XML PATH ('')
+                        ),
+                    '') AS fold_output_event_date
+                FROM db_1.schema_1.[Animal] AS [Animal_4]
+            ) AS folded_subquery_2 ON [Animal_1].uuid = folded_subquery_2.uuid
+        """
+        # TODO: implement date times for postgres in a separate PR
+        expected_postgresql = NotImplementedError
         # '''
         #     SELECT
         #         [Animal_1].name AS animal_name,
@@ -5610,7 +5787,13 @@ class CompilerTests(unittest.TestCase):
         """
 
         check_test_data(
-            self, test_data, expected_match, expected_gremlin, expected_sql, expected_cypher
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
         )
 
     def test_coercion_to_union_base_type_inside_fold(self):
