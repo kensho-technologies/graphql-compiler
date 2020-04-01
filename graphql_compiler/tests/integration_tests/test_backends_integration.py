@@ -471,7 +471,21 @@ class IntegrationTests(TestCase):
                 {"starting_animal_name": "Animal 1",},
                 [{"child_names": ["Animal 1", "Animal 2", "Animal 3"]},],
             ),
-            # Query 3: Unfolded children of Animal 4
+            # Query 3: Folded children's net worths of Animal 1
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        net_worth @output(out_name: "child_net_worths")
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1",},
+                [{"child_net_worths": [Decimal("100"), Decimal("200"), Decimal("300")]},],
+            ),
+            # Query 4: Unfolded children of Animal 4
             (
                 """
             {
@@ -485,7 +499,7 @@ class IntegrationTests(TestCase):
                 {"starting_animal_name": "Animal 4",},
                 [],
             ),
-            # Query 4: Folded children of Animal 4
+            # Query 5: Folded children of Animal 4
             (
                 """
             {
