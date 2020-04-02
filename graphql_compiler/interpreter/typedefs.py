@@ -1,6 +1,6 @@
 from abc import ABCMeta, abstractmethod
 from pprint import pformat
-from typing import Any, Dict, Generic, Iterable, Optional, Tuple, TypeVar
+from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, TypeVar
 
 from ..compiler.helpers import Location
 from .immutable_stack import ImmutableStack, make_empty_stack
@@ -15,7 +15,15 @@ class DataContext(Generic[DataToken]):
         'current_token',
         'token_at_location',
         'expression_stack',
+        'piggyback_contexts',
     )
+
+    current_token: Optional[DataToken]
+    token_at_location: Dict[Location, Optional[DataToken]]
+    expression_stack: ImmutableStack
+
+    # https://github.com/python/mypy/issues/731
+    piggyback_contexts: Optional[List["DataContext"]]  # type: ignore
 
     def __init__(
         self,
@@ -26,10 +34,15 @@ class DataContext(Generic[DataToken]):
         self.current_token = current_token
         self.token_at_location = token_at_location
         self.expression_stack = expression_stack
+        self.piggyback_contexts = None
 
     def __repr__(self) -> str:
-        return 'DataContext(current={}, locations={}, stack={})'.format(
-            self.current_token, pformat(self.token_at_location), pformat(self.expression_stack))
+        return (
+            f"DataContext(current={self.current_token}, "
+            f"locations={pformat(self.token_at_location)}, "
+            f"stack={pformat(self.expression_stack)}, "
+            f"piggyback={self.piggyback_contexts})"
+        )
 
     __str__ = __repr__
 
@@ -58,6 +71,36 @@ class DataContext(Generic[DataToken]):
             dict(self.token_at_location),
             self.expression_stack,
         )
+
+    def add_piggyback_context(self, piggyback: "DataContext") -> None:
+        # First, move any nested piggyback contexts to this context's piggyback list
+        nested_piggyback_contexts = piggyback.consume_piggyback_contexts()
+
+        if self.piggyback_contexts:
+            self.piggyback_contexts.extend(nested_piggyback_contexts)
+        else:
+            self.piggyback_contexts = nested_piggyback_contexts
+
+        # Then, append the new piggyback element to our own piggyback contexts.
+        self.piggyback_contexts.append(piggyback)
+
+    def consume_piggyback_contexts(self) -> List["DataContext"]:
+        piggybacks = self.piggyback_contexts
+        if piggybacks is None:
+            return []
+
+        self.piggyback_contexts = None
+        return piggybacks
+
+    def ensure_deactivated(self) -> None:
+        if self.current_token is not None:
+            self.push_value_onto_stack(self.current_token)
+            self.current_token = None
+
+    def reactivate(self) -> None:
+        if self.current_token is not None:
+            raise AssertionError(f"Attempting to reactivate an already-active context: {self}")
+        self.current_token = self.pop_value_from_stack()
 
 
 class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
