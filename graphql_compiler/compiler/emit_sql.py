@@ -809,29 +809,38 @@ class CompilationState(object):
             )
         primary_key = self._current_alias.primary_key[0].name
 
-        # Find which columns should be selected
-        # TODO not sure if this is all
-        # TODO some are unnecessary
-        used_columns = sorted(
-            # TODO not all come from self._current_location
-            self._used_columns[self._current_location.query_path].union(
-                self._used_columns[self._current_location.query_path + (vertex_field,)]
-            )
-        )
+        class AliasRouter:
+            def __init__(self):
+                self.c = {}
+
+        recursion_vertex_path = self._current_location.query_path + (vertex_field,)
+        used_columns = self._used_columns
+        used_columns[self._current_location.query_path] = used_columns[
+            self._current_location.query_path
+        ].union(used_columns[recursion_vertex_path])
+        extra_outputs = []
+        routers = {}
+        for alias_key, alias in self._aliases.items():
+            vertex_path, _ = alias_key
+            for used_column_name in sorted(used_columns[vertex_path]):
+                label = "_".join(vertex_path) + "__" + used_column_name
+                extra_outputs.append(alias.c[used_column_name].label(label))
+                routers.setdefault(alias_key, AliasRouter()).c[used_column_name] = label
+        extra_outputs.append(self._current_alias.primary_key[0].label("primary_key"))
 
         # Wrap the query so far into a cte. Make sure to select any fields used outside the cte.
         if self._recurse_needs_cte:
-            self._current_alias = self.get_query(
-                [self._current_alias.c[col] for col in used_columns]
-                + [self._current_alias.primary_key[0].label("primary_key")]
-            ).cte(recursive=False)
+            self._current_alias = self.get_query(extra_outputs).cte(recursive=False)
             self._from_clause = self._current_alias
 
-            # TODO more clever routing might be needed
-            self._aliases = {
-                location: self._current_alias for location, alias in self._aliases.items()
-            }
             self._filters = []  # The filters are already included in the cte
+            for _, router in routers.items():
+                router.c = {
+                    external_name: self._current_alias.c[internal_name]
+                    for external_name, internal_name in router.c.items()
+                }
+            self._aliases = routers
+            self._current_alias = self._aliases[(self._current_location.query_path, None)]
 
         previous_alias = self._current_alias
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
@@ -845,9 +854,12 @@ class CompilationState(object):
         literal_0 = sqlalchemy.literal_column("0")
         literal_1 = sqlalchemy.literal_column("1")
 
+        # Find which columns should be selected
+        used_columns = sorted(self._used_columns[self._current_location.query_path])
+
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
         base = sqlalchemy.select(
-            [previous_alias.c[col] for col in used_columns]
+            [previous_alias.c[col].label(col) for col in used_columns]
             + [previous_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
         ).cte(recursive=True)
 

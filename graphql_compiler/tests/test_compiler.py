@@ -2001,9 +2001,9 @@ class CompilerTests(unittest.TestCase):
         expected_sql = """
             WITH anon_2 AS (
                 SELECT
-                    [Animal_1].name AS name,
-                    [Animal_1].parent AS parent,
-                    [Animal_1].uuid AS uuid,
+                    [Animal_1].name AS [Animal__name],
+                    [Animal_1].parent AS [Animal__parent],
+                    [Animal_1].uuid AS [Animal__uuid],
                     [Animal_1].uuid AS primary_key
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
@@ -2011,10 +2011,10 @@ class CompilerTests(unittest.TestCase):
                     [Animal_1].name = :animal_name),
             anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    anon_2.name AS name,
-                    anon_2.parent AS parent,
-                    anon_2.uuid AS uuid,
-                    anon_2.uuid AS __cte_key,
+                    anon_2.[Animal__name] AS name,
+                    anon_2.[Animal__parent] AS parent,
+                    anon_2.[Animal__uuid] AS uuid,
+                    anon_2.[Animal__uuid] AS __cte_key,
                     0 AS __cte_depth
                 FROM
                     anon_2
@@ -8005,20 +8005,23 @@ class CompilerTests(unittest.TestCase):
         expected_sql = """
             WITH anon_1 AS (
                 SELECT
-                    [Animal_1].name AS name,
-                    [Animal_1].parent AS parent,
-                    [Animal_1].uuid AS uuid,
-                    [Animal_1].uuid AS primary_key
+                    [Animal_1].name AS [Animal__name],
+                    [Animal_1].parent AS [Animal__parent],
+                    [Animal_2].name AS [Animal_in_Animal_ParentOf__name],
+                    [Animal_2].parent AS [Animal_in_Animal_ParentOf__parent],
+                    [Animal_2].uuid AS [Animal_in_Animal_ParentOf__uuid],
+                    [Animal_2].uuid AS primary_key
                 FROM
-                    db_1.schema_1.[Animal] AS [Animal_2]
-                    LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_1]
-                        ON [Animal_2].parent = [Animal_1].uuid),
+                    db_1.schema_1.[Animal] AS [Animal_1]
+                    LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                        ON [Animal_1].parent = [Animal_2].uuid
+            ),
             anon_2(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    anon_1.name AS name,
-                    anon_1.parent AS parent,
-                    anon_1.uuid AS uuid,
-                    anon_1.uuid AS __cte_key,
+                    anon_1.[Animal_in_Animal_ParentOf__name] AS name,
+                    anon_1.[Animal_in_Animal_ParentOf__parent] AS parent,
+                    anon_1.[Animal_in_Animal_ParentOf__uuid] AS uuid,
+                    anon_1.[Animal_in_Animal_ParentOf__uuid] AS __cte_key,
                     0 AS __cte_depth
                 FROM
                     anon_1
@@ -8033,17 +8036,14 @@ class CompilerTests(unittest.TestCase):
                     anon_2
                     JOIN db_1.schema_1.[Animal] AS [Animal_3]
                         ON anon_2.uuid = [Animal_3].parent
-                WHERE anon_2.__cte_depth < 3
+                    WHERE anon_2.__cte_depth < 3
             )
             SELECT
-                anon_1.name AS child_name,
-                anon_1.name AS name,
+                anon_1.[Animal_in_Animal_ParentOf__name] AS child_name,
+                anon_1.[Animal__name] AS name,
                 anon_2.name AS self_and_ancestor_name
-            FROM
-                anon_1, anon_2
+            FROM anon_1, anon_2
         """
-        # TODO This test shows the actual output, and not the desired output. The name output
-        #      in anon_1 should come from Animal_2. See todos in emit_sql.
         # TODO Add an integration test for this query to make sure the recurse preserves
         #      left join misses from the parent optional traversal.
         expected_cypher = SKIP_TEST
