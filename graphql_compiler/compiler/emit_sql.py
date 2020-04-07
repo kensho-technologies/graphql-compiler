@@ -826,7 +826,6 @@ class CompilationState(object):
                 label = "_".join(vertex_path) + "__" + used_column_name
                 extra_outputs.append(alias.c[used_column_name].label(label))
                 routers.setdefault(alias_key, AliasRouter()).c[used_column_name] = label
-        extra_outputs.append(self._current_alias.primary_key[0].label("primary_key"))
 
         # Wrap the query so far into a cte. Make sure to select any fields used outside the cte.
         if self._recurse_needs_cte:

@@ -2003,8 +2003,7 @@ class CompilerTests(unittest.TestCase):
                 SELECT
                     [Animal_1].name AS [Animal__name],
                     [Animal_1].parent AS [Animal__parent],
-                    [Animal_1].uuid AS [Animal__uuid],
-                    [Animal_1].uuid AS primary_key
+                    [Animal_1].uuid AS [Animal__uuid]
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
                 WHERE
@@ -8009,8 +8008,7 @@ class CompilerTests(unittest.TestCase):
                     [Animal_1].parent AS [Animal__parent],
                     [Animal_2].name AS [Animal_in_Animal_ParentOf__name],
                     [Animal_2].parent AS [Animal_in_Animal_ParentOf__parent],
-                    [Animal_2].uuid AS [Animal_in_Animal_ParentOf__uuid],
-                    [Animal_2].uuid AS primary_key
+                    [Animal_2].uuid AS [Animal_in_Animal_ParentOf__uuid]
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
                     LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
