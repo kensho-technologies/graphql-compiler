@@ -103,7 +103,8 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
             traversal = "{}_{}".format(recurse_info.edge_direction, recurse_info.edge_name)
             used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
-                used_columns[location.query_path + (traversal,)])
+                used_columns[location.query_path + (traversal,)]
+            )
             used_columns.setdefault(location.query_path, set()).add(edge.from_column)
 
     # Find outputs used
@@ -823,7 +824,6 @@ class CompilationState(object):
             def __init__(self):
                 self.c = {}
 
-        recursion_vertex_path = self._current_location.query_path + (vertex_field,)
         extra_outputs = []
         routers = {}
         for alias_key, alias in self._aliases.items():
