@@ -917,17 +917,6 @@ class FoldedContextField(Expression):
                 )
             )
 
-        # Otherwise, get the type of the folded field.
-        inner_type = strip_non_null_from_type(self.field_type.of_type)
-        if is_same_type(GraphQLInt, inner_type):
-            sql_array_type = "INT"
-        elif is_same_type(GraphQLString, inner_type):
-            sql_array_type = "VARCHAR"
-        else:
-            raise NotImplementedError(
-                "Type {} not implemented for outputs inside a fold.".format(inner_type)
-            )
-
         fold_output_column = aliases[
             self.fold_scope_location.base_location.query_path, self.fold_scope_location.fold_path
         ].c["fold_output_" + self.fold_scope_location.field]
@@ -938,6 +927,15 @@ class FoldedContextField(Expression):
         elif isinstance(dialect, PGDialect):
             # PostgreSQL
             # coalesce to an empty array of the corresponding type
+            inner_type = strip_non_null_from_type(self.field_type.of_type)
+            if is_same_type(GraphQLInt, inner_type):
+                sql_array_type = "INT"
+            elif is_same_type(GraphQLString, inner_type):
+                sql_array_type = "VARCHAR"
+            else:
+                raise NotImplementedError(
+                    "Type {} not implemented for outputs inside a fold.".format(inner_type)
+                )
             empty_array = "ARRAY[]::{}[]".format(sql_array_type)
             return sqlalchemy.func.coalesce(
                 fold_output_column, sqlalchemy.literal_column(empty_array)
