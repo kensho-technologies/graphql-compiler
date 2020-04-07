@@ -96,6 +96,16 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
                 used_columns.setdefault(child_location.query_path, set()).add(edge.from_column)
 
+    # Columns used in the base case of CTE recursions should be made available from parent scope
+    for location, location_info in ir.query_metadata_table.registered_locations:
+        if isinstance(location, FoldScopeLocation):
+            continue
+        for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
+            traversal = "{}_{}".format(recurse_info.edge_direction, recurse_info.edge_name)
+            used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
+                used_columns[location.query_path + (traversal,)])
+            used_columns.setdefault(location.query_path, set()).add(edge.from_column)
+
     # Find outputs used
     for _, output_info in ir.query_metadata_table.outputs:
         if isinstance(output_info.location, FoldScopeLocation):
@@ -814,15 +824,11 @@ class CompilationState(object):
                 self.c = {}
 
         recursion_vertex_path = self._current_location.query_path + (vertex_field,)
-        used_columns = self._used_columns
-        used_columns[self._current_location.query_path] = used_columns[
-            self._current_location.query_path
-        ].union(used_columns[recursion_vertex_path])
         extra_outputs = []
         routers = {}
         for alias_key, alias in self._aliases.items():
             vertex_path, _ = alias_key
-            for used_column_name in sorted(used_columns[vertex_path]):
+            for used_column_name in sorted(self._used_columns[vertex_path]):
                 label = "_".join(vertex_path) + "__" + used_column_name
                 extra_outputs.append(alias.c[used_column_name].label(label))
                 routers.setdefault(alias_key, AliasRouter()).c[used_column_name] = label
