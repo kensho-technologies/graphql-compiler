@@ -656,7 +656,7 @@ class SQLFoldObject(object):
             isouter=False,
         )
         self._ended = True  # prevent any more functions being called on this fold
-        return fold_subquery, joined_from_clause, outer_from_table
+        return fold_subquery, joined_from_clause
 
 
 class UniqueAliasGenerator(object):
@@ -927,7 +927,7 @@ class CompilationState(object):
 
     def unfold(self):
         """Complete the execution of a Fold Block."""
-        fold_subquery, from_cls, outer_vertex = self._current_fold.end_fold(
+        fold_subquery, from_cls = self._current_fold.end_fold(
             self._alias_generator, self._from_clause, self._current_alias
         )
 
@@ -945,15 +945,9 @@ class CompilationState(object):
         self._aliases[subquery_alias_key] = fold_subquery
         self._from_clause = from_cls
 
-        # Ensure references to the outer vertex table after the Unfold refer to a totally new
-        # copy of the outer vertex table. Otherwise references would select columns from the
-        # copy of that table found inside the fold subquery.
-        self._aliases[(self._current_location.at_vertex().query_path, None)] = outer_vertex
-
         # clear the fold from the compilation state
         self._current_fold = None
         self._fold_vertex_location = None
-        self._current_alias = outer_vertex
 
     def mark_location(self):
         """Execute a MarkLocation Block."""
