@@ -316,6 +316,8 @@ LocationT = TypeVar("LocationT", bound="BaseLocation")
 
 
 @total_ordering  # type: ignore
+# Issue might be due to https://github.com/python/mypy/issues/5374
+# Feel free to remove this mypy exception if you get mypy to pass
 @six.add_metaclass(ABCMeta)
 class BaseLocation(object):
     """An abstract location object, describing a location in the GraphQL query."""
