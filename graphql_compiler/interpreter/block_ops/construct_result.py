@@ -3,7 +3,7 @@ from typing import Any, Dict, Iterable
 from ...compiler.blocks import ConstructResult
 from ...compiler.expressions import Expression
 from ..debugging import print_tap
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..typedefs import GLOBAL_LOCATION_TYPE_NAME, DataContext, DataToken, InterpreterAdapter
 from ..expression_ops import evaluate_expression
 
 
@@ -18,7 +18,7 @@ def _produce_output(
         'outputting ' + output_name, data_contexts)
 
     contexts_and_values = evaluate_expression(
-        adapter, query_arguments, output_expression, data_contexts)
+        adapter, query_arguments, GLOBAL_LOCATION_TYPE_NAME, output_expression, data_contexts)
 
     for data_context, value in contexts_and_values:
         data_context.peek_value_on_stack()[output_name] = value

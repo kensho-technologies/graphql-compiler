@@ -9,6 +9,7 @@ from ..typedefs import DataContext, DataToken, InterpreterAdapter
 def handle_filter_block(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: Filter,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
@@ -24,7 +25,7 @@ def handle_filter_block(
     yield from (
         data_context
         for data_context, predicate_value in evaluate_expression(
-            adapter, query_arguments, predicate, data_contexts
+            adapter, query_arguments, current_type_name, predicate, data_contexts
         )
         if predicate_value or data_context.current_token is None
     )
@@ -33,10 +34,13 @@ def handle_filter_block(
 def handle_traverse_block(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: Traverse,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
-    neighbor_data = adapter.project_neighbors(data_contexts, block.direction, block.edge_name)
+    neighbor_data = adapter.project_neighbors(
+        data_contexts, current_type_name, block.direction, block.edge_name
+    )
     for data_context, neighbor_tokens in neighbor_data:
         has_neighbors = False
         for neighbor_token in neighbor_tokens:
@@ -56,13 +60,16 @@ def handle_traverse_block(
 def handle_coerce_type_block(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: CoerceType,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
     coercion_type = get_only_element_from_collection(block.target_class)
     return (
         data_context
-        for data_context, can_coerce in adapter.can_coerce_to_type(data_contexts, coercion_type)
+        for data_context, can_coerce in adapter.can_coerce_to_type(
+            data_contexts, current_type_name, coercion_type
+        )
         if can_coerce or data_context.current_token is None
     )
 
@@ -70,6 +77,7 @@ def handle_coerce_type_block(
 def handle_mark_location_block(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: MarkLocation,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
@@ -87,6 +95,7 @@ def handle_mark_location_block(
 def handle_backtrack_block(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: Backtrack,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:

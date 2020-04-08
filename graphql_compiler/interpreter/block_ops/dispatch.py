@@ -16,6 +16,7 @@ from .recurse_block_handler import handle_recurse_block
 def generate_block_outputs(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: BasicBlock,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
@@ -33,4 +34,6 @@ def generate_block_outputs(
         Backtrack: handle_backtrack_block,
         Recurse: handle_recurse_block,
     }
-    return handler_functions[type(block)](adapter, query_arguments, block, data_contexts)
+    handler = handler_functions[type(block)]
+
+    return handler(adapter, query_arguments, current_type_name, block, data_contexts)

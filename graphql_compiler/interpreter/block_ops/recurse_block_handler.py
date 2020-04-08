@@ -20,11 +20,14 @@ def _handle_already_inactive_tokens(
 def _iterative_recurse_handler(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: Recurse,
     data_contexts: Iterable[DataContext],
     current_depth: int,
 ) -> Iterable[DataContext]:
-    neighbor_data = adapter.project_neighbors(data_contexts, block.direction, block.edge_name)
+    neighbor_data = adapter.project_neighbors(
+        data_contexts, current_type_name, block.direction, block.edge_name
+    )
     for data_context, neighbor_tokens in neighbor_data:
         # Deal with the current context. It needs to be deactivated (it might already be so),
         # so we don't end up visiting its neighbors again in the next iteration.
@@ -64,54 +67,23 @@ def _unwrap_recursed_data_context(
     yield data_context
 
 
-def _print_tap(info: str, data_contexts: Iterable[DataContext]) -> Iterable[DataContext]:
-    return data_contexts
-    # print('\n')
-    # unique_id = hash(info)
-    # print(unique_id, info)
-    # from pprint import pprint
-    # from funcy.py3 import chunks
-    # for context_chunk in chunks(1, data_contexts):
-    #     for context in context_chunk:
-    #         pprint((unique_id, context))
-    #         yield context
-
-
-def _counting_tap(info: str, data_contexts: Iterable[DataContext]) -> Iterable[DataContext]:
-    counter = 0
-
-    print(f"\n{info} - open")
-
-    for data_context in data_contexts:
-        counter += 1
-        yield data_context
-
-    print(f"\n{info} - closed, count = {counter}")
-
-
 def handle_recurse_block(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     block: Recurse,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
     data_contexts = _handle_already_inactive_tokens(data_contexts)
 
-    # data_contexts = _print_tap("pre-recursion", data_contexts)
-
     for current_depth in range(block.depth):
         data_contexts = _iterative_recurse_handler(
-            adapter, query_arguments, block, data_contexts, current_depth
+            adapter, query_arguments, current_type_name, block, data_contexts, current_depth
         )
-        # data_contexts = _print_tap(f"after recursion level {current_depth}", data_contexts)
-
-    # data_contexts = _counting_tap("after recursion, before unwrapping", data_contexts)
 
     all_data_contexts = chain.from_iterable(
         _unwrap_recursed_data_context(data_context)
         for data_context in data_contexts
     )
-
-    # all_data_contexts = _counting_tap("after unwrapping", all_data_contexts)
 
     return all_data_contexts

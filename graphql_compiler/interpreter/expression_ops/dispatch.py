@@ -17,6 +17,7 @@ from .immediate_expression_handlers import (
 def evaluate_expression(
     adapter: InterpreterAdapter[DataToken],
     query_arguments: Dict[str, Any],
+    current_type_name: str,
     expression: Expression,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[Tuple[DataContext, Any]]:
@@ -32,11 +33,11 @@ def evaluate_expression(
         ContextField: evaluate_context_field,
         OutputContextField: evaluate_context_field,
     }
-    expression_type = type(expression)
+    handler = type_to_handler[type(expression)]
 
     # N.B.: We pass "evaluate_expression" (i.e. this dispatch function) into
     #       the specific expression handler since some expressions contain nested sub-expressions.
     #       If we hadn't passed in this function as an argument, we'd have a circular import issue.
-    return type_to_handler[expression_type](
-        evaluate_expression, adapter, query_arguments, expression, data_contexts
+    return handler(
+        evaluate_expression, adapter, query_arguments, current_type_name, expression, data_contexts
     )

@@ -6,6 +6,9 @@ from ..compiler.helpers import Location
 from .immutable_stack import ImmutableStack, make_empty_stack
 
 
+GLOBAL_LOCATION_TYPE_NAME = "global"
+
+
 DataToken = TypeVar('DataToken')
 
 
@@ -116,6 +119,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     def project_property(
         self,
         data_contexts: Iterable[DataContext[DataToken]],
+        current_type_name: str,
         field_name: str,
         **hints: Dict[str, Any],
     ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
@@ -125,6 +129,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     def project_neighbors(
         self,
         data_contexts: Iterable[DataContext[DataToken]],
+        current_type_name: str,
         direction: str,
         edge_name: str,
         **hints: Dict[str, Any],
@@ -140,7 +145,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     def can_coerce_to_type(
         self,
         data_contexts: Iterable[DataContext[DataToken]],
-        type_name: str,
+        current_type_name: str,
+        coerce_to_type_name: str,
         **hints: Dict[str, Any],
     ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
         pass
