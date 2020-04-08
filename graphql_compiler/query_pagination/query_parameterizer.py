@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import logging
-from typing import Any, Dict, Set, Tuple, cast
+from typing import Any, Dict, List, Set, Tuple, cast
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -13,9 +13,11 @@ from graphql.language.ast import (
     ListValueNode,
     NameNode,
     OperationDefinitionNode,
+    SelectionNode,
     SelectionSetNode,
     StringValueNode,
 )
+from graphql.pyutils import FrozenList
 
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
@@ -114,11 +116,11 @@ def _are_filter_operations_equal_and_possible_to_eliminate(
 def _add_pagination_filter_at_node(
     query_analysis: QueryPlanningAnalysis,
     node_vertex_path: VertexPath,
-    node_ast: DocumentNode,
+    node_ast: SelectionNode,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-) -> Tuple[DocumentNode, Dict[str, Any]]:
+) -> Tuple[SelectionNode, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
@@ -142,6 +144,12 @@ def _add_pagination_filter_at_node(
             f'Input AST is of type "{type(node_ast).__name__}", which should not be a selection.'
         )
 
+    if node_ast.selection_set is None:
+        raise AssertionError(
+            f"Vertex field AST has no selection set at path {node_vertex_path}. "
+            f"Query: {query_analysis.query_string_with_parameters}"
+        )
+
     new_directive_operation = _get_filter_node_operation(directive_to_add)
     new_directive_parameter_name = _get_binary_filter_node_parameter(directive_to_add)
     new_directive_parameter_value = extended_parameters[new_directive_parameter_name]
@@ -158,8 +166,8 @@ def _add_pagination_filter_at_node(
             new_selection_ast = copy(selection_ast)
             new_selection_ast.directives = copy(selection_ast.directives)
 
-            new_directives = []
-            for directive in selection_ast.directives:
+            new_directives: List[DirectiveNode] = []
+            for directive in selection_ast.directives or []:
                 operation = _get_filter_node_operation(directive)
                 if _are_filter_operations_equal_and_possible_to_eliminate(
                     new_directive_operation, operation
@@ -192,7 +200,7 @@ def _add_pagination_filter_at_node(
                 else:
                     new_directives.append(directive)
             new_directives.append(directive_to_add)
-            new_selection_ast.directives = new_directives
+            new_selection_ast.directives = FrozenList(new_directives)
         new_selections.append(new_selection_ast)
 
     # If field didn't exist, create it and add the new directive to it.
@@ -208,13 +216,13 @@ def _add_pagination_filter_at_node(
 
 def _add_pagination_filter_recursively(
     query_analysis: QueryPlanningAnalysis,
-    node_ast: DocumentNode,
+    node_ast: SelectionNode,
     full_query_path: VertexPath,
     query_path: VertexPath,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-) -> Tuple[DocumentNode, Dict[str, Any]]:
+) -> Tuple[SelectionNode, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
