@@ -315,7 +315,7 @@ def get_parameter_name(argument: str) -> str:
 LocationT = TypeVar("LocationT", bound="BaseLocation")
 
 
-@total_ordering
+@total_ordering  # type: ignore
 @six.add_metaclass(ABCMeta)
 class BaseLocation(object):
     """An abstract location object, describing a location in the GraphQL query."""
