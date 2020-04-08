@@ -6690,7 +6690,6 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        # TODO(selene): ensure this sql produces expected results
         expected_mssql = """
             SELECT
                 [Animal_1].name AS animal_name,
