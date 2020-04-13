@@ -12,6 +12,7 @@ from graphql_compiler.tests.test_data_tools.neo4j_graph import Neo4jClient
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
+from ...compiler.compiler_frontend import OutputMetadata
 from ...schema.schema_info import CommonSchemaInfo
 
 
@@ -85,14 +86,15 @@ def compile_and_run_sql_query(
     graphql_query: str,
     parameters: Dict[str, Any],
     engine: Engine,
-) -> List[Dict[str, Any]]:
-    """Compile and run a SQL query against the supplied SQL backend."""
+) -> Tuple[List[Dict[str, Any]], Dict[str, OutputMetadata]]:
+    """Compile and run a SQL query against the SQL engine, return result and output metadata."""
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query = compilation_result.query
     results = []
     for result in engine.execute(query):
         results.append(dict(result))
-    return results
+    # Output metadata is needed for MSSQL fold postprocessing.
+    return results, compilation_result.output_metadata
 
 
 def compile_and_run_neo4j_query(

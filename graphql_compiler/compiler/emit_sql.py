@@ -363,9 +363,6 @@ class SQLFoldObject(object):
         # identically named column from its alias
         self._outer_vertex_primary_key = list(primary_key.columns)[0].description
 
-        # group by column for fold subquery
-        self._group_by = [self._outer_vertex_alias.c[self._outer_vertex_primary_key]]
-
         # List of SQLFoldTraversalDescriptor namedtuples describing each traversal in the fold
         # starting with the join from the vertex immediately outside the fold to the folded vertex:
         self._traversal_descriptors = []
@@ -388,39 +385,6 @@ class SQLFoldObject(object):
             return u'SQLFoldObject("Vertex outside fold: {}. Output vertex for fold: {}.")'.format(
                 self._outer_vertex_alias.original, self._output_vertex_alias.original
             )
-
-    @property
-    def outputs(self):
-        """Get the output columns for the fold subquery."""
-        return self._outputs
-
-    @property
-    def group_by(self):
-        """Get the columns to group by for the fold subquery."""
-        return self._group_by
-
-    @property
-    def filters(self):
-        """Get the list of SQL expressions to be used in the WHERE clause."""
-        return self._filters
-
-    @property
-    def output_vertex_alias(self):
-        """Get the SQLAlchemy table corresponding to the innermost vertex from the fold."""
-        return self._output_vertex_alias
-
-    @property
-    def outer_vertex_alias(self):
-        """Get the SQLAlchemy table corresponding to vertex immediately outside the fold."""
-        return self._outer_vertex_alias
-
-    def _set_outputs(self, outputs):
-        """Set output columns for the fold object."""
-        self._outputs = outputs
-
-    def _set_group_by(self, group_by):
-        """Set output columns for the fold object."""
-        self._group_by = group_by
 
     def _construct_fold_joins(self):
         """Use the traversal descriptors to create the join clause for the tables in the fold."""
@@ -463,16 +427,19 @@ class SQLFoldObject(object):
 
     def _construct_fold_subquery(self, subquery_from_clause):
         """Combine all parts of the fold object to produce the complete fold subquery."""
-        select_statement = sqlalchemy.select(self.outputs).select_from(subquery_from_clause)
-
-        if self.filters:
-            select_statement = select_statement.where(sqlalchemy.and_(*self.filters))
+        select_statement = (
+            sqlalchemy.select(self._outputs)
+            .select_from(subquery_from_clause)
+            .where(sqlalchemy.and_(*self._filters))
+        )
 
         if isinstance(self._dialect, MSDialect):
             # mssql doesn't rely on a group by
             return select_statement
         elif isinstance(self._dialect, PGDialect):
-            return select_statement.group_by(*self.group_by)
+            return select_statement.group_by(
+                self._outer_vertex_alias.c[self._outer_vertex_primary_key]
+            )
         else:
             raise NotImplementedError(
                 u"Fold only supported for MSSQL and "
@@ -481,7 +448,7 @@ class SQLFoldObject(object):
 
     def _get_array_agg_column(self, intermediate_fold_output_name, fold_output_field):
         """Select an array_agg of the fold output field, labeled as requested."""
-        return sqlalchemy.func.array_agg(self.output_vertex_alias.c[fold_output_field]).label(
+        return sqlalchemy.func.array_agg(self._output_vertex_alias.c[fold_output_field]).label(
             intermediate_fold_output_name
         )
 
@@ -526,7 +493,7 @@ class SQLFoldObject(object):
         edge, from_alias, to_alias = last_traversal
 
         return _get_xml_path_clause(
-            self.output_vertex_alias.c[fold_output_field],
+            self._output_vertex_alias.c[fold_output_field],
             (from_alias.c[edge.from_column] == to_alias.c[edge.to_column]),
         ).label(intermediate_fold_output_name)
 
@@ -580,7 +547,7 @@ class SQLFoldObject(object):
                     self._outputs.append(column_clause)
 
         # use to join unique identifier for the fold's outer vertex to the final table
-        self._outputs.append(self.outer_vertex_alias.c[self._outer_vertex_primary_key])
+        self._outputs.append(self._outer_vertex_alias.c[self._outer_vertex_primary_key])
 
         # sort to make select order deterministic
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
@@ -621,7 +588,7 @@ class SQLFoldObject(object):
         if isinstance(self._dialect, MSDialect):
             raise NotImplementedError(u"Filtering on fields is not implemented for MSSQL yet.")
         # Filters are applied to output vertices, thus current_alias=self.output_vertex_alias.
-        sql_expression = predicate.to_sql(self._dialect, aliases, self.output_vertex_alias)
+        sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
         self._filters.append(sql_expression)
 
     def end_fold(self, alias_generator, from_clause, outer_from_table):
@@ -667,7 +634,7 @@ class SQLFoldObject(object):
             isouter=False,
         )
         self._ended = True  # prevent any more functions being called on this fold
-        return fold_subquery, joined_from_clause, outer_from_table
+        return fold_subquery, joined_from_clause
 
 
 class UniqueAliasGenerator(object):
@@ -719,9 +686,6 @@ class CompilationState(object):
         self._fold_vertex_location = None  # location in the IR tree where the fold starts
 
         self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
-
-        # indicates the sqlalchemy compiler determining the query's dialect
-        self._dialect = self.sql_schema_info.dialect
 
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _alias."""
@@ -909,7 +873,9 @@ class CompilationState(object):
         # Otherwise, add the filter to the compilation state. Note that this is for filters outside
         # a fold scope and _x_count filters within a fold scope.
         else:
-            sql_expression = predicate.to_sql(self._dialect, self._aliases, self._current_alias)
+            sql_expression = predicate.to_sql(
+                self._sql_schema_info.dialect, self._aliases, self._current_alias
+            )
             if self._is_in_optional_scope():
                 sql_expression = sqlalchemy.or_(
                     sql_expression, self._came_from[self._current_alias].is_(None)
@@ -950,7 +916,9 @@ class CompilationState(object):
         ]
 
         # 3. initialize fold object
-        self._current_fold = SQLFoldObject(self.dialect, outer_alias, outer_vertex_primary_key)
+        self._current_fold = SQLFoldObject(
+            self._sql_schema_info.dialect, outer_alias, outer_vertex_primary_key
+        )
 
         # 4. add join information for this traversal to the fold object
         self._current_fold.visit_traversed_vertex(join_descriptor, outer_alias, fold_vertex_alias)
@@ -962,7 +930,7 @@ class CompilationState(object):
 
     def unfold(self):
         """Complete the execution of a Fold Block."""
-        fold_subquery, from_cls, outer_vertex = self._current_fold.end_fold(
+        fold_subquery, from_cls = self._current_fold.end_fold(
             self._alias_generator, self._from_clause, self._current_alias
         )
 
@@ -980,15 +948,9 @@ class CompilationState(object):
         self._aliases[subquery_alias_key] = fold_subquery
         self._from_clause = from_cls
 
-        # Ensure references to the outer vertex table after the Unfold refer to a totally new
-        # copy of the outer vertex table. Otherwise references would select columns from the
-        # copy of that table found inside the fold subquery.
-        self._aliases[(self._current_location.at_vertex().query_path, None)] = outer_vertex
-
         # clear the fold from the compilation state
         self._current_fold = None
         self._fold_vertex_location = None
-        self._current_alias = outer_vertex
 
     def mark_location(self):
         """Execute a MarkLocation Block."""
@@ -1006,7 +968,9 @@ class CompilationState(object):
     def construct_result(self, output_name, field):
         """Execute a ConstructResult Block."""
         self._outputs.append(
-            field.to_sql(self.dialect, self._aliases, self._current_alias).label(output_name)
+            field.to_sql(self._sql_schema_info.dialect, self._aliases, self._current_alias).label(
+                output_name
+            )
         )
 
     def get_query(self, extra_outputs=None):
@@ -1018,16 +982,6 @@ class CompilationState(object):
             .select_from(self._from_clause)
             .where(sqlalchemy.and_(*self._filters))
         )
-
-    @property
-    def sql_schema_info(self):
-        """Get the SQLALchemySchemaInfo for the current query."""
-        return self._sql_schema_info
-
-    @property
-    def dialect(self):
-        """Get the SQLAlchemyCompiler determining the dialect the query compiles to."""
-        return self._dialect
 
 
 def emit_code_from_ir(sql_schema_info, ir):
