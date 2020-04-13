@@ -873,6 +873,9 @@ class CompilationState(object):
             .where(base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
+        # Instead of joining to the current _from_clause, we make this alias the _from_clause.
+        # If the existing _from_clause had any information in it, then the _current_alias would
+        # be a cte that contains all that information.
         self._from_clause = self._current_alias
 
     def start_global_operations(self):
