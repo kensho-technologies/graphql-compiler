@@ -97,7 +97,7 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
                 used_columns.setdefault(child_location.query_path, set()).add(edge.from_column)
 
     # Columns used in the base case of CTE recursions should be made available from parent scope
-    for location, location_info in ir.query_metadata_table.registered_locations:
+    for location in ir.query_metadata_table.registered_locations:
         if isinstance(location, FoldScopeLocation):
             continue
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
