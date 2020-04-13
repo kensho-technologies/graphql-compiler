@@ -779,29 +779,8 @@ class CompilationState(object):
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
         self._join_to_parent_location(previous_alias, edge.from_column, edge.to_column, optional)
 
-    def recurse(self, vertex_field, depth):
-        """Execute a Recurse Block."""
-        if self._current_fold is not None:
-            raise AssertionError("Recurse inside a fold is not allowed.")
-
-        edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
-        if not self._current_alias.primary_key:
-            raise AssertionError(
-                u"The table for vertex {} has no primary key specified. This "
-                u"information is required to emit a @recurse directive.".format(
-                    self._current_classname
-                )
-            )
-        if len(self._current_alias.primary_key) > 1:
-            raise NotImplementedError(
-                u"The table for vertex {} has a composite primary key {}. "
-                u"The SQL backend does not support @recurse on tables with "
-                u"composite primary keys.".format(
-                    self._current_classname, self._current_alias.primary_key
-                )
-            )
-        primary_key = self._current_alias.primary_key[0].name
-
+    def _wrap_into_cte(self):
+        """Wrap the current query into a cte."""
         extra_outputs = []
         column_mappings = {}
         for alias_key, alias in self._aliases.items():
@@ -829,6 +808,33 @@ class CompilationState(object):
                 for alias_key, alias_value in self._aliases.items()
             }
             self._current_alias = self._aliases[(self._current_location.query_path, None)]
+
+    def recurse(self, vertex_field, depth):
+        """Execute a Recurse Block."""
+        if self._current_fold is not None:
+            raise AssertionError("Recurse inside a fold is not allowed.")
+
+        edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
+        if not self._current_alias.primary_key:
+            raise AssertionError(
+                u"The table for vertex {} has no primary key specified. This "
+                u"information is required to emit a @recurse directive.".format(
+                    self._current_classname
+                )
+            )
+        if len(self._current_alias.primary_key) > 1:
+            raise NotImplementedError(
+                u"The table for vertex {} has a composite primary key {}. "
+                u"The SQL backend does not support @recurse on tables with "
+                u"composite primary keys.".format(
+                    self._current_classname, self._current_alias.primary_key
+                )
+            )
+        primary_key = self._current_alias.primary_key[0].name
+
+        # Wrap the query so far into a cte if it would speed up the recursive query.
+        if self._recurse_needs_cte:
+            self._wrap_into_cte()
 
         previous_alias = self._current_alias
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
