@@ -651,6 +651,22 @@ class UniqueAliasGenerator(object):
         return alias
 
 
+class ColumnRouter:
+    """Container for columns selected from a variety of selectables.
+
+    ContextFields selecting from locations inside a CTE need to be redirected to get those columns
+    from the corresponding columns exposed by the CTE instead. A ColumnRouter can be used to store
+    these column name mappings.
+
+    The Selectable.c property is the only property of selectables used by ContextFields, so that's
+    the only property this class needs to implement to serve as a Selectable.
+    TODO(bojanserafimov): make an abstract class instead of duck-typing this.
+    """
+
+    def __init__(self, columns):
+        self.c = columns
+
+
 class CompilationState(object):
     """Mutable class used to keep track of state while emitting a sql query."""
 
@@ -784,18 +800,14 @@ class CompilationState(object):
             )
         primary_key = self._current_alias.primary_key[0].name
 
-        class AliasRouter:
-            def __init__(self):
-                self.c = {}
-
         extra_outputs = []
-        routers = {}
+        column_mappings = {}
         for alias_key, alias in self._aliases.items():
             vertex_path, _ = alias_key
             for used_column_name in sorted(self._used_columns[vertex_path]):
                 label = "_".join(vertex_path) + "__" + used_column_name
                 extra_outputs.append(alias.c[used_column_name].label(label))
-                routers.setdefault(alias_key, AliasRouter()).c[used_column_name] = label
+                column_mappings.setdefault(alias_key, {})[used_column_name] = label
 
         # Wrap the query so far into a cte. Make sure to select any fields used outside the cte.
         if self._recurse_needs_cte:
@@ -803,12 +815,17 @@ class CompilationState(object):
             self._from_clause = self._current_alias
 
             self._filters = []  # The filters are already included in the cte
-            for _, router in routers.items():
-                router.c = {
-                    external_name: self._current_alias.c[internal_name]
-                    for external_name, internal_name in router.c.items()
-                }
-            self._aliases = routers
+            self._aliases = {
+                alias_key: ColumnRouter(
+                    {
+                        external_name: self._current_alias.c[internal_name]
+                        for external_name, internal_name in column_mappings.get(
+                            alias_key, {}
+                        ).items()
+                    }
+                )
+                for alias_key, alias_value in self._aliases.items()
+            }
             self._current_alias = self._aliases[(self._current_location.query_path, None)]
 
         previous_alias = self._current_alias
