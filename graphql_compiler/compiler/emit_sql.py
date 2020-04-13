@@ -1,6 +1,8 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from collections import namedtuple
+from dataclasses import dataclass
+from typing import Dict
 
 import six
 import sqlalchemy
@@ -651,6 +653,7 @@ class UniqueAliasGenerator(object):
         return alias
 
 
+@dataclass
 class ColumnRouter:
     """Container for columns selected from a variety of selectables.
 
@@ -663,8 +666,7 @@ class ColumnRouter:
     TODO(bojanserafimov): make an abstract class instead of duck-typing this.
     """
 
-    def __init__(self, columns):
-        self.c = columns
+    c: Dict[str, sqlalchemy.Column]
 
 
 class CompilationState(object):
