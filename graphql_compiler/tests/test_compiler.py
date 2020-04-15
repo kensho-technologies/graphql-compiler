@@ -6087,8 +6087,25 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS `child_names_list`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.uuid] AS `child_uuids_list`
         """
-        # TODO: implement ID type for postgresql folds
-        expected_postgresql = NotImplementedError
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS child_names_list,
+                coalesce(folded_subquery_1.fold_output_uuid, ARRAY[]::UUID[]) AS child_uuids_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".uuid) AS fold_output_uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
 
         check_test_data(
             self,
@@ -6329,8 +6346,39 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__in_Animal_ParentOf___1 | x.name] AS `parent_names_list`,
               [x IN collected_Animal__in_Animal_ParentOf___1 | x.uuid] AS `parent_uuids_list`
         """
-        # TODO: implement ID type for postgresql folds
-        expected_postgresql = NotImplementedError
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS child_names_list,
+                coalesce(folded_subquery_1.fold_output_uuid, ARRAY[]::UUID[]) AS child_uuids_list,
+                coalesce(folded_subquery_2.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS parent_names_list,
+                coalesce(folded_subquery_2.fold_output_uuid, ARRAY[]::UUID[]) AS parent_uuids_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".uuid) AS fold_output_uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            JOIN (
+                SELECT
+                    "Animal_4".uuid AS uuid,
+                    array_agg("Animal_5".uuid) AS fold_output_uuid,
+                    array_agg("Animal_5".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_4"
+                JOIN schema_1."Animal" AS "Animal_5"
+                ON "Animal_4".parent = "Animal_5".uuid
+                GROUP BY "Animal_4".uuid
+            ) AS folded_subquery_2
+            ON "Animal_1".uuid = folded_subquery_2.uuid
+        """
 
         check_test_data(
             self,
@@ -6553,37 +6601,35 @@ class CompilerTests(unittest.TestCase):
                 FROM db_1.schema_1.[Animal] AS [Animal_4]
             ) AS folded_subquery_2 ON [Animal_1].uuid = folded_subquery_2.uuid
         """
-        # TODO: implement date times for postgres in a separate PR
-        expected_postgresql = NotImplementedError
-        # '''
-        #     SELECT
-        #         [Animal_1].name AS animal_name,
-        #         coalesce(folded_subquery_1.fold_output_1, ARRAY[]::VARCHAR[])
-        #             AS child_birthdays_list,
-        #         coalesce(folded_subquery_2.fold_output_1, ARRAY[]::VARCHAR[])
-        #             AS fed_at_datetimes_list
-        #     FROM db_1.schema_1.[Animal] AS [Animal_1]
-        #     LEFT OUTER JOIN (
-        #         SELECT
-        #             array_agg([Animal_2].birthday) AS fold_output_1,
-        #             [Animal_3].uuid AS uuid
-        #         FROM db_1.schema_1.[Animal] AS [Animal_3]
-        #         JOIN db_1.schema_1.[Animal] AS [Animal_2]
-        #         ON [Animal_3].uuid = [Animal_2].parent
-        #         GROUP BY [Animal_3].uuid
-        #     ) AS folded_subquery_1
-        #     ON [Animal_1].uuid = folded_subquery_1.uuid
-        #     LEFT OUTER JOIN (
-        #         SELECT
-        #             array_agg([FeedingEvent_1].event_date) AS fold_output_2,
-        #             [Animal_4].uuid AS uuid
-        #         FROM db_1.schema_1.[Animal] AS [Animal_4]
-        #         JOIN db_2.schema_1.[FeedingEvent] AS [FeedingEvent_1]
-        #         ON [Animal_4].fed_at = [FeedingEvent_1].uuid
-        #         GROUP BY [Animal_4].uuid
-        #     ) AS folded_subquery_2
-        #     ON [Animal_1].uuid = folded_subquery_1.uuid
-        # '''
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_birthday, ARRAY[]::DATE[])
+                    AS child_birthdays_list,
+                coalesce(folded_subquery_2.fold_output_event_date, ARRAY[]::TIMESTAMP[])
+                    AS fed_at_datetimes_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".birthday) AS fold_output_birthday
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            JOIN (
+                SELECT
+                    "Animal_4".uuid AS uuid,
+                    array_agg("FeedingEvent_1".event_date) AS fold_output_event_date
+                FROM schema_1."Animal" AS "Animal_4"
+                JOIN schema_1."FeedingEvent" AS "FeedingEvent_1"
+                ON "Animal_4".fed_at = "FeedingEvent_1".uuid
+                GROUP BY "Animal_4".uuid
+            ) AS folded_subquery_2
+            ON "Animal_1".uuid = folded_subquery_2.uuid
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_FedAt]->(Animal__out_Animal_FedAt___1:FeedingEvent)
