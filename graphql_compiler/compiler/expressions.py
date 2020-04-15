@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import operator as python_operator
-from typing import Any, Callable, Dict, FrozenSet, Generic, List, Tuple, Type, TypeVar, Union
+from typing import Any, Callable, Dict, FrozenSet, Generic, List, Optional, Tuple, Type, TypeVar, Union
 
 from graphql import (
     GraphQLBoolean,
@@ -811,6 +811,26 @@ class FoldedContextField(Expression):
         self.field_type = field_type
         self.validate()
 
+    def _get_sql_array_type(self) -> Optional[str]:
+        """Convert folded field type to a corresponding SQL type."""
+        # Extract inner type of the GraphQLList.
+        inner_type = strip_non_null_from_type(self.field_type.of_type)
+        graphql_type_to_sql_array_type_dict = {
+            GraphQLInt: "BIGINT",
+            GraphQLString: "VARCHAR",
+            GraphQLID: "VARCHAR",
+            GraphQLBoolean: "BOOL",
+            GraphQLFloat: "DOUBLE PRECISION",
+            GraphQLDate: "DATE",
+            GraphQLDateTime: "TIMESTAMP",
+            GraphQLDecimal: "DECIMAL",
+        }
+        for graphql_type, type_name in graphql_type_to_sql_array_type_dict.items():
+            if is_same_type(graphql_type, inner_type):
+                return type_name
+        # If a the graphql_type was not found, return None.
+        return None
+
     def validate(self) -> None:
         """Validate that the FoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
@@ -935,26 +955,11 @@ class FoldedContextField(Expression):
             return fold_output_column
         elif isinstance(dialect, PGDialect):
             # PostgreSQL
-            # coalesce to an empty array of the corresponding type
-            inner_type = strip_non_null_from_type(self.field_type.of_type)
-            graphql_type_to_sql_array_type_dict = {
-                GraphQLInt: "INT",
-                GraphQLString: "VARCHAR",
-                GraphQLID: "UUID",
-                GraphQLBoolean: "BOOL",
-                GraphQLFloat: "FLOAT",
-                GraphQLDate: "DATE",
-                GraphQLDateTime: "TIMESTAMP",
-                GraphQLDecimal: "FLOAT",
-            }
-            sql_array_type = None
-            for graphql_type, type_name in graphql_type_to_sql_array_type_dict.items():
-                if is_same_type(graphql_type, inner_type):
-                    sql_array_type = type_name
-                    break
+            # Coalesce to an empty array of the corresponding type.
+            sql_array_type = self._get_sql_array_type()
             if sql_array_type is None:
                 raise NotImplementedError(
-                    "Type {} not implemented for outputs inside a fold.".format(inner_type)
+                    f"Type {self.field_type.of_type} not implemented for outputs inside a fold."
                 )
             empty_array = "ARRAY[]::{}[]".format(sql_array_type)
             return sqlalchemy.func.coalesce(
