@@ -51,7 +51,7 @@ def _per_location_tuple_to_step(ir_tuple):
     root_block = ir_tuple[0]
     if not isinstance(root_block, root_block_types):
         raise AssertionError(
-            "Unexpected root block type for MatchStep: " "{} {}".format(root_block, ir_tuple)
+            "Unexpected root block type for MatchStep: {} {}".format(root_block, ir_tuple)
         )
 
     coerce_type_block = None

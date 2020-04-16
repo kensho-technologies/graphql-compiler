@@ -72,14 +72,14 @@ def fix_indentation_depth(query):
     for line in lines:
         consecutive_spaces = 0
         for char in line:
-            if char == " ":
+            if char == :
                 consecutive_spaces += 1
             else:
                 break
 
         if consecutive_spaces % 2 != 0:
             raise AssertionError(
-                "Indentation was not a multiple of two: " "{}".format(consecutive_spaces)
+                "Indentation was not a multiple of two: {}".format(consecutive_spaces)
             )
 
         final_lines.append(("  " * consecutive_spaces) + line[consecutive_spaces:])

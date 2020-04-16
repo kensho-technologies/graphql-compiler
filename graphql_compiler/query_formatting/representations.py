@@ -22,7 +22,7 @@ def represent_float_as_str(value):
     # https://github.com/mogui/pyorient/pull/226/files
     if not isinstance(value, float):
         raise GraphQLInvalidArgumentError(
-            "Attempting to represent a non-float as a float: " "{}".format(value)
+            "Attempting to represent a non-float as a float: {}".format(value)
         )
 
     with decimal.localcontext() as ctx:

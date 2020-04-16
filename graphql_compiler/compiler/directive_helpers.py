@@ -167,7 +167,7 @@ def validate_root_vertex_directives(root_ast):
     disallowed_directives = directives_present_at_root & VERTEX_DIRECTIVES_PROHIBITED_ON_ROOT
     if disallowed_directives:
         raise GraphQLCompilationError(
-            "Found prohibited directives on root vertex: " "{}".format(disallowed_directives)
+            "Found prohibited directives on root vertex: {}".format(disallowed_directives)
         )
 
 

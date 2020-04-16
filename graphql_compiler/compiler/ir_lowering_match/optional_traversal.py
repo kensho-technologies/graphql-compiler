@@ -234,7 +234,7 @@ def prune_non_existent_outputs(compound_match_query):
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
         raise AssertionError(
-            "Received CompoundMatchQuery with " "an empty list of MatchQuery objects."
+            "Received CompoundMatchQuery with an empty list of MatchQuery objects."
         )
     else:
         match_queries = []

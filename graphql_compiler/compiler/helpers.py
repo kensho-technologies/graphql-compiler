@@ -172,7 +172,7 @@ def get_uniquely_named_objects_by_name(
         name = obj.name.value
         if name in result:
             raise GraphQLCompilationError(
-                "Found duplicate object key: " "{} {}".format(name, object_list)
+                "Found duplicate object key: {} {}".format(name, object_list)
             )
         result[name] = obj
 
@@ -462,7 +462,7 @@ class Location(BaseLocation):
             raise TypeError("Expected folded_child to be a string, was: {}".format(folded_child))
         if self.field:
             raise AssertionError(
-                "Currently at a field, cannot go to folded child: " "{}".format(self)
+                "Currently at a field, cannot go to folded child: {}".format(self)
             )
 
         edge_direction, edge_name = get_edge_direction_and_name(folded_child)
@@ -575,7 +575,7 @@ class FoldScopeLocation(BaseLocation):
 
         if base_location.field:
             raise ValueError(
-                "Expected Location object that points to a vertex, got: " "{}".format(base_location)
+                "Expected Location object that points to a vertex, got: {}".format(base_location)
             )
 
         if not isinstance(fold_path, tuple) or len(fold_path) == 0:

@@ -22,7 +22,7 @@ def _safe_cypher_string(argument_value):
             argument_value = argument_value.decode("utf-8")
         else:
             raise GraphQLInvalidArgumentError(
-                "Attempting to convert a non-string into a string: " "{}".format(argument_value)
+                "Attempting to convert a non-string into a string: {}".format(argument_value)
             )
 
     # Using JSON encoding means that all unicode literals and special chars
@@ -47,7 +47,7 @@ def _safe_cypher_date_and_datetime(graphql_type, expected_python_types, value):
     # query parameters manually for RedisGraph. RedisGraph doesn't support temporal values, so we
     # raise an error if we get a temporal value.
     raise NotImplementedError(
-        "RedisGraph currently doesn't support temporal types like Date " "and Datetime."
+        "RedisGraph currently doesn't support temporal types like Date and Datetime."
     )
 
 
@@ -63,7 +63,7 @@ def _safe_cypher_list(inner_type, argument_value):
 
     if not isinstance(argument_value, list):
         raise GraphQLInvalidArgumentError(
-            "Attempting to represent a non-list as a list: " "{}".format(argument_value)
+            "Attempting to represent a non-list as a list: {}".format(argument_value)
         )
 
     components = (_safe_cypher_argument(stripped_type, x) for x in argument_value)
@@ -90,7 +90,7 @@ def _safe_cypher_argument(expected_type, argument_value):
         # Safeguard against this with an explicit check against bool type.
         if isinstance(argument_value, bool):
             raise GraphQLInvalidArgumentError(
-                "Attempting to represent a non-int as an int: " "{}".format(argument_value)
+                "Attempting to represent a non-int as an int: {}".format(argument_value)
             )
         return type_check_and_str(int, argument_value)
     elif is_same_type(GraphQLBoolean, expected_type):

@@ -255,7 +255,7 @@ def insert_arguments_into_query(compilation_result, arguments):
         return insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments)
     else:
         raise AssertionError(
-            "Unrecognized language in compilation result: " "{}".format(compilation_result)
+            "Unrecognized language in compilation result: {}".format(compilation_result)
         )
 
 

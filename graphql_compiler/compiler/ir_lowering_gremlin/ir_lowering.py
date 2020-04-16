@@ -130,7 +130,7 @@ def rewrite_filters_in_optional_blocks(ir_blocks):
             optional_context_depth -= 1
             if optional_context_depth < 0:
                 raise AssertionError(
-                    "Reached negative optional context depth for blocks: " "{}".format(ir_blocks)
+                    "Reached negative optional context depth for blocks: {}".format(ir_blocks)
                 )
         elif isinstance(block, Filter) and optional_context_depth > 0:
             null_check = BinaryComposition("=", LocalField("@this", None), NullLiteral)

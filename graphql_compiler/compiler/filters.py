@@ -951,7 +951,7 @@ def _get_filter_op_name_and_values(directive):
         #                https://github.com/graphql-python/graphql-core/issues/97
         if not isinstance(args["value"].value, ListValueNode):
             raise GraphQLValidationError(
-                "Filter directive value was " "not a list: {}".format(directive)
+                "Filter directive value was not a list: {}".format(directive)
             )
         operator_params = [x.value for x in args["value"].value.values]
 

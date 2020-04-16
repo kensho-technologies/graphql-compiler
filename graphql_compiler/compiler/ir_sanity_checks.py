@@ -119,7 +119,7 @@ def _sanity_check_no_nested_folds(ir_blocks):
         elif isinstance(block, Unfold):
             if not fold_seen:
                 raise AssertionError(
-                    "Found an Unfold block without a matching Fold: " "{}".format(ir_blocks)
+                    "Found an Unfold block without a matching Fold: {}".format(ir_blocks)
                 )
             else:
                 fold_seen = False
@@ -141,7 +141,7 @@ def _sanity_check_construct_result_block(ir_blocks):
     for block in ir_blocks[:-1]:
         if isinstance(block, ConstructResult):
             raise AssertionError(
-                "Found ConstructResult before the last block: " "{}".format(ir_blocks)
+                "Found ConstructResult before the last block: {}".format(ir_blocks)
             )
 
 

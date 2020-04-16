@@ -21,7 +21,7 @@ def _safe_gremlin_string(value):
             value = value.decode("utf-8")
         else:
             raise GraphQLInvalidArgumentError(
-                "Attempting to convert a non-string into a string: " "{}".format(value)
+                "Attempting to convert a non-string into a string: {}".format(value)
             )
 
     # Using JSON encoding means that all unicode literals and special chars
@@ -81,7 +81,7 @@ def _safe_gremlin_list(inner_type, argument_value):
     """Represent the list of "inner_type" objects in Gremlin form."""
     if not isinstance(argument_value, list):
         raise GraphQLInvalidArgumentError(
-            "Attempting to represent a non-list as a list: " "{}".format(argument_value)
+            "Attempting to represent a non-list as a list: {}".format(argument_value)
         )
 
     stripped_type = strip_non_null_from_type(inner_type)
@@ -109,7 +109,7 @@ def _safe_gremlin_argument(expected_type, argument_value):
         # Safeguard against this with an explicit check against bool type.
         if isinstance(argument_value, bool):
             raise GraphQLInvalidArgumentError(
-                "Attempting to represent a non-int as an int: " "{}".format(argument_value)
+                "Attempting to represent a non-int as an int: {}".format(argument_value)
             )
 
         return type_check_and_str(int, argument_value)

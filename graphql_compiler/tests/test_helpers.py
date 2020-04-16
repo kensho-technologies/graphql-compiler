@@ -484,7 +484,7 @@ def compare_ir_blocks(
     mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
 
     if len(expected_blocks) != len(received_blocks):
-        test_case.fail("Not the same number of blocks:\n\n" "{}".format(mismatch_message))
+        test_case.fail("Not the same number of blocks:\n\n{}".format(mismatch_message))
 
     for i in six.moves.xrange(len(expected_blocks)):
         expected = expected_blocks[i]

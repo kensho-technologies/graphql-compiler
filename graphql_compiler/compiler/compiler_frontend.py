@@ -225,7 +225,7 @@ def _get_fields(ast):
                 )
             if switched_to_vertices:
                 raise GraphQLCompilationError(
-                    "Encountered property field {} " "after vertex fields!".format(name)
+                    "Encountered property field {} after vertex fields!".format(name)
                 )
             property_fields.append(field_ast)
 
@@ -251,7 +251,7 @@ def _get_inline_fragment(ast):
 
     if len(fragments) > 1:
         raise GraphQLCompilationError(
-            "Cannot compile GraphQL with more than one fragment in " "a given selection set."
+            "Cannot compile GraphQL with more than one fragment in a given selection set."
         )
 
     return fragments[0]
@@ -388,14 +388,14 @@ def _get_recurse_directive_depth(field_name, field_directives):
 
     if optional_directive:
         raise GraphQLCompilationError(
-            "Found both @optional and @recurse on " "the same vertex field: {}".format(field_name)
+            "Found both @optional and @recurse on the same vertex field: {}".format(field_name)
         )
 
     recurse_args = get_uniquely_named_objects_by_name(recurse_directive.arguments)
     recurse_depth = int(recurse_args["depth"].value.value)
     if recurse_depth < 1:
         raise GraphQLCompilationError(
-            "Found recurse directive with disallowed depth: " "{}".format(recurse_depth)
+            "Found recurse directive with disallowed depth: {}".format(recurse_depth)
         )
 
     return recurse_depth
@@ -774,7 +774,7 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
         # sanity-check: cannot have an inline fragment at a property field
         if fragment_exists:
             raise AssertionError(
-                "Found inline fragment at a property field: " "{} {}".format(location, fragment)
+                "Found inline fragment at a property field: {} {}".format(location, fragment)
             )
 
         # sanity-check: locations at properties don't have their own property locations
@@ -1062,7 +1062,7 @@ def _compile_output_step(query_metadata_table):
         if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(
-                    "Unreachable state reached, optional in fold: " "{}".format(output_info)
+                    "Unreachable state reached, optional in fold: {}".format(output_info)
                 )
 
             if location.field == COUNT_META_FIELD_NAME:

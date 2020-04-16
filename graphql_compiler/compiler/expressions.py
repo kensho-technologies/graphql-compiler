@@ -197,7 +197,7 @@ class Variable(Expression):
         # Get the first letter, or empty string if it doesn't exist.
         if not self.variable_name.startswith("$"):
             raise GraphQLCompilationError(
-                "Expected variable name to start with $, but was: " "{}".format(self.variable_name)
+                "Expected variable name to start with $, but was: {}".format(self.variable_name)
             )
 
         if self.variable_name in RESERVED_MATCH_KEYWORDS:
@@ -649,7 +649,7 @@ class OutputContextField(Expression):
 
         if not self.location.field:
             raise ValueError(
-                "Expected Location object that points to a field, got: " "{}".format(self.location)
+                "Expected Location object that points to a field, got: {}".format(self.location)
             )
 
         if not is_graphql_type(self.field_type):
@@ -1121,7 +1121,7 @@ class UnaryTransformation(Expression):
         }
         match_operator = translation_table.get(self.operator)
         if not match_operator:
-            raise AssertionError("Unrecognized operator used: " "{} {}".format(self.operator, self))
+            raise AssertionError("Unrecognized operator used: {} {}".format(self.operator, self))
 
         template = "%(inner)s.%(operator)s"
         args = {
@@ -1137,7 +1137,7 @@ class UnaryTransformation(Expression):
         }
         gremlin_operator = translation_table.get(self.operator)
         if not gremlin_operator:
-            raise AssertionError("Unrecognized operator used: " "{} {}".format(self.operator, self))
+            raise AssertionError("Unrecognized operator used: {} {}".format(self.operator, self))
 
         template = "{inner}.{operator}"
         args = {
