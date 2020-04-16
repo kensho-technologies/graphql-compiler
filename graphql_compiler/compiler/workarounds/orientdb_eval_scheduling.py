@@ -77,8 +77,8 @@ def _process_filter_block(query_metadata_table, block):
     if return_value is not base_predicate:
         raise AssertionError(
             u'Read-only visitor function "find_ternary_conditionals" '
-            u"caused state to change: "
-            u"{} {}".format(base_predicate, return_value)
+            "caused state to change: "
+            "{} {}".format(base_predicate, return_value)
         )
 
     for ternary in ternary_conditionals:
@@ -88,8 +88,8 @@ def _process_filter_block(query_metadata_table, block):
         if return_value is not ternary:
             raise AssertionError(
                 u'Read-only visitor function "extract_locations_visitor" '
-                u"caused state to change: "
-                u"{} {}".format(ternary, return_value)
+                "caused state to change: "
+                "{} {}".format(ternary, return_value)
             )
 
     tautologies = [
@@ -102,7 +102,7 @@ def _process_filter_block(query_metadata_table, block):
 
     final_predicate = base_predicate
     for tautology in tautologies:
-        final_predicate = BinaryComposition(u"&&", final_predicate, tautology)
+        final_predicate = BinaryComposition("&&", final_predicate, tautology)
     return Filter(final_predicate)
 
 
@@ -110,8 +110,8 @@ def _create_tautological_expression_for_location(query_metadata_table, location)
     """For a given location, create a BinaryComposition that always evaluates to 'true'."""
     location_type = query_metadata_table.get_location_info(location).type
 
-    location_exists = BinaryComposition(u"!=", ContextField(location, location_type), NullLiteral)
+    location_exists = BinaryComposition("!=", ContextField(location, location_type), NullLiteral)
     location_does_not_exist = BinaryComposition(
-        u"=", ContextField(location, location_type), NullLiteral
+        "=", ContextField(location, location_type), NullLiteral
     )
-    return BinaryComposition(u"||", location_exists, location_does_not_exist)
+    return BinaryComposition("||", location_exists, location_does_not_exist)

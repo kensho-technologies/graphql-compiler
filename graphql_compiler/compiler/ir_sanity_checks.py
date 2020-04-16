@@ -32,7 +32,7 @@ def sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table):
         this is the method that should catch the problem.
     """
     if not ir_blocks:
-        raise AssertionError(u"Received no ir_blocks: {}".format(ir_blocks))
+        raise AssertionError("Received no ir_blocks: {}".format(ir_blocks))
 
     _sanity_check_fold_scope_locations_are_unique(ir_blocks)
     _sanity_check_no_nested_folds(ir_blocks)
@@ -57,9 +57,9 @@ def _sanity_check_registered_locations_parent_locations(query_metadata_table):
             # then it must have a parent location.
             if location_info.parent_location is None:
                 raise AssertionError(
-                    u"Found a location that is not the root location of the query "
-                    u"or a revisit of the root, but does not have a parent: "
-                    u"{} {}".format(location, location_info)
+                    "Found a location that is not the root location of the query "
+                    "or a revisit of the root, but does not have a parent: "
+                    "{} {}".format(location, location_info)
                 )
 
         if location_info.parent_location is not None:
@@ -83,13 +83,13 @@ def _sanity_check_all_marked_locations_are_registered(ir_blocks, query_metadata_
     unencountered_locations = registered_locations - ir_encountered_locations
     if unregistered_locations:
         raise AssertionError(
-            u"IR blocks unexpectedly contain locations not registered in the "
-            u"QueryMetadataTable: {}".format(unregistered_locations)
+            "IR blocks unexpectedly contain locations not registered in the "
+            "QueryMetadataTable: {}".format(unregistered_locations)
         )
     if unencountered_locations:
         raise AssertionError(
-            u"QueryMetadataTable unexpectedly contains registered locations that "
-            u"never appear in the IR blocks: {}".format(unencountered_locations)
+            "QueryMetadataTable unexpectedly contains registered locations that "
+            "never appear in the IR blocks: {}".format(unencountered_locations)
         )
 
 
@@ -101,8 +101,8 @@ def _sanity_check_fold_scope_locations_are_unique(ir_blocks):
             alternate = observed_locations.get(block.fold_scope_location, None)
             if alternate is not None:
                 raise AssertionError(
-                    u"Found two Fold blocks with identical FoldScopeLocations: "
-                    u"{} {} {}".format(alternate, block, ir_blocks)
+                    "Found two Fold blocks with identical FoldScopeLocations: "
+                    "{} {} {}".format(alternate, block, ir_blocks)
                 )
             observed_locations[block.fold_scope_location] = block
 
@@ -113,13 +113,13 @@ def _sanity_check_no_nested_folds(ir_blocks):
     for block in ir_blocks:
         if isinstance(block, Fold):
             if fold_seen:
-                raise AssertionError(u"Found a nested Fold contexts: {}".format(ir_blocks))
+                raise AssertionError("Found a nested Fold contexts: {}".format(ir_blocks))
             else:
                 fold_seen = True
         elif isinstance(block, Unfold):
             if not fold_seen:
                 raise AssertionError(
-                    u"Found an Unfold block without a matching Fold: " u"{}".format(ir_blocks)
+                    "Found an Unfold block without a matching Fold: " "{}".format(ir_blocks)
                 )
             else:
                 fold_seen = False
@@ -128,20 +128,20 @@ def _sanity_check_no_nested_folds(ir_blocks):
 def _sanity_check_query_root_block(ir_blocks):
     """Assert that QueryRoot is always the first block, and only the first block."""
     if not isinstance(ir_blocks[0], QueryRoot):
-        raise AssertionError(u"The first block was not QueryRoot: {}".format(ir_blocks))
+        raise AssertionError("The first block was not QueryRoot: {}".format(ir_blocks))
     for block in ir_blocks[1:]:
         if isinstance(block, QueryRoot):
-            raise AssertionError(u"Found QueryRoot after the first block: {}".format(ir_blocks))
+            raise AssertionError("Found QueryRoot after the first block: {}".format(ir_blocks))
 
 
 def _sanity_check_construct_result_block(ir_blocks):
     """Assert that ConstructResult is always the last block, and only the last block."""
     if not isinstance(ir_blocks[-1], ConstructResult):
-        raise AssertionError(u"The last block was not ConstructResult: {}".format(ir_blocks))
+        raise AssertionError("The last block was not ConstructResult: {}".format(ir_blocks))
     for block in ir_blocks[:-1]:
         if isinstance(block, ConstructResult):
             raise AssertionError(
-                u"Found ConstructResult before the last block: " u"{}".format(ir_blocks)
+                "Found ConstructResult before the last block: " "{}".format(ir_blocks)
             )
 
 
@@ -154,9 +154,9 @@ def _sanity_check_output_source_follower_blocks(ir_blocks):
         elif seen_output_source:
             if isinstance(block, (Backtrack, Traverse, Recurse)):
                 raise AssertionError(
-                    u"Found Backtrack / Traverse / Recurse "
-                    u"after OutputSource block: "
-                    u"{}".format(ir_blocks)
+                    "Found Backtrack / Traverse / Recurse "
+                    "after OutputSource block: "
+                    "{}".format(ir_blocks)
                 )
 
 
@@ -165,35 +165,35 @@ def _sanity_check_block_pairwise_constraints(ir_blocks):
     for first_block, second_block in pairwise(ir_blocks):
         # Always Filter before MarkLocation, never after.
         if isinstance(first_block, MarkLocation) and isinstance(second_block, Filter):
-            raise AssertionError(u"Found Filter after MarkLocation block: {}".format(ir_blocks))
+            raise AssertionError("Found Filter after MarkLocation block: {}".format(ir_blocks))
 
         # There's no point in marking the same location twice in a row.
         if isinstance(first_block, MarkLocation) and isinstance(second_block, MarkLocation):
-            raise AssertionError(u"Found consecutive MarkLocation blocks: {}".format(ir_blocks))
+            raise AssertionError("Found consecutive MarkLocation blocks: {}".format(ir_blocks))
 
         # Traverse blocks with optional=True are immediately followed
         # by a MarkLocation, CoerceType or Filter block.
         if isinstance(first_block, Traverse) and first_block.optional:
             if not isinstance(second_block, (MarkLocation, CoerceType, Filter)):
                 raise AssertionError(
-                    u"Expected MarkLocation, CoerceType or Filter after Traverse "
-                    u"with optional=True. Found: {}".format(ir_blocks)
+                    "Expected MarkLocation, CoerceType or Filter after Traverse "
+                    "with optional=True. Found: {}".format(ir_blocks)
                 )
 
         # Backtrack blocks with optional=True are immediately followed by a MarkLocation block.
         if isinstance(first_block, Backtrack) and first_block.optional:
             if not isinstance(second_block, MarkLocation):
                 raise AssertionError(
-                    u"Expected MarkLocation after Backtrack with optional=True, "
-                    u"but none was found: {}".format(ir_blocks)
+                    "Expected MarkLocation after Backtrack with optional=True, "
+                    "but none was found: {}".format(ir_blocks)
                 )
 
         # Recurse blocks are immediately preceded by a MarkLocation or Backtrack block.
         if isinstance(second_block, Recurse):
             if not (isinstance(first_block, MarkLocation) or isinstance(first_block, Backtrack)):
                 raise AssertionError(
-                    u"Expected MarkLocation or Backtrack before Recurse, but none "
-                    u"was found: {}".format(ir_blocks)
+                    "Expected MarkLocation or Backtrack before Recurse, but none "
+                    "was found: {}".format(ir_blocks)
                 )
 
 
@@ -207,8 +207,8 @@ def _sanity_check_mark_location_preceding_optional_traverse(ir_blocks):
         if isinstance(second_block, Traverse) and second_block.optional:
             if not isinstance(first_block, MarkLocation):
                 raise AssertionError(
-                    u"Expected MarkLocation before Traverse with optional=True, "
-                    u"but none was found: {}".format(ir_blocks)
+                    "Expected MarkLocation before Traverse with optional=True, "
+                    "but none was found: {}".format(ir_blocks)
                 )
 
 
@@ -233,8 +233,8 @@ def _sanity_check_every_location_is_marked(ir_blocks):
             found_start_block = False
             if mark_location_blocks_count != 1:
                 raise AssertionError(
-                    u"Expected 1 MarkLocation block between traversals, found: "
-                    u"{} {}".format(mark_location_blocks_count, ir_blocks)
+                    "Expected 1 MarkLocation block between traversals, found: "
+                    "{} {}".format(mark_location_blocks_count, ir_blocks)
                 )
 
         # Now consider opening new intervals or processing MarkLocation blocks.
@@ -255,8 +255,8 @@ def _sanity_check_coerce_type_outside_of_fold(ir_blocks):
         if not is_in_fold and isinstance(first_block, CoerceType):
             if not isinstance(second_block, (MarkLocation, Filter)):
                 raise AssertionError(
-                    u"Expected MarkLocation or Filter after CoerceType, "
-                    u"but none was found: {}".format(ir_blocks)
+                    "Expected MarkLocation or Filter after CoerceType, "
+                    "but none was found: {}".format(ir_blocks)
                 )
 
         if isinstance(second_block, Unfold):

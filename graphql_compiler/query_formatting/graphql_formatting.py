@@ -79,7 +79,7 @@ def fix_indentation_depth(query):
 
         if consecutive_spaces % 2 != 0:
             raise AssertionError(
-                u"Indentation was not a multiple of two: " u"{}".format(consecutive_spaces)
+                "Indentation was not a multiple of two: " "{}".format(consecutive_spaces)
             )
 
         final_lines.append(("  " * consecutive_spaces) + line[consecutive_spaces:])

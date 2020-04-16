@@ -36,7 +36,7 @@ class CompilerEntity(object):
         if self._print_kwargs:
             printed_args.append("{kwargs}")
 
-        template = u"{cls_name}(" + u", ".join(printed_args) + u")"
+        template = "{cls_name}(" + ", ".join(printed_args) + ")"
         return template.format(
             cls_name=type(self).__name__, args=self._print_args, kwargs=self._print_kwargs
         )
@@ -171,11 +171,11 @@ class MarkerBlock(BasicBlock):
 
         The effect of MarkerBlocks is applied during optimization and code generation steps.
         """
-        return u""
+        return ""
 
     def to_cypher(self) -> str:
         """Return the Cypher representation of the block, which should almost always be empty.
 
         The effect of MarkerBlocks is applied during optimization and code generation steps.
         """
-        return u""
+        return ""

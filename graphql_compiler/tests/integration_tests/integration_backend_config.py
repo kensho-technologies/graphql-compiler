@@ -6,7 +6,7 @@ from six.moves.urllib.parse import quote_plus
 from .. import test_backend
 
 
-DEFAULT_ROOT_PASSWORD = u"root"  # nosec
+DEFAULT_ROOT_PASSWORD = "root"  # nosec
 
 SQL_BACKENDS = {
     test_backend.POSTGRES,

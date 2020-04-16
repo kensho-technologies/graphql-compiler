@@ -175,7 +175,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
     if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
             u'Input AST is of type "{}", which should not be a selection.'
-            u"".format(type(ast).__name__)
+            "".format(type(ast).__name__)
         )
 
     if isinstance(ast, FieldNode):
@@ -241,7 +241,7 @@ def _get_in_collection_filter_directive(input_filter_name):
             ),
             ArgumentNode(
                 name=NameNode(value="value"),
-                value=ListValueNode(values=[StringValueNode(value=u"$" + input_filter_name),],),
+                value=ListValueNode(values=[StringValueNode(value="$" + input_filter_name),],),
             ),
         ],
     )
@@ -249,22 +249,22 @@ def _get_in_collection_filter_directive(input_filter_name):
 
 def print_query_plan(query_plan_descriptor, indentation_depth=4):
     """Return a string describing query plan."""
-    query_plan_strings = [u""]
+    query_plan_strings = [""]
     plan_and_depth = _get_plan_and_depth_in_dfs_order(query_plan_descriptor.root_sub_query_plan)
 
     for query_plan, depth in plan_and_depth:
-        line_separation = u"\n" + u" " * indentation_depth * depth
+        line_separation = "\n" + " " * indentation_depth * depth
         query_plan_strings.append(line_separation)
 
         query_str = u'Execute in schema named "{}":\n'.format(query_plan.schema_id)
         query_str += print_ast(query_plan.query_ast)
-        query_str = query_str.replace(u"\n", line_separation)
+        query_str = query_str.replace("\n", line_separation)
         query_plan_strings.append(query_str)
 
-    query_plan_strings.append(u"\n\nJoin together outputs as follows: ")
+    query_plan_strings.append("\n\nJoin together outputs as follows: ")
     query_plan_strings.append(str(query_plan_descriptor.output_join_descriptors))
-    query_plan_strings.append(u"\n\nRemove the following outputs at the end: ")
-    query_plan_strings.append(str(query_plan_descriptor.intermediate_output_names) + u"\n")
+    query_plan_strings.append("\n\nRemove the following outputs at the end: ")
+    query_plan_strings.append(str(query_plan_descriptor.intermediate_output_names) + "\n")
 
     return "".join(query_plan_strings)
 

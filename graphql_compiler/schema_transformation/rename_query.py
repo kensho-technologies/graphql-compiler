@@ -36,12 +36,12 @@ def rename_query(ast, renamed_schema_descriptor):
     built_in_validation_errors = validate(renamed_schema_descriptor.schema, ast)
     if len(built_in_validation_errors) > 0:
         raise GraphQLValidationError(
-            u"AST does not validate: {}".format(built_in_validation_errors)
+            "AST does not validate: {}".format(built_in_validation_errors)
         )
 
     if len(ast.definitions) > 1:  # includes either multiple queries, or fragment definitions
         raise GraphQLValidationError(
-            u"Only one query may be included, and fragments are not allowed."
+            "Only one query may be included, and fragments are not allowed."
         )
 
     query_definition = ast.definitions[0]

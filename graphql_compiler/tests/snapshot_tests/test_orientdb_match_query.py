@@ -29,8 +29,8 @@ def convert_decimals_to_strings(
         return value
     else:
         raise AssertionError(
-            u"Received unexpected type {}. Expected one of tuple, Decimal or "
-            u"string: {}".format(type(value).__name__, value)
+            "Received unexpected type {}. Expected one of tuple, Decimal or "
+            "string: {}".format(type(value).__name__, value)
         )
 
 
@@ -62,9 +62,9 @@ def execute_graphql(
                 schema_based_type_equivalence_hints[key_type] = value_type
             else:
                 raise AssertionError(
-                    u"Expected key_type to be of type GraphQLInterfaceType or GraphQLObject Type, "
-                    u"but received {}; and value_type to be of type GraphQLUnionType, but "
-                    u"received {}.".format(type(key_type), type(value_type))
+                    "Expected key_type to be of type GraphQLInterfaceType or GraphQLObject Type, "
+                    "but received {}; and value_type to be of type GraphQLUnionType, but "
+                    "received {}.".format(type(key_type), type(value_type))
                 )
 
     common_schema_info = CommonSchemaInfo(schema, schema_based_type_equivalence_hints)
@@ -78,7 +78,7 @@ def execute_graphql(
     # - convert the multi-set to a frozenset of its items
     row_dicts = [row.oRecordData for row in client.command(result.query)]
     if len(row_dicts) == 0:
-        raise AssertionError(u"Zero records returned. Trivial snapshot not allowed.")
+        raise AssertionError("Zero records returned. Trivial snapshot not allowed.")
     row_dicts_using_tuples = [
         {
             column_name: convert_decimals_to_strings(

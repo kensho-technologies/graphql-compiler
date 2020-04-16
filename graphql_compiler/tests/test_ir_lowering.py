@@ -48,8 +48,8 @@ def check_test_data(test_case, expected_object, received_object):
     """Assert that the expected and received IR blocks or MATCH queries are the same."""
     if type(expected_object) != type(received_object):
         raise AssertionError(
-            u"The types of the expected and received objects do not match: "
-            u"{} vs {}, {} and {}".format(
+            "The types of the expected and received objects do not match: "
+            "{} vs {}, {} and {}".format(
                 type(expected_object), type(received_object), expected_object, received_object
             )
         )
@@ -58,7 +58,7 @@ def check_test_data(test_case, expected_object, received_object):
         test_case.assertEqual(
             expected_object,
             received_object,
-            msg=u"\n{}\n\n!=\n\n{}".format(pformat(expected_object), pformat(received_object)),
+            msg="\n{}\n\n!=\n\n{}".format(pformat(expected_object), pformat(received_object)),
         )
     else:
         compare_ir_blocks(test_case, expected_object, received_object)
@@ -73,10 +73,10 @@ class CommonIrLoweringTests(unittest.TestCase):
     def test_optimize_boolean_expression_comparisons(self):
         base_location = Location(("Animal",))
         equality_check = BinaryComposition(
-            u"=", ContextField(base_location, self.schema.get_type("Animal")), NullLiteral
+            "=", ContextField(base_location, self.schema.get_type("Animal")), NullLiteral
         )
         inequality_check = BinaryComposition(
-            u"!=", ContextField(base_location, self.schema.get_type("Animal")), NullLiteral
+            "!=", ContextField(base_location, self.schema.get_type("Animal")), NullLiteral
         )
 
         test_data = [
@@ -84,15 +84,15 @@ class CommonIrLoweringTests(unittest.TestCase):
             (equality_check, equality_check),
             (inequality_check, inequality_check),
             # outer check elided
-            (BinaryComposition(u"=", inequality_check, TrueLiteral), inequality_check),
-            (BinaryComposition(u"=", equality_check, TrueLiteral), equality_check),
-            (BinaryComposition(u"!=", inequality_check, FalseLiteral), inequality_check),
-            (BinaryComposition(u"!=", equality_check, FalseLiteral), equality_check),
+            (BinaryComposition("=", inequality_check, TrueLiteral), inequality_check),
+            (BinaryComposition("=", equality_check, TrueLiteral), equality_check),
+            (BinaryComposition("!=", inequality_check, FalseLiteral), inequality_check),
+            (BinaryComposition("!=", equality_check, FalseLiteral), equality_check),
             # outer check elided + inner comparison inverted
-            (BinaryComposition(u"!=", inequality_check, TrueLiteral), equality_check),
-            (BinaryComposition(u"!=", equality_check, TrueLiteral), inequality_check),
-            (BinaryComposition(u"=", inequality_check, FalseLiteral), equality_check),
-            (BinaryComposition(u"=", equality_check, FalseLiteral), inequality_check),
+            (BinaryComposition("!=", inequality_check, TrueLiteral), equality_check),
+            (BinaryComposition("!=", equality_check, TrueLiteral), inequality_check),
+            (BinaryComposition("=", inequality_check, FalseLiteral), equality_check),
+            (BinaryComposition("=", equality_check, FalseLiteral), inequality_check),
         ]
 
         for test_expression, expected_output in test_data:
@@ -153,7 +153,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             {
                 "child_name": TernaryConditional(
                     BinaryComposition(
-                        u"!=", OutputContextVertex(child_location, animal_graphql_type), NullLiteral
+                        "!=", OutputContextVertex(child_location, animal_graphql_type), NullLiteral
                     ),
                     OutputContextField(child_name_location, GraphQLString),
                     NullLiteral,
@@ -199,7 +199,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             Traverse("in", "Animal_ParentOf"),
             Filter(
                 BinaryComposition(
-                    u"=",
+                    "=",
                     LocalField("name", GraphQLString),
                     TernaryConditional(
                         ContextFieldExistence(child_location),
@@ -227,11 +227,11 @@ class MatchIrLoweringTests(unittest.TestCase):
             Traverse("in", "Animal_ParentOf"),
             Filter(
                 BinaryComposition(
-                    u"=",
+                    "=",
                     LocalField("name", GraphQLString),
                     TernaryConditional(
                         BinaryComposition(
-                            u"!=", ContextField(child_location, animal_graphql_type), NullLiteral
+                            "!=", ContextField(child_location, animal_graphql_type), NullLiteral
                         ),
                         ContextField(child_name_location, GraphQLString),
                         NullLiteral,
@@ -616,19 +616,19 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({"Animal"}),
             Filter(
                 BinaryComposition(
-                    u"<=",
-                    LocalField(u"birthday", GraphQLDate),
+                    "<=",
+                    LocalField("birthday", GraphQLDate),
                     Variable("$foo_birthday", GraphQLDate),
                 )
             ),
             Filter(
                 BinaryComposition(
-                    u"=", LocalField(u"name", GraphQLString), Variable("$foo_name", GraphQLString)
+                    "=", LocalField("name", GraphQLString), Variable("$foo_name", GraphQLString)
                 )
             ),
             Filter(
                 BinaryComposition(
-                    u"=", LocalField(u"color", GraphQLString), Variable("$foo_color", GraphQLString)
+                    "=", LocalField("color", GraphQLString), Variable("$foo_color", GraphQLString)
                 )
             ),
             MarkLocation(base_location),
@@ -643,23 +643,23 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({"Animal"}),
             Filter(
                 BinaryComposition(
-                    u"&&",
+                    "&&",
                     BinaryComposition(
-                        u"&&",
+                        "&&",
                         BinaryComposition(
-                            u"<=",
-                            LocalField(u"birthday", GraphQLDate),
+                            "<=",
+                            LocalField("birthday", GraphQLDate),
                             Variable("$foo_birthday", GraphQLDate),
                         ),
                         BinaryComposition(
-                            u"=",
-                            LocalField(u"name", GraphQLString),
+                            "=",
+                            LocalField("name", GraphQLString),
                             Variable("$foo_name", GraphQLString),
                         ),
                     ),
                     BinaryComposition(
-                        u"=",
-                        LocalField(u"color", GraphQLString),
+                        "=",
+                        LocalField("color", GraphQLString),
                         Variable("$foo_color", GraphQLString),
                     ),
                 )
@@ -685,14 +685,14 @@ class MatchIrLoweringTests(unittest.TestCase):
             Filter(
                 TernaryConditional(
                     BinaryComposition(
-                        u"!=",
+                        "!=",
                         ContextField(other_parent_location.navigate_to_field("uuid"), GraphQLID),
                         ContextField(
                             other_parent_fed_at_location.navigate_to_field("uuid"), GraphQLID
                         ),
                     ),
                     BinaryComposition(
-                        u">=",
+                        ">=",
                         LocalField("event_date", GraphQLDateTime),
                         ContextField(other_parent_fed_at_tag, GraphQLDateTime),
                     ),
@@ -706,10 +706,10 @@ class MatchIrLoweringTests(unittest.TestCase):
         expected_final_blocks = [
             Filter(
                 BinaryComposition(
-                    u"=",
+                    "=",
                     TernaryConditional(
                         BinaryComposition(
-                            u"!=",
+                            "!=",
                             ContextField(
                                 other_parent_location.navigate_to_field("uuid"), GraphQLID
                             ),
@@ -719,7 +719,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                         ),
                         TernaryConditional(
                             BinaryComposition(
-                                u">=",
+                                ">=",
                                 LocalField("event_date", GraphQLDateTime),
                                 ContextField(other_parent_fed_at_tag, GraphQLDateTime),
                             ),
@@ -747,10 +747,10 @@ class MatchIrLoweringTests(unittest.TestCase):
         special_ir_block = [
             Filter(
                 BinaryComposition(
-                    u"&&",
+                    "&&",
                     ContextFieldExistence(parent_location),
                     BinaryComposition(
-                        u"has_substring",
+                        "has_substring",
                         ContextField(parent_location.navigate_to_field("name"), GraphQLString),
                         LocalField("name", GraphQLString),
                     ),
@@ -763,16 +763,16 @@ class MatchIrLoweringTests(unittest.TestCase):
         expected_final_blocks = [
             Filter(
                 BinaryComposition(
-                    u"&&",
+                    "&&",
                     ContextFieldExistence(parent_location),
                     BinaryComposition(
-                        u"LIKE",
+                        "LIKE",
                         ContextField(parent_location.navigate_to_field("name"), GraphQLString),
                         BinaryComposition(
-                            u"+",
+                            "+",
                             Literal("%"),
                             BinaryComposition(
-                                u"+", LocalField("name", GraphQLString), Literal("%")
+                                "+", LocalField("name", GraphQLString), Literal("%")
                             ),
                         ),
                     ),
@@ -789,12 +789,12 @@ class MatchIrLoweringTests(unittest.TestCase):
 
         filter_block = Filter(
             BinaryComposition(
-                u"&&",
+                "&&",
                 BinaryComposition(
-                    u">=", Variable("$upper", GraphQLString), LocalField("name", GraphQLString),
+                    ">=", Variable("$upper", GraphQLString), LocalField("name", GraphQLString),
                 ),
                 BinaryComposition(
-                    u">=", LocalField("name", GraphQLString), Variable("$lower", GraphQLString)
+                    ">=", LocalField("name", GraphQLString), Variable("$lower", GraphQLString)
                 ),
             )
         )
@@ -892,11 +892,11 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({"Animal"}),
             Filter(
                 BinaryComposition(
-                    u"||",
-                    BinaryComposition(u"=", LocalField(u"out_Animal_ParentOf", None), NullLiteral),
+                    "||",
+                    BinaryComposition("=", LocalField("out_Animal_ParentOf", None), NullLiteral),
                     BinaryComposition(
-                        u"=",
-                        UnaryTransformation(u"size", LocalField(u"out_Animal_ParentOf", None)),
+                        "=",
+                        UnaryTransformation("size", LocalField("out_Animal_ParentOf", None)),
                         ZeroLiteral,
                     ),
                 )
@@ -916,7 +916,7 @@ class MatchIrLoweringTests(unittest.TestCase):
             ConstructResult(
                 {
                     "name": OutputContextField(
-                        child_fed_at_location.navigate_to_field(u"name"), GraphQLString
+                        child_fed_at_location.navigate_to_field("name"), GraphQLString
                     )
                 }
             ),
@@ -944,7 +944,7 @@ class MatchIrLoweringTests(unittest.TestCase):
         self.assertEqual(
             expected_compound_match_query,
             final_query,
-            msg=u"\n{}\n\n!=\n\n{}".format(
+            msg="\n{}\n\n!=\n\n{}".format(
                 pformat(expected_compound_match_query), pformat(final_query)
             ),
         )
@@ -998,7 +998,7 @@ class GremlinIrLoweringTests(unittest.TestCase):
                 {
                     "child_name": TernaryConditional(
                         BinaryComposition(
-                            u"!=",
+                            "!=",
                             OutputContextVertex(child_location, animal_graphql_type),
                             NullLiteral,
                         ),

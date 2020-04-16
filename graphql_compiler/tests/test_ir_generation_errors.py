@@ -758,15 +758,15 @@ class IrGenerationErrorTests(unittest.TestCase):
         def generate_args_string(num_args: int) -> str:
             """Generate a GraphQL array with the given args, as a string."""
             if num_args == 0:
-                return u"[]"
+                return "[]"
 
             variable_names = string.ascii_lowercase
             if num_args >= len(variable_names):
                 raise AssertionError("Invalid test data, too many variables to represent.")
 
             args = (variable_names[i] for i in six.moves.xrange(num_args))
-            array_contents = u",".join(u'"${}"'.format(x) for x in args)
-            return u"[{}]".format(array_contents)
+            array_contents = ",".join(u'"${}"'.format(x) for x in args)
+            return "[{}]".format(array_contents)
 
         expected_arg_counts = [
             # Using % rather than .format() because GraphQL uses lots of curly braces,

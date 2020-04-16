@@ -58,9 +58,9 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
                     lookup_index += 1
                 else:
                     raise AssertionError(
-                        u"Expected only CoerceType and Filter blocks to appear "
-                        u"between {} and the corresponding MarkLocation, but "
-                        u"unexpectedly found {}. IR blocks: {}".format(
+                        "Expected only CoerceType and Filter blocks to appear "
+                        "between {} and the corresponding MarkLocation, but "
+                        "unexpectedly found {}. IR blocks: {}".format(
                             block, lookup_block, ir_blocks
                         )
                     )
@@ -73,8 +73,8 @@ def insert_explicit_type_bounds(ir_blocks, query_metadata_table, type_equivalenc
                 new_ir_blocks.append(CoerceType({location_info.type.name}))
             else:
                 raise AssertionError(
-                    u"Illegal IR blocks found. Block {} at index {} does not have "
-                    u"a MarkLocation or CoerceType block after it: {}".format(
+                    "Illegal IR blocks found. Block {} at index {} does not have "
+                    "a MarkLocation or CoerceType block after it: {}".format(
                         block, current_index, ir_blocks
                     )
                 )
@@ -138,24 +138,24 @@ class FoldedContextFieldBeforeFolding(Expression):
         """Validate that the FoldedContextFieldBeforeFolding is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(
-                u"Expected FoldScopeLocation fold_scope_location, got: {} {}".format(
+                "Expected FoldScopeLocation fold_scope_location, got: {} {}".format(
                     type(self.fold_scope_location), self.fold_scope_location
                 )
             )
 
         if self.fold_scope_location.field is None:
             raise ValueError(
-                u"Expected FoldScopeLocation at a field, but got: {}".format(
+                "Expected FoldScopeLocation at a field, but got: {}".format(
                     self.fold_scope_location
                 )
             )
 
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
             raise TypeError(
-                u"Expected fold_scope_location field to not be the _x_count meta-field "
-                u"because FoldedContextFieldBeforeFolding is specifically for "
-                u"filtering on individual vertices' fields in a fold scope, not for "
-                u"filtering on the size of the list. Got FoldScopeLocation: {}".format(
+                "Expected fold_scope_location field to not be the _x_count meta-field "
+                "because FoldedContextFieldBeforeFolding is specifically for "
+                "filtering on individual vertices' fields in a fold scope, not for "
+                "filtering on the size of the list. Got FoldScopeLocation: {}".format(
                     self.fold_scope_location
                 )
             )
@@ -178,7 +178,7 @@ class FoldedContextFieldBeforeFolding(Expression):
         _, field_name = self.fold_scope_location.get_location_name()
         mark_name = cypher_helpers.get_fold_scope_location_full_path_name(self.fold_scope_location)
         validate_safe_string(mark_name)
-        template = u"{mark_name}.{field_name}"
+        template = "{mark_name}.{field_name}"
         return template.format(mark_name=mark_name, field_name=field_name)
 
     def __eq__(self, other):
@@ -231,7 +231,7 @@ def replace_local_fields_with_context_fields(ir_blocks):
 
     if len(ir_blocks) != len(new_ir_blocks):
         raise AssertionError(
-            u"The number of IR blocks unexpectedly changed, {} vs {}: {} {}".format(
+            "The number of IR blocks unexpectedly changed, {} vs {}: {} {}".format(
                 len(ir_blocks), len(new_ir_blocks), ir_blocks, new_ir_blocks
             )
         )
@@ -274,10 +274,10 @@ def move_filters_in_optional_locations_to_global_operations(cypher_query, query_
             # and therefore needs to be rewritten as "either the location doesn't exist or
             # the filter passes" before being added to the global where block.
             location_non_existence = BinaryComposition(
-                u"=", ContextField(step_location, location_info.type), NullLiteral
+                "=", ContextField(step_location, location_info.type), NullLiteral
             )
             rewritten_predicate = BinaryComposition(
-                u"||", location_non_existence, cypher_step.where_block.predicate
+                "||", location_non_existence, cypher_step.where_block.predicate
             )
             global_filters.append(Filter(rewritten_predicate))
             new_cypher_step = cypher_step._replace(where_block=None)

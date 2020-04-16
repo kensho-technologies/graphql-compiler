@@ -82,10 +82,10 @@ def _get_union_type_name(type_names_to_union):
     """Construct a unique union type name based on the type names being unioned."""
     if not type_names_to_union:
         raise AssertionError(
-            u"Expected a non-empty list of type names to union, received: "
-            u"{}".format(type_names_to_union)
+            "Expected a non-empty list of type names to union, received: "
+            "{}".format(type_names_to_union)
         )
-    return u"Union__" + u"__".join(sorted(type_names_to_union))
+    return "Union__" + "__".join(sorted(type_names_to_union))
 
 
 def _get_fields_for_class(
@@ -101,8 +101,8 @@ def _get_fields_for_class(
             all_properties[property_name] = property_obj.type
         else:
             warnings.warn(
-                u"Ignoring property {} of class {} with invalid name. "
-                u"Property names must match /{}/.".format(property_name, cls_name, re_name)
+                "Ignoring property {} of class {} with invalid name. "
+                "Property names must match /{}/.".format(property_name, cls_name, re_name)
             )
 
     collections_of_non_graphql_scalars = {
@@ -177,7 +177,7 @@ def _get_fields_for_class(
         if field_name not in result:
             raise AssertionError(
                 u'Attempting to override field "{}" from class "{}", but the '
-                u"class does not contain said field".format(field_name, cls_name)
+                "class does not contain said field".format(field_name, cls_name)
             )
         else:
             result[field_name] = field_type
@@ -394,8 +394,8 @@ def get_graphql_schema_from_schema_graph(
 
     if not graphql_types:
         raise EmptySchemaError(
-            u"After evaluating all subclasses of V, we were not able to find "
-            u"visible schema data to import into the GraphQL schema object"
+            "After evaluating all subclasses of V, we were not able to find "
+            "visible schema data to import into the GraphQL schema object"
         )
 
     # Create the root query GraphQL type. Consists of all non-union classes, i.e.

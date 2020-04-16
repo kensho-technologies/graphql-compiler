@@ -20,7 +20,7 @@ def _safe_match_string(value):
             value = value.decode("utf-8")
         else:
             raise GraphQLInvalidArgumentError(
-                u"Attempting to convert a non-string into a string: " u"{}".format(value)
+                "Attempting to convert a non-string into a string: " "{}".format(value)
             )
 
     # Using JSON encoding means that all unicode literals and special chars
@@ -60,18 +60,18 @@ def _safe_match_list(inner_type, argument_value):
     stripped_type = strip_non_null_from_type(inner_type)
     if isinstance(stripped_type, GraphQLList):
         raise GraphQLInvalidArgumentError(
-            u"MATCH does not currently support nested lists, "
-            u"but inner type was {}: "
-            u"{}".format(inner_type, argument_value)
+            "MATCH does not currently support nested lists, "
+            "but inner type was {}: "
+            "{}".format(inner_type, argument_value)
         )
 
     if not isinstance(argument_value, list):
         raise GraphQLInvalidArgumentError(
-            u"Attempting to represent a non-list as a list: " u"{}".format(argument_value)
+            "Attempting to represent a non-list as a list: " "{}".format(argument_value)
         )
 
     components = (_safe_match_argument(stripped_type, x) for x in argument_value)
-    return u"[" + u",".join(components) + u"]"
+    return "[" + ",".join(components) + "]"
 
 
 def _safe_match_argument(expected_type, argument_value):
@@ -94,7 +94,7 @@ def _safe_match_argument(expected_type, argument_value):
         # Safeguard against this with an explicit check against bool type.
         if isinstance(argument_value, bool):
             raise GraphQLInvalidArgumentError(
-                u"Attempting to represent a non-int as an int: " u"{}".format(argument_value)
+                "Attempting to represent a non-int as an int: " "{}".format(argument_value)
             )
         return type_check_and_str(int, argument_value)
     elif is_same_type(GraphQLBoolean, expected_type):
@@ -109,8 +109,8 @@ def _safe_match_argument(expected_type, argument_value):
         return _safe_match_list(expected_type.of_type, argument_value)
     else:
         raise AssertionError(
-            u"Could not safely represent the requested GraphQL type: "
-            u"{} {}".format(expected_type, argument_value)
+            "Could not safely represent the requested GraphQL type: "
+            "{} {}".format(expected_type, argument_value)
         )
 
 
@@ -131,7 +131,7 @@ def insert_arguments_into_match_query(compilation_result, arguments):
         string, a MATCH query with inserted argument data
     """
     if compilation_result.language != MATCH_LANGUAGE:
-        raise AssertionError(u"Unexpected query output language: {}".format(compilation_result))
+        raise AssertionError("Unexpected query output language: {}".format(compilation_result))
 
     base_query = compilation_result.query
     argument_types = compilation_result.input_metadata
