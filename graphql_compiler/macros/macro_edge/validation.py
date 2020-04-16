@@ -59,9 +59,7 @@ def _validate_ast_with_builtin_graphql_validation(schema, ast):
 
     validation_errors = validate(schema_with_macro_edge_directives, ast)
     if validation_errors:
-        raise GraphQLInvalidMacroError(
-            "Macro edge failed validation: {}".format(validation_errors)
-        )
+        raise GraphQLInvalidMacroError("Macro edge failed validation: {}".format(validation_errors))
 
 
 def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives):

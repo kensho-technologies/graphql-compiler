@@ -456,9 +456,7 @@ def check_query_is_valid_to_split(schema, query_ast):
     # Check builtin errors
     built_in_validation_errors = validate(schema, query_ast)
     if len(built_in_validation_errors) > 0:
-        raise GraphQLValidationError(
-            "AST does not validate: {}".format(built_in_validation_errors)
-        )
+        raise GraphQLValidationError("AST does not validate: {}".format(built_in_validation_errors))
     # Check no bad directives and fields are in order
     visitor = CheckQueryIsValidToSplitVisitor()
     visit(query_ast, visitor)

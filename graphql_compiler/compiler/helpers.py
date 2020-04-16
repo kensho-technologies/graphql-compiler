@@ -575,8 +575,7 @@ class FoldScopeLocation(BaseLocation):
 
         if base_location.field:
             raise ValueError(
-                "Expected Location object that points to a vertex, got: "
-                "{}".format(base_location)
+                "Expected Location object that points to a vertex, got: " "{}".format(base_location)
             )
 
         if not isinstance(fold_path, tuple) or len(fold_path) == 0:

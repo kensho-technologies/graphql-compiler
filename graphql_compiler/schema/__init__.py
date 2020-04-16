@@ -448,9 +448,7 @@ def check_for_nondefault_directive_names(directives):
 
     nondefault_directives_found = directive_names - expected_directive_names
     if nondefault_directives_found:
-        raise AssertionError(
-            "Unsupported directives found: {}".format(nondefault_directives_found)
-        )
+        raise AssertionError("Unsupported directives found: {}".format(nondefault_directives_found))
 
 
 def compute_schema_fingerprint(schema: GraphQLSchema) -> str:

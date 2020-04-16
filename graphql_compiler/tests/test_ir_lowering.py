@@ -771,9 +771,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                         BinaryComposition(
                             "+",
                             Literal("%"),
-                            BinaryComposition(
-                                "+", LocalField("name", GraphQLString), Literal("%")
-                            ),
+                            BinaryComposition("+", LocalField("name", GraphQLString), Literal("%")),
                         ),
                     ),
                 )

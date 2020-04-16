@@ -35,9 +35,7 @@ def rename_query(ast, renamed_schema_descriptor):
     """
     built_in_validation_errors = validate(renamed_schema_descriptor.schema, ast)
     if len(built_in_validation_errors) > 0:
-        raise GraphQLValidationError(
-            "AST does not validate: {}".format(built_in_validation_errors)
-        )
+        raise GraphQLValidationError("AST does not validate: {}".format(built_in_validation_errors))
 
     if len(ast.definitions) > 1:  # includes either multiple queries, or fragment definitions
         raise GraphQLValidationError(
