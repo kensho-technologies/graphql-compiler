@@ -6,7 +6,7 @@ import six
 
 def remove_custom_formatting(query):
     """Prepare the query string for pretty-printing by removing all unusual formatting."""
-    query = re.sub("[\n ]+", , query)
+    query = re.sub("[\n ]+", " ", query)
     return query.replace("( ", "(").replace(" )", ")")
 
 
@@ -43,7 +43,7 @@ def pretty_print_gremlin(gremlin):
             if indentation < 0:
                 raise AssertionError("Indentation became negative: {}".format(indentation))
 
-        output.append(( * indentation) + current_part)
+        output.append((" " * indentation) + current_part)
 
     return "\n".join(output).strip()
 
@@ -57,7 +57,7 @@ def pretty_print_match(match, parameterized=True):
 
     inside_braces = False
     indent_size = 4
-    indent =  * indent_size
+    indent = " " * indent_size
 
     output = [parts[0]]
     for current_index, current_part in enumerate(parts[1:]):

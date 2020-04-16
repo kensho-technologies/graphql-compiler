@@ -461,9 +461,7 @@ class Location(BaseLocation):
         if not isinstance(folded_child, six.string_types):
             raise TypeError("Expected folded_child to be a string, was: {}".format(folded_child))
         if self.field:
-            raise AssertionError(
-                "Currently at a field, cannot go to folded child: {}".format(self)
-            )
+            raise AssertionError("Currently at a field, cannot go to folded child: {}".format(self))
 
         edge_direction, edge_name = get_edge_direction_and_name(folded_child)
 

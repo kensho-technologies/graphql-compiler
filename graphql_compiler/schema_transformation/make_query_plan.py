@@ -253,7 +253,7 @@ def print_query_plan(query_plan_descriptor, indentation_depth=4):
     plan_and_depth = _get_plan_and_depth_in_dfs_order(query_plan_descriptor.root_sub_query_plan)
 
     for query_plan, depth in plan_and_depth:
-        line_separation = "\n" +  * indentation_depth * depth
+        line_separation = "\n" + " " * indentation_depth * depth
         query_plan_strings.append(line_separation)
 
         query_str = 'Execute in schema named "{}":\n'.format(query_plan.schema_id)

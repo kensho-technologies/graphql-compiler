@@ -72,7 +72,7 @@ def fix_indentation_depth(query):
     for line in lines:
         consecutive_spaces = 0
         for char in line:
-            if char == :
+            if char == " ":
                 consecutive_spaces += 1
             else:
                 break

@@ -715,8 +715,7 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
 
         if field_type is None:  # should never happen after _check_field_reference_is_valid
             raise AssertionError(
-                'Unreachable code reached. Field "{}" unexpectedly '
-                "not found.".format(field_name)
+                'Unreachable code reached. Field "{}" unexpectedly ' "not found.".format(field_name)
             )
 
         if isinstance(field_type, ast_types.ListTypeNode):
