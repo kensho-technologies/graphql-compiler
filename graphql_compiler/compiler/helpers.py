@@ -235,7 +235,7 @@ def validate_output_name(name: str) -> None:
     internal_name_prefix = "___"
     if name.startswith(internal_name_prefix):
         raise GraphQLCompilationError(
-            u'The prefix "___" (three underscores) for output names is reserved by the compiler.'
+            'The prefix "___" (three underscores) for output names is reserved by the compiler.'
         )
     validate_safe_string(name, value_description="output name")
 

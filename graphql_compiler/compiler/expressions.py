@@ -209,11 +209,11 @@ class Variable(Expression):
         validate_safe_string(self.variable_name[1:])
 
         if not is_graphql_type(self.inferred_type):
-            raise ValueError(u'Invalid value of "inferred_type": {}'.format(self.inferred_type))
+            raise ValueError('Invalid value of "inferred_type": {}'.format(self.inferred_type))
 
         if isinstance(self.inferred_type, GraphQLNonNull):
             raise ValueError(
-                u'GraphQL non-null types are not supported as "inferred_type": '
+                'GraphQL non-null types are not supported as "inferred_type": '
                 "{}".format(self.inferred_type)
             )
 
@@ -244,9 +244,9 @@ class Variable(Expression):
         # For the semantics of the date() OrientDB SQL function, see:
         # http://orientdb.com/docs/last/SQL-Functions.html#date
         if is_same_type(GraphQLDate, self.inferred_type):
-            return u'date(%s, "%s")' % (match_variable_name, STANDARD_DATE_FORMAT)
+            return 'date(%s, "%s")' % (match_variable_name, STANDARD_DATE_FORMAT)
         elif is_same_type(GraphQLDateTime, self.inferred_type):
-            return u'date(%s, "%s")' % (match_variable_name, STANDARD_DATETIME_FORMAT)
+            return 'date(%s, "%s")' % (match_variable_name, STANDARD_DATETIME_FORMAT)
         else:
             return match_variable_name
 
@@ -258,9 +258,9 @@ class Variable(Expression):
         # and then parse it inline. For date format parameter meanings, see:
         # http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html
         if is_same_type(GraphQLDate, self.inferred_type):
-            return u'Date.parse("{}", {})'.format(STANDARD_DATE_FORMAT, self.variable_name)
+            return 'Date.parse("{}", {})'.format(STANDARD_DATE_FORMAT, self.variable_name)
         elif is_same_type(GraphQLDateTime, self.inferred_type):
-            return u'Date.parse("{}", {})'.format(STANDARD_DATETIME_FORMAT, self.variable_name)
+            return 'Date.parse("{}", {})'.format(STANDARD_DATETIME_FORMAT, self.variable_name)
         else:
             return six.text_type(self.variable_name)
 
@@ -334,7 +334,7 @@ class LocalField(Expression):
         """Validate that the LocalField is correctly representable."""
         validate_safe_or_special_string(self.field_name)
         if self.field_type is not None and not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value {} of "field_type": {}'.format(self.field_type, self))
+            raise ValueError('Invalid value {} of "field_type": {}'.format(self.field_type, self))
 
     def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this LocalField."""
@@ -432,7 +432,7 @@ class GlobalContextField(Expression):
             raise AssertionError("Received Location without a field: {}".format(self.location))
 
         if not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+            raise ValueError('Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this GlobalContextField."""
@@ -525,7 +525,7 @@ class ContextField(Expression):
             )
 
         if not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+            raise ValueError('Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this ContextField."""
@@ -653,7 +653,7 @@ class OutputContextField(Expression):
             )
 
         if not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+            raise ValueError('Invalid value of "field_type": {}'.format(self.field_type))
 
         stripped_field_type = strip_non_null_from_type(self.field_type)
         if isinstance(stripped_field_type, GraphQLList):
@@ -686,9 +686,9 @@ class OutputContextField(Expression):
 
         stripped_field_type = strip_non_null_from_type(self.field_type)
         if is_same_type(GraphQLDate, stripped_field_type):
-            return u'%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATE_FORMAT)
+            return '%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATE_FORMAT)
         elif is_same_type(GraphQLDateTime, stripped_field_type):
-            return u'%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATETIME_FORMAT)
+            return '%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATETIME_FORMAT)
         else:
             return "%s.%s" % (mark_name, field_name)
 
@@ -819,7 +819,7 @@ class FoldedContextField(Expression):
         else:
             if not isinstance(self.field_type, GraphQLList):
                 raise ValueError(
-                    u'Invalid value of "field_type" for a field that is not '
+                    'Invalid value of "field_type" for a field that is not '
                     "a meta-field, expected a list type but got: {} {}".format(
                         self.field_type, self.fold_scope_location
                     )
@@ -1485,9 +1485,9 @@ class TernaryConditional(Expression):
 
         self.predicate.visit_and_update(visitor_fn)
 
-        format_spec = u'if(eval("%(predicate)s"), %(if_true)s, %(if_false)s)'
+        format_spec = 'if(eval("%(predicate)s"), %(if_true)s, %(if_false)s)'
         predicate_string = self.predicate.to_match()
-        if u'"' in predicate_string:
+        if '"' in predicate_string:
             raise AssertionError(
                 "Found a double-quote within the predicate string, this would "
                 "have terminated the if(eval()) early and should be fixed: "

@@ -55,14 +55,14 @@ SQL_BACKEND_TO_CONNECTION_STRING = {
     #                       string formats.
     #
     # test_backend.POSTGRES:
-    #     u'postgresql://postgres:{password}@localhost:5433'.format(password=DEFAULT_ROOT_PASSWORD),
+    #     'postgresql://postgres:{password}@localhost:5433'.format(password=DEFAULT_ROOT_PASSWORD),
     # test_backend.MYSQL:
-    #     u'mysql://root:{password}@127.0.0.1:3307'.format(password=DEFAULT_ROOT_PASSWORD),
+    #     'mysql://root:{password}@127.0.0.1:3307'.format(password=DEFAULT_ROOT_PASSWORD),
     # test_backend.MARIADB:
-    #     u'mysql://root:{password}@127.0.0.1:3308'.format(password=DEFAULT_ROOT_PASSWORD),
+    #     'mysql://root:{password}@127.0.0.1:3308'.format(password=DEFAULT_ROOT_PASSWORD),
     test_backend.MSSQL: "mssql+pyodbc:///?odbc_connect={}".format(escaped_pyodbc_parameter_string),
     # test_backend.SQLITE:
-    #     u'sqlite:///:memory:',
+    #     'sqlite:///:memory:',
 }
 
 SqlTestBackend = namedtuple("SqlTestBackend", ("engine", "base_connection_string",))

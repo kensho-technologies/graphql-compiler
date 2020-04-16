@@ -26,7 +26,7 @@ def _emit_code_from_cypher_step(cypher_step):
     if has_where_block and is_optional_step:
         raise AssertionError(
             "Received an illegal CypherStep containing an optional step together "
-            u'with a "where" Filter block. This is a bug in the lowering code, as '
+            'with a "where" Filter block. This is a bug in the lowering code, as '
             "it should have moved the filtering to the global operations "
             "section. {}".format(cypher_step)
         )
@@ -258,7 +258,7 @@ def emit_code_from_ir(schema_info, cypher_query):
     # Cypher 9 (page 196) and we should be able to specify the Cypher version in the query.
     # Unfortunately, this turns out to be invalid in both Neo4j and RedisGraph-- Neo4j supports
     # Cypher version 2.3, 3.4, and 3.5 [1] while RedisGraph doesn't support the syntax at all [2].
-    # When this does eventually get resolved, we can change `query_data` back to `[u'CYPHER 9']`
+    # When this does eventually get resolved, we can change `query_data` back to `['CYPHER 9']`
     # [0] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     # [1] https://github.com/neo4j/neo4j/issues/12239
     # [2] https://github.com/RedisGraph/RedisGraph/issues/552

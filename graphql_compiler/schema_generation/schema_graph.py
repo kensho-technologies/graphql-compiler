@@ -198,7 +198,7 @@ class SchemaGraph(object):
         non_existent_properties = requested_properties - available_properties
         if non_existent_properties:
             raise InvalidPropertyError(
-                u'Class "{}" does not have definitions for properties "{}": '
+                'Class "{}" does not have definitions for properties "{}": '
                 "{}".format(classname, non_existent_properties, property_names)
             )
 
@@ -447,7 +447,7 @@ def _validate_property_names(class_name, properties):
         )
         if is_illegal_name:
             raise IllegalSchemaStateError(
-                u'Class "{}" has a property with an illegal name: '
+                'Class "{}" has a property with an illegal name: '
                 "{}".format(class_name, property_name)
             )
 

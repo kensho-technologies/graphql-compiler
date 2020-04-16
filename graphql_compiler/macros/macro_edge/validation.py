@@ -68,13 +68,13 @@ def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro
         macro_data = macro_directives.get(directive_name, None)
         if not macro_data:
             raise GraphQLInvalidMacroError(
-                u'Required macro edge directive "@{}" was not found anywhere within the supplied '
+                'Required macro edge directive "@{}" was not found anywhere within the supplied '
                 "macro edge definition GraphQL.".format(directive_name)
             )
 
         if len(macro_data) > 1:
             raise GraphQLInvalidMacroError(
-                u'Required macro edge directive "@{}" was unexpectedly present more than once in '
+                'Required macro edge directive "@{}" was unexpectedly present more than once in '
                 "the supplied macro edge definition GraphQL. It was found {} times.".format(
                     directive_name, len(macro_data)
                 )
@@ -170,8 +170,8 @@ def _validate_that_macro_edge_definition_is_only_top_level_field_directive(ast, 
 
     if ast is not macro_defn_ast:
         raise GraphQLInvalidMacroError(
-            u'Expected to find the "@{}" directive at the top level of the macro definition '
-            u'GraphQL (on the "{}" field), but instead found it on the "{}" field. This is '
+            'Expected to find the "@{}" directive at the top level of the macro definition '
+            'GraphQL (on the "{}" field), but instead found it on the "{}" field. This is '
             "not allowed.".format(
                 MacroEdgeDefinitionDirective.name,
                 get_human_friendly_ast_field_name(ast),
@@ -206,7 +206,7 @@ def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, 
     # The macro edge must be a valid edge name.
     if not is_vertex_field_name(macro_edge_name):
         raise GraphQLInvalidMacroError(
-            u'The provided macro edge name "{}" is not valid, since it does not start with '
+            'The provided macro edge name "{}" is not valid, since it does not start with '
             "the expected prefixes for vertex fields: {}".format(
                 macro_edge_name, list(VERTEX_FIELD_PREFIXES)
             )
@@ -225,8 +225,8 @@ def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, 
                 "define a macro edge".format(conflicting_subclass_name, class_name)
             )
         raise GraphQLInvalidMacroError(
-            u'The provided macro edge name "{edge_name}" has the same name as '
-            u'an existing field on the "{subclass_name}" GraphQL type or interface. '
+            'The provided macro edge name "{edge_name}" has the same name as '
+            'an existing field on the "{subclass_name}" GraphQL type or interface. '
             "{extra_error_text}"
             "This is not allowed, please choose a different name.".format(
                 edge_name=macro_edge_name,
@@ -256,8 +256,8 @@ def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_nam
                 )
             )
         raise GraphQLInvalidMacroError(
-            u'The provided macro edge name "{edge_name}" is invalid: if the edge direction were '
-            u'reversed, it would conflict with an existing field on the "{subclass_name}" GraphQL '
+            'The provided macro edge name "{edge_name}" is invalid: if the edge direction were '
+            'reversed, it would conflict with an existing field on the "{subclass_name}" GraphQL '
             "type or interface. {extra_error_text}"
             "This is not allowed, please choose a different name.".format(
                 edge_name=macro_edge_name,

@@ -182,7 +182,7 @@ def try_get_graphql_scalar_type(column_name, column_type):
         # Trying to get the string representation of the SQLAlchemy JSON and ARRAY types
         # will lead to an error. We therefore use repr instead.
         warnings.warn(
-            u'Ignoring column "{}" with unsupported SQL datatype: {}'.format(
+            'Ignoring column "{}" with unsupported SQL datatype: {}'.format(
                 column_name, type(column_type).__name__
             )
         )

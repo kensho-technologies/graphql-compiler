@@ -560,7 +560,7 @@ def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
 
     Expressions involving non-existent ContextFields are evaluated to TrueLiteral.
     BinaryCompositions, where one of the operands is lowered to a TrueLiteral,
-    are lowered appropriately based on the present operator (u'||' and u'&&' are affected).
+    are lowered appropriately based on the present operator ('||' and '&&' are affected).
     TernaryConditionals, where the predicate is lowered to a TrueLiteral,
     are replaced by their if_true predicate.
     The `visitor_fn` implements these behaviors (see `_update_context_field_expression`).

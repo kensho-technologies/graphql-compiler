@@ -71,8 +71,8 @@ def _validate_overriden_fields_are_not_defined_in_superclasses(
                 for field_name in field_type_overrides:
                     if field_name in superclass.properties:
                         raise AssertionError(
-                            u'Attempting to override field "{}" from class "{}", but the field is '
-                            u'defined in superclass "{}"'.format(
+                            'Attempting to override field "{}" from class "{}", but the field is '
+                            'defined in superclass "{}"'.format(
                                 field_name, class_name, superclass_name
                             )
                         )
@@ -176,7 +176,7 @@ def _get_fields_for_class(
     for field_name, field_type in six.iteritems(field_type_overrides):
         if field_name not in result:
             raise AssertionError(
-                u'Attempting to override field "{}" from class "{}", but the '
+                'Attempting to override field "{}" from class "{}", but the '
                 "class does not contain said field".format(field_name, cls_name)
             )
         else:

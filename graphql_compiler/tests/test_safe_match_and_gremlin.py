@@ -37,22 +37,22 @@ REPRESENTATIVE_DATA_FOR_EACH_TYPE = {
 class SafeMatchFormattingTests(unittest.TestCase):
     def test_safe_match_argument_for_strings(self) -> None:
         test_data = {
-            "": u'""',
-            "foobar": u'"foobar"',
-            "'leading-single-quote": u'"\'leading-single-quote"',
-            "mid-single-'-quote": u'"mid-single-\'-quote"',
-            "trailing-single-quote'": u'"trailing-single-quote\'"',
-            "unicode-single-quote: \u0027": u'"unicode-single-quote: \'"',
-            u'"leading-double-quote': u'"\\"leading-double-quote"',
-            u'mid-double-"-quote': u'"mid-double-\\"-quote"',
-            u'trailing-double-quote"': u'"trailing-double-quote\\""',
-            "unicode-double-quote: \u0022": u'"unicode-double-quote: \\""',
-            "unicode-snowman: \u2603": u'"unicode-snowman: \\u2603"',
-            "backslashes: \\": u'"backslashes: \\\\"',
-            "tab-and-newline: \t\n": u'"tab-and-newline: \\t\\n"',
+            "": '""',
+            "foobar": '"foobar"',
+            "'leading-single-quote": '"\'leading-single-quote"',
+            "mid-single-'-quote": '"mid-single-\'-quote"',
+            "trailing-single-quote'": '"trailing-single-quote\'"',
+            "unicode-single-quote: \u0027": '"unicode-single-quote: \'"',
+            '"leading-double-quote': '"\\"leading-double-quote"',
+            'mid-double-"-quote': '"mid-double-\\"-quote"',
+            'trailing-double-quote"': '"trailing-double-quote\\""',
+            "unicode-double-quote: \u0022": '"unicode-double-quote: \\""',
+            "unicode-snowman: \u2603": '"unicode-snowman: \\u2603"',
+            "backslashes: \\": '"backslashes: \\\\"',
+            "tab-and-newline: \t\n": '"tab-and-newline: \\t\\n"',
             # There's no opportunity for injection here, since double-quoted strings
             # are not interpolated in MATCH / SQL as they are in Gremlin / Groovy.
-            "injection: ${ -> (2 + 2 == 4)}": u'"injection: ${ -> (2 + 2 == 4)}"',
+            "injection: ${ -> (2 + 2 == 4)}": '"injection: ${ -> (2 + 2 == 4)}"',
         }
 
         for input_data, expected_value in six.iteritems(test_data):
@@ -94,9 +94,9 @@ class SafeGremlinFormattingTests(unittest.TestCase):
             "mid-single-'-quote": "'mid-single-\\'-quote'",
             "trailing-single-quote'": "'trailing-single-quote\\''",
             "unicode-single-quote: \u0027": "'unicode-single-quote: \\''",
-            u'"leading-double-quote': "'\"leading-double-quote'",
-            u'mid-double-"-quote': "'mid-double-\"-quote'",
-            u'trailing-double-quote"': "'trailing-double-quote\"'",
+            '"leading-double-quote': "'\"leading-double-quote'",
+            'mid-double-"-quote': "'mid-double-\"-quote'",
+            'trailing-double-quote"': "'trailing-double-quote\"'",
             "unicode-double-quote: \u0022": "'unicode-double-quote: \"'",
             "unicode-snowman: \u2603": "'unicode-snowman: \\u2603'",
             "backslashes: \\": "'backslashes: \\\\'",

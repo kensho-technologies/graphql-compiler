@@ -76,7 +76,7 @@ def _process_filter_block(query_metadata_table, block):
     return_value = base_predicate.visit_and_update(find_ternary_conditionals)
     if return_value is not base_predicate:
         raise AssertionError(
-            u'Read-only visitor function "find_ternary_conditionals" '
+            'Read-only visitor function "find_ternary_conditionals" '
             "caused state to change: "
             "{} {}".format(base_predicate, return_value)
         )
@@ -87,7 +87,7 @@ def _process_filter_block(query_metadata_table, block):
         return_value = ternary.visit_and_update(extract_locations_visitor)
         if return_value is not ternary:
             raise AssertionError(
-                u'Read-only visitor function "extract_locations_visitor" '
+                'Read-only visitor function "extract_locations_visitor" '
                 "caused state to change: "
                 "{} {}".format(ternary, return_value)
             )

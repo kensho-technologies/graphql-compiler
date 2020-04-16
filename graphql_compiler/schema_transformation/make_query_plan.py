@@ -126,8 +126,8 @@ def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descr
         )
         if child_query_type is child_query_type_with_filter:
             raise AssertionError(
-                u'An @output directive with out_name "{}" is unexpectedly not found in the '
-                u'AST "{}".'.format(child_out_name, child_query_type)
+                'An @output directive with out_name "{}" is unexpectedly not found in the '
+                'AST "{}".'.format(child_out_name, child_query_type)
             )
         else:
             new_child_query_ast = DocumentNode(definitions=[child_query_type_with_filter])
@@ -174,7 +174,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
     """
     if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
-            u'Input AST is of type "{}", which should not be a selection.'
+            'Input AST is of type "{}", which should not be a selection.'
             "".format(type(ast).__name__)
         )
 
@@ -207,7 +207,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
                 # Change has already been made, but there is a new change. Implies that multiple
                 # fields have the @output directive with the desired name
                 raise GraphQLValidationError(
-                    u'There are multiple @output directives with the out_name "{}"'.format(
+                    'There are multiple @output directives with the out_name "{}"'.format(
                         field_out_name
                     )
                 )
@@ -224,7 +224,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
 def _is_output_directive_with_name(directive, out_name):
     """Return whether or not the input is an @output directive with the desired out_name."""
     if not isinstance(directive, DirectiveNode):
-        raise AssertionError(u'Input "{}" is not a directive.'.format(directive))
+        raise AssertionError('Input "{}" is not a directive.'.format(directive))
     return (
         directive.name.value == OutputDirective.name
         and directive.arguments[0].value.value == out_name
@@ -256,7 +256,7 @@ def print_query_plan(query_plan_descriptor, indentation_depth=4):
         line_separation = "\n" +  * indentation_depth * depth
         query_plan_strings.append(line_separation)
 
-        query_str = u'Execute in schema named "{}":\n'.format(query_plan.schema_id)
+        query_str = 'Execute in schema named "{}":\n'.format(query_plan.schema_id)
         query_str += print_ast(query_plan.query_ast)
         query_str = query_str.replace("\n", line_separation)
         query_plan_strings.append(query_str)

@@ -38,7 +38,7 @@ def scalar_leaf_only(operator):
 
             if not is_leaf_type(filter_operation_info.field_type):
                 raise GraphQLCompilationError(
-                    u'Cannot apply "{}" filter to non-leaf type'
+                    'Cannot apply "{}" filter to non-leaf type'
                     "{}".format(current_operator, filter_operation_info)
                 )
             return f(filter_operation_info, context, parameters, *args, **kwargs)
@@ -65,7 +65,7 @@ def vertex_field_only(operator):
 
             if not is_vertex_field_type(filter_operation_info.field_type):
                 raise GraphQLCompilationError(
-                    u'Cannot apply "{}" filter to non-vertex field: '
+                    'Cannot apply "{}" filter to non-vertex field: '
                     "{}".format(current_operator, filter_operation_info.field_name)
                 )
             return f(filter_operation_info, context, parameters, *args, **kwargs)
@@ -266,7 +266,7 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     """
     if isinstance(filter_operation_info.field_ast, InlineFragmentNode):
         raise AssertionError(
-            u'Received InlineFragment AST node in "has_edge_degree" filter '
+            'Received InlineFragment AST node in "has_edge_degree" filter '
             "handler. This should have been caught earlier: "
             "{}".format(filter_operation_info.field_ast)
         )
@@ -274,21 +274,21 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     filtered_field_name = filter_operation_info.field_name
     if filtered_field_name is None or not is_vertex_field_name(filtered_field_name):
         raise AssertionError(
-            u'Invalid value for "filtered_field_name" in "has_edge_degree" '
+            'Invalid value for "filtered_field_name" in "has_edge_degree" '
             "filter: {}".format(filtered_field_name)
         )
 
     filtered_field_type = filter_operation_info.field_type
     if not is_vertex_field_type(filtered_field_type):
         raise AssertionError(
-            u'Invalid value for "filter_operation_info.field_type" in '
-            u'"has_edge_degree" filter: {}'.format(filter_operation_info)
+            'Invalid value for "filter_operation_info.field_type" in '
+            '"has_edge_degree" filter: {}'.format(filter_operation_info)
         )
 
     argument = parameters[0]
     if not is_runtime_parameter(argument):
         raise GraphQLCompilationError(
-            u'The "has_edge_degree" filter only supports runtime '
+            'The "has_edge_degree" filter only supports runtime '
             "variable arguments. Tagged values are not supported."
             "Argument name: {}".format(argument)
         )
@@ -372,7 +372,7 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     filtered_field_type = filter_operation_info.field_type
     if isinstance(filtered_field_type, GraphQLUnionType):
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to union type ' "{}".format(filtered_field_type)
+            'Cannot apply "name_or_alias" to union type ' "{}".format(filtered_field_type)
         )
 
     current_type_fields = filtered_field_type.fields
@@ -382,13 +382,13 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     alias_field = current_type_fields.get(alias_field_name, None)
     if name_field is None:
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because it lacks a '
-            u'"{}" field.'.format(filtered_field_type, name_field_name)
+            'Cannot apply "name_or_alias" to type {} because it lacks a '
+            '"{}" field.'.format(filtered_field_type, name_field_name)
         )
     if alias_field is None:
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because it lacks a '
-            u'"{}" field.'.format(filtered_field_type, alias_field_name)
+            'Cannot apply "name_or_alias" to type {} because it lacks a '
+            '"{}" field.'.format(filtered_field_type, alias_field_name)
         )
 
     name_field_type = strip_non_null_from_type(name_field.type)
@@ -396,20 +396,20 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
 
     if not isinstance(name_field_type, GraphQLScalarType):
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because its "name" '
+            'Cannot apply "name_or_alias" to type {} because its "name" '
             "field is not a scalar.".format(filtered_field_type)
         )
     if not isinstance(alias_field_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because its '
-            u'"alias" field is not a list.'.format(filtered_field_type)
+            'Cannot apply "name_or_alias" to type {} because its '
+            '"alias" field is not a list.'.format(filtered_field_type)
         )
 
     alias_field_inner_type = strip_non_null_from_type(alias_field_type.of_type)
     if alias_field_inner_type != name_field_type:
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because the '
-            u'"{}" field and the inner type of the "{}" field '
+            'Cannot apply "name_or_alias" to type {} because the '
+            '"{}" field and the inner type of the "{}" field '
             "do not match: {} vs {}".format(
                 filtered_field_type,
                 name_field_name,
@@ -600,7 +600,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
 
     if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "has_substring" to non-string ' "type {}".format(filtered_field_type)
+            'Cannot apply "has_substring" to non-string ' "type {}".format(filtered_field_type)
         )
     argument_inferred_type = GraphQLString
 
@@ -646,7 +646,7 @@ def _process_ends_with_filter_directive(filter_operation_info, location, context
 
     if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "ends_with" to non-string ' "type {}".format(filtered_field_type)
+            'Cannot apply "ends_with" to non-string ' "type {}".format(filtered_field_type)
         )
     argument_inferred_type = GraphQLString
 
@@ -692,7 +692,7 @@ def _process_starts_with_filter_directive(filter_operation_info, location, conte
 
     if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "starts_with" to non-string ' "type {}".format(filtered_field_type)
+            'Cannot apply "starts_with" to non-string ' "type {}".format(filtered_field_type)
         )
     argument_inferred_type = GraphQLString
 
@@ -739,14 +739,14 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
 
     if is_same_type(base_field_type, GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "contains" to non-list '
-            u'type String. Consider using the "has_substring" '
+            'Cannot apply "contains" to non-list '
+            'type String. Consider using the "has_substring" '
             "operator instead."
         )
 
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "contains" to non-list ' "type {}".format(filtered_field_type)
+            'Cannot apply "contains" to non-list ' "type {}".format(filtered_field_type)
         )
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
@@ -792,7 +792,7 @@ def _process_not_contains_filter_directive(filter_operation_info, location, cont
     base_field_type = strip_non_null_from_type(filtered_field_type)
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "not_contains" to non-list ' "type {}".format(filtered_field_type)
+            'Cannot apply "not_contains" to non-list ' "type {}".format(filtered_field_type)
         )
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
@@ -838,7 +838,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
     argument_inferred_type = strip_non_null_from_type(filtered_field_type)
     if not isinstance(argument_inferred_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "intersects" to non-list ' "type {}".format(filtered_field_type)
+            'Cannot apply "intersects" to non-list ' "type {}".format(filtered_field_type)
         )
 
     argument_expression, non_existence_expression = _represent_argument(
@@ -880,7 +880,7 @@ def _process_is_null_filter_directive(filter_operation_info, location, context, 
 
     if len(parameters) != 0:
         raise GraphQLCompilationError(
-            u'No parameters should be passed to "is_null" filter. '
+            'No parameters should be passed to "is_null" filter. '
             "Received parameter(s) {}".format(parameters)
         )
 
@@ -913,7 +913,7 @@ def _process_is_not_null_filter_directive(filter_operation_info, location, conte
 
     if len(parameters) != 0:
         raise GraphQLCompilationError(
-            u'No parameters should be passed to "is_not_null" filter. '
+            'No parameters should be passed to "is_not_null" filter. '
             "Received parameter(s) {}".format(parameters)
         )
 
@@ -1066,7 +1066,7 @@ def process_filter_directive(filter_operation_info, location, context):
         and op_name not in INNER_SCOPE_VERTEX_FIELD_OPERATORS
     ):
         raise GraphQLCompilationError(
-            u'The filter with op_name "{}" must be applied on a field. '
+            'The filter with op_name "{}" must be applied on a field. '
             "It may not be applied on a type coercion.".format(op_name)
         )
 

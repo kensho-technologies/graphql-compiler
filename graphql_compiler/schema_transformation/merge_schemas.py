@@ -264,7 +264,7 @@ def _accumulate_types(
         else:  # All definition types should've been covered
             raise AssertionError(
                 "Unreachable code reached. Missed definition type: "
-                u'"{}"'.format(type(new_definition).__name__)
+                '"{}"'.format(type(new_definition).__name__)
             )
 
     # Concatenate all query type fields.
@@ -272,7 +272,7 @@ def _accumulate_types(
     # should never be not found.
     if new_query_type_fields is None:
         raise AssertionError(
-            u'Unreachable code reached. Query type "{}" field definitions '
+            'Unreachable code reached. Query type "{}" field definitions '
             "unexpectedly not found.".format(current_query_type)
         )
 
@@ -287,7 +287,7 @@ def _accumulate_types(
     if merged_query_type_definition.name.value != merged_query_type_name:
         raise AssertionError(
             "Unreachable code reached. The second definition in the schema is unexpectedly "
-            u'not the query type "{}", but is instead "{}".'.format(
+            'not the query type "{}", but is instead "{}".'.format(
                 merged_query_type_name, merged_query_type_definition.name.value
             )
         )
@@ -326,8 +326,8 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
             return existing_directives, merged_schema_ast
         else:
             raise SchemaNameConflictError(
-                u'Directive "{}" with definition "{}" has already been defined with '
-                u'definition "{}".'.format(
+                'Directive "{}" with definition "{}" has already been defined with '
+                'definition "{}".'.format(
                     directive_name,
                     print_ast(directive),
                     print_ast(existing_directives[directive_name]),
@@ -364,8 +364,8 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
         return existing_scalars, merged_schema_ast
     if scalar_name in type_name_to_schema_id:
         raise SchemaNameConflictError(
-            u'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
-            u'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
+            'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
+            'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
             "to avoid conflicts.".format(
                 scalar_name,
                 scalar_name,
@@ -408,14 +408,14 @@ def _process_generic_type_definition(
     type_name = generic_type.name.value
     if type_name in existing_scalars:
         raise SchemaNameConflictError(
-            u'New type "{}" in schema "{}" clashes with existing scalar. Consider '
-            u'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
+            'New type "{}" in schema "{}" clashes with existing scalar. Consider '
+            'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
             "to avoid conflicts.".format(type_name, schema_id, type_name, schema_id)
         )
     if type_name in type_name_to_schema_id:
         raise SchemaNameConflictError(
-            u'New type "{}" in schema "{}" clashes with existing type "{}" in schema "{}". '
-            u'Consider renaming type "{}" in either schema before merging to avoid '
+            'New type "{}" in schema "{}" clashes with existing type "{}" in schema "{}". '
+            'Consider renaming type "{}" in either schema before merging to avoid '
             "conflicts.".format(
                 type_name, schema_id, type_name, type_name_to_schema_id[type_name], type_name
             )
@@ -613,7 +613,7 @@ def _check_cross_schema_edge_is_valid(
 
     if outbound_field_reference.schema_id == inbound_field_reference.schema_id:  # not cross-schema
         raise InvalidCrossSchemaEdgeError(
-            u'Edge "{}" does not cross schemas. All CrossSchemaEdgeDescriptors provided must '
+            'Edge "{}" does not cross schemas. All CrossSchemaEdgeDescriptors provided must '
             "connect together types from different schemas.".format(cross_schema_edge)
         )
 
@@ -649,7 +649,7 @@ def _check_field_reference_is_valid(
     # Error if the type is a union, with suggestions on how to fix the problem
     if type_name in union_type_names:
         raise InvalidCrossSchemaEdgeError(
-            u'Type "{}" specified in the field reference "{}" is a union type, which may not '
+            'Type "{}" specified in the field reference "{}" is a union type, which may not '
             "be used in a cross-schema edge. Consider using the object type that is equivalent "
             "to this union type instead.".format(type_name, field_reference)
         )
@@ -657,15 +657,15 @@ def _check_field_reference_is_valid(
     # Error if the type is nonexistent
     if type_name not in type_name_to_definition:
         raise InvalidCrossSchemaEdgeError(
-            u'Type "{}" specified in the field reference "{}" is not found '
+            'Type "{}" specified in the field reference "{}" is not found '
             "in the merged schema.".format(type_name, field_reference)
         )
 
     # Error if the type is in a wrong or nonexistent schema
     if type_name_to_schema_id[type_name] != schema_id:
         raise InvalidCrossSchemaEdgeError(
-            u'Type "{}" specified in the field reference "{}" is expected to be in '
-            u'schema "{}", but is instead bound in schema "{}"'.format(
+            'Type "{}" specified in the field reference "{}" is expected to be in '
+            'schema "{}", but is instead bound in schema "{}"'.format(
                 type_name, field_reference, schema_id, type_name_to_schema_id[type_name]
             )
         )
@@ -675,8 +675,8 @@ def _check_field_reference_is_valid(
     type_fields = type_definition.fields
     if not any(field.name.value == field_name for field in type_fields):
         raise InvalidCrossSchemaEdgeError(
-            u'Field "{}" is not found under type "{}" in schema "{}", as expected by the '
-            u'field reference "{}".'.format(field_name, type_name, schema_id, field_reference)
+            'Field "{}" is not found under type "{}" in schema "{}", as expected by the '
+            'field reference "{}".'.format(field_name, type_name, schema_id, field_reference)
         )
 
 
@@ -715,25 +715,25 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
 
         if field_type is None:  # should never happen after _check_field_reference_is_valid
             raise AssertionError(
-                u'Unreachable code reached. Field "{}" unexpectedly '
+                'Unreachable code reached. Field "{}" unexpectedly '
                 "not found.".format(field_name)
             )
 
         if isinstance(field_type, ast_types.ListTypeNode):
             raise InvalidCrossSchemaEdgeError(
-                u'The {}bound field of cross-schema edge "{}" gives a list, while it '
+                'The {}bound field of cross-schema edge "{}" gives a list, while it '
                 "should be a single scalar".format(direction, cross_schema_edge)
             )
         elif isinstance(field_type, ast_types.NamedTypeNode):
             if field_type.name.value not in scalars:
                 raise InvalidCrossSchemaEdgeError(
-                    u'The {}bound field of cross-schema edge "{}" is of type "{}", which '
+                    'The {}bound field of cross-schema edge "{}" is of type "{}", which '
                     "is not a scalar".format(direction, cross_schema_edge, field_type.name.value)
                 )
         else:  # since NonNull is stripped, field_type can only be ListType or NamedType
             raise AssertionError(
                 "Unreachable code reached. Field has missed "
-                u'type "{}"'.format(type(field_type).__name__)
+                'type "{}"'.format(type(field_type).__name__)
             )
 
         field_type_names.append(field_type.name.value)
@@ -741,8 +741,8 @@ def _check_field_types_are_matching_scalars(type_name_to_definition, scalars, cr
     outbound_field_type_name, inbound_field_type_name = field_type_names
     if not _scalars_match(outbound_field_type_name, inbound_field_type_name):
         raise InvalidCrossSchemaEdgeError(
-            u'The outbound and inbound fields of edge "{}" are of different types, '
-            u'"{}" and "{}". They are expected to be of the same scalar type.'.format(
+            'The outbound and inbound fields of edge "{}" are of different types, '
+            '"{}" and "{}". They are expected to be of the same scalar type.'.format(
                 cross_schema_edge, outbound_field_type_name, inbound_field_type_name
             )
         )
@@ -796,7 +796,7 @@ def _add_edge_field(
 
     if direction not in (OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION):
         raise AssertionError(
-            u'Input "direction" must be either "{}" or "{}".'.format(
+            'Input "direction" must be either "{}" or "{}".'.format(
                 OUTBOUND_EDGE_DIRECTION, INBOUND_EDGE_DIRECTION
             )
         )
@@ -805,8 +805,8 @@ def _add_edge_field(
     # Error if new edge causes a field name clash
     if any(field.name.value == new_edge_field_name for field in type_fields):
         raise SchemaNameConflictError(
-            u'New field "{}" under type "{}" created by the {}bound field of edge named '
-            u'"{}" clashes with an existing field of the same name. Consider changing the '
+            'New field "{}" under type "{}" created by the {}bound field of edge named '
+            '"{}" clashes with an existing field of the same name. Consider changing the '
             "name of your edge to avoid name conflicts.".format(
                 new_edge_field_name, source_type_node.name.value, direction, edge_name
             )
@@ -840,7 +840,7 @@ def _add_edge_field(
         )
     else:
         raise AssertionError(
-            u'Input "source_type_node" must be of type {} or {}. Received type {}'.format(
+            'Input "source_type_node" must be of type {} or {}. Received type {}'.format(
                 ast_types.ObjectTypeDefinitionNode,
                 ast_types.InterfaceTypeDefinitionNode,
                 type(source_type_node),

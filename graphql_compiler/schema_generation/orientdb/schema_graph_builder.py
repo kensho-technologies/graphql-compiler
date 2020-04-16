@@ -336,7 +336,7 @@ def _get_element_properties(
 
         if property_name in property_name_to_descriptor:
             raise AssertionError(
-                u'The property "{}" on class "{}" is defined '
+                'The property "{}" on class "{}" is defined '
                 "more than once, this is not allowed!".format(property_name, class_name)
             )
 
@@ -364,12 +364,12 @@ def _try_get_graphql_type(
     if type_id == PROPERTY_TYPE_LINK_ID:
         raise AssertionError(
             "Found a improperly named property of type Link: "
-            u'{} {}. Links must be named either "in" or "out"'.format(name, class_name)
+            '{} {}. Links must be named either "in" or "out"'.format(name, class_name)
         )
     elif type_id in COLLECTION_PROPERTY_TYPES:
         if linked_class is not None and linked_type is not None:
             raise AssertionError(
-                u'Property "{}" unexpectedly has both a linked class and '
+                'Property "{}" unexpectedly has both a linked class and '
                 "a linked type: {}".format(name, property_definition)
             )
         elif linked_type is not None and linked_class is None:
@@ -387,7 +387,7 @@ def _try_get_graphql_type(
                 )
             if linked_class not in inner_collection_objs:
                 raise AssertionError(
-                    u'Property "{}" is declared as the inner type of '
+                    'Property "{}" is declared as the inner type of '
                     "an embedded collection, but the inner class {} is not a "
                     "non-graph class with no superclasses other than "
                     "itself.".format(name, linked_class)
@@ -396,7 +396,7 @@ def _try_get_graphql_type(
             maybe_graphql_type = GraphQLList(inner_collection_objs[linked_class])
         else:
             raise AssertionError(
-                u'Property "{}" is an embedded collection but has '
+                'Property "{}" is an embedded collection but has '
                 "neither a linked class nor a linked type: "
                 "{}".format(name, property_definition)
             )
@@ -420,7 +420,7 @@ def _get_default_value(class_name, property_definition):
     if property_definition["type"] in COLLECTION_PROPERTY_TYPES:
         if default_value is None:
             raise IllegalSchemaStateError(
-                u'Class "{}" has a property "{}" of collection type with '
+                'Class "{}" has a property "{}" of collection type with '
                 "no default value.".format(class_name, property_definition)
             )
 
@@ -436,11 +436,11 @@ def _validate_link_definition(
     linked_class = property_definition["linkedClass"]
     if type_id != PROPERTY_TYPE_LINK_ID:
         raise AssertionError(
-            u'Expected property named "{}" to be of type Link: {}'.format(name, property_definition)
+            'Expected property named "{}" to be of type Link: {}'.format(name, property_definition)
         )
     if linked_class is None:
         raise AssertionError(
-            u'Property "{}" is declared with type Link but has no '
+            'Property "{}" is declared with type Link but has no '
             "linked class: {}".format(name, property_definition)
         )
     if linked_class not in vertex_class_names:
@@ -452,7 +452,7 @@ def _validate_link_definition(
                 break
         if not (is_linked_class_abstract and all_subclasses_are_vertices):
             raise AssertionError(
-                u'Property "{}" is declared as a Link to class {}, but '
+                'Property "{}" is declared as a Link to class {}, but '
                 "that class is neither a vertex nor is it an "
                 "abstract class whose subclasses are all vertices!".format(name, linked_class)
             )
@@ -487,8 +487,8 @@ def _try_get_base_connections(class_name, inheritance_structure, links, abstract
 
         if end_direction not in base_connections and not abstract:
             raise AssertionError(
-                u'For edge end direction "{}" of non-abstract edge class '
-                u'"{}", no such subclass-of-all-elements exists.'.format(end_direction, class_name)
+                'For edge end direction "{}" of non-abstract edge class '
+                '"{}", no such subclass-of-all-elements exists.'.format(end_direction, class_name)
             )
     return (
         base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),

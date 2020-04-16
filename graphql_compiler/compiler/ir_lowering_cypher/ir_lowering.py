@@ -161,7 +161,7 @@ class FoldedContextFieldBeforeFolding(Expression):
             )
 
         if not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+            raise ValueError('Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_gremlin(self):
         """Raise an error since this function shouldn't be called because it's Cypher-specific."""

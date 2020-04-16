@@ -61,21 +61,21 @@ def _per_location_tuple_to_step(ir_tuple):
         if isinstance(block, CoerceType):
             if coerce_type_block is not None:
                 raise AssertionError(
-                    u'Unexpectedly found two blocks eligible for "class" clause: '
+                    'Unexpectedly found two blocks eligible for "class" clause: '
                     "{} {} {}".format(block, coerce_type_block, ir_tuple)
                 )
             coerce_type_block = block
         elif isinstance(block, MarkLocation):
             if as_block is not None:
                 raise AssertionError(
-                    u'Unexpectedly found two blocks eligible for "as" clause: '
+                    'Unexpectedly found two blocks eligible for "as" clause: '
                     "{} {} {}".format(block, as_block, ir_tuple)
                 )
             as_block = block
         elif isinstance(block, Filter):
             if where_block is not None:
                 raise AssertionError(
-                    u'Unexpectedly found two blocks eligible for "where" clause: '
+                    'Unexpectedly found two blocks eligible for "where" clause: '
                     "{} {} {}".format(block, as_block, ir_tuple)
                 )
 

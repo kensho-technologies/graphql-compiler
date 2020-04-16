@@ -353,7 +353,7 @@ def _compile_property_ast(
         # Verify that uses of this field are within a @fold scope.
         if not is_in_fold_scope(context):
             raise GraphQLCompilationError(
-                u'Cannot use the "{}" meta field when not within a @fold '
+                'Cannot use the "{}" meta field when not within a @fold '
                 "vertex field, as counting elements only makes sense "
                 "in a fold. Location: {}".format(COUNT_META_FIELD_NAME, location)
             )

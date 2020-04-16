@@ -47,8 +47,8 @@ def rename_query(ast, renamed_schema_descriptor):
     for selection in query_definition.selection_set.selections:
         if not isinstance(selection, FieldNode):  # possibly an InlineFragment
             raise GraphQLValidationError(
-                u'Each root selection must be of type "Field", not "{}" as in '
-                u'selection "{}"'.format(type(selection).__name__, selection)
+                'Each root selection must be of type "Field", not "{}" as in '
+                'selection "{}"'.format(type(selection).__name__, selection)
             )
 
     visitor = RenameQueryVisitor(renamed_schema_descriptor.reverse_name_map)

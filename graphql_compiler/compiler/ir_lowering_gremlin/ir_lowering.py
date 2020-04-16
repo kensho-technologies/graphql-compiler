@@ -188,7 +188,7 @@ class GremlinFoldedContextField(Expression):
             raise NotImplementedError()
         else:
             raise ValueError(
-                u'Invalid value of "field_type", expected a (possibly non-null) '
+                'Invalid value of "field_type", expected a (possibly non-null) '
                 "list or int type but got: {}".format(self.field_type)
             )
 

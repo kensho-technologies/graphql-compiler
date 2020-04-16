@@ -115,7 +115,7 @@ def _represent_match_traversal(match_traversal):
 def _represent_fold(fold_location, fold_ir_blocks):
     """Emit a LET clause corresponding to the IR blocks for a @fold scope."""
     start_let_template = "$%(mark_name)s = %(base_location)s"
-    traverse_edge_template = u'.%(direction)s("%(edge_name)s")'
+    traverse_edge_template = '.%(direction)s("%(edge_name)s")'
     base_template = start_let_template + traverse_edge_template
     edge_direction, edge_name = fold_location.get_first_folded_edge()
     mark_name, _ = fold_location.get_location_name()

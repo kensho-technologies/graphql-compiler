@@ -49,7 +49,7 @@ def get_only_query_definition(document_ast, desired_error_type):
     """Assert that the Document AST contains only a single definition for a query, and return it."""
     if not isinstance(document_ast, DocumentNode) or not document_ast.definitions:
         raise AssertionError(
-            u'Received an unexpected value for "document_ast": {}'.format(document_ast)
+            'Received an unexpected value for "document_ast": {}'.format(document_ast)
         )
 
     if len(document_ast.definitions) != 1:
@@ -62,7 +62,7 @@ def get_only_query_definition(document_ast, desired_error_type):
     if definition_ast.operation != OperationType.QUERY:
         raise desired_error_type(
             "Expected a GraphQL document with a single query definition, but instead found a "
-            u'but instead found a "{}" operation. This is not supported.'.format(
+            'but instead found a "{}" operation. This is not supported.'.format(
                 definition_ast.operation
             )
         )

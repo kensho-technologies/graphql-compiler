@@ -199,7 +199,7 @@ def _split_query_one_level(
     validation_errors = validate(merged_schema_descriptor.schema, query_node.query_ast)
     if len(validation_errors) > 0:
         raise AssertionError(
-            u'The resulting split query "{}" is invalid, with the following error messages: {}'
+            'The resulting split query "{}" is invalid, with the following error messages: {}'
             "".format(query_node.query_ast, validation_errors)
         )
 
@@ -214,7 +214,7 @@ def _split_query_one_level(
 
     if query_node.schema_id is None:
         raise AssertionError(
-            u'Unreachable code reached. The schema id of query piece "{}" has not been '
+            'Unreachable code reached. The schema id of query piece "{}" has not been '
             "determined.".format(query_node.query_ast)
         )
 
@@ -339,8 +339,8 @@ def _split_query_ast_one_level_recursive_normal_fields(
         else:
             raise AssertionError(
                 "The query may be invalid against the schema, causing TypeInfo to lose track "
-                u'of the types of fields. This occurs at the cross schema field "{}", while '
-                u'splitting the AST "{}"'.format(cross_schema_field, query_node.query_ast)
+                'of the types of fields. This occurs at the cross schema field "{}", while '
+                'splitting the AST "{}"'.format(cross_schema_field, query_node.query_ast)
             )
         stitch_data_key = (parent_type_name, cross_schema_field.name.value)
         parent_field_name, child_field_name = edge_to_stitch_fields[stitch_data_key]
@@ -452,7 +452,7 @@ def _split_selections_property_and_vertex(selections):
             name = selection.name.value
             if name in property_fields_map:
                 raise GraphQLValidationError(
-                    u'The field named "{}" occurs more than once in the selection {}.'.format(
+                    'The field named "{}" occurs more than once in the selection {}.'.format(
                         name, selections
                     )
                 )
@@ -613,7 +613,7 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
         for directive in directives_from_edge:
             if directive.name.value == OutputDirective.name:  # output illegal on vertex field
                 raise GraphQLValidationError(
-                    u'Directive "{}" is not allowed on a vertex field, as @output directives '
+                    'Directive "{}" is not allowed on a vertex field, as @output directives '
                     "can only exist on property fields.".format(directive)
                 )
             elif directive.name.value == OptionalDirective.name:
@@ -629,7 +629,7 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
                 new_field_directives.append(directive)
             else:
                 raise AssertionError(
-                    u'Unreachable code reached. Directive "{}" is of an unsupported type, and '
+                    'Unreachable code reached. Directive "{}" is of an unsupported type, and '
                     "was not caught in a prior validation step.".format(directive)
                 )
 
@@ -800,9 +800,9 @@ class SchemaIdSetterVisitor(Visitor):
                 raise SchemaStructureError(
                     "The provided merged schema descriptor may be invalid. Perhaps some "
                     "vertex field that does not have a @stitch directive crosses schemas. As "
-                    u'a result, query piece "{}" appears to contain types from more than '
-                    u'one schema. Type "{}" belongs to schema "{}", while some other type '
-                    u'belongs to schema "{}".'.format(
+                    'a result, query piece "{}" appears to contain types from more than '
+                    'one schema. Type "{}" belongs to schema "{}", while some other type '
+                    'belongs to schema "{}".'.format(
                         self.query_node.query_ast,
                         type_name,
                         current_type_schema_id,

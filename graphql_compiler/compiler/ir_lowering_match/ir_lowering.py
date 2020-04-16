@@ -37,7 +37,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
         # into the following:
         # - if X is of type BinaryComposition, and Y is not,
         #    BinaryComposition(
-        #        u'=',
+        #        '=',
         #        TernaryConditional(
         #            predicate,
         #            TernaryConditional(X, true, false),
@@ -47,7 +47,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
         #    )
         # - if Y is of type BinaryComposition, and X is not,
         #    BinaryComposition(
-        #        u'=',
+        #        '=',
         #        TernaryConditional(
         #            predicate,
         #            X,
@@ -57,7 +57,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
         #    )
         # - if both X and Y are of type BinaryComposition,
         #    BinaryComposition(
-        #        u'=',
+        #        '=',
         #        TernaryConditional(
         #            predicate,
         #            TernaryConditional(X, true, false),
@@ -112,16 +112,16 @@ def lower_string_operators(ir_blocks):
             # The implementation of "has_substring" must use the LIKE operator in MATCH, and must
             # prepend and append "%" (wildcard) symbols to the substring being matched.
             # We transform any structures that resemble the following:
-            #    BinaryComposition(u'has_substring', X, Y)
+            #    BinaryComposition('has_substring', X, Y)
             # into the following:
             #    BinaryComposition(
-            #        u'LIKE',
+            #        'LIKE',
             #        X,
             #        BinaryComposition(
-            #            u'+',
+            #            '+',
             #            Literal("%"),
             #            BinaryComposition(
-            #                 u'+',
+            #                 '+',
             #                 Y,
             #                 Literal("%")
             #            )
