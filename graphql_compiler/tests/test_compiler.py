@@ -6351,10 +6351,12 @@ class CompilerTests(unittest.TestCase):
                 "Animal_1".name AS animal_name,
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
                     AS child_names_list,
-                coalesce(folded_subquery_1.fold_output_uuid, ARRAY[]::VARCHAR[]) AS child_uuids_list,
+                coalesce(folded_subquery_1.fold_output_uuid, ARRAY[]::VARCHAR[])
+                    AS child_uuids_list,
                 coalesce(folded_subquery_2.fold_output_name, ARRAY[]::VARCHAR[])
                     AS parent_names_list,
-                coalesce(folded_subquery_2.fold_output_uuid, ARRAY[]::VARCHAR[]) AS parent_uuids_list
+                coalesce(folded_subquery_2.fold_output_uuid, ARRAY[]::VARCHAR[])
+                    AS parent_uuids_list
             FROM schema_1."Animal" AS "Animal_1"
             JOIN (
                 SELECT
