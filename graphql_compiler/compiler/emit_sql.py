@@ -319,16 +319,16 @@ class SQLFoldObject(object):
     #          ...
     # INNER JOIN VertexPrecedingOutput
     # ON ...
-    def __init__(self, dialect, outer_vertex_table, primary_key):
+    def __init__(self, dialect, outer_vertex_table, primary_key_name):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
             dialect: SQLAlchemy compiler object passed in from the schema, representing
                                 the dialect we are compiling to.
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
-            primary_key: PrimaryKeyConstraint, primary_key of the vertex immediately outside the
-                         fold. Used to set the group by as well as join the fold subquery to the
-                         rest of the query. Composite keys unsupported.
+            primary_key_name: name of the primary key of the vertex immediately outside the
+                              fold. Used to set the group by as well as join the fold subquery to the
+                              rest of the query.
         """
         # table containing output columns
         # initially None because output table is unknown until call to visit_output_vertex
@@ -336,21 +336,7 @@ class SQLFoldObject(object):
 
         # table for vertex immediately outside fold
         self._outer_vertex_alias = outer_vertex_table
-        if len(primary_key.columns) > 1:
-            raise NotImplementedError(
-                u"Composite keys not supported. "
-                u"A composite primary key {} was found for table {}. "
-                u"SQL fold only supports non-composite primary "
-                u"keys.".format(primary_key, outer_vertex_table.original)
-            )
-
-        # name of the field used in the primary key for the vertex outside the fold
-        # current implementation does not support composite primary keys
-        #
-        # we must use the name of the column as opposed to the column itself because
-        # primary key refers to the column from the original table, while we need the
-        # identically named column from its alias
-        self._outer_vertex_primary_key = list(primary_key.columns)[0].description
+        self._outer_vertex_primary_key = primary_key_name
 
         # List of SQLFoldTraversalDescriptor namedtuples describing each traversal in the fold
         # starting with the join from the vertex immediately outside the fold to the folded vertex:
@@ -747,28 +733,38 @@ class CompilationState(object):
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
         self._join_to_parent_location(previous_alias, edge.from_column, edge.to_column, optional)
 
+    def _get_current_primary_key_name(self, directive_name: str) -> str:
+        """Return the name of the single-column primary key at the current location.
+
+        If there is no single-column primary key at this location, an error is raised.
+
+        Args:
+            directive_name: name of the directive that requires for the single-column
+                            primary key to exist. Used in error messages only.
+
+        Returns:
+            name of the single-column primary key
+        """
+        if not self._current_alias.primary_key:
+            raise AssertionError(
+                f"The table for vertex {self._current_classname} has no primary key specified. "
+                f"This information is required to emit a {directive_name} directive."
+            )
+        if len(self._current_alias.primary_key) > 1:
+            raise NotImplementedError(
+                f"The table for vertex {self._current_classname} has a composite primary key "
+                f"{self._current_alias.primary_key}. The SQL backend does not support "
+                f"{directive_name} on tables with composite primary keys."
+            )
+        return self._current_alias.primary_key[0].name
+
     def recurse(self, vertex_field, depth):
         """Execute a Recurse Block."""
         if self._current_fold is not None:
             raise AssertionError("Recurse inside a fold is not allowed.")
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
-        if not self._current_alias.primary_key:
-            raise AssertionError(
-                u"The table for vertex {} has no primary key specified. This "
-                u"information is required to emit a @recurse directive.".format(
-                    self._current_classname
-                )
-            )
-        if len(self._current_alias.primary_key) > 1:
-            raise NotImplementedError(
-                u"The table for vertex {} has a composite primary key {}. "
-                u"The SQL backend does not support @recurse on tables with "
-                u"composite primary keys.".format(
-                    self._current_classname, self._current_alias.primary_key
-                )
-            )
-        primary_key = self._current_alias.primary_key[0].name
+        primary_key = self._get_current_primary_key_name("@recurse")
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
         # Sanitize literal columns to be used in the query
@@ -863,9 +859,7 @@ class CompilationState(object):
         # location of vertex that is folded on
         self._fold_vertex_location = fold_scope_location
         outer_alias = self._current_alias.alias()
-        outer_vertex_primary_key = self._sql_schema_info.vertex_name_to_table[
-            self._current_classname
-        ].primary_key
+        outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
         # 2. get information on the folded vertex and its edge to the outer vertex
         # basic info about the folded vertex
         fold_vertex_alias = self._sql_schema_info.vertex_name_to_table[
@@ -882,7 +876,7 @@ class CompilationState(object):
 
         # 3. initialize fold object
         self._current_fold = SQLFoldObject(
-            self._sql_schema_info.dialect, outer_alias, outer_vertex_primary_key
+            self._sql_schema_info.dialect, outer_alias, outer_vertex_primary_key_name
         )
 
         # 4. add join information for this traversal to the fold object
