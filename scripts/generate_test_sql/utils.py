@@ -45,7 +45,7 @@ def select_vertex_statement(vertex_type, name):
 def set_statement(field_name, field_value):
     """Return a SQL clause (used in creating a vertex) to set a field to a value."""
     if not isinstance(field_name, six.string_types):
-        raise AssertionError(u"Expected string field_name. Received {}".format(field_name))
+        raise AssertionError("Expected string field_name. Received {}".format(field_name))
     field_value_representation = repr(field_value)
     if isinstance(field_value, datetime.date):
         field_value_representation = 'DATE("' + field_value.isoformat() + ' 00:00:00")'
@@ -80,10 +80,10 @@ def create_name(base_name, label):
 def extract_base_name_and_label(name):
     """Extract and return a pair of (base_name, label) from a given name field."""
     if not isinstance(name, six.string_types):
-        raise AssertionError(u"Expected string name. Received {}".format(name))
+        raise AssertionError("Expected string name. Received {}".format(name))
     split_name = name.split(SEPARATOR)
     if len(split_name) != 2:
         raise AssertionError(
-            u"Expected a sting with a single occurrence of {}. Got {}".format(SEPARATOR, name)
+            "Expected a sting with a single occurrence of {}. Got {}".format(SEPARATOR, name)
         )
     return split_name

@@ -24,5 +24,5 @@ def validate_that_tables_belong_to_the_same_metadata_object(tables):
         else:
             if table.metadata is not metadata:
                 raise AssertionError(
-                    "Multiple SQLAlchemy MetaData objects used for schema " "generation."
+                    "Multiple SQLAlchemy MetaData objects used for schema generation."
                 )

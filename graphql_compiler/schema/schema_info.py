@@ -300,11 +300,11 @@ def make_sqlalchemy_schema_info(
                 if type_name != "RootSchemaQuery" and not type_name.startswith("__"):
                     # Check existence of sqlalchemy table for this type
                     if type_name not in vertex_name_to_table:
-                        raise AssertionError(u"Table for type {} not found".format(type_name))
+                        raise AssertionError("Table for type {} not found".format(type_name))
                     table = vertex_name_to_table[type_name]
                     if not isinstance(table, sqlalchemy.Table):
                         raise AssertionError(
-                            u"Table for type {} has wrong type {}".format(type_name, type(table))
+                            "Table for type {} has wrong type {}".format(type_name, type(table))
                         )
 
                     # Check existence of all fields
@@ -312,14 +312,14 @@ def make_sqlalchemy_schema_info(
                         if is_vertex_field_name(field_name):
                             if field_name not in join_descriptors.get(type_name, {}):
                                 raise AssertionError(
-                                    u"No join descriptor was specified for vertex "
-                                    u"field {} on type {}".format(field_name, type_name)
+                                    "No join descriptor was specified for vertex "
+                                    "field {} on type {}".format(field_name, type_name)
                                 )
                         else:
                             if field_name not in builtin_fields and field_name not in table.c:
                                 raise AssertionError(
-                                    u"Table for type {} has no column "
-                                    u"for property field {}".format(type_name, field_name)
+                                    "Table for type {} has no column "
+                                    "for property field {}".format(type_name, field_name)
                                 )
 
     return SQLAlchemySchemaInfo(

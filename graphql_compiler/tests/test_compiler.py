@@ -439,7 +439,7 @@ class CompilerTests(unittest.TestCase):
 
     def test_immediate_filter_and_output(self):
         # Ensure that all basic comparison operators output correct code in this simple case.
-        comparison_operators = {u"=", u"!=", u">", u"<", u">=", u"<="}
+        comparison_operators = {"=", "!=", ">", "<", ">=", "<="}
 
         for operator in comparison_operators:
             graphql_input = """{
@@ -451,7 +451,7 @@ class CompilerTests(unittest.TestCase):
             )
 
             # In MATCH, inequality comparisons use the SQL standard "<>" rather than "!=".
-            match_operator = u"<>" if operator == u"!=" else operator
+            match_operator = "<>" if operator == "!=" else operator
             expected_match = """
                 SELECT
                     Animal___1.name AS `animal_name`
@@ -468,7 +468,7 @@ class CompilerTests(unittest.TestCase):
             }
 
             # In Gremlin, equality comparisons use two equal signs instead of one.
-            gremlin_operator = u"==" if operator == u"=" else operator
+            gremlin_operator = "==" if operator == "=" else operator
             expected_gremlin = """
                 g.V('@class', 'Animal')
                 .filter{it, m -> (it.name %(operator)s $wanted)}
@@ -492,7 +492,7 @@ class CompilerTests(unittest.TestCase):
             }
 
             # In Cypher, inequality comparisons use "<>" instead of "!=".
-            cypher_operator = u"<>" if operator == u"!=" else operator
+            cypher_operator = "<>" if operator == "!=" else operator
             expected_cypher = """
                 MATCH (Animal___1:Animal)
                     WHERE (Animal___1.name %(operator)s $wanted)

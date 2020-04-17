@@ -274,8 +274,8 @@ def is_vertex_field_name(field_name):
 def _unused_function(*args, **kwargs):
     """Must not be called. Placeholder for functions that are required but aren't used."""
     raise NotImplementedError(
-        u"The function you tried to call is not implemented, args / kwargs: "
-        u"{} {}".format(args, kwargs)
+        "The function you tried to call is not implemented, args / kwargs: "
+        "{} {}".format(args, kwargs)
     )
 
 
@@ -286,8 +286,8 @@ def _serialize_date(value):
     # equality.
     if type(value) != date:
         raise ValueError(
-            u"Expected argument to be a python date object. "
-            u"Got {} of type {} instead.".format(value, type(value))
+            "Expected argument to be a python date object. "
+            "Got {} of type {} instead.".format(value, type(value))
         )
     return value.isoformat()
 
@@ -304,8 +304,8 @@ def _serialize_datetime(value):
     # equality.
     if type(value) not in {datetime, arrow.Arrow}:
         raise ValueError(
-            u"Expected argument to be a python datetime object. "
-            u"Got {} of type {} instead.".format(value, type(value))
+            "Expected argument to be a python datetime object. "
+            "Got {} of type {} instead.".format(value, type(value))
         )
     return value.isoformat()
 
@@ -429,9 +429,9 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
         for meta_field_name, meta_field in six.iteritems(EXTENDED_META_FIELD_DEFINITIONS):
             if meta_field_name in type_obj.fields:
                 raise AssertionError(
-                    u"Unexpectedly encountered an existing field named {} while "
-                    u"attempting to add a meta-field of the same name. Make sure "
-                    u"you are not attempting to add meta-fields twice.".format(meta_field_name)
+                    "Unexpectedly encountered an existing field named {} while "
+                    "attempting to add a meta-field of the same name. Make sure "
+                    "you are not attempting to add meta-fields twice.".format(meta_field_name)
                 )
 
             type_obj.fields[meta_field_name] = meta_field
@@ -448,9 +448,7 @@ def check_for_nondefault_directive_names(directives):
 
     nondefault_directives_found = directive_names - expected_directive_names
     if nondefault_directives_found:
-        raise AssertionError(
-            u"Unsupported directives found: {}".format(nondefault_directives_found)
-        )
+        raise AssertionError("Unsupported directives found: {}".format(nondefault_directives_found))
 
 
 def compute_schema_fingerprint(schema: GraphQLSchema) -> str:

@@ -98,8 +98,8 @@ class EmitMatchTests(unittest.TestCase):
             Traverse("out", "Animal_BornAt"),
             Filter(
                 BinaryComposition(
-                    u"=",
-                    LocalField(u"name", GraphQLString),
+                    "=",
+                    LocalField("name", GraphQLString),
                     ContextField(base_name_location, GraphQLString),
                 )
             ),
@@ -148,14 +148,14 @@ class EmitMatchTests(unittest.TestCase):
             QueryRoot({"BirthEvent"}),
             Filter(
                 BinaryComposition(
-                    u"&&",
+                    "&&",
                     BinaryComposition(
-                        u">=",
+                        ">=",
                         LocalField("event_date", GraphQLDateTime),
                         Variable("$start", GraphQLDateTime),
                     ),
                     BinaryComposition(
-                        u"<=",
+                        "<=",
                         LocalField("event_date", GraphQLDateTime),
                         Variable("$end", GraphQLDateTime),
                     ),
@@ -277,9 +277,9 @@ class EmitGremlinTests(unittest.TestCase):
             Traverse("out", "Animal_BornAt"),
             Filter(
                 BinaryComposition(
-                    u"=",
-                    LocalField(u"name", GraphQLString),
-                    ContextField(base_location.navigate_to_field(u"name"), GraphQLString),
+                    "=",
+                    LocalField("name", GraphQLString),
+                    ContextField(base_location.navigate_to_field("name"), GraphQLString),
                 )
             ),
             MarkLocation(child_location),
@@ -331,7 +331,7 @@ class EmitGremlinTests(unittest.TestCase):
                 {
                     "bornat_name": TernaryConditional(
                         BinaryComposition(
-                            u"!=",
+                            "!=",
                             # HACK(predrag): The type given to OutputContextVertex here is wrong,
                             #                but it shouldn't cause any trouble since it has
                             #                absolutely nothing to do with the code being tested.
@@ -377,14 +377,14 @@ class EmitGremlinTests(unittest.TestCase):
             MarkLocation(base_location),
             Filter(
                 BinaryComposition(
-                    u"&&",
+                    "&&",
                     BinaryComposition(
-                        u">=",
+                        ">=",
                         LocalField("event_date", GraphQLDateTime),
                         Variable("$start", GraphQLDateTime),
                     ),
                     BinaryComposition(
-                        u"<=",
+                        "<=",
                         LocalField("event_date", GraphQLDateTime),
                         Variable("$end", GraphQLDateTime),
                     ),
@@ -535,9 +535,9 @@ class EmitCypherTests(unittest.TestCase):
             ),  # see compiler.ir_lowering_cypher's insert_explicit_type_bounds method
             Filter(
                 BinaryComposition(
-                    u"=",
+                    "=",
                     # see compiler.ir_lowering_cypher's replace_local_fields_with_context_fields
-                    # method LocalField(u"name", GraphQLString) gets replaced with the
+                    # method LocalField("name", GraphQLString) gets replaced with the
                     # child_location field "name"
                     ContextField(child_name_location, GraphQLString),
                     ContextField(base_name_location, GraphQLString),
@@ -612,7 +612,7 @@ class EmitCypherTests(unittest.TestCase):
                 {
                     "bornat_name": TernaryConditional(
                         BinaryComposition(
-                            u"!=",
+                            "!=",
                             # HACK(predrag): The type given to OutputContextVertex here is wrong,
                             # but it shouldn't cause any trouble since it has absolutely nothing to
                             # do with the code being tested.

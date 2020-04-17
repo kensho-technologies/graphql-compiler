@@ -79,9 +79,9 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
 
         if new_selection_ast is selection_ast and (prefix_selections or suffix_selections):
             raise AssertionError(
-                u"No macro expansion happened but unexpectedly there are "
-                u"prefix or suffix selections to expand: {} {}."
-                u"current_schema_type: {}, ast: {}, field_name: {}".format(
+                "No macro expansion happened but unexpectedly there are "
+                "prefix or suffix selections to expand: {} {}."
+                "current_schema_type: {}, ast: {}, field_name: {}".format(
                     prefix_selections, suffix_selections, current_schema_type, ast, field_name
                 )
             )
@@ -103,8 +103,8 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
     else:
         if new_query_args is not query_args:
             raise AssertionError(
-                u"No changes made during macro expansion, but query args changed: "
-                u"{} vs {}. AST: {}".format(query_args, new_query_args, ast)
+                "No changes made during macro expansion, but query args changed: "
+                "{} vs {}. AST: {}".format(query_args, new_query_args, ast)
             )
 
         result_ast = ast
@@ -150,8 +150,8 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
         # No macro expansion happened.
         if new_query_args != query_args:
             raise AssertionError(
-                u"No macro expansion happened, but the query args object changed: "
-                u"{} vs {}. This should be impossible. GraphQL query AST: {}".format(
+                "No macro expansion happened, but the query args object changed: "
+                "{} vs {}. This should be impossible. GraphQL query AST: {}".format(
                     query_args, new_query_args, query_ast
                 )
             )

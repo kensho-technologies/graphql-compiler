@@ -166,7 +166,7 @@ def _get_non_graph_elements(class_name_to_definition, inheritance_structure):
 
         if len(link_property_definitions) > 0:
             raise AssertionError(
-                u"There are links {} defined on non-edge class {}".format(
+                "There are links {} defined on non-edge class {}".format(
                     link_property_definitions, class_name
                 )
             )
@@ -253,7 +253,7 @@ def _get_vertex_elements(class_name_to_definition, inheritance_structure, inner_
 
         if len(link_property_definitions) > 0:
             raise AssertionError(
-                u"There are links {} defined on non-edge class {}".format(
+                "There are links {} defined on non-edge class {}".format(
                     link_property_definitions, class_name
                 )
             )
@@ -280,8 +280,8 @@ def _get_vertex_edge_and_non_graph_class_names(inheritance_structure):
 
         if is_vertex and is_edge:
             raise AssertionError(
-                u"Class {} appears to be both a vertex and an edge class: "
-                u"{}".format(class_name, superclass_set)
+                "Class {} appears to be both a vertex and an edge class: "
+                "{}".format(class_name, superclass_set)
             )
         elif is_vertex:
             vertex_class_names.add(class_name)
@@ -336,8 +336,8 @@ def _get_element_properties(
 
         if property_name in property_name_to_descriptor:
             raise AssertionError(
-                u'The property "{}" on class "{}" is defined '
-                u"more than once, this is not allowed!".format(property_name, class_name)
+                'The property "{}" on class "{}" is defined '
+                "more than once, this is not allowed!".format(property_name, class_name)
             )
 
         maybe_graphql_type = _try_get_graphql_type(
@@ -363,14 +363,14 @@ def _try_get_graphql_type(
     maybe_graphql_type = None
     if type_id == PROPERTY_TYPE_LINK_ID:
         raise AssertionError(
-            u"Found a improperly named property of type Link: "
-            u'{} {}. Links must be named either "in" or "out"'.format(name, class_name)
+            "Found a improperly named property of type Link: "
+            '{} {}. Links must be named either "in" or "out"'.format(name, class_name)
         )
     elif type_id in COLLECTION_PROPERTY_TYPES:
         if linked_class is not None and linked_type is not None:
             raise AssertionError(
-                u'Property "{}" unexpectedly has both a linked class and '
-                u"a linked type: {}".format(name, property_definition)
+                'Property "{}" unexpectedly has both a linked class and '
+                "a linked type: {}".format(name, property_definition)
             )
         elif linked_type is not None and linked_class is None:
             # No linked class, must be a linked native OrientDB type.
@@ -387,18 +387,18 @@ def _try_get_graphql_type(
                 )
             if linked_class not in inner_collection_objs:
                 raise AssertionError(
-                    u'Property "{}" is declared as the inner type of '
-                    u"an embedded collection, but the inner class {} is not a "
-                    u"non-graph class with no superclasses other than "
-                    u"itself.".format(name, linked_class)
+                    'Property "{}" is declared as the inner type of '
+                    "an embedded collection, but the inner class {} is not a "
+                    "non-graph class with no superclasses other than "
+                    "itself.".format(name, linked_class)
                 )
 
             maybe_graphql_type = GraphQLList(inner_collection_objs[linked_class])
         else:
             raise AssertionError(
-                u'Property "{}" is an embedded collection but has '
-                u"neither a linked class nor a linked type: "
-                u"{}".format(name, property_definition)
+                'Property "{}" is an embedded collection but has '
+                "neither a linked class nor a linked type: "
+                "{}".format(name, property_definition)
             )
     else:
         maybe_graphql_type = try_get_graphql_scalar_type(name, type_id)
@@ -420,8 +420,8 @@ def _get_default_value(class_name, property_definition):
     if property_definition["type"] in COLLECTION_PROPERTY_TYPES:
         if default_value is None:
             raise IllegalSchemaStateError(
-                u'Class "{}" has a property "{}" of collection type with '
-                u"no default value.".format(class_name, property_definition)
+                'Class "{}" has a property "{}" of collection type with '
+                "no default value.".format(class_name, property_definition)
             )
 
     return default_value
@@ -436,12 +436,12 @@ def _validate_link_definition(
     linked_class = property_definition["linkedClass"]
     if type_id != PROPERTY_TYPE_LINK_ID:
         raise AssertionError(
-            u'Expected property named "{}" to be of type Link: {}'.format(name, property_definition)
+            'Expected property named "{}" to be of type Link: {}'.format(name, property_definition)
         )
     if linked_class is None:
         raise AssertionError(
-            u'Property "{}" is declared with type Link but has no '
-            u"linked class: {}".format(name, property_definition)
+            'Property "{}" is declared with type Link but has no '
+            "linked class: {}".format(name, property_definition)
         )
     if linked_class not in vertex_class_names:
         is_linked_class_abstract = class_name_to_definition[linked_class]["abstract"]
@@ -452,9 +452,9 @@ def _validate_link_definition(
                 break
         if not (is_linked_class_abstract and all_subclasses_are_vertices):
             raise AssertionError(
-                u'Property "{}" is declared as a Link to class {}, but '
-                u"that class is neither a vertex nor is it an "
-                u"abstract class whose subclasses are all vertices!".format(name, linked_class)
+                'Property "{}" is declared as a Link to class {}, but '
+                "that class is neither a vertex nor is it an "
+                "abstract class whose subclasses are all vertices!".format(name, linked_class)
             )
 
 
@@ -487,8 +487,8 @@ def _try_get_base_connections(class_name, inheritance_structure, links, abstract
 
         if end_direction not in base_connections and not abstract:
             raise AssertionError(
-                u'For edge end direction "{}" of non-abstract edge class '
-                u'"{}", no such subclass-of-all-elements exists.'.format(end_direction, class_name)
+                'For edge end direction "{}" of non-abstract edge class '
+                '"{}", no such subclass-of-all-elements exists.'.format(end_direction, class_name)
             )
     return (
         base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),
@@ -539,13 +539,13 @@ def _get_indexes(index_data, elements):
             )
 
         if not index_fields:
-            raise AssertionError(u"Unable to load index fields for index: {}".format(index))
+            raise AssertionError("Unable to load index fields for index: {}".format(index))
 
         if index_ignore_nulls and len(index_fields) != 1:
             raise AssertionError(
-                u"Index {} ignores nulls, but covers more than one field. "
-                u"We don't know how OrientDB handles such indexes, so they are not allowed. "
-                u"{}".format(index_name, index)
+                "Index {} ignores nulls, but covers more than one field. "
+                "We don't know how OrientDB handles such indexes, so they are not allowed. "
+                "{}".format(index_name, index)
             )
 
         definition = IndexDefinition(

@@ -10,25 +10,25 @@ def _expression_list_to_conjunction(expression_list):
     """Return an Expression that is the `&&` of all the expressions in the given list."""
     if not isinstance(expression_list, list):
         raise AssertionError(
-            u"Expected list. Received {}: "
-            u"{}".format(type(expression_list).__name__, expression_list)
+            "Expected list. Received {}: "
+            "{}".format(type(expression_list).__name__, expression_list)
         )
     if len(expression_list) == 0:
         raise AssertionError(
-            u"Received empty expression_list "
-            u"(function should never be called with empty list): "
-            u"{}".format(expression_list)
+            "Received empty expression_list "
+            "(function should never be called with empty list): "
+            "{}".format(expression_list)
         )
     elif len(expression_list) == 1:
         return expression_list[0]
     else:
         remaining_conjunction = _expression_list_to_conjunction(expression_list[1:])
-        return BinaryComposition(u"&&", expression_list[0], remaining_conjunction)
+        return BinaryComposition("&&", expression_list[0], remaining_conjunction)
 
 
 def _extract_conjuction_elements_from_expression(expression):
     """Return a generator for expressions that are connected by `&&`s in the given expression."""
-    if isinstance(expression, BinaryComposition) and expression.operator == u"&&":
+    if isinstance(expression, BinaryComposition) and expression.operator == "&&":
         for element in _extract_conjuction_elements_from_expression(expression.left):
             yield element
         for element in _extract_conjuction_elements_from_expression(expression.right):
@@ -54,8 +54,8 @@ def _construct_field_operator_expression_dict(expression_list):
             list of remaining expressions that were *not*
             BinaryCompositions on a LocalField using any of the between operators
     """
-    between_operators = (u"<=", u">=")
-    inverse_operator = {u">=": u"<=", u"<=": u">="}
+    between_operators = ("<=", ">=")
+    inverse_operator = {">=": "<=", "<=": ">="}
     field_name_to_expressions = {}
     field_name_to_type = {}
     remaining_expression_list = deque([])
@@ -89,13 +89,13 @@ def _lower_expressions_to_between(base_expression):
     expression_list = list(_extract_conjuction_elements_from_expression(base_expression))
     if len(expression_list) == 0:
         raise AssertionError(
-            u"Received empty expression_list {} from base_expression: "
-            u"{}".format(expression_list, base_expression)
+            "Received empty expression_list {} from base_expression: "
+            "{}".format(expression_list, base_expression)
         )
     elif len(expression_list) == 1:
         return base_expression
     else:
-        between_operators = (u"<=", u">=")
+        between_operators = ("<=", ">=")
         (
             field_name_to_expressions,
             field_name_to_type,
@@ -110,8 +110,8 @@ def _lower_expressions_to_between(base_expression):
                 for operator in between_operators
             ):
                 field = LocalField(field_name, field_name_to_type[field_name])
-                lower_bound = expressions_dict[u">="][0].right
-                upper_bound = expressions_dict[u"<="][0].right
+                lower_bound = expressions_dict[">="][0].right
+                upper_bound = expressions_dict["<="][0].right
                 new_expression_list.appendleft(BetweenClause(field, lower_bound, upper_bound))
                 lowering_occurred = True
             else:
