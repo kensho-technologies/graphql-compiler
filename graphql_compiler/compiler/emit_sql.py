@@ -802,7 +802,6 @@ class CompilationState(object):
             .where(base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
-
         # TODO(bojanserafimov): Postgres implements CTEs by executing them ahead of everything
         #                       else. The onclause into the CTE is not going to filter the
         #                       recursive base case to a small set of rows, but instead the CTE
