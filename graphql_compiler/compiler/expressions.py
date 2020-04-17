@@ -824,7 +824,7 @@ class FoldedContextField(Expression):
         self.validate()
 
     @staticmethod
-    def _get_sql_array_type(graphql_type: GraphQLType) -> Optional[str]:
+    def _get_sql_array_type(graphql_type: GraphQLOutputType) -> Optional[str]:
         """Convert folded field type to a corresponding SQL type."""
         # Extract inner type of the GraphQLList.
         inner_type = strip_non_null_from_type(graphql_type)
