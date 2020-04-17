@@ -970,7 +970,7 @@ class FoldedContextField(Expression):
             # PostgreSQL
             # Coalesce to an empty array of the corresponding type.
             graphql_type = self.field_type.of_type
-            sql_array_type = self._get_sql_array_type(graphql_type)
+            sql_array_type = FoldedContextField._get_sql_array_type(graphql_type)
             if sql_array_type is None:
                 raise NotImplementedError(
                     f"Type {graphql_type} not implemented for outputs inside a fold."
