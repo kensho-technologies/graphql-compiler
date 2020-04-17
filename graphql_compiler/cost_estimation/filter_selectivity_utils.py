@@ -95,8 +95,8 @@ def _get_query_interval_of_binary_integer_inequality_filter(
         upper_bound = parameter_value
     else:
         raise AssertionError(
-            u"Cost estimator found unsupported "
-            u"binary integer inequality operator {}.".format(filter_operator)
+            "Cost estimator found unsupported "
+            "binary integer inequality operator {}.".format(filter_operator)
         )
 
     return Interval[int](lower_bound, upper_bound)
@@ -125,8 +125,8 @@ def _get_query_interval_of_ternary_integer_inequality_filter(
         upper_bound = parameter_value_2
     else:
         raise AssertionError(
-            u"Cost estimator found unsupported "
-            u"ternary integer inequality operator {}.".format(filter_operator)
+            "Cost estimator found unsupported "
+            "ternary integer inequality operator {}.".format(filter_operator)
         )
 
     return Interval[int](lower_bound, upper_bound)
@@ -154,8 +154,8 @@ def _get_query_interval_of_integer_inequality_filter(
         )
     else:
         raise AssertionError(
-            u"Cost estimator found filter operator {} with parameter values {}. "
-            u"Currently, an operator must have either one or two parameter values.".format(
+            "Cost estimator found filter operator {} with parameter values {}. "
+            "Currently, an operator must have either one or two parameter values.".format(
                 filter_operator, parameter_values
             )
         )
@@ -256,7 +256,7 @@ def _get_selectivity_fraction_of_interval(
         return 0.0
 
     if len(quantiles) < 2:
-        raise AssertionError(u"Need at least 2 quantiles: {}".format(len(quantiles)))
+        raise AssertionError("Need at least 2 quantiles: {}".format(len(quantiles)))
     # Since we can't be sure the minimum observed value is the
     # actual minimum value, we treat values less than it as part
     # of the first quantile. That's why we drop the minimum and
@@ -340,7 +340,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
     single_field_filters = {}
     for filter_info in filter_infos:
         if len(filter_info.fields) == 0:
-            raise AssertionError(u"Got filter on 0 fields {} {}".format(filter_info, location_name))
+            raise AssertionError("Got filter on 0 fields {} {}".format(filter_info, location_name))
         elif len(filter_info.fields) == 1:
             single_field_filters.setdefault(filter_info.fields[0], set()).add(filter_info)
         else:

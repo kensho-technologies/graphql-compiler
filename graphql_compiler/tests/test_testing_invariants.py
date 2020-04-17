@@ -30,7 +30,7 @@ class TestingInvariants(unittest.TestCase):
         for expected_test_function_name in self.expected_test_functions:
             if expected_test_function_name not in ir_generation_test_names:
                 raise AssertionError(
-                    u'Test case "{}" not found in test_ir_generation.py.'.format(
+                    'Test case "{}" not found in test_ir_generation.py.'.format(
                         expected_test_function_name
                     )
                 )
@@ -44,7 +44,7 @@ class TestingInvariants(unittest.TestCase):
         for expected_test_function_name in self.expected_test_functions:
             if expected_test_function_name not in compiler_test_names:
                 raise AssertionError(
-                    u'Test case "{}" not found in test_compiler.py.'.format(
+                    'Test case "{}" not found in test_compiler.py.'.format(
                         expected_test_function_name
                     )
                 )

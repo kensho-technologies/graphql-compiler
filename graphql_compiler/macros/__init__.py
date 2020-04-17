@@ -274,7 +274,7 @@ def perform_macro_expansion(macro_registry, schema_with_macros, graphql_with_mac
     validation_errors = validate_schema_and_query_ast(schema_with_macros, query_ast)
     if validation_errors:
         raise GraphQLValidationError(
-            u"The provided GraphQL input does not validate: {} {}".format(
+            "The provided GraphQL input does not validate: {} {}".format(
                 graphql_with_macro, validation_errors
             )
         )

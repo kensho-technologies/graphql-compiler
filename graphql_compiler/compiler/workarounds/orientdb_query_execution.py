@@ -104,8 +104,8 @@ def _classify_query_locations(match_query):
     first_match_step = match_query.match_traversals[0][0]
     if not isinstance(first_match_step.root_block, QueryRoot):
         raise AssertionError(
-            u"First step of first traversal unexpectedly was not QueryRoot: "
-            u"{} {}".format(first_match_step, match_query)
+            "First step of first traversal unexpectedly was not QueryRoot: "
+            "{} {}".format(first_match_step, match_query)
         )
 
     # The first step in the first traversal cannot possibly be inside an optional, recursion,
@@ -120,9 +120,9 @@ def _classify_query_locations(match_query):
             #                instead of a ContextField, or we'll have to rework the local filter
             #                detection code in this module.
             raise AssertionError(
-                u"The first step of the first traversal somehow had a non-local "
-                u"filter. This should not be possible, since there is nowhere "
-                u"for the tagged value to have come from. Values: {} {}".format(
+                "The first step of the first traversal somehow had a non-local "
+                "filter. This should not be possible, since there is nowhere "
+                "for the tagged value to have come from. Values: {} {}".format(
                     first_match_step, match_query
                 )
             )
@@ -148,8 +148,8 @@ def _classify_query_locations(match_query):
 
                 if not already_encountered_location:
                     raise AssertionError(
-                        u"Unexpectedly encountered a location in QueryRoot whose "
-                        u"status has not been determined: {} {} {}".format(
+                        "Unexpectedly encountered a location in QueryRoot whose "
+                        "status has not been determined: {} {} {}".format(
                             current_step_location, match_step, match_query
                         )
                     )
@@ -175,7 +175,7 @@ def _classify_query_locations(match_query):
                     at_eligible_or_preferred_location = False
             else:
                 raise AssertionError(
-                    u"Unreachable condition reached: {} {} {}".format(
+                    "Unreachable condition reached: {} {} {}".format(
                         match_step.root_block, match_step, match_query
                     )
                 )
@@ -230,8 +230,8 @@ def _assert_type_bounds_are_not_conflicting(
         )
     ):
         raise AssertionError(
-            u"Conflicting type bounds calculated at location {}: {} vs {} "
-            u"for query {}".format(location, previous_type_bound, current_type_bound, match_query)
+            "Conflicting type bounds calculated at location {}: {} vs {} "
+            "for query {}".format(location, previous_type_bound, current_type_bound, match_query)
         )
 
 
@@ -302,13 +302,13 @@ def _expose_only_preferred_locations(
                     # If needed, add a type bound that emits an INSTANCEOF in the "where:" clause
                     if previous_type_bound is None and current_type_bound is not None:
                         instanceof_predicate = BinaryComposition(
-                            u"INSTANCEOF", LocalField("@this", None), Literal(current_type_bound)
+                            "INSTANCEOF", LocalField("@this", None), Literal(current_type_bound)
                         )
                         if match_step.where_block:
                             # TODO(bojanserafimov): This branch needs test coverage
                             new_where_block = Filter(
                                 BinaryComposition(
-                                    u"&&", instanceof_predicate, match_step.where_block.predicate
+                                    "&&", instanceof_predicate, match_step.where_block.predicate
                                 )
                             )
                         else:
@@ -405,8 +405,8 @@ def expose_ideal_query_execution_start_points(
             )
         else:
             raise AssertionError(
-                u"This query has no preferred or eligible query start locations. "
-                u"This is almost certainly a bug: {}".format(match_query)
+                "This query has no preferred or eligible query start locations. "
+                "This is almost certainly a bug: {}".format(match_query)
             )
 
         new_queries.append(new_query)

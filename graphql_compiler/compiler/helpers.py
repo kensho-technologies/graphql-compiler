@@ -50,7 +50,7 @@ def get_only_element_from_collection(one_element_collection: Collection[T]) -> T
     """Assert that the collection has exactly one element, then return that element."""
     if len(one_element_collection) != 1:
         raise AssertionError(
-            u"Expected a collection with exactly one element, but got: {}".format(
+            "Expected a collection with exactly one element, but got: {}".format(
                 one_element_collection
             )
         )
@@ -66,8 +66,8 @@ def get_field_type_from_schema(
     else:
         if field_name not in schema_type.fields:
             raise AssertionError(
-                u"Field {} passed validation but was not present on type "
-                u"{}".format(field_name, schema_type)
+                "Field {} passed validation but was not present on type "
+                "{}".format(field_name, schema_type)
             )
 
         # Validation guarantees that the field must exist in the schema.
@@ -84,15 +84,15 @@ def get_vertex_field_type(
     # Validation guarantees that the field must exist in the schema.
     if not is_vertex_field_name(vertex_field_name):
         raise AssertionError(
-            u"Trying to load the vertex field type of a non-vertex field: "
-            u"{} {}".format(current_schema_type, vertex_field_name)
+            "Trying to load the vertex field type of a non-vertex field: "
+            "{} {}".format(current_schema_type, vertex_field_name)
         )
 
     raw_field_type = get_field_type_from_schema(current_schema_type, vertex_field_name)
     if not isinstance(strip_non_null_from_type(raw_field_type), GraphQLList):
         raise AssertionError(
-            u"Found an edge whose schema type was not GraphQLList: "
-            u"{} {} {}".format(current_schema_type, vertex_field_name, raw_field_type)
+            "Found an edge whose schema type was not GraphQLList: "
+            "{} {} {}".format(current_schema_type, vertex_field_name, raw_field_type)
         )
 
     field_type = cast(GraphQLList[Union[GraphQLInterfaceType, GraphQLObjectType]], raw_field_type)
@@ -124,7 +124,7 @@ def get_edge_direction_and_name(vertex_field_name: str) -> Tuple[str, str]:
         edge_direction = INBOUND_EDGE_DIRECTION
         edge_name = vertex_field_name[len(INBOUND_EDGE_FIELD_PREFIX) :]
     else:
-        raise AssertionError(u"Unreachable condition reached:", vertex_field_name)
+        raise AssertionError("Unreachable condition reached:", vertex_field_name)
 
     validate_safe_string(edge_name)
 
@@ -147,7 +147,7 @@ def is_graphql_type(graphql_type: Any) -> bool:
 def ensure_unicode_string(value: str) -> str:
     """Ensure the value is a string, and return it as unicode."""
     if not isinstance(value, six.string_types):
-        raise TypeError(u"Expected string value, got: {}".format(value))
+        raise TypeError("Expected string value, got: {}".format(value))
     return six.text_type(value)
 
 
@@ -172,7 +172,7 @@ def get_uniquely_named_objects_by_name(
         name = obj.name.value
         if name in result:
             raise GraphQLCompilationError(
-                u"Found duplicate object key: " u"{} {}".format(name, object_list)
+                "Found duplicate object key: {} {}".format(name, object_list)
             )
         result[name] = obj
 
@@ -182,13 +182,13 @@ def get_uniquely_named_objects_by_name(
 def safe_quoted_string(value: str) -> str:
     """Return the provided string, surrounded by single quotes. Ensure string is safe."""
     validate_safe_string(value)
-    return u"'{}'".format(value)
+    return "'{}'".format(value)
 
 
 def safe_or_special_quoted_string(value: str) -> str:
     """Return the provided string, surrounded by single quotes. Ensure string is safe or special."""
     validate_safe_or_special_string(value)
-    return u"'{}'".format(value)
+    return "'{}'".format(value)
 
 
 def validate_safe_or_special_string(value: str, value_description: str = "string") -> None:
@@ -202,21 +202,21 @@ def validate_safe_or_special_string(value: str, value_description: str = "string
 def validate_safe_string(value: str, value_description: str = "string") -> None:
     """Ensure that the provided string not have illegal characters."""
     if not value:
-        raise GraphQLCompilationError(u"Empty {}s are not allowed!".format(value_description))
+        raise GraphQLCompilationError("Empty {}s are not allowed!".format(value_description))
 
     if value[0] in string.digits:
         raise GraphQLCompilationError(
-            u"Encountered invalid {}: {}. It cannot start with a "
-            u"digit.".format(value_description, value)
+            "Encountered invalid {}: {}. It cannot start with a "
+            "digit.".format(value_description, value)
         )
 
     # set(value) is used instead of frozenset(value) to avoid printing 'frozenset' in error message.
     disallowed_chars = set(value) - VARIABLE_ALLOWED_CHARS
     if disallowed_chars:
         raise GraphQLCompilationError(
-            u"Encountered illegal characters {} in {}: {}. It is only "
-            u"allowed to have upper and lower case letters, "
-            u"digits and underscores.".format(disallowed_chars, value_description, value)
+            "Encountered illegal characters {} in {}: {}. It is only "
+            "allowed to have upper and lower case letters, "
+            "digits and underscores.".format(disallowed_chars, value_description, value)
         )
 
 
@@ -232,10 +232,10 @@ def validate_tagged_argument_name(name: str) -> None:
 
 def validate_output_name(name: str) -> None:
     """Ensure that the provided string is valid for use as an output name."""
-    internal_name_prefix = u"___"
+    internal_name_prefix = "___"
     if name.startswith(internal_name_prefix):
         raise GraphQLCompilationError(
-            u'The prefix "___" (three underscores) for output names is reserved by the compiler.'
+            'The prefix "___" (three underscores) for output names is reserved by the compiler.'
         )
     validate_safe_string(name, value_description="output name")
 
@@ -244,24 +244,24 @@ def validate_edge_direction(edge_direction: str) -> None:
     """Ensure the provided edge direction is either "in" or "out"."""
     if not isinstance(edge_direction, six.string_types):
         raise TypeError(
-            u"Expected string edge_direction, got: {} {}".format(
+            "Expected string edge_direction, got: {} {}".format(
                 type(edge_direction), edge_direction
             )
         )
 
     if edge_direction not in ALLOWED_EDGE_DIRECTIONS:
-        raise ValueError(u"Unrecognized edge direction: {}".format(edge_direction))
+        raise ValueError("Unrecognized edge direction: {}".format(edge_direction))
 
 
 def validate_marked_location(location: "BaseLocation") -> None:
     """Validate that a Location object is safe for marking, and not at a field."""
     if not isinstance(location, BaseLocation):
         raise TypeError(
-            u"Expected a BaseLocation, got: {} {}".format(type(location).__name__, location)
+            "Expected a BaseLocation, got: {} {}".format(type(location).__name__, location)
         )
 
     if location.field is not None:
-        raise GraphQLCompilationError(u"Cannot mark location at a field: {}".format(location))
+        raise GraphQLCompilationError("Cannot mark location at a field: {}".format(location))
 
 
 def _create_fold_path_component(edge_direction: str, edge_name: str) -> Tuple[Tuple[str, str], ...]:
@@ -279,14 +279,14 @@ def invert_dict(invertible_dict: Dict[KeyT, ValueT]) -> Dict[ValueT, KeyT]:
     for k, v in six.iteritems(invertible_dict):
         if not isinstance(v, Hashable):
             raise TypeError(
-                u"Expected an invertible dict, but value at key {} has type {}".format(
+                "Expected an invertible dict, but value at key {} has type {}".format(
                     k, type(v).__name__
                 )
             )
         if v in inverted:
             raise TypeError(
-                u"Expected an invertible dict, but keys "
-                u"{} and {} map to the same value".format(inverted[v], k)
+                "Expected an invertible dict, but keys "
+                "{} and {} map to the same value".format(inverted[v], k)
             )
         inverted[v] = k
     return inverted
@@ -306,8 +306,8 @@ def get_parameter_name(argument: str) -> str:
     """Return the name of the parameter without the leading prefix."""
     if argument[0] not in {"$", "%"}:
         raise AssertionError(
-            u"Unexpectedly received an unprefixed parameter name, unable to "
-            u"determine whether it is a runtime or tagged parameter: {}".format(argument)
+            "Unexpectedly received an unprefixed parameter name, unable to "
+            "determine whether it is a runtime or tagged parameter: {}".format(argument)
         )
     return argument[1:]
 
@@ -344,8 +344,8 @@ class BaseLocation(object):
         mark_name, field_name = self.get_location_name()
         if field_name is None:
             raise AssertionError(
-                u"Expected the location {} to be at a field, but it was not."
-                u"This is a bug.".format(self)
+                "Expected the location {} to be at a field, but it was not."
+                "This is a bug.".format(self)
             )
         return (mark_name, field_name)
 
@@ -371,8 +371,8 @@ class BaseLocation(object):
             return not _compare_location_and_fold_scope_location(other, self)
         else:
             raise AssertionError(
-                u"Received objects of types {}, {} in BaseLocation comparison. "
-                u"Only Location and FoldScopeLocation are allowed: {} {}".format(
+                "Received objects of types {}, {} in BaseLocation comparison. "
+                "Only Location and FoldScopeLocation are allowed: {} {}".format(
                     type(self).__name__, type(other).__name__, self, other
                 )
             )
@@ -418,13 +418,13 @@ class Location(BaseLocation):
         """
         if not isinstance(query_path, tuple):
             raise TypeError(
-                u"Expected query_path to be a tuple, was: "
-                u"{} {}".format(type(query_path).__name__, query_path)
+                "Expected query_path to be a tuple, was: "
+                "{} {}".format(type(query_path).__name__, query_path)
             )
         if field and not isinstance(field, six.string_types):
             raise TypeError(
-                u"Expected field to be None or string, was: "
-                u"{} {}".format(type(field).__name__, field)
+                "Expected field to be None or string, was: "
+                "{} {}".format(type(field).__name__, field)
             )
 
         self.query_path = query_path
@@ -438,7 +438,7 @@ class Location(BaseLocation):
     def navigate_to_field(self, field: str) -> "Location":
         """Return a new Location object at the specified field of the current Location's vertex."""
         if self.field:
-            raise AssertionError(u"Already at a field, cannot nest fields: {}".format(self))
+            raise AssertionError("Already at a field, cannot nest fields: {}".format(self))
         return Location(self.query_path, field=field, visit_counter=self.visit_counter)
 
     def at_vertex(self) -> "Location":
@@ -451,19 +451,17 @@ class Location(BaseLocation):
     def navigate_to_subpath(self, child: str) -> "Location":
         """Return a new Location object at a child vertex of the current Location's vertex."""
         if not isinstance(child, six.string_types):
-            raise TypeError(u"Expected child to be a string, was: {}".format(child))
+            raise TypeError("Expected child to be a string, was: {}".format(child))
         if self.field:
-            raise AssertionError(u"Currently at a field, cannot go to child: {}".format(self))
+            raise AssertionError("Currently at a field, cannot go to child: {}".format(self))
         return Location(self.query_path + (child,))
 
     def navigate_to_fold(self, folded_child: str) -> "FoldScopeLocation":
         """Return a new FoldScopeLocation for the folded child vertex of the current Location."""
         if not isinstance(folded_child, six.string_types):
-            raise TypeError(u"Expected folded_child to be a string, was: {}".format(folded_child))
+            raise TypeError("Expected folded_child to be a string, was: {}".format(folded_child))
         if self.field:
-            raise AssertionError(
-                u"Currently at a field, cannot go to folded child: " u"{}".format(self)
-            )
+            raise AssertionError("Currently at a field, cannot go to folded child: {}".format(self))
 
         edge_direction, edge_name = get_edge_direction_and_name(folded_child)
 
@@ -473,12 +471,12 @@ class Location(BaseLocation):
     def revisit(self) -> "Location":
         """Return a new Location object with an incremented 'visit_counter'."""
         if self.field:
-            raise AssertionError(u"Attempted to revisit a location at a field: {}".format(self))
+            raise AssertionError("Attempted to revisit a location at a field: {}".format(self))
         return Location(self.query_path, field=None, visit_counter=(self.visit_counter + 1))
 
     def get_location_name(self) -> Tuple[str, Optional[str]]:
         """Return a tuple of a unique name of the Location, and the current field name (or None)."""
-        mark_name = u"__".join(self.query_path) + u"___" + six.text_type(self.visit_counter)
+        mark_name = "__".join(self.query_path) + "___" + six.text_type(self.visit_counter)
         return (mark_name, self.field)
 
     def is_revisited_at(self, other_location: "Location") -> bool:
@@ -492,7 +490,7 @@ class Location(BaseLocation):
 
     def __str__(self) -> str:
         """Return a human-readable str representation of the Location object."""
-        return u"Location({}, {}, {})".format(self.query_path, self.field, self.visit_counter)
+        return "Location({}, {}, {})".format(self.query_path, self.field, self.visit_counter)
 
     def __repr__(self) -> str:
         """Return a human-readable str representation of the Location object."""
@@ -515,7 +513,7 @@ class Location(BaseLocation):
         """Return True if the other object is smaller than self in the total ordering."""
         if not isinstance(other, Location):
             raise AssertionError(
-                u"Expected Location type for other. Received {}: {}".format(
+                "Expected Location type for other. Received {}: {}".format(
                     type(other).__name__, other
                 )
             )
@@ -569,19 +567,18 @@ class FoldScopeLocation(BaseLocation):
         """
         if not isinstance(base_location, Location):
             raise TypeError(
-                u"Expected a Location for base_location, got: "
-                u"{} {}".format(type(base_location), base_location)
+                "Expected a Location for base_location, got: "
+                "{} {}".format(type(base_location), base_location)
             )
 
         if base_location.field:
             raise ValueError(
-                u"Expected Location object that points to a vertex, got: "
-                u"{}".format(base_location)
+                "Expected Location object that points to a vertex, got: {}".format(base_location)
             )
 
         if not isinstance(fold_path, tuple) or len(fold_path) == 0:
             raise TypeError(
-                u"Expected fold_path to be a non-empty tuple, but got: {} {}".format(
+                "Expected fold_path to be a non-empty tuple, but got: {} {}".format(
                     type(fold_path), fold_path
                 )
             )
@@ -589,7 +586,7 @@ class FoldScopeLocation(BaseLocation):
             len(element) == 2 and element[0] in ALLOWED_EDGE_DIRECTIONS for element in fold_path
         )
         if not fold_path_is_valid:
-            raise ValueError(u"Encountered an invalid fold_path: {}".format(fold_path))
+            raise ValueError("Encountered an invalid fold_path: {}".format(fold_path))
 
         self.base_location = base_location
         self.fold_path = fold_path
@@ -605,12 +602,12 @@ class FoldScopeLocation(BaseLocation):
         # only one traversal from the root of the fold. This allows fold names to be shorter.
         first_folded_edge_direction, first_folded_edge_name = self.get_first_folded_edge()
 
-        unique_name = u"".join(
+        unique_name = "".join(
             (
                 self.base_location.get_location_name()[0],
-                u"___",
+                "___",
                 first_folded_edge_direction,
-                u"_",
+                "_",
                 first_folded_edge_name,
             )
         )
@@ -633,15 +630,15 @@ class FoldScopeLocation(BaseLocation):
     def navigate_to_field(self, field: str) -> "FoldScopeLocation":
         """Return a new location object at the specified field of the current location."""
         if self.field:
-            raise AssertionError(u"Already at a field, cannot nest fields: {}".format(self))
+            raise AssertionError("Already at a field, cannot nest fields: {}".format(self))
         return FoldScopeLocation(self.base_location, self.fold_path, field=field)
 
     def navigate_to_subpath(self, child: str) -> "FoldScopeLocation":
         """Return a new location after a traversal to the specified child location."""
         if not isinstance(child, six.string_types):
-            raise TypeError(u"Expected child to be a string, was: {}".format(child))
+            raise TypeError("Expected child to be a string, was: {}".format(child))
         if self.field:
-            raise AssertionError(u"Currently at a field, cannot go to child: {}".format(self))
+            raise AssertionError("Currently at a field, cannot go to child: {}".format(self))
 
         edge_direction, edge_name = get_edge_direction_and_name(child)
         new_fold_path = self.fold_path + _create_fold_path_component(edge_direction, edge_name)
@@ -649,7 +646,7 @@ class FoldScopeLocation(BaseLocation):
 
     def __str__(self) -> str:
         """Return a human-readable str representation of the FoldScopeLocation object."""
-        return u"FoldScopeLocation({}, {}, field={})".format(
+        return "FoldScopeLocation({}, {}, field={})".format(
             self.base_location, self.fold_path, self.field
         )
 
@@ -678,7 +675,7 @@ class FoldScopeLocation(BaseLocation):
         """Return True if the other object is smaller than self in the total ordering."""
         if not isinstance(other, FoldScopeLocation):
             raise AssertionError(
-                u"Expected FoldScopeLocation type for other. Received {}: {}".format(
+                "Expected FoldScopeLocation type for other. Received {}: {}".format(
                     type(other).__name__, other
                 )
             )

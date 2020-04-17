@@ -40,8 +40,8 @@ def merge_non_overlapping_dicts(merge_target, new_data):
     for key, value in six.iteritems(new_data):
         if key in merge_target:
             raise AssertionError(
-                u'Overlapping key "{}" found in dicts that are supposed '
-                u"to not overlap. Values: {} {}".format(key, merge_target[key], value)
+                'Overlapping key "{}" found in dicts that are supposed '
+                "to not overlap. Values: {} {}".format(key, merge_target[key], value)
             )
 
         result[key] = value

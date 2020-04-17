@@ -139,7 +139,7 @@ def _get_edge_to_stitch_fields(merged_schema_descriptor):
         if isinstance(type_definition, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
             for field_definition in type_definition.fields:
                 stitch_directive = try_get_ast_by_name_and_type(
-                    field_definition.directives, u"stitch", DirectiveNode
+                    field_definition.directives, "stitch", DirectiveNode
                 )
                 if stitch_directive is not None:
                     fields_by_name = get_uniquely_named_objects_by_name(stitch_directive.arguments)
@@ -199,8 +199,8 @@ def _split_query_one_level(
     validation_errors = validate(merged_schema_descriptor.schema, query_node.query_ast)
     if len(validation_errors) > 0:
         raise AssertionError(
-            u'The resulting split query "{}" is invalid, with the following error messages: {}'
-            u"".format(query_node.query_ast, validation_errors)
+            'The resulting split query "{}" is invalid, with the following error messages: {}'
+            "".format(query_node.query_ast, validation_errors)
         )
 
     # Set schema id, check for consistency
@@ -214,8 +214,8 @@ def _split_query_one_level(
 
     if query_node.schema_id is None:
         raise AssertionError(
-            u'Unreachable code reached. The schema id of query piece "{}" has not been '
-            u"determined.".format(query_node.query_ast)
+            'Unreachable code reached. The schema id of query piece "{}" has not been '
+            "determined.".format(query_node.query_ast)
         )
 
 
@@ -338,9 +338,9 @@ def _split_query_ast_one_level_recursive_normal_fields(
             child_type_name = strip_non_null_and_list_from_type(child_type).name
         else:
             raise AssertionError(
-                u"The query may be invalid against the schema, causing TypeInfo to lose track "
-                u'of the types of fields. This occurs at the cross schema field "{}", while '
-                u'splitting the AST "{}"'.format(cross_schema_field, query_node.query_ast)
+                "The query may be invalid against the schema, causing TypeInfo to lose track "
+                'of the types of fields. This occurs at the cross schema field "{}", while '
+                'splitting the AST "{}"'.format(cross_schema_field, query_node.query_ast)
             )
         stitch_data_key = (parent_type_name, cross_schema_field.name.value)
         parent_field_name, child_field_name = edge_to_stitch_fields[stitch_data_key]
@@ -444,7 +444,7 @@ def _split_selections_property_and_vertex(selections):
         GraphQLValidationError if some property field is repeated
     """
     if selections is None:
-        raise AssertionError(u"Input selections is None, rather than a list.")
+        raise AssertionError("Input selections is None, rather than a list.")
     property_fields_map = OrderedDict()
     vertex_fields = []
     for selection in selections:
@@ -452,7 +452,7 @@ def _split_selections_property_and_vertex(selections):
             name = selection.name.value
             if name in property_fields_map:
                 raise GraphQLValidationError(
-                    u'The field named "{}" occurs more than once in the selection {}.'.format(
+                    'The field named "{}" occurs more than once in the selection {}.'.format(
                         name, selections
                     )
                 )
@@ -489,7 +489,7 @@ def _split_vertex_fields_intra_and_cross_schema(
             else:
                 intra_schema_fields.append(vertex_field)
         else:
-            raise AssertionError(u"Input vertex field {} is not a Field".format(vertex_field))
+            raise AssertionError("Input vertex field {} is not a Field".format(vertex_field))
     return intra_schema_fields, cross_schema_fields
 
 
@@ -613,8 +613,8 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
         for directive in directives_from_edge:
             if directive.name.value == OutputDirective.name:  # output illegal on vertex field
                 raise GraphQLValidationError(
-                    u'Directive "{}" is not allowed on a vertex field, as @output directives '
-                    u"can only exist on property fields.".format(directive)
+                    'Directive "{}" is not allowed on a vertex field, as @output directives '
+                    "can only exist on property fields.".format(directive)
                 )
             elif directive.name.value == OptionalDirective.name:
                 if (
@@ -629,8 +629,8 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
                 new_field_directives.append(directive)
             else:
                 raise AssertionError(
-                    u'Unreachable code reached. Directive "{}" is of an unsupported type, and '
-                    u"was not caught in a prior validation step.".format(directive)
+                    'Unreachable code reached. Directive "{}" is of an unsupported type, and '
+                    "was not caught in a prior validation step.".format(directive)
                 )
 
     new_field = FieldNode(name=NameNode(value=field_name), directives=new_field_directives,)
@@ -683,7 +683,7 @@ def _get_output_directive(out_name):
     return DirectiveNode(
         name=NameNode(value=OutputDirective.name),
         arguments=[
-            ArgumentNode(name=NameNode(value=u"out_name"), value=StringValueNode(value=out_name),),
+            ArgumentNode(name=NameNode(value="out_name"), value=StringValueNode(value=out_name),),
         ],
     )
 
@@ -714,7 +714,7 @@ def _add_query_connections(
     """Modify parent and child SubQueryNodes by adding QueryConnections between them."""
     if child_query_node.parent_query_connection is not None:
         raise AssertionError(
-            u"The input child query node already has a parent connection, {}".format(
+            "The input child query node already has a parent connection, {}".format(
                 child_query_node.parent_query_connection
             )
         )
@@ -723,8 +723,8 @@ def _add_query_connections(
         for query_connection_from_parent in parent_query_node.child_query_connections
     ):
         raise AssertionError(
-            u"The input parent query node already has the child query node in a child query "
-            u"connection."
+            "The input parent query node already has the child query node in a child query "
+            "connection."
         )
     # Create QueryConnections
     new_query_connection_from_parent = QueryConnection(
@@ -798,11 +798,11 @@ class SchemaIdSetterVisitor(Visitor):
                 # is invalid: an edge field without a @stitch directive crosses schemas,
                 # or type_name_to_schema_id is wrong
                 raise SchemaStructureError(
-                    u"The provided merged schema descriptor may be invalid. Perhaps some "
-                    u"vertex field that does not have a @stitch directive crosses schemas. As "
-                    u'a result, query piece "{}" appears to contain types from more than '
-                    u'one schema. Type "{}" belongs to schema "{}", while some other type '
-                    u'belongs to schema "{}".'.format(
+                    "The provided merged schema descriptor may be invalid. Perhaps some "
+                    "vertex field that does not have a @stitch directive crosses schemas. As "
+                    'a result, query piece "{}" appears to contain types from more than '
+                    'one schema. Type "{}" belongs to schema "{}", while some other type '
+                    'belongs to schema "{}".'.format(
                         self.query_node.query_ast,
                         type_name,
                         current_type_schema_id,

@@ -239,13 +239,13 @@ class RenameSchemaTypesVisitor(Visitor):
             and self.reverse_name_map[new_name_string] != name_string
         ):
             raise SchemaNameConflictError(
-                u'"{}" and "{}" are both renamed to "{}"'.format(
+                '"{}" and "{}" are both renamed to "{}"'.format(
                     name_string, self.reverse_name_map[new_name_string], new_name_string
                 )
             )
         if new_name_string in self.scalar_types or new_name_string in self.builtin_types:
             raise SchemaNameConflictError(
-                u'"{}" was renamed to "{}", clashing with scalar "{}"'.format(
+                '"{}" was renamed to "{}", clashing with scalar "{}"'.format(
                     name_string, new_name_string, new_name_string
                 )
             )
@@ -272,7 +272,7 @@ class RenameSchemaTypesVisitor(Visitor):
                 return renamed_node
         else:
             # All Node types should've been taken care of, this line should never be reached
-            raise AssertionError(u'Unreachable code reached. Missed type: "{}"'.format(node_type))
+            raise AssertionError('Unreachable code reached. Missed type: "{}"'.format(node_type))
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):

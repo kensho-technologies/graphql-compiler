@@ -42,7 +42,7 @@ class QueryRoot(BasicBlock):
             and all(isinstance(x, six.string_types) for x in self.start_class)
         ):
             raise TypeError(
-                u"Expected set of string start_class, got: {} {}".format(
+                "Expected set of string start_class, got: {} {}".format(
                     type(self.start_class).__name__, self.start_class
                 )
             )
@@ -58,10 +58,10 @@ class QueryRoot(BasicBlock):
             # is generally faster than the one below, since it makes using indexes easier.
             # http://gremlindocs.spmallette.documentup.com/#filter/has
             start_class = list(self.start_class)[0]
-            return u"g.V({}, {})".format("'@class'", safe_quoted_string(start_class))
+            return "g.V({}, {})".format("'@class'", safe_quoted_string(start_class))
         else:
             start_classes_list = ",".join(safe_quoted_string(x) for x in self.start_class)
-            return u"g.V.has('@class', T.in, [{}])".format(start_classes_list)
+            return "g.V.has('@class', T.in, [{}])".format(start_classes_list)
 
 
 class CoerceType(BasicBlock):
@@ -89,7 +89,7 @@ class CoerceType(BasicBlock):
             and all(isinstance(x, six.string_types) for x in self.target_class)
         ):
             raise TypeError(
-                u"Expected set of string target_class, got: {} {}".format(
+                "Expected set of string target_class, got: {} {}".format(
                     type(self.target_class).__name__, self.target_class
                 )
             )
@@ -100,8 +100,8 @@ class CoerceType(BasicBlock):
     def to_gremlin(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"CoerceType blocks must be appropriately lowered before being "
-            u"transformed into Gremlin code. This function should not be used."
+            "CoerceType blocks must be appropriately lowered before being "
+            "transformed into Gremlin code. This function should not be used."
         )
 
 
@@ -128,15 +128,15 @@ class ConstructResult(BasicBlock):
         """Ensure that the ConstructResult block is valid."""
         if not isinstance(self.fields, dict):
             raise TypeError(
-                u"Expected dict fields, got: {} {}".format(type(self.fields).__name__, self.fields)
+                "Expected dict fields, got: {} {}".format(type(self.fields).__name__, self.fields)
             )
 
         for key, value in six.iteritems(self.fields):
             validate_safe_string(key)
             if not isinstance(value, Expression):
                 raise TypeError(
-                    u"Expected Expression values in the fields dict, got: "
-                    u"{} -> {}".format(key, value)
+                    "Expected Expression values in the fields dict, got: "
+                    "{} -> {}".format(key, value)
                 )
 
     def visit_and_update_expressions(
@@ -160,16 +160,16 @@ class ConstructResult(BasicBlock):
         self.validate()
 
         template = (
-            u"transform{{"
-            u"it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([ {} ])"
-            u"}}"
+            "transform{{"
+            "it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([ {} ])"
+            "}}"
         )
 
         field_representations = (
-            u"{name}: {expr}".format(name=key, expr=self.fields[key].to_gremlin())
+            "{name}: {expr}".format(name=key, expr=self.fields[key].to_gremlin())
             for key in sorted(self.fields.keys())  # Sort the keys for deterministic output order.
         )
-        return template.format(u", ".join(field_representations))
+        return template.format(", ".join(field_representations))
 
 
 class Filter(BasicBlock):
@@ -187,7 +187,7 @@ class Filter(BasicBlock):
         """Ensure that the Filter block is valid."""
         if not isinstance(self.predicate, Expression):
             raise TypeError(
-                u"Expected Expression predicate, got: {} {}".format(
+                "Expected Expression predicate, got: {} {}".format(
                     type(self.predicate).__name__, self.predicate
                 )
             )
@@ -205,7 +205,7 @@ class Filter(BasicBlock):
     def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this block."""
         self.validate()
-        return u"filter{{it, m -> {}}}".format(self.predicate.to_gremlin())
+        return "filter{{it, m -> {}}}".format(self.predicate.to_gremlin())
 
 
 class MarkLocation(BasicBlock):
@@ -231,7 +231,7 @@ class MarkLocation(BasicBlock):
         """Return a unicode object with the Gremlin representation of this block."""
         self.validate()
         mark_name, _ = self.location.get_location_name()
-        return u"as({})".format(safe_quoted_string(mark_name))
+        return "as({})".format(safe_quoted_string(mark_name))
 
 
 class Traverse(BasicBlock):
@@ -270,7 +270,7 @@ class Traverse(BasicBlock):
         """Ensure that the Traverse block is valid."""
         if not isinstance(self.direction, six.string_types):
             raise TypeError(
-                u"Expected string direction, got: {} {}".format(
+                "Expected string direction, got: {} {}".format(
                     type(self.direction).__name__, self.direction
                 )
             )
@@ -280,20 +280,20 @@ class Traverse(BasicBlock):
 
         if not isinstance(self.optional, bool):
             raise TypeError(
-                u"Expected bool optional, got: {} {}".format(
+                "Expected bool optional, got: {} {}".format(
                     type(self.optional).__name__, self.optional
                 )
             )
 
         if not isinstance(self.within_optional_scope, bool):
             raise TypeError(
-                u"Expected bool within_optional_scope, got: {} "
-                u"{}".format(type(self.within_optional_scope).__name__, self.within_optional_scope)
+                "Expected bool within_optional_scope, got: {} "
+                "{}".format(type(self.within_optional_scope).__name__, self.within_optional_scope)
             )
 
     def get_field_name(self) -> str:
         """Return the field name corresponding to the edge being traversed."""
-        return u"{}_{}".format(self.direction, self.edge_name)
+        return "{}_{}".format(self.direction, self.edge_name)
 
     def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this block."""
@@ -313,8 +313,8 @@ class Traverse(BasicBlock):
             # For example, the links to outward edges named "Person_SpeechBy" from Person
             # are assumed to be stored as "out_Person_SpeechBy" on the Person node.
             return (
-                u"ifThenElse{{it.{direction}_{edge_name} == null}}"
-                u"{{null}}{{it.{direction}({edge_quoted})}}".format(
+                "ifThenElse{{it.{direction}_{edge_name} == null}}"
+                "{{null}}{{it.{direction}({edge_quoted})}}".format(
                     direction=self.direction,
                     edge_name=self.edge_name,
                     edge_quoted=safe_quoted_string(self.edge_name),
@@ -325,11 +325,11 @@ class Traverse(BasicBlock):
             # The following code returns null when the current pipeline entity is null
             # (an optional edge did not exist at some earlier traverse).
             # Otherwise it performs a normal traversal (previous optional edge did exist).
-            return u"ifThenElse{{it == null}}" u"{{null}}{{it.{direction}({edge_quoted})}}".format(
+            return "ifThenElse{{it == null}}{{null}}{{it.{direction}({edge_quoted})}}".format(
                 direction=self.direction, edge_quoted=safe_quoted_string(self.edge_name)
             )
         else:
-            return u"{direction}({edge})".format(
+            return "{direction}({edge})".format(
                 direction=self.direction, edge=safe_quoted_string(self.edge_name)
             )
 
@@ -368,17 +368,17 @@ class Recurse(BasicBlock):
 
         if not isinstance(self.within_optional_scope, bool):
             raise TypeError(
-                u"Expected bool within_optional_scope, got: {} "
-                u"{}".format(type(self.within_optional_scope).__name__, self.within_optional_scope)
+                "Expected bool within_optional_scope, got: {} "
+                "{}".format(type(self.within_optional_scope).__name__, self.within_optional_scope)
             )
 
         if not isinstance(self.depth, int):
             raise TypeError(
-                u"Expected int depth, got: {} {}".format(type(self.depth).__name__, self.depth)
+                "Expected int depth, got: {} {}".format(type(self.depth).__name__, self.depth)
             )
 
         if not (self.depth >= 1):
-            raise ValueError(u"depth ({}) >= 1 does not hold!".format(self.depth))
+            raise ValueError("depth ({}) >= 1 does not hold!".format(self.depth))
 
     def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this block."""
@@ -398,7 +398,7 @@ class Recurse(BasicBlock):
             # The following code returns null when the current pipeline entity is null
             # (an optional edge did not exist at some earlier traverse).
             # Otherwise it performs a normal recursion (previous optional edge did exist).
-            recurse_template = u"ifThenElse{{it == null}}{{null}}{{it.{recursion_string}}}"
+            recurse_template = "ifThenElse{{it == null}}{{null}}{{it.{recursion_string}}}"
             return recurse_template.format(recursion_string=recursion_string)
         else:
             return recursion_string
@@ -427,7 +427,7 @@ class Backtrack(BasicBlock):
         validate_marked_location(self.location)
         if not isinstance(self.optional, bool):
             raise TypeError(
-                u"Expected bool optional, got: {} {}".format(
+                "Expected bool optional, got: {} {}".format(
                     type(self.optional).__name__, self.optional
                 )
             )
@@ -436,13 +436,13 @@ class Backtrack(BasicBlock):
         """Return a unicode object with the Gremlin representation of this BasicBlock."""
         self.validate()
         if self.optional:
-            operation = u"optional"
+            operation = "optional"
         else:
-            operation = u"back"
+            operation = "back"
 
         mark_name, _ = self.location.get_location_name()
 
-        return u"{operation}({mark_name})".format(
+        return "{operation}({mark_name})".format(
             operation=operation, mark_name=safe_quoted_string(mark_name)
         )
 
@@ -479,8 +479,8 @@ class Fold(MarkerBlock):
         """Ensure the Fold block is valid."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(
-                u"Expected a FoldScopeLocation for fold_scope_location, got: {} "
-                u"{}".format(type(self.fold_scope_location), self.fold_scope_location)
+                "Expected a FoldScopeLocation for fold_scope_location, got: {} "
+                "{}".format(type(self.fold_scope_location), self.fold_scope_location)
             )
 
 

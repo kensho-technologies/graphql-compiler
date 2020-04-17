@@ -502,7 +502,7 @@ class SQLFoldObject(object):
 
         # We should have either triggered a not implemented error, or returned earlier
         raise AssertionError(
-            "Reached end of function without returning a value, " "this code should be unreachable."
+            "Reached end of function without returning a value, this code should be unreachable."
         )
 
     def _get_fold_outputs(self, fold_scope_location, all_folded_outputs):
@@ -574,7 +574,7 @@ class SQLFoldObject(object):
             )
         if self._output_vertex_alias is None:
             raise AssertionError(
-                "No output vertex visited. " "Invalid state encountered during fold {}".format(self)
+                "No output vertex visited. Invalid state encountered during fold {}".format(self)
             )
         if len(self._traversal_descriptors) == 0:
             raise AssertionError(

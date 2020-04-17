@@ -81,8 +81,8 @@ def _detect_subtype(entity_name):
         return "Animal"
     else:
         raise AssertionError(
-            u"Found invalid entity name. Must be either a species, food, "
-            u"or animal name: {}".format(entity_name)
+            "Found invalid entity name. Must be either a species, food, "
+            "or animal name: {}".format(entity_name)
         )
 
 

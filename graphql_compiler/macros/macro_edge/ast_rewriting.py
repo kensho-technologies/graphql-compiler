@@ -100,8 +100,8 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive):
             new_arguments.append(new_argument)
         else:
             raise AssertionError(
-                u"Unknown argument name {} in filter directive {}, this should "
-                u"have been caught in an earlier validation step.".format(
+                "Unknown argument name {} in filter directive {}, this should "
+                "have been caught in an earlier validation step.".format(
                     argument.name.value, filter_directive
                 )
             )
@@ -297,7 +297,7 @@ def find_target_and_copy_path_to_it(ast):
                 if possible_target_ast is not None:
                     target_ast = possible_target_ast
     else:
-        raise AssertionError(u"Unexpected AST type received: {} {}".format(type(ast), ast))
+        raise AssertionError("Unexpected AST type received: {} {}".format(type(ast), ast))
 
     if target_ast is None:
         return ast, None
@@ -346,8 +346,8 @@ def merge_selection_sets(selection_set_a, selection_set_b):
         field_b = selection_dict_b[field_name]
         if field_a.selection_set is not None or field_b.selection_set is not None:
             raise GraphQLCompilationError(
-                u"Macro edge expansion results in a query traversing the "
-                u"same edge {} twice, which is disallowed.".format(field_name)
+                "Macro edge expansion results in a query traversing the "
+                "same edge {} twice, which is disallowed.".format(field_name)
             )
 
         # TODO(predrag): Find a way to avoid this situation by making the rewriting smarter.
@@ -359,8 +359,8 @@ def merge_selection_sets(selection_set_a, selection_set_b):
         )
         if field_a_has_tag_directive and field_b_has_tag_directive:
             raise GraphQLCompilationError(
-                u"Macro edge expansion results in field {} having two "
-                u"@tag directives, which is disallowed.".format(field_name)
+                "Macro edge expansion results in field {} having two "
+                "@tag directives, which is disallowed.".format(field_name)
             )
 
         merged_field = copy(field_a)

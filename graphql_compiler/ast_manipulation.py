@@ -49,20 +49,20 @@ def get_only_query_definition(document_ast, desired_error_type):
     """Assert that the Document AST contains only a single definition for a query, and return it."""
     if not isinstance(document_ast, DocumentNode) or not document_ast.definitions:
         raise AssertionError(
-            u'Received an unexpected value for "document_ast": {}'.format(document_ast)
+            'Received an unexpected value for "document_ast": {}'.format(document_ast)
         )
 
     if len(document_ast.definitions) != 1:
         raise desired_error_type(
-            u"Encountered multiple definitions within GraphQL input. This is not supported."
-            u"{}".format(document_ast.definitions)
+            "Encountered multiple definitions within GraphQL input. This is not supported."
+            "{}".format(document_ast.definitions)
         )
 
     definition_ast = document_ast.definitions[0]
     if definition_ast.operation != OperationType.QUERY:
         raise desired_error_type(
-            u"Expected a GraphQL document with a single query definition, but instead found a "
-            u'but instead found a "{}" operation. This is not supported.'.format(
+            "Expected a GraphQL document with a single query definition, but instead found a "
+            'but instead found a "{}" operation. This is not supported.'.format(
                 definition_ast.operation
             )
         )
@@ -81,16 +81,16 @@ def get_only_selection_from_ast(ast, desired_error_type):
                 get_human_friendly_ast_field_name(selection_ast) for selection_ast in selections
             ]
             raise desired_error_type(
-                u"Expected an AST with exactly one selection, but found "
-                u"{} selections at AST node named {}: {}".format(
+                "Expected an AST with exactly one selection, but found "
+                "{} selections at AST node named {}: {}".format(
                     len(selection_names), selection_names, ast_name
                 )
             )
         else:
             ast_name = get_human_friendly_ast_field_name(ast)
             raise desired_error_type(
-                u"Expected an AST with exactly one selection, but got "
-                u"one with no selections. Error near AST node named: {}".format(ast_name)
+                "Expected an AST with exactly one selection, but got "
+                "one with no selections. Error near AST node named: {}".format(ast_name)
             )
 
     return selections[0]
@@ -102,8 +102,8 @@ def get_ast_with_non_null_stripped(ast):
         stripped_ast = ast.type
         if isinstance(stripped_ast, NonNullTypeNode):
             raise AssertionError(
-                u"NonNullType is unexpectedly found to wrap around another NonNullType in AST "
-                u"{}, which is not allowed.".format(ast)
+                "NonNullType is unexpectedly found to wrap around another NonNullType in AST "
+                "{}, which is not allowed.".format(ast)
             )
         return stripped_ast
     else:

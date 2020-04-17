@@ -10,8 +10,8 @@ def _find_any_macro_edge_name_at_subclass(macro_registry, class_name, macro_edge
     subclasses = macro_registry.subclass_sets[class_name]
     if class_name not in subclasses:
         raise AssertionError(
-            u"Found a class that is not a subclass of itself, this means that the "
-            u"subclass_sets value is incorrectly constructed: {} {} {}".format(
+            "Found a class that is not a subclass of itself, this means that the "
+            "subclass_sets value is incorrectly constructed: {} {} {}".format(
                 class_name, subclasses, macro_registry.subclass_sets
             )
         )
@@ -32,8 +32,8 @@ def _find_any_macro_edge_name_to_subclass(macro_registry, class_name, macro_edge
     subclasses = macro_registry.subclass_sets[class_name]
     if class_name not in subclasses:
         raise AssertionError(
-            u"Found a class that is not a subclass of itself, this means that the "
-            u"subclass_sets value is incorrectly constructed: {} {} {}".format(
+            "Found a class that is not a subclass of itself, this means that the "
+            "subclass_sets value is incorrectly constructed: {} {} {}".format(
                 class_name, subclasses, macro_registry.subclass_sets
             )
         )
@@ -52,7 +52,7 @@ def _find_any_macro_edge_name_to_subclass(macro_registry, class_name, macro_edge
 def _get_type_relationship_error_description_text(subclass_sets, current_type, other_type):
     """Get a suitable description of the relationship of the two types for use in error messages."""
     if current_type == other_type:
-        return u""
+        return ""
 
     if current_type in subclass_sets[other_type]:
         relationship = "supertype"
@@ -60,13 +60,13 @@ def _get_type_relationship_error_description_text(subclass_sets, current_type, o
         relationship = "subtype"
     else:
         raise AssertionError(
-            u"Conflict between two types that "
-            u"are not each other's supertype: {} {} {}".format(
+            "Conflict between two types that "
+            "are not each other's supertype: {} {} {}".format(
                 current_type, other_type, subclass_sets
             )
         )
 
-    return (u" (a {relationship} of {current_type})").format(
+    return (" (a {relationship} of {current_type})").format(
         relationship=relationship, current_type=current_type,
     )
 
@@ -77,21 +77,21 @@ def _raise_macro_reversal_conflict_error(
     """Raise a macro validation error related to the inability to reverse the given macro edge."""
     if not specific_resolution_advice:
         raise AssertionError(
-            u"No specific error resolution advice given, this should never happen: {} {} {}".format(
+            "No specific error resolution advice given, this should never happen: {} {} {}".format(
                 new_macro_descriptor, existing_descriptor, specific_resolution_advice
             )
         )
 
     raise GraphQLInvalidMacroError(
-        u"The given macro edge with name {edge_name} defined on type {base_class_name} and "
-        u"pointing to type {target_class_name} is invalid due to a reversibility conflict. "
-        u"Macro edges are required to be reversible, but the corresponding reversed macro "
-        u"edge {reverse_edge_name} from {target_class_name} to {base_class_name} would be "
-        u"impossible to define because of a conflict with an existing macro edge: "
-        u"{reverse_edge_name} from {conflicting_base} to {conflicting_target}. To resolve "
-        u"the issue, either choose a new name for your macro edge, or "
-        u"{specific_advice}."
-        u"Conflicting macro edge definition: {macro_graphql} with args {macro_args}".format(
+        "The given macro edge with name {edge_name} defined on type {base_class_name} and "
+        "pointing to type {target_class_name} is invalid due to a reversibility conflict. "
+        "Macro edges are required to be reversible, but the corresponding reversed macro "
+        "edge {reverse_edge_name} from {target_class_name} to {base_class_name} would be "
+        "impossible to define because of a conflict with an existing macro edge: "
+        "{reverse_edge_name} from {conflicting_base} to {conflicting_target}. To resolve "
+        "the issue, either choose a new name for your macro edge, or "
+        "{specific_advice}."
+        "Conflicting macro edge definition: {macro_graphql} with args {macro_args}".format(
             edge_name=new_macro_descriptor.macro_edge_name,
             base_class_name=new_macro_descriptor.base_class_name,
             target_class_name=new_macro_descriptor.target_class_name,
@@ -112,14 +112,14 @@ def _get_macro_edge_reversal_conflicts_with_existing_descriptor(
     errors = []
     if reverse_base_class_name != existing_descriptor.base_class_name:
         errors.append(
-            u"change your macro edge's target class to {}".format(
+            "change your macro edge's target class to {}".format(
                 existing_descriptor.base_class_name
             )
         )
 
     if reverse_target_class_name != existing_descriptor.target_class_name:
         errors.append(
-            u"define your macro edge on class {} instead".format(
+            "define your macro edge on class {} instead".format(
                 existing_descriptor.target_class_name
             )
         )
@@ -155,13 +155,13 @@ def check_macro_edge_for_definition_conflicts(macro_registry, macro_edge_descrip
             macro_registry.subclass_sets, base_class_name, conflict_on_class_name
         )
         raise GraphQLInvalidMacroError(
-            u"A macro edge with name {edge_name} cannot be defined on type {current_type} due "
-            u"to a conflict with another macro edge with the same name defined "
-            u"on type {original_type}{extra_error_text}."
-            u"Cannot define this conflicting macro, please verify "
-            u"if the existing macro edge does what you want, or rename your macro "
-            u"edge to avoid the conflict. Existing macro definition and args: "
-            u"{macro_graphql} {macro_args}".format(
+            "A macro edge with name {edge_name} cannot be defined on type {current_type} due "
+            "to a conflict with another macro edge with the same name defined "
+            "on type {original_type}{extra_error_text}."
+            "Cannot define this conflicting macro, please verify "
+            "if the existing macro edge does what you want, or rename your macro "
+            "edge to avoid the conflict. Existing macro definition and args: "
+            "{macro_graphql} {macro_args}".format(
                 edge_name=macro_edge_name,
                 current_type=base_class_name,
                 original_type=conflict_on_class_name,
@@ -180,13 +180,13 @@ def check_macro_edge_for_definition_conflicts(macro_registry, macro_edge_descrip
             macro_registry.subclass_sets, target_class_name, conflict_on_class_name
         )
         raise GraphQLInvalidMacroError(
-            u"A macro edge with name {edge_name} cannot be defined to point to {target_type} due "
-            u"to a conflict with another macro edge with the same name that points to "
-            u"type {original_type}{extra_error_text}."
-            u"Cannot define this conflicting macro, please verify "
-            u"if the existing macro edge does what you want, or rename your macro "
-            u"edge to avoid the conflict. Existing macro definition and args: "
-            u"{macro_graphql} {macro_args}".format(
+            "A macro edge with name {edge_name} cannot be defined to point to {target_type} due "
+            "to a conflict with another macro edge with the same name that points to "
+            "type {original_type}{extra_error_text}."
+            "Cannot define this conflicting macro, please verify "
+            "if the existing macro edge does what you want, or rename your macro "
+            "edge to avoid the conflict. Existing macro definition and args: "
+            "{macro_graphql} {macro_args}".format(
                 edge_name=macro_edge_name,
                 target_type=target_class_name,
                 original_type=conflict_on_class_name,
