@@ -16,6 +16,7 @@ from ...global_utils import ASTWithParameters, QueryStringWithParameters
 from ...query_pagination import paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
+    MissingClassCount,
     PaginationAdvisory,
     PaginationPlan,
     VertexPartitionPlan,
@@ -1674,10 +1675,8 @@ class QueryPaginationTests(unittest.TestCase):
             {},
         )
 
-        # No counts for Animal
-        count_data: Dict[str, int] = {}
-
-        statistics = LocalStatistics(count_data)
+        # No class counts provided
+        statistics = LocalStatistics({})
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
             type_equivalence_hints=type_equivalence_hints,
@@ -1687,9 +1686,9 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
+        first_page_and_remainder, advisories = paginate_query(schema_info, query, 1)
         self.assertTrue(first_page_and_remainder.remainder == tuple())
-        # TODO assert advisory is returned
+        self.assertEqual(advisories, (MissingClassCount("Animal"),))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_missing_non_root_vertex_class_count(self) -> None:
@@ -1728,9 +1727,9 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
+        first_page_and_remainder, advisories = paginate_query(schema_info, query, 1)
         self.assertTrue(first_page_and_remainder.remainder == tuple())
-        # TODO assert advisory is returned
+        self.assertEqual(advisories, (MissingClassCount("Location"),))
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_missing_edge_class_count(self) -> None:
@@ -1769,6 +1768,6 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
+        first_page_and_remainder, advisories = paginate_query(schema_info, query, 1)
         self.assertTrue(first_page_and_remainder.remainder == tuple())
-        # TODO assert advisory is returned
+        self.assertEqual(advisories, (MissingClassCount("Animal_LivesIn"),))

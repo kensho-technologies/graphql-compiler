@@ -6,7 +6,7 @@ from graphql.language.printer import print_ast
 from ..cost_estimation.analysis import QueryPlanningAnalysis, analyze_query_string
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
-from .pagination_planning import PaginationAdvisory, get_pagination_plan
+from .pagination_planning import MissingClassCount, PaginationAdvisory, get_pagination_plan
 from .parameter_generator import generate_parameters_for_vertex_partition
 from .query_parameterizer import generate_parameterized_queries
 from .typedefs import PageAndRemainder
@@ -85,7 +85,10 @@ def paginate_query_ast(
     # See if we can and should split the query
     num_pages = 1
     if query_analysis.classes_with_missing_counts:
-        advisories += tuple()  # TODO add advisory
+        advisories += tuple(
+            MissingClassCount(class_name)
+            for class_name in query_analysis.classes_with_missing_counts
+        )
     else:
         result_size = query_analysis.cardinality_estimate
         num_pages = _estimate_number_of_pages(
