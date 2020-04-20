@@ -1675,7 +1675,7 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         # No counts for Animal
-        count_data = {}
+        count_data: Dict[str, int] = {}
 
         statistics = LocalStatistics(count_data)
         schema_info = QueryPlanningSchemaInfo(
@@ -1688,7 +1688,8 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
-        # TODO assert no pagination happened (currently it crashes)
+        self.assertTrue(first_page_and_remainder.remainder == tuple())
+        # TODO assert advisory is returned
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_missing_non_root_vertex_class_count(self) -> None:
@@ -1728,7 +1729,8 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
-        # TODO assert no pagination happened (currently it crashes)
+        self.assertTrue(first_page_and_remainder.remainder == tuple())
+        # TODO assert advisory is returned
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_missing_edge_class_count(self) -> None:
@@ -1768,4 +1770,5 @@ class QueryPaginationTests(unittest.TestCase):
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 1)
-        # TODO assert no pagination happened (currently it crashes)
+        self.assertTrue(first_page_and_remainder.remainder == tuple())
+        # TODO assert advisory is returned

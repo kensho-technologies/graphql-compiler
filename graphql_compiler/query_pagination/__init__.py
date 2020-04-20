@@ -82,11 +82,15 @@ def paginate_query_ast(
     remainder_queries: Tuple[ASTWithParameters, ...] = tuple()
     advisories: Tuple[PaginationAdvisory, ...] = tuple()
 
-    # Split the query if we should and we can
-    result_size = query_analysis.cardinality_estimate
-    num_pages = _estimate_number_of_pages(
-        query_analysis.query_string_with_parameters, result_size, page_size
-    )
+    # See if we can and should split the query
+    num_pages = 1
+    if query_analysis.has_class_counts_data:
+        result_size = query_analysis.cardinality_estimate
+        num_pages = _estimate_number_of_pages(
+            query_analysis.query_string_with_parameters, result_size, page_size
+        )
+
+    # Split the query if we can and should
     if num_pages > 1:
         pagination_plan, advisories = get_pagination_plan(query_analysis, num_pages)
         if len(pagination_plan.vertex_partitions) == 0:

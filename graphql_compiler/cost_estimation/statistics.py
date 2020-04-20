@@ -160,11 +160,8 @@ class LocalStatistics(Statistics):
 
     def get_class_count(self, class_name):
         """See base class."""
-        if class_name not in self._class_counts:
-            raise AssertionError(
-                f"Class count statistic is required, but entry not found for {class_name}"
-            )
-        return self._class_counts[class_name]
+        # XXX TODO in this PR: document that class counts are not actually required
+        return self._class_counts.get(class_name)
 
     def get_vertex_edge_vertex_count(
         self, vertex_source_class_name, edge_class_name, vertex_target_class_name

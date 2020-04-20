@@ -409,6 +409,18 @@ class QueryPlanningAnalysis:
         return get_types(self.metadata_table)
 
     @cached_property
+    def has_class_counts_data(self) -> bool:
+        """Return whether class counts are available for all vertices and edges used."""
+        for vertex_path, vertex_type in self.types.items():
+            if self.schema_info.statistics.get_class_count(vertex_type.name) is None:
+                return False
+            if len(vertex_path) > 1:
+                _, edge_name = get_edge_direction_and_name(vertex_path[-1])
+                if self.schema_info.statistics.get_class_count(edge_name) is None:
+                    return False
+        return True
+
+    @cached_property
     def cardinality_estimate(self) -> float:
         """Return the cardinality estimate for this query."""
         # TODO use selectivity analysis pass instead of recomputing it
