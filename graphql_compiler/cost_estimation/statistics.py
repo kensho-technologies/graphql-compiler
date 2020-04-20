@@ -160,7 +160,6 @@ class LocalStatistics(Statistics):
 
     def get_class_count(self, class_name):
         """See base class."""
-        # XXX TODO in this PR: document that class counts are not actually required
         return self._class_counts.get(class_name)
 
     def get_vertex_edge_vertex_count(
