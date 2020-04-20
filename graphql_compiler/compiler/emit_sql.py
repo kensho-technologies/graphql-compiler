@@ -560,7 +560,9 @@ class SQLFoldObject(object):
                 "state encountered during fold {}".format(self)
             )
         if isinstance(self._dialect, MSDialect):
-            raise NotImplementedError("Filtering on fields is not implemented for MSSQL yet.")
+            raise NotImplementedError(
+                "Filtering on fields inside a fold is not implemented for MSSQL yet."
+            )
         # Filters are applied to output vertices, thus current_alias=self.output_vertex_alias.
         sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
         self._filters.append(sql_expression)
