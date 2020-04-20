@@ -84,7 +84,9 @@ def paginate_query_ast(
 
     # See if we can and should split the query
     num_pages = 1
-    if query_analysis.has_class_counts_data:
+    if query_analysis.classes_with_missing_counts:
+        advisories += tuple()  # TODO add advisory
+    else:
         result_size = query_analysis.cardinality_estimate
         num_pages = _estimate_number_of_pages(
             query_analysis.query_string_with_parameters, result_size, page_size
