@@ -758,7 +758,7 @@ class CompilationState(object):
         """Execute a Backtrack Block."""
         self._relocate(previous_location)
 
-    def traverse(self, vertex_field, optional):
+    def traverse(self, vertex_field: str, optional: bool) -> None:
         """Execute a Traverse Block."""
         self._recurse_needs_cte = True
 
@@ -887,7 +887,7 @@ class CompilationState(object):
             raise AssertionError("CompilationState is already in global scope.")
         self._current_location = None
 
-    def filter(self, predicate):
+    def filter(self, predicate: Expression) -> None:
         """Execute a Filter Block."""
         self._recurse_needs_cte = True
 
