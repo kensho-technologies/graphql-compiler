@@ -2,7 +2,7 @@
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import Dict
+from typing import Dict, Set
 
 import six
 import sqlalchemy
@@ -16,7 +16,10 @@ from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.functions import func
 
 from . import blocks
+from ..global_utils import VertexPath
 from ..schema import COUNT_META_FIELD_NAME
+from ..schema.schema_info import SQLSchemaInfo
+from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
 from .helpers import FoldScopeLocation, get_edge_direction_and_name
 
@@ -70,9 +73,11 @@ def _traverse_and_validate_blocks(ir):
         yield block
 
 
-def _find_columns_used_outside_folds(sql_schema_info, ir):
+def _find_columns_used_outside_folds(
+    sql_schema_info: SQLSchemaInfo, ir: IrAndMetadata
+) -> Dict[VertexPath, Set[str]]:
     """For each query path outside of a fold output, find which columns are used."""
-    used_columns = {}
+    used_columns: Dict[VertexPath, Set[str]] = {}
 
     # Find filters used
     for location, _ in ir.query_metadata_table.registered_locations:
@@ -107,7 +112,7 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
             used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
                 used_columns[location.query_path + (traversal,)]
             )
-            used_columns.setdefault(location.query_path, set()).add(edge.from_column)
+            used_columns[location.query_path].add(edge.from_column)
 
     # Find outputs used
     for _, output_info in ir.query_metadata_table.outputs:
@@ -763,10 +768,12 @@ class CompilationState(object):
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
         self._join_to_parent_location(previous_alias, edge.from_column, edge.to_column, optional)
 
-    def _wrap_into_cte(self):
+    def _wrap_into_cte(self) -> None:
         """Wrap the current query into a cte."""
+        # Additional outputs the CTE needs to export for use elsewhere in the query
         extra_outputs = []
-        column_mappings = {}
+        # Mapping alias_key -> external_name -> internal_name
+        column_mappings: Dict[str, Dict[str, str]] = {}
         for alias_key, alias in self._aliases.items():
             vertex_path, _ = alias_key
             for used_column_name in sorted(self._used_columns[vertex_path]):
@@ -818,7 +825,7 @@ class CompilationState(object):
             )
         return self._current_alias.primary_key[0].name
 
-    def recurse(self, vertex_field, depth):
+    def recurse(self, vertex_field: str, depth: int) -> None:
         """Execute a Recurse Block."""
         if self._current_fold is not None:
             raise AssertionError("Recurse inside a fold is not allowed.")
