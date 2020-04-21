@@ -2,7 +2,7 @@
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import Dict, Set
+from typing import Dict, List, Optional, Set
 
 import six
 import sqlalchemy
@@ -12,8 +12,10 @@ from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import expression
 from sqlalchemy.sql.compiler import _CompileLabel
+from sqlalchemy.sql.elements import Label
 from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.functions import func
+from sqlalchemy.sql.selectable import Select
 
 from . import blocks
 from ..global_utils import VertexPath
@@ -771,7 +773,7 @@ class CompilationState(object):
     def _wrap_into_cte(self) -> None:
         """Wrap the current query into a cte."""
         # Additional outputs the CTE needs to export for use elsewhere in the query
-        extra_outputs = []
+        extra_outputs: List[Label] = []
         # Mapping alias_key -> external_name -> internal_name
         column_mappings: Dict[str, Dict[str, str]] = {}
         for alias_key, alias in self._aliases.items():
@@ -1000,7 +1002,7 @@ class CompilationState(object):
             )
         )
 
-    def get_query(self, extra_outputs=None):
+    def get_query(self, extra_outputs: Optional[List[Label]] = None) -> Select:
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
         if not extra_outputs:
             extra_outputs = []
