@@ -9355,8 +9355,8 @@ class CompilerTests(unittest.TestCase):
                 anon_2.name AS self_and_ancestor_name
             FROM anon_1, anon_2
         """
-        # TODO Add an integration test for this query to make sure the recurse preserves
-        #      left join misses from the parent optional traversal.
+        # TODO(bojanserafimov) Add an integration test for this query to make sure the recurse
+        #                      preserves left join misses from the parent optional traversal.
         expected_cypher = SKIP_TEST
         expected_postgresql = """
             WITH RECURSIVE anon_1 AS (
