@@ -410,7 +410,7 @@ class QueryPlanningAnalysis:
 
     @cached_property
     def classes_with_missing_counts(self) -> Set[str]:
-        """Return whether class counts are available for all vertices and edges used."""
+        """Return classes that don't have count statistics."""
         classes_with_missing_counts = set()
         for vertex_path, vertex_type in self.types.items():
             if self.schema_info.statistics.get_class_count(vertex_type.name) is None:

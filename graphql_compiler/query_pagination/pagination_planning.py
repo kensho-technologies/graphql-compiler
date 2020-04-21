@@ -21,7 +21,7 @@ class MissingClassCount(PaginationAdvisory):
     def __post_init__(self):
         """Initialize a human-readable message."""
         self.message = (
-            f"Class count statistics for the vertices and edges mentioned in the queries "
+            f"Class count statistics for the vertices and edges mentioned in the query "
             f"are required for pagination. Class {self.class_name} had no counts."
         )
 
