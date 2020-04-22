@@ -14,7 +14,6 @@ from graphql import (
     GraphQLNonNull,
     GraphQLScalarType,
     GraphQLString,
-    GraphQLType,
 )
 import six
 
