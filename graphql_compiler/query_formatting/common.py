@@ -152,7 +152,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLScalarType, value
         raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
-def deserialize_json_arguments(
+def deserialize_multiple_json_arguments(
     arguments: Dict[str, Any], expected_types: Dict[str, GraphQLScalarType]
 ) -> Dict[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
@@ -163,7 +163,7 @@ def deserialize_json_arguments(
 
     Returns:
         a dict mapping the argument names to their deserialized values. See the docstring of
-        deserialize_json_argument for more info on how values are deserialized.
+        deserialize_json_argument for more info on how arguments are deserialized.
     """
     validate_that_dicts_have_the_same_keys(arguments, expected_types)
     return {

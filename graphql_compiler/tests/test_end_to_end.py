@@ -23,7 +23,7 @@ from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
 from ..query_formatting.common import (
     deserialize_json_argument,
-    deserialize_json_arguments,
+    deserialize_multiple_json_arguments,
     validate_argument_type,
 )
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
@@ -351,7 +351,7 @@ class QueryFormattingTests(unittest.TestCase):
         }
         self.assertEqual(
             expected_deserialization,
-            deserialize_json_arguments(serialized_arguments, expected_types),
+            deserialize_multiple_json_arguments(serialized_arguments, expected_types),
         )
 
     def test_invalid_directive_comparison(self) -> None:
