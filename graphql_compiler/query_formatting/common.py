@@ -2,9 +2,20 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
+from typing import Any, Mapping, Union
 
 import arrow
-from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
+from graphql import (
+    GraphQLBoolean,
+    GraphQLFloat,
+    GraphQLID,
+    GraphQLInt,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLScalarType,
+    GraphQLString,
+    GraphQLType,
+)
 import six
 
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
@@ -31,11 +42,11 @@ def _raise_invalid_type_error(name, expected_python_type_name, value):
     )
 
 
-def _deserialize_anonymous_json_argument(expected_type, value):
+def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize argument. See docstring of deserialize_json_argument.
 
     Args:
-        expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
+        expected_type: GraphQL type we expect.
         value: object that can be interpreted as being of that type
 
     Returns:
@@ -44,37 +55,35 @@ def _deserialize_anonymous_json_argument(expected_type, value):
             GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
             GraphQLFloat: float
             GraphQLDecimal: decimal.Decimal
-            GraphQLInt: six.integer_types, supporting long integers
-            GraphQLString: six.string_types
+            GraphQLInt: int
+            GraphQLString: str
             GraphQLBoolean: bool
-            GraphQLID: six.string_types
+            GraphQLID: str
 
     Raises:
         ValueError if the value is not appropriate for the type. ValueError is chosen because
         it is already the base case of exceptions raised by the GraphQL parsers.
     """
     allowed_types_for_graphql_type = {
-        GraphQLDate.name: (six.string_types,),
-        GraphQLDateTime.name: (six.string_types,),
-        GraphQLFloat.name: (six.string_types, float, six.integer_types),
-        GraphQLDecimal.name: (six.string_types, float, six.integer_types),
-        GraphQLInt.name: (six.integer_types, six.string_types),
-        GraphQLString.name: (six.string_types,),
+        GraphQLDate.name: (str,),
+        GraphQLDateTime.name: (str,),
+        GraphQLFloat.name: (str, float, int),
+        GraphQLDecimal.name: (str, float, int),
+        GraphQLInt.name: (int, str),
+        GraphQLString.name: (str,),
         GraphQLBoolean.name: (bool,),
-        GraphQLID.name: (six.integer_types, six.string_types,),
+        GraphQLID.name: (int, str,),
     }
 
     # Check for long integers, bypassing the GraphQLInt parser
     if is_same_type(GraphQLInt, expected_type):
-        if isinstance(value, six.integer_types):
+        if isinstance(value, int):
             return value
-        elif isinstance(value, six.string_types):
+        elif isinstance(value, str):
             return int(value)
         else:
             raise ValueError(
-                "Unexpected type {}. Expected one of {}.".format(
-                    type(value), (six.integer_types, six.string_types)
-                )
+                "Unexpected type {}. Expected one of {}.".format(type(value), (int, str))
             )
 
     # Check if the type of the value is correct
@@ -105,7 +114,11 @@ def _deserialize_anonymous_json_argument(expected_type, value):
         return expected_type.parse_value(value)
 
 
-def deserialize_json_argument(name, expected_type, value):
+def deserialize_json_argument(
+    name: str,
+    expected_type: Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType],
+    value: Any,
+) -> Any:
     """Deserialize a GraphQL argument parsed from a json file.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
@@ -125,7 +138,7 @@ def deserialize_json_argument(name, expected_type, value):
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
               message if an error is raised.
-        expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
+        expected_type: the GraphQL type. All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
 
     Returns:
@@ -134,15 +147,36 @@ def deserialize_json_argument(name, expected_type, value):
             GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
             GraphQLFloat: float
             GraphQLDecimal: decimal.Decimal
-            GraphQLInt: six.integer_types, supporting long integers
-            GraphQLString: six.string_types
+            GraphQLInt: int
+            GraphQLString: str
             GraphQLBoolean: bool
-            GraphQLID: six.string_types
+            GraphQLID: str
     """
     try:
         return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
     except (ValueError, TypeError) as e:
         raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+
+
+def deserialize_multiple_json_arguments(
+    arguments: Mapping[str, Any],
+    expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
+) -> Mapping[str, Any]:
+    """Deserialize GraphQL arguments parsed from a json file.
+
+    Args:
+        arguments: mapping of argument names to json serialized values.
+        expected_types: mapping of argument names to the expected GraphQL types.
+
+    Returns:
+        a mapping of argument names to their deserialized values. See the docstring of
+        deserialize_json_argument for more info on how arguments are deserialized.
+    """
+    ensure_arguments_are_provided(expected_types, arguments)
+    return {
+        name: deserialize_json_argument(name, expected_types[name], value)
+        for name, value in arguments.items()
+    }
 
 
 def validate_argument_type(name, expected_type, value):
@@ -216,7 +250,9 @@ def validate_argument_type(name, expected_type, value):
         )
 
 
-def ensure_arguments_are_provided(expected_types, arguments):
+def ensure_arguments_are_provided(
+    expected_types: Mapping[str, GraphQLType], arguments: Mapping[str, Any]
+) -> None:
     """Ensure that all arguments expected by the query were actually provided."""
     expected_arg_names = set(six.iterkeys(expected_types))
     provided_arg_names = set(six.iterkeys(arguments))
@@ -229,7 +265,14 @@ def ensure_arguments_are_provided(expected_types, arguments):
             "missing {}, unexpected "
             "{}".format(missing_args, unexpected_args)
         )
-    for name in expected_arg_names:
+
+
+def validate_arguments(
+    expected_types: Mapping[str, GraphQLType], arguments: Mapping[str, Any]
+) -> None:
+    """Ensure that all arguments are provided and that they are of the expected type."""
+    ensure_arguments_are_provided(expected_types, arguments)
+    for name in expected_types:
         validate_argument_type(name, expected_types[name], arguments[name])
 
 
@@ -243,7 +286,7 @@ def insert_arguments_into_query(compilation_result, arguments):
     Returns:
         string, a query in the appropriate output language, with inserted argument data
     """
-    ensure_arguments_are_provided(compilation_result.input_metadata, arguments)
+    validate_arguments(compilation_result.input_metadata, arguments)
 
     if compilation_result.language == MATCH_LANGUAGE:
         return insert_arguments_into_match_query(compilation_result, arguments)
