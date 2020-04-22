@@ -165,7 +165,7 @@ def deserialize_multiple_json_arguments(
 
     Args:
         arguments: mapping of argument names to json serialized values.
-        expected_types: mapping of argument names to expected GraphQL types.
+        expected_types: mapping of argument names to the expected GraphQL types.
 
     Returns:
         a mapping of argument names to their deserialized values. See the docstring of
