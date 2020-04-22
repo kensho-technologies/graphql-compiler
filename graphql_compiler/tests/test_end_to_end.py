@@ -365,7 +365,7 @@ class QueryFormattingTests(unittest.TestCase):
         value = deserialize_json_argument(
             "birth_time",
             # The get_type() function above returns an Optional[GraphQLType] and
-            # deserialize_json_argument expects a GraphQLScalarType.
+            # deserialize_json_argument expects a GraphQLType.
             cast(GraphQLScalarType, parsed_graphql_datetime_type),
             "2014-02-05T03:20:55Z",
         )

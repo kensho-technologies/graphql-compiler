@@ -12,6 +12,7 @@ from graphql import (
     GraphQLInt,
     GraphQLList,
     GraphQLScalarType,
+    GraphQLType,
     GraphQLString,
 )
 import six
@@ -112,7 +113,7 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         return expected_type.parse_value(value)
 
 
-def deserialize_json_argument(name: str, expected_type: GraphQLScalarType, value: Any) -> Any:
+def deserialize_json_argument(name: str, expected_type: GraphQLType, value: Any) -> Any:
     """Deserialize a GraphQL argument parsed from a json file.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
@@ -153,7 +154,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLScalarType, value
 
 
 def deserialize_multiple_json_arguments(
-    arguments: Dict[str, Any], expected_types: Dict[str, GraphQLScalarType]
+    arguments: Dict[str, Any], expected_types: Dict[str, GraphQLType]
 ) -> Dict[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
 
