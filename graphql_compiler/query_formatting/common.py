@@ -14,13 +14,14 @@ from graphql import (
     GraphQLNonNull,
     GraphQLScalarType,
     GraphQLString,
+    GraphQLType,
 )
 import six
 
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type, validate_that_mappings_have_the_same_keys
+from ..global_utils import is_same_type
 from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -171,7 +172,7 @@ def deserialize_multiple_json_arguments(
         a mapping of argument names to their deserialized values. See the docstring of
         deserialize_json_argument for more info on how arguments are deserialized.
     """
-    validate_that_mappings_have_the_same_keys(arguments, expected_types)
+    ensure_arguments_are_provided(expected_types, arguments)
     return {
         name: deserialize_json_argument(name, expected_types[name], value)
         for name, value in arguments.items()
@@ -249,7 +250,9 @@ def validate_argument_type(name, expected_type, value):
         )
 
 
-def ensure_arguments_are_provided(expected_types, arguments):
+def ensure_arguments_are_provided(
+    expected_types: Mapping[str, GraphQLType], arguments: Mapping[str, Any]
+) -> None:
     """Ensure that all arguments expected by the query were actually provided."""
     expected_arg_names = set(six.iterkeys(expected_types))
     provided_arg_names = set(six.iterkeys(arguments))
@@ -262,7 +265,14 @@ def ensure_arguments_are_provided(expected_types, arguments):
             "missing {}, unexpected "
             "{}".format(missing_args, unexpected_args)
         )
-    for name in expected_arg_names:
+
+
+def validate_arguments(
+    expected_types: Mapping[str, GraphQLType], arguments: Mapping[str, Any]
+) -> None:
+    """Ensure that all arguments are provided and that they are of the expected type."""
+    ensure_arguments_are_provided(expected_types, arguments)
+    for name in expected_types:
         validate_argument_type(name, expected_types[name], arguments[name])
 
 
@@ -276,7 +286,7 @@ def insert_arguments_into_query(compilation_result, arguments):
     Returns:
         string, a query in the appropriate output language, with inserted argument data
     """
-    ensure_arguments_are_provided(compilation_result.input_metadata, arguments)
+    validate_arguments(compilation_result.input_metadata, arguments)
 
     if compilation_result.language == MATCH_LANGUAGE:
         return insert_arguments_into_match_query(compilation_result, arguments)

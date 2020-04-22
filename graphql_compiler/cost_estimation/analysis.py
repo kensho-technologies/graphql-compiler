@@ -23,7 +23,7 @@ from ..cost_estimation.int_value_conversion import (
 )
 from ..cost_estimation.interval import Interval
 from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
-from ..query_formatting.common import ensure_arguments_are_provided
+from ..query_formatting.common import validate_arguments
 from ..schema import is_meta_field
 from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
@@ -398,9 +398,7 @@ class QueryPlanningAnalysis:
             self.ast_with_parameters.query_ast,
             type_equivalence_hints=self.schema_info.type_equivalence_hints,
         )
-        ensure_arguments_are_provided(
-            ir_and_metadata.input_metadata, self.ast_with_parameters.parameters
-        )
+        validate_arguments(ir_and_metadata.input_metadata, self.ast_with_parameters.parameters)
         return ir_and_metadata.query_metadata_table
 
     @cached_property

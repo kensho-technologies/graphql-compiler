@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, NamedTuple, Tuple, TypeVar
+from typing import Any, Dict, NamedTuple, Tuple
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
@@ -59,25 +59,3 @@ def is_same_type(left, right):
         return is_same_type(left.of_type, right.of_type)
     else:
         return False
-
-
-_KeyType = TypeVar("_KeyType")
-
-
-def validate_that_mappings_have_the_same_keys(
-    mapping1: Mapping[_KeyType, Any], mapping2: Mapping[_KeyType, Any]
-) -> None:
-    """Validate that the mappings have the same keys."""
-    mapping1_keys = set(mapping1.keys())
-    mapping2_keys = set(mapping2.keys())
-
-    diff1 = mapping1_keys.difference(mapping2_keys)
-    diff2 = mapping2_keys.difference(mapping1_keys)
-
-    if diff1 or diff2:
-        error_message_list = ["Expected mappings to have the same keys."]
-        if diff1:
-            error_message_list.append(f" Keys in the first mapping but not the second: {diff1}.")
-        if diff2:
-            error_message_list.append(f" Keys in the second mapping but not the first: {diff2}.")
-        raise AssertionError(" ".join(error_message_list))
