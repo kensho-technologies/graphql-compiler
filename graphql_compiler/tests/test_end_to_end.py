@@ -361,7 +361,6 @@ class QueryFormattingTests(unittest.TestCase):
         # Note that parsed_graphql_datetime_type has a different python object reference than
         # GraphQLDateTime, but refers conceptually to the same GraphQL type.
         parsed_graphql_datetime_type = get_schema().get_type("DateTime")
-
         value = deserialize_json_argument(
             "birth_time",
             # The get_type() function above returns an Optional[GraphQLType] and

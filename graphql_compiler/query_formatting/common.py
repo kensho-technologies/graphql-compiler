@@ -2,7 +2,7 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import arrow
 from graphql import (
@@ -11,9 +11,10 @@ from graphql import (
     GraphQLID,
     GraphQLInt,
     GraphQLList,
+    GraphQLNonNull,
     GraphQLScalarType,
-    GraphQLType,
     GraphQLString,
+    GraphQLType,
 )
 import six
 
@@ -113,7 +114,11 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         return expected_type.parse_value(value)
 
 
-def deserialize_json_argument(name: str, expected_type: GraphQLType, value: Any) -> Any:
+def deserialize_json_argument(
+    name: str,
+    expected_type: Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType],
+    value: Any,
+) -> Any:
     """Deserialize a GraphQL argument parsed from a json file.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
@@ -133,7 +138,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLType, value: Any)
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
               message if an error is raised.
-        expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
+        expected_type: the GraphQL type. All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
 
     Returns:
@@ -154,7 +159,8 @@ def deserialize_json_argument(name: str, expected_type: GraphQLType, value: Any)
 
 
 def deserialize_multiple_json_arguments(
-    arguments: Dict[str, Any], expected_types: Dict[str, GraphQLType]
+    arguments: Dict[str, Any],
+    expected_types: Dict[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
 ) -> Dict[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
 
