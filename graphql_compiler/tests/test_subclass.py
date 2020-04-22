@@ -35,7 +35,7 @@ class SubclassTests(unittest.TestCase):
             self.assertEqual(
                 expected,
                 is_subclass,
-                u"{} is subclass of {} evaluates to {}. Expected: {}".format(
+                "{} is subclass of {} evaluates to {}. Expected: {}".format(
                     cls1, cls2, is_subclass, expected
                 ),
             )

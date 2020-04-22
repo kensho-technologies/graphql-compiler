@@ -71,13 +71,13 @@ def check_schema_identifier_is_valid(identifier):
           than alphanumeric characters and underscores
     """
     if not isinstance(identifier, str):
-        raise ValueError(u'Schema identifier "{}" is not a string.'.format(identifier))
+        raise ValueError('Schema identifier "{}" is not a string.'.format(identifier))
     if identifier == "":
-        raise ValueError(u"Schema identifier must be a nonempty string.")
+        raise ValueError("Schema identifier must be a nonempty string.")
     illegal_characters = frozenset(identifier) - _alphanumeric_and_underscore
     if illegal_characters:
         raise ValueError(
-            u'Schema identifier "{}" contains illegal characters: {}'.format(
+            'Schema identifier "{}" contains illegal characters: {}'.format(
                 identifier, illegal_characters
             )
         )
@@ -94,13 +94,13 @@ def check_type_name_is_valid(name):
           underscores, starts with a numeric character, or starts with double underscores
     """
     if not isinstance(name, str):
-        raise InvalidTypeNameError(u'Name "{}" is not a string.'.format(name))
+        raise InvalidTypeNameError('Name "{}" is not a string.'.format(name))
     if not re_name.match(name):
-        raise InvalidTypeNameError(u'"{}" is not a valid GraphQL name.'.format(name))
+        raise InvalidTypeNameError('"{}" is not a valid GraphQL name.'.format(name))
     if name.startswith("__"):
         raise InvalidTypeNameError(
-            u'"{}" starts with two underscores, which is reserved for '
-            u"GraphQL internal use and is not allowed.".format(name)
+            '"{}" starts with two underscores, which is reserved for '
+            "GraphQL internal use and is not allowed.".format(name)
         )
 
 
@@ -183,13 +183,13 @@ def try_get_inline_fragment(selections):
             return inline_fragments_in_selection[0]
         else:
             raise GraphQLValidationError(
-                u'Input selections "{}" contains both InlineFragments and Fields, which may not '
-                u"coexist in one selection.".format(selections)
+                'Input selections "{}" contains both InlineFragments and Fields, which may not '
+                "coexist in one selection.".format(selections)
             )
     else:
         raise GraphQLValidationError(
-            u'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
-            u"".format(selections)
+            'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
+            "".format(selections)
         )
 
 
@@ -217,7 +217,7 @@ def get_copy_of_node_with_new_name(node, new_name):
     )
     if node_type not in allowed_types:
         raise AssertionError(
-            u"Input node {} of type {} is not allowed, only {} are allowed.".format(
+            "Input node {} of type {} is not allowed, only {} are allowed.".format(
                 node, node_type, allowed_types
             )
         )
@@ -273,9 +273,9 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         """
         node_type = type(node).__name__
         if node_type in self.disallowed_types:
-            raise SchemaStructureError(u'Node type "{}" not allowed.'.format(node_type))
+            raise SchemaStructureError('Node type "{}" not allowed.'.format(node_type))
         elif node_type in self.unexpected_types:
-            raise SchemaStructureError(u'Node type "{}" unexpected in schema AST'.format(node_type))
+            raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
         elif node_type in self.check_name_validity_types:
             check_type_name_is_valid(node.name.value)
 
@@ -318,8 +318,8 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
             queried_type_name = type_node.name.value
             if field_name != queried_type_name:
                 raise SchemaStructureError(
-                    u'Query type\'s field name "{}" does not match corresponding queried type '
-                    u'name "{}"'.format(field_name, queried_type_name)
+                    'Query type\'s field name "{}" does not match corresponding queried type '
+                    'name "{}"'.format(field_name, queried_type_name)
                 )
 
 
@@ -344,11 +344,11 @@ def check_ast_schema_is_valid(ast):
 
     if schema.mutation_type is not None:
         raise SchemaStructureError(
-            u"Renaming schemas that contain mutations is currently not supported."
+            "Renaming schemas that contain mutations is currently not supported."
         )
     if schema.subscription_type is not None:
         raise SchemaStructureError(
-            u"Renaming schemas that contain subscriptions is currently not supported."
+            "Renaming schemas that contain subscriptions is currently not supported."
         )
 
     visit(ast, CheckValidTypesAndNamesVisitor())
@@ -377,7 +377,7 @@ def is_property_field_ast(field):
         else:
             return False
     else:
-        raise AssertionError(u'Input selection "{}" is not a Field.'.format(field))
+        raise AssertionError('Input selection "{}" is not a Field.'.format(field))
 
 
 class CheckQueryIsValidToSplitVisitor(Visitor):
@@ -398,8 +398,8 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         """Check that the directive is supported."""
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
-                u'Directive "{}" is not yet supported, only "{}" are currently '
-                u"supported.".format(node.name.value, self.supported_directives)
+                'Directive "{}" is not yet supported, only "{}" are currently '
+                "supported.".format(node.name.value, self.supported_directives)
             )
 
     def enter_selection_set(self, node, *args):
@@ -419,17 +419,17 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
             for field in selections:
                 if isinstance(field, InlineFragmentNode):
                     raise GraphQLValidationError(
-                        u"Inline fragments must be the only selection in scope. However, in "
-                        u"selections {}, an InlineFragment coexists with other selections.".format(
+                        "Inline fragments must be the only selection in scope. However, in "
+                        "selections {}, an InlineFragment coexists with other selections.".format(
                             selections
                         )
                     )
                 if is_property_field_ast(field):
                     if seen_vertex_field:
                         raise GraphQLValidationError(
-                            u"In the selections {}, the property field {} occurs after a vertex "
-                            u"field or a type coercion statement, which is not allowed, as all "
-                            u"property fields must appear before all vertex fields.".format(
+                            "In the selections {}, the property field {} occurs after a vertex "
+                            "field or a type coercion statement, which is not allowed, as all "
+                            "property fields must appear before all vertex fields.".format(
                                 node.selections, field
                             )
                         )
@@ -456,9 +456,7 @@ def check_query_is_valid_to_split(schema, query_ast):
     # Check builtin errors
     built_in_validation_errors = validate(schema, query_ast)
     if len(built_in_validation_errors) > 0:
-        raise GraphQLValidationError(
-            u"AST does not validate: {}".format(built_in_validation_errors)
-        )
+        raise GraphQLValidationError("AST does not validate: {}".format(built_in_validation_errors))
     # Check no bad directives and fields are in order
     visitor = CheckQueryIsValidToSplitVisitor()
     visit(query_ast, visitor)

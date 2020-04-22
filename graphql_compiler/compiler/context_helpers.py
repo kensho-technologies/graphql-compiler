@@ -96,8 +96,8 @@ def validate_context_for_visiting_vertex_field(parent_location, vertex_field_nam
     """Ensure that the current context allows for visiting a vertex field."""
     if is_in_fold_innermost_scope(context):
         raise GraphQLCompilationError(
-            u"Traversing inside a @fold block after filtering on {} or outputting fields "
-            u"is not supported! Parent location: {}, vertex field name: {}".format(
+            "Traversing inside a @fold block after filtering on {} or outputting fields "
+            "is not supported! Parent location: {}, vertex field name: {}".format(
                 COUNT_META_FIELD_NAME, parent_location, vertex_field_name
             )
         )

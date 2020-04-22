@@ -11,8 +11,9 @@ consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
 Database Driver Installations
 -----------------------------
 
-Integration tests are run against multiple databases, some of which
-require that you install specific drivers.
+Integration tests are run against multiple databases, some of which require that you install specific drivers. Below
+you'll find the installation instructions for these drivers for Ubuntu and OSX. You might need to run some of the
+commands with :code:`sudo` depending on your local setup.
 
 MySQL Driver
 ~~~~~~~~~~~~
@@ -27,7 +28,7 @@ or on Ubuntu with:
 
 .. code:: bash
 
-   apt-get install python-mysqldb
+   apt-get install libmysqlclient-dev python-mysqldb
 
 For more details on other systems please refer to `MySQL dialect
 information <https://docs.sqlalchemy.org/en/latest/dialects/mysql.html>`__.
@@ -47,10 +48,10 @@ Or Ubuntu with:
 .. code:: bash
 
     wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -
-    sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
-    sudo apt-get update
-    sudo ACCEPT_EULA=Y apt-get install msodbcsql17
-    sudo apt-get install unixodbc-dev
+    add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
+    apt-get update
+    ACCEPT_EULA=Y apt-get install msodbcsql17
+    apt-get install unixodbc-dev
 
 To see the installation instructions for other operating systems, please follow this `link
 <https://docs.microsoft.com/en-us/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server?view=sql-server-2017&viewFallbackFrom=ssdt-18vs2017>`__.

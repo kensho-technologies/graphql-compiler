@@ -35,8 +35,8 @@ from .sql_formatting import insert_arguments_into_sql_query
 def _raise_invalid_type_error(name, expected_python_type_name, value):
     """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
     raise GraphQLInvalidArgumentError(
-        u"Invalid type for argument {}. Expected {}. Got value {} of "
-        u"type {}.".format(name, expected_python_type_name, value, type(value).__name__)
+        "Invalid type for argument {}. Expected {}. Got value {} of "
+        "type {}.".format(name, expected_python_type_name, value, type(value).__name__)
     )
 
 
@@ -81,7 +81,7 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
             return int(value)
         else:
             raise ValueError(
-                u"Unexpected type {}. Expected one of {}.".format(
+                "Unexpected type {}. Expected one of {}.".format(
                     type(value), (six.integer_types, six.string_types)
                 )
             )
@@ -95,7 +95,7 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         correct_type = False
     if not correct_type:
         raise ValueError(
-            u"Unexpected type {}. Expected one of {}.".format(type(value), expected_python_types)
+            "Unexpected type {}. Expected one of {}.".format(type(value), expected_python_types)
         )
 
     name_to_custom_type = {graphql_type.name: graphql_type for graphql_type in CUSTOM_SCALAR_TYPES}
@@ -240,8 +240,8 @@ def validate_argument_type(name, expected_type, value):
             validate_argument_type(name, inner_type, element)
     else:
         raise AssertionError(
-            u"Could not safely represent the requested GraphQLType: "
-            u"{} {}".format(stripped_type, value)
+            "Could not safely represent the requested GraphQLType: "
+            "{} {}".format(stripped_type, value)
         )
 
 
@@ -254,9 +254,9 @@ def ensure_arguments_are_provided(expected_types, arguments):
         missing_args = expected_arg_names - provided_arg_names
         unexpected_args = provided_arg_names - expected_arg_names
         raise GraphQLInvalidArgumentError(
-            u"Missing or unexpected arguments found: "
-            u"missing {}, unexpected "
-            u"{}".format(missing_args, unexpected_args)
+            "Missing or unexpected arguments found: "
+            "missing {}, unexpected "
+            "{}".format(missing_args, unexpected_args)
         )
     for name in expected_arg_names:
         validate_argument_type(name, expected_types[name], arguments[name])
@@ -284,7 +284,7 @@ def insert_arguments_into_query(compilation_result, arguments):
         return insert_arguments_into_cypher_query_redisgraph(compilation_result, arguments)
     else:
         raise AssertionError(
-            u"Unrecognized language in compilation result: " u"{}".format(compilation_result)
+            "Unrecognized language in compilation result: {}".format(compilation_result)
         )
 
 

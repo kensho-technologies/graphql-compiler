@@ -15,6 +15,18 @@ class PaginationAdvisory(ABC):
 
 
 @dataclass
+class MissingClassCount(PaginationAdvisory):
+    class_name: str
+
+    def __post_init__(self):
+        """Initialize a human-readable message."""
+        self.message = (
+            f"Class count statistics for the vertices and edges mentioned in the query "
+            f"are required for pagination. Class {self.class_name} had no counts."
+        )
+
+
+@dataclass
 class PaginationFieldNotSpecified(PaginationAdvisory):
     vertex_name: str
 
@@ -101,7 +113,7 @@ def get_pagination_plan(
 
     if number_of_pages <= 0:
         raise AssertionError(
-            u"The number of pages should be at least 1, but {} were requested.".format(
+            "The number of pages should be at least 1, but {} were requested.".format(
                 number_of_pages
             )
         )

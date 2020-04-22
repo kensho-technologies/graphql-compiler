@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
-import datetime
-from typing import Any, Dict, Set, Tuple, cast
+import logging
+from typing import Any, Dict, List, Set, Tuple, cast
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -13,16 +13,22 @@ from graphql.language.ast import (
     ListValueNode,
     NameNode,
     OperationDefinitionNode,
+    SelectionNode,
     SelectionSetNode,
     StringValueNode,
 )
+from graphql.pyutils import FrozenList
 
 from ..ast_manipulation import get_ast_field_name, get_only_query_definition
 from ..compiler.helpers import get_parameter_name
+from ..cost_estimation.analysis import QueryPlanningAnalysis
+from ..cost_estimation.int_value_conversion import convert_field_value_to_int
 from ..exceptions import GraphQLError
-from ..global_utils import ASTWithParameters
-from ..schema.schema_info import QueryPlanningSchemaInfo
+from ..global_utils import ASTWithParameters, PropertyPath, VertexPath
 from .pagination_planning import VertexPartitionPlan
+
+
+logger = logging.getLogger(__name__)
 
 
 def _generate_new_name(base_name: str, taken_names: Set[str]) -> str:
@@ -60,10 +66,18 @@ def _get_filter_node_operation(filter_directive: DirectiveNode) -> str:
     return cast(StringValueNode, filter_directive.arguments[0].value).value
 
 
-def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_value: Any) -> bool:
+def _is_new_filter_stronger(
+    query_analysis: QueryPlanningAnalysis,
+    property_path: PropertyPath,
+    operation: str,
+    new_filter_value: Any,
+    old_filter_value: Any,
+) -> bool:
     """Return if the old filter can be omitted in the presence of the new one.
 
     Args:
+        query_analysis: the entire query with any query analysis needed for pagination
+        property_path: path to the filtered field from the query root
         operation: the operation that both filters share. One of "<" and ">=".
         new_filter_value: the value of the new filter
         old_filter_value: the value of the old filter. Must be the exact same type
@@ -72,21 +86,18 @@ def _is_new_filter_stronger(operation: str, new_filter_value: Any, old_filter_va
     Returns:
         whether the old filter can be removed with no change in query meaning.
     """
-    if type(new_filter_value) != type(old_filter_value):
-        raise AssertionError(
-            f"Expected {new_filter_value} and {old_filter_value} "
-            f"to have the same type, but got {type(new_filter_value)} "
-            f"and {type(old_filter_value)}."
-        )
+    vertex_type = query_analysis.types[property_path.vertex_path].name
+    new_int_value = convert_field_value_to_int(
+        query_analysis.schema_info, vertex_type, property_path.field_name, new_filter_value,
+    )
+    old_int_value = convert_field_value_to_int(
+        query_analysis.schema_info, vertex_type, property_path.field_name, old_filter_value,
+    )
 
     if operation == "<":
-        if isinstance(old_filter_value, datetime.datetime):
-            return new_filter_value.replace(tzinfo=None) <= old_filter_value.replace(tzinfo=None)
-        return new_filter_value <= old_filter_value
+        return new_int_value <= old_int_value
     elif operation == ">=":
-        if isinstance(old_filter_value, datetime.datetime):
-            return new_filter_value.replace(tzinfo=None) >= old_filter_value.replace(tzinfo=None)
-        return new_filter_value >= old_filter_value
+        return new_int_value >= old_int_value
     else:
         raise AssertionError(f"Expected operation to be < or >=, got {operation}.")
 
@@ -103,22 +114,24 @@ def _are_filter_operations_equal_and_possible_to_eliminate(
 
 
 def _add_pagination_filter_at_node(
-    query_ast: DocumentNode,
+    query_analysis: QueryPlanningAnalysis,
+    node_vertex_path: VertexPath,
+    node_ast: SelectionNode,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-    query_string: str,
-) -> Tuple[DocumentNode, Dict[str, Any]]:
+) -> Tuple[SelectionNode, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
-        query_ast: Part of the entire query, rooted at the location where we are
-                   adding a filter.
-        pagination_field: The field on which we are adding a filter
-        directive_to_add: The filter directive to add
-        extended_parameters: The original parameters of the query along with
+        query_analysis: the entire query with any query analysis needed for pagination
+        node_vertex_path: path to the node_ast from the query root
+        node_ast: part of the entire query, rooted at the location where we are
+                  adding a filter.
+        pagination_field: field on which we are adding a filter
+        directive_to_add: filter directive to add
+        extended_parameters: original parameters of the query along with
                              the parameter used in directive_to_add
-        query_string: The entire original query. Used in error messages only.
 
     Returns:
         tuple (new_ast, removed_parameters)
@@ -126,9 +139,15 @@ def _add_pagination_filter_at_node(
                  the same operation removed.
         new_parameters: The parameters to use with the new_ast
     """
-    if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
+    if not isinstance(node_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
-            f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
+            f'Input AST is of type "{type(node_ast).__name__}", which should not be a selection.'
+        )
+
+    if node_ast.selection_set is None:
+        raise AssertionError(
+            f"Vertex field AST has no selection set at path {node_vertex_path}. "
+            f"Query: {query_analysis.query_string_with_parameters}"
         )
 
     new_directive_operation = _get_filter_node_operation(directive_to_add)
@@ -139,7 +158,7 @@ def _add_pagination_filter_at_node(
     new_parameters = dict(extended_parameters)
     new_selections = []
     found_field = False
-    for selection_ast in query_ast.selection_set.selections:
+    for selection_ast in node_ast.selection_set.selections:
         new_selection_ast = selection_ast
         field_name = get_ast_field_name(selection_ast)
         if field_name == pagination_field:
@@ -147,8 +166,8 @@ def _add_pagination_filter_at_node(
             new_selection_ast = copy(selection_ast)
             new_selection_ast.directives = copy(selection_ast.directives)
 
-            new_directives = []
-            for directive in selection_ast.directives:
+            new_directives: List[DirectiveNode] = []
+            for directive in selection_ast.directives or []:
                 operation = _get_filter_node_operation(directive)
                 if _are_filter_operations_equal_and_possible_to_eliminate(
                     new_directive_operation, operation
@@ -156,20 +175,32 @@ def _add_pagination_filter_at_node(
                     parameter_name = _get_binary_filter_node_parameter(directive)
                     parameter_value = new_parameters[parameter_name]
                     if not _is_new_filter_stronger(
-                        operation, new_directive_parameter_value, parameter_value
+                        query_analysis,
+                        PropertyPath(node_vertex_path, pagination_field),
+                        operation,
+                        new_directive_parameter_value,
+                        parameter_value,
                     ):
-                        raise AssertionError(
-                            f"Pagination filter {directive_to_add} on "
-                            f"{pagination_field} is not stronger than "
-                            f"an existing filter {directive}. This is "
-                            f"likely a bug in parameter generation. "
-                            f"Query string: {query_string}"
+                        logger.error(
+                            "Pagination filter %(new_filter)s on %(pagination_field)s with param "
+                            "%(new_filter_param)s is not stronger than existing filter "
+                            "%(existing_filter)s with param %(existing_param)s. This is either a "
+                            "bug in parameter generation, or this assertion is outdated. "
+                            "Query: %(query)s",
+                            {
+                                "new_filter": print_ast(directive_to_add),
+                                "pagination_field": pagination_field,
+                                "new_filter_param": new_directive_parameter_value,
+                                "existing_filter": print_ast(directive),
+                                "existing_param": parameter_value,
+                                "query": query_analysis.query_string_with_parameters,
+                            },
                         )
                     del new_parameters[parameter_name]
                 else:
                     new_directives.append(directive)
             new_directives.append(directive_to_add)
-            new_selection_ast.directives = new_directives
+            new_selection_ast.directives = FrozenList(new_directives)
         new_selections.append(new_selection_ast)
 
     # If field didn't exist, create it and add the new directive to it.
@@ -178,29 +209,31 @@ def _add_pagination_filter_at_node(
             0, FieldNode(name=NameNode(value=pagination_field), directives=[directive_to_add])
         )
 
-    new_ast = copy(query_ast)
+    new_ast = copy(node_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
     return new_ast, new_parameters
 
 
 def _add_pagination_filter_recursively(
-    query_ast: DocumentNode,
-    query_path: Tuple[str, ...],
+    query_analysis: QueryPlanningAnalysis,
+    node_ast: SelectionNode,
+    full_query_path: VertexPath,
+    query_path: VertexPath,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-    query_string: str,
-) -> Tuple[DocumentNode, Dict[str, Any]]:
+) -> Tuple[SelectionNode, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
-        query_ast: The query in which we are adding a filter
-        query_path: The path to the pagination vertex
+        query_analysis: the entire query with any query analysis needed for pagination
+        node_ast: Part of the entire query, the location where we are adding a filter
+        full_query_path: path to the pagination vertex from the root
+        query_path: path to the pagination vertex from this node (node_ast)
         pagination_field: The field on which we are adding a filter
         directive_to_add: The filter directive to add
         extended_parameters: The original parameters of the query along with
                              the parameter used in directive_to_add
-        query_string: The entire original query. Used in error messages only.
 
     Returns:
         tuple (new_ast, removed_parameters)
@@ -208,40 +241,46 @@ def _add_pagination_filter_recursively(
                  the same operation removed.
         new_parameters: The parameters to use with the new_ast
     """
-    if not isinstance(query_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
+    if not isinstance(node_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
-            f'Input AST is of type "{type(query_ast).__name__}", which should not be a selection.'
+            f'Input AST is of type "{type(node_ast).__name__}", which should not be a selection.'
         )
 
     if len(query_path) == 0:
         return _add_pagination_filter_at_node(
-            query_ast, pagination_field, directive_to_add, extended_parameters, query_string
+            query_analysis,
+            full_query_path,
+            node_ast,
+            pagination_field,
+            directive_to_add,
+            extended_parameters,
         )
 
-    if query_ast.selection_set is None:
-        raise AssertionError(f"Invalid query path {query_path} {query_ast}.")
+    if node_ast.selection_set is None:
+        raise AssertionError(f"Invalid query path {query_path} {node_ast}.")
 
     found_field = False
     new_selections = []
-    for selection_ast in query_ast.selection_set.selections:
+    for selection_ast in node_ast.selection_set.selections:
         new_selection_ast = selection_ast
         field_name = get_ast_field_name(selection_ast)
         if field_name == query_path[0]:
             found_field = True
             new_selection_ast, new_parameters = _add_pagination_filter_recursively(
+                query_analysis,
                 selection_ast,
+                full_query_path,
                 query_path[1:],
                 pagination_field,
                 directive_to_add,
                 extended_parameters,
-                query_string,
             )
         new_selections.append(new_selection_ast)
 
     if not found_field:
-        raise AssertionError(f"Invalid query path {query_path} {query_ast}.")
+        raise AssertionError(f"Invalid query path {query_path} {node_ast}.")
 
-    new_ast = copy(query_ast)
+    new_ast = copy(node_ast)
     new_ast.selection_set = SelectionSetNode(selections=new_selections)
     return new_ast, new_parameters
 
@@ -261,8 +300,7 @@ def _make_binary_filter_directive_node(op_name: str, param_name: str) -> Directi
 
 
 def generate_parameterized_queries(
-    schema_info: QueryPlanningSchemaInfo,
-    query: ASTWithParameters,
+    query_analysis: QueryPlanningAnalysis,
     vertex_partition: VertexPartitionPlan,
     parameter_value: Any,
 ) -> Tuple[ASTWithParameters, ASTWithParameters]:
@@ -278,8 +316,7 @@ def generate_parameterized_queries(
     a value inside the range of initial possible values for that field.
 
     Args:
-        schema_info: QueryPlanningSchemaInfo
-        query: the query to parameterize
+        query_analysis: the query with any query analysis needed for pagination
         vertex_partition: pagination plan dictating where to insert the filter
         parameter_value: the value of the parameter used for pagination
 
@@ -289,7 +326,7 @@ def generate_parameterized_queries(
         remainder: AST and params for the remainder query that returns all results
                    not on the next page.
     """
-    query_string = print_ast(query.query_ast)
+    query = query_analysis.ast_with_parameters
     query_root = get_only_query_definition(query.query_ast, GraphQLError)
 
     # Create extended parameters that include the pagination parameter value
@@ -298,20 +335,22 @@ def generate_parameterized_queries(
     extended_parameters[param_name] = parameter_value
 
     next_page_root, next_page_parameters = _add_pagination_filter_recursively(
+        query_analysis,
         query_root,
+        vertex_partition.query_path,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node("<", param_name),
         extended_parameters,
-        query_string,
     )
     remainder_root, remainder_parameters = _add_pagination_filter_recursively(
+        query_analysis,
         query_root,
+        vertex_partition.query_path,
         vertex_partition.query_path,
         vertex_partition.pagination_field,
         _make_binary_filter_directive_node(">=", param_name),
         extended_parameters,
-        query_string,
     )
 
     next_page = ASTWithParameters(DocumentNode(definitions=[next_page_root]), next_page_parameters)

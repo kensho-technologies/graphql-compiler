@@ -45,7 +45,7 @@ from ..schema_generation.schema_graph import SchemaGraph
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
-WHITESPACE_PATTERN = re.compile(u"[\t\n ]*", flags=re.UNICODE)
+WHITESPACE_PATTERN = re.compile("[\t\n ]*", flags=re.UNICODE)
 
 # flag to indicate a test component should be skipped
 SKIP_TEST = "SKIP"
@@ -454,7 +454,7 @@ def get_function_names_from_module(module):
 def get_test_function_names_from_class(test_class):
     """Return a set of test function names present in a given TestCase class."""
     if not issubclass(test_class, TestCase):
-        raise AssertionError(u"Received non-test class {} as input.".format(test_class))
+        raise AssertionError("Received non-test class {} as input.".format(test_class))
     member_dict = test_class.__dict__
     return {
         member
@@ -465,7 +465,7 @@ def get_test_function_names_from_class(test_class):
 
 def transform(emitted_output: str) -> str:
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
-    return WHITESPACE_PATTERN.sub(u"", emitted_output)
+    return WHITESPACE_PATTERN.sub("", emitted_output)
 
 
 def _get_mismatch_message(
@@ -474,7 +474,7 @@ def _get_mismatch_message(
     """Create a well-formated error message indicating that two lists of blocks are mismatched."""
     pretty_expected = pformat(expected_blocks)
     pretty_received = pformat(received_blocks)
-    return u"{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
+    return "{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
 
 
 def compare_ir_blocks(
@@ -484,7 +484,7 @@ def compare_ir_blocks(
     mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
 
     if len(expected_blocks) != len(received_blocks):
-        test_case.fail(u"Not the same number of blocks:\n\n" u"{}".format(mismatch_message))
+        test_case.fail("Not the same number of blocks:\n\n{}".format(mismatch_message))
 
     for i in six.moves.xrange(len(expected_blocks)):
         expected = expected_blocks[i]
@@ -492,8 +492,8 @@ def compare_ir_blocks(
         test_case.assertEqual(
             expected,
             received,
-            msg=u"Blocks at position {} were different: {} vs {}\n\n"
-            u"{}".format(i, expected, received, mismatch_message),
+            msg="Blocks at position {} were different: {} vs {}\n\n"
+            "{}".format(i, expected, received, mismatch_message),
         )
 
 
@@ -548,7 +548,7 @@ def compare_input_metadata(
 
         test_case.assertTrue(
             is_same_type(expected_value, received_value),
-            msg=u"{} != {}".format(str(expected_value), str(received_value)),
+            msg="{} != {}".format(str(expected_value), str(received_value)),
         )
 
 
@@ -829,7 +829,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
     elif dialect == "mssql":
         sqlalchemy_compiler_dialect = mssql.dialect()
     else:
-        raise AssertionError(u"Unrecognized dialect {}".format(dialect))
+        raise AssertionError("Unrecognized dialect {}".format(dialect))
     return make_sqlalchemy_schema_info(
         schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors
     )
