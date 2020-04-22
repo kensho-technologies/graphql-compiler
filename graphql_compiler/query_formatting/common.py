@@ -2,7 +2,7 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
-from typing import Any, Dict, Union
+from typing import Any, Mapping, Union
 
 import arrow
 from graphql import (
@@ -20,7 +20,7 @@ import six
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type, validate_that_dicts_have_the_same_keys
+from ..global_utils import is_same_type, validate_that_mappings_have_the_same_keys
 from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -45,7 +45,7 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
     """Deserialize argument. See docstring of deserialize_json_argument.
 
     Args:
-        expected_type: GraphQLType we expect. All GraphQLNonNull type wrappers are stripped.
+        expected_type: GraphQL type we expect.
         value: object that can be interpreted as being of that type
 
     Returns:
@@ -158,20 +158,20 @@ def deserialize_json_argument(
 
 
 def deserialize_multiple_json_arguments(
-    arguments: Dict[str, Any],
-    expected_types: Dict[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
-) -> Dict[str, Any]:
+    arguments: Mapping[str, Any],
+    expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
+) -> Mapping[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
 
     Args:
-        arguments: dict mapping argument names to json serialized values.
-        expected_types: dict mapping argument names to expected GraphQL types.
+        arguments: mapping of argument names to json serialized values.
+        expected_types: mapping of argument names to expected GraphQL types.
 
     Returns:
-        a dict mapping the argument names to their deserialized values. See the docstring of
+        a mapping of argument names to their deserialized values. See the docstring of
         deserialize_json_argument for more info on how arguments are deserialized.
     """
-    validate_that_dicts_have_the_same_keys(arguments, expected_types)
+    validate_that_mappings_have_the_same_keys(arguments, expected_types)
     return {
         name: deserialize_json_argument(name, expected_types[name], value)
         for name, value in arguments.items()
