@@ -80,4 +80,4 @@ def validate_that_mappings_have_the_same_keys(
             error_message_list.append(f" Keys in the first mapping but not the second: {diff1}.")
         if diff2:
             error_message_list.append(f" Keys in the second mapping but not the first: {diff2}.")
-        raise AssertionError("\n".join(error_message_list))
+        raise AssertionError(" ".join(error_message_list))
