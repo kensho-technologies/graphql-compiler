@@ -2,15 +2,24 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
+from typing import Any, Dict
 
 import arrow
-from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
+from graphql import (
+    GraphQLBoolean,
+    GraphQLFloat,
+    GraphQLID,
+    GraphQLInt,
+    GraphQLList,
+    GraphQLScalarType,
+    GraphQLString,
+)
 import six
 
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type
+from ..global_utils import is_same_type, validate_that_dicts_have_the_same_keys
 from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -31,7 +40,7 @@ def _raise_invalid_type_error(name, expected_python_type_name, value):
     )
 
 
-def _deserialize_anonymous_json_argument(expected_type, value):
+def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize argument. See docstring of deserialize_json_argument.
 
     Args:
@@ -105,7 +114,7 @@ def _deserialize_anonymous_json_argument(expected_type, value):
         return expected_type.parse_value(value)
 
 
-def deserialize_json_argument(name, expected_type, value):
+def deserialize_json_argument(name: str, expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize a GraphQL argument parsed from a json file.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
@@ -143,6 +152,27 @@ def deserialize_json_argument(name, expected_type, value):
         return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
     except (ValueError, TypeError) as e:
         raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+
+
+def deserialize_json_arguments(
+    arguments: Dict[str, Any],
+    expected_types: Dict[str, GraphQLScalarType]
+) -> Dict[str, Any]:
+    """Deserialize GraphQL arguments parsed from a json file.
+
+    Args:
+        arguments: dict mapping argument names to json serialized values.
+        expected_types: dict mapping argument names to expected GraphQL types.
+
+    Returns:
+        a dict mapping the argument names to their deserialized values. See the docstring of
+        deserialize_json_argument for more info on how values are deserialized.
+    """
+    validate_that_dicts_have_the_same_keys(arguments, expected_types)
+    return {
+        name: deserialize_json_argument(name, expected_types[name], value)
+        for name, value in arguments.items()
+    }
 
 
 def validate_argument_type(name, expected_type, value):

@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
-from typing import Any, Dict, NamedTuple, Tuple
+from typing import Any, Dict, NamedTuple, Tuple, TypeVar
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
@@ -59,3 +59,26 @@ def is_same_type(left, right):
         return is_same_type(left.of_type, right.of_type)
     else:
         return False
+
+
+_KeyType = TypeVar("_KeyType")
+
+
+def validate_that_dicts_have_the_same_keys(
+    dict1: Dict[_KeyType, Any],
+    dict2: Dict[_KeyType, Any]
+) -> None:
+    """Validate that the dictionaries have the same keys."""
+    dict1_keys = set(dict1.keys())
+    dict2_keys = set(dict2.keys())
+
+    difference1 = dict1_keys.difference(dict2_keys)
+    difference2 = dict2_keys.difference(dict1_keys)
+
+    if difference1 or difference2:
+        error_message_list = ["Expected dictionaries to have the same keys."]
+        if difference1:
+            error_message_list.append(f" Keys in the first dict but not the second: {difference1}.")
+        if difference2:
+            error_message_list.append(f" Keys in the second dict but not the first: {difference2}.")
+        raise AssertionError("\n".join(error_message_list))

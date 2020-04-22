@@ -20,7 +20,11 @@ from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
-from ..query_formatting.common import deserialize_json_argument, validate_argument_type
+from ..query_formatting.common import (
+    deserialize_json_argument,
+    deserialize_json_arguments,
+    validate_argument_type,
+)
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
 from ..schema.schema_info import CommonSchemaInfo
 from .test_helpers import compare_gremlin, compare_match, get_schema
@@ -330,6 +334,24 @@ class QueryFormattingTests(unittest.TestCase):
                     "amount", GraphQLInt, "50000000000000000000000000000000000000000"
                 ),
             )
+
+    def test_multiple_argument_deserialization(self) -> None:
+        serialized_arguments = {
+            "amount": 5,
+            "birthday": "2014-02-05",
+        }
+        expected_types = {
+            "amount": GraphQLInt,
+            "birthday": GraphQLDate,
+        }
+        expected_deserialization = {
+            "amount": 5,
+            "birthday": datetime.date(2014, 2, 5),
+        }
+        self.assertEqual(
+            expected_deserialization,
+            deserialize_json_arguments(serialized_arguments, expected_types)
+        )
 
     def test_invalid_directive_comparison(self) -> None:
         # This test will fail if the directive types in deserialize_json_argument are compared by
