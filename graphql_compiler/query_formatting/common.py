@@ -53,37 +53,35 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
             GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
             GraphQLFloat: float
             GraphQLDecimal: decimal.Decimal
-            GraphQLInt: six.integer_types, supporting long integers
-            GraphQLString: six.string_types
+            GraphQLInt: int
+            GraphQLString: str
             GraphQLBoolean: bool
-            GraphQLID: six.string_types
+            GraphQLID: str
 
     Raises:
         ValueError if the value is not appropriate for the type. ValueError is chosen because
         it is already the base case of exceptions raised by the GraphQL parsers.
     """
     allowed_types_for_graphql_type = {
-        GraphQLDate.name: (six.string_types,),
-        GraphQLDateTime.name: (six.string_types,),
-        GraphQLFloat.name: (six.string_types, float, six.integer_types),
-        GraphQLDecimal.name: (six.string_types, float, six.integer_types),
-        GraphQLInt.name: (six.integer_types, six.string_types),
-        GraphQLString.name: (six.string_types,),
+        GraphQLDate.name: (str,),
+        GraphQLDateTime.name: (str,),
+        GraphQLFloat.name: (str, float, int),
+        GraphQLDecimal.name: (str, float, int),
+        GraphQLInt.name: (int, str),
+        GraphQLString.name: (str,),
         GraphQLBoolean.name: (bool,),
-        GraphQLID.name: (six.integer_types, six.string_types,),
+        GraphQLID.name: (int, str,),
     }
 
     # Check for long integers, bypassing the GraphQLInt parser
     if is_same_type(GraphQLInt, expected_type):
-        if isinstance(value, six.integer_types):
+        if isinstance(value, int):
             return value
-        elif isinstance(value, six.string_types):
+        elif isinstance(value, str):
             return int(value)
         else:
             raise ValueError(
-                "Unexpected type {}. Expected one of {}.".format(
-                    type(value), (six.integer_types, six.string_types)
-                )
+                "Unexpected type {}. Expected one of {}.".format(type(value), (int, str))
             )
 
     # Check if the type of the value is correct
@@ -143,10 +141,10 @@ def deserialize_json_argument(name: str, expected_type: GraphQLScalarType, value
             GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
             GraphQLFloat: float
             GraphQLDecimal: decimal.Decimal
-            GraphQLInt: six.integer_types, supporting long integers
-            GraphQLString: six.string_types
+            GraphQLInt: int
+            GraphQLString: str
             GraphQLBoolean: bool
-            GraphQLID: six.string_types
+            GraphQLID: str
     """
     try:
         return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
