@@ -350,7 +350,7 @@ class QueryFormattingTests(unittest.TestCase):
         }
         self.assertEqual(
             expected_deserialization,
-            deserialize_json_arguments(serialized_arguments, expected_types)
+            deserialize_json_arguments(serialized_arguments, expected_types),
         )
 
     def test_invalid_directive_comparison(self) -> None:

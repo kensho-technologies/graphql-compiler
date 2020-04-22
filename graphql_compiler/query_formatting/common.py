@@ -155,8 +155,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLScalarType, value
 
 
 def deserialize_json_arguments(
-    arguments: Dict[str, Any],
-    expected_types: Dict[str, GraphQLScalarType]
+    arguments: Dict[str, Any], expected_types: Dict[str, GraphQLScalarType]
 ) -> Dict[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
 

@@ -40,8 +40,8 @@ def merge_non_overlapping_dicts(merge_target, new_data):
     for key, value in six.iteritems(new_data):
         if key in merge_target:
             raise AssertionError(
-                u'Overlapping key "{}" found in dicts that are supposed '
-                u"to not overlap. Values: {} {}".format(key, merge_target[key], value)
+                'Overlapping key "{}" found in dicts that are supposed '
+                "to not overlap. Values: {} {}".format(key, merge_target[key], value)
             )
 
         result[key] = value
@@ -65,8 +65,7 @@ _KeyType = TypeVar("_KeyType")
 
 
 def validate_that_dicts_have_the_same_keys(
-    dict1: Dict[_KeyType, Any],
-    dict2: Dict[_KeyType, Any]
+    dict1: Dict[_KeyType, Any], dict2: Dict[_KeyType, Any]
 ) -> None:
     """Validate that the dictionaries have the same keys."""
     dict1_keys = set(dict1.keys())
