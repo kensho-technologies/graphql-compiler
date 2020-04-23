@@ -19,11 +19,15 @@ from graphql import (
     GraphQLScalarType,
     GraphQLSchema,
     GraphQLString,
+    GraphQLBoolean,
+    GraphQLFloat,
+    GraphQLID,
     lexicographic_sort_schema,
     print_schema,
 )
 from graphql.type.directives import specified_directives
 import six
+import itertools
 
 from .typedefs import (  # noqa
     ClassToFieldTypeOverridesType,
@@ -368,6 +372,18 @@ CUSTOM_SCALAR_TYPES = (
     GraphQLDate,
     GraphQLDateTime,
 )
+
+SCALAR_TYPES = (
+    GraphQLInt,
+    GraphQLString,
+    GraphQLBoolean,
+    GraphQLFloat,
+    GraphQLID,
+) + CUSTOM_SCALAR_TYPES
+
+SCALAR_TYPE_NAME_TO_VALUE = {
+    scalar_type.name: scalar_type for scalar_type in SCALAR_TYPES
+}
 
 DIRECTIVES = (
     FilterDirective,

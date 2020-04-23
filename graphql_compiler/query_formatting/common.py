@@ -2,8 +2,8 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
-from typing import Any, Mapping, Union
-
+from typing import Any, Mapping, Union, Collection, Type
+from global_utils import validate_that_mappings_have_the_same_keys
 import arrow
 from graphql import (
     GraphQLBoolean,
@@ -22,7 +22,7 @@ from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LA
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..global_utils import is_same_type
-from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import SCALAR_TYPE_NAME_TO_VALUE, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
@@ -34,84 +34,65 @@ from .sql_formatting import insert_arguments_into_sql_query
 ######
 
 
-def _raise_invalid_type_error(name, expected_python_type_name, value):
+def _raise_invalid_type_error(
+    name: str,
+    expected_python_types: Collection[Type],
+    value: Any
+) -> None:
     """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
     raise GraphQLInvalidArgumentError(
-        "Invalid type for argument {}. Expected {}. Got value {} of "
-        "type {}.".format(name, expected_python_type_name, value, type(value).__name__)
+        f"Invalid type for argument {name}. Expected one of {expected_python_types}. Got value "
+        f"{value} of type {type(value).__name__} instead."
     )
 
+from types import MappingProxyType
 
-def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value: Any) -> Any:
-    """Deserialize argument. See docstring of deserialize_json_argument.
+_ALLOWED_JSON_SCALAR_TYPES = {
+    GraphQLDate.name: (str,),
+    GraphQLDateTime.name: (str,),
+    GraphQLFloat.name: (str, float, int),
+    GraphQLDecimal.name: (str, float, int),
+    GraphQLInt.name: (int, str),
+    GraphQLString.name: (str,),
+    GraphQLBoolean.name: (bool,),
+    GraphQLID.name: (int, str,),
+}
+validate_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_NAME_TO_VALUE)
 
-    Args:
-        expected_type: GraphQL type we expect.
-        value: object that can be interpreted as being of that type
 
-    Returns:
-        a value of the type produced by the parser of the expected type:
-            GraphQLDate: datetime.date
-            GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
-            GraphQLFloat: float
-            GraphQLDecimal: decimal.Decimal
-            GraphQLInt: int
-            GraphQLString: str
-            GraphQLBoolean: bool
-            GraphQLID: str
-
-    Raises:
-        ValueError if the value is not appropriate for the type. ValueError is chosen because
-        it is already the base case of exceptions raised by the GraphQL parsers.
-    """
-    allowed_types_for_graphql_type = {
-        GraphQLDate.name: (str,),
-        GraphQLDateTime.name: (str,),
-        GraphQLFloat.name: (str, float, int),
-        GraphQLDecimal.name: (str, float, int),
-        GraphQLInt.name: (int, str),
-        GraphQLString.name: (str,),
-        GraphQLBoolean.name: (bool,),
-        GraphQLID.name: (int, str,),
-    }
-
-    # Check for long integers, bypassing the GraphQLInt parser
-    if is_same_type(GraphQLInt, expected_type):
-        if isinstance(value, int):
-            return value
-        elif isinstance(value, str):
-            return int(value)
-        else:
-            raise ValueError(
-                "Unexpected type {}. Expected one of {}.".format(type(value), (int, str))
-            )
-
-    # Check if the type of the value is correct
-    correct_type = True
-    expected_python_types = allowed_types_for_graphql_type[expected_type.name]
-    if isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type):
-        correct_type = False  # We explicitly disallow passing boolean values for non-boolean types
-    if not isinstance(value, expected_python_types):
-        correct_type = False
-    if not correct_type:
-        raise ValueError(
-            "Unexpected type {}. Expected one of {}.".format(type(value), expected_python_types)
+def _validate_json_scalar_argument(name: str, expected_type: GraphQLScalarType, value: Any) -> None:
+    """Validate that the JSON serialized scalar argument has the expected python type."""
+    expected_python_types = _ALLOWED_JSON_SCALAR_TYPES.get(expected_type.name)
+    if expected_python_types is None:
+        raise AssertionError(
+            f"Got unsupported GraphQL type {expected_type} for argument {name} with value {value}."
         )
+    elif (
+        # We explicitly disallow passing boolean values for non-boolean types
+        (isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type)) or
+        not isinstance(value, expected_python_types)
+    ):
+        _raise_invalid_type_error(name, expected_python_types, value)
 
-    name_to_custom_type = {graphql_type.name: graphql_type for graphql_type in CUSTOM_SCALAR_TYPES}
-    # Parse the value. In most cases we can use the default GraphQL parser, but there are some
-    # special cases where we are more permissive than the default.
-    # By default, strings cannot be parsed to float.
-    if is_same_type(expected_type, GraphQLFloat):
-        return float(value)
-    # Use the default GraphQL parser to parse the value
-    elif expected_type.name in name_to_custom_type:
-        # Since we cannot serialize the parse_value function of custom scalar types when
-        # serializing a schema, it is possible that the parse_value is incorrectly set. We must,
-        # therefore, use the parse_value function of the original scalar type definition.
-        return name_to_custom_type[expected_type.name].parse_value(value)
-    else:
-        return expected_type.parse_value(value)
+
+_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = {
+    GraphQLInt.name: int,
+    GraphQLFloat.name: float
+}
+_SCALAR_DESERIALIZATION_FUNCTIONS = {
+    name: _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(name, graphql_type.parse)
+    for name, graphql_type in SCALAR_TYPE_NAME_TO_VALUE.items()
+}
+
+
+def _deserialize_json_scalar_argument(
+    name,
+    expected_type: GraphQLScalarType,
+    value: Any
+) -> Any:
+    """Deserialize the json serialized scalar argument."""
+    _validate_json_scalar_argument(name, expected_type, value)
+    return _SCALAR_DESERIALIZATION_FUNCTIONS[expected_type.name](value)
 
 
 def deserialize_json_argument(
@@ -152,10 +133,19 @@ def deserialize_json_argument(
             GraphQLBoolean: bool
             GraphQLID: str
     """
-    try:
-        return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
-    except (ValueError, TypeError) as e:
-        raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+    stripped_type = strip_non_null_from_type(expected_type)
+
+    if isinstance(stripped_type, GraphQLList):
+        if not isinstance(value, list):
+            _raise_invalid_type_error(name, (list,), value)
+
+        inner_stripped_type = strip_non_null_from_type(stripped_type.inner)
+        return [
+            _deserialize_json_scalar_argument(name, inner_stripped_type, element)
+            for element in value
+        ]
+    else:
+        return _deserialize_json_scalar_argument(name, stripped_type, value)
 
 
 def deserialize_multiple_json_arguments(
@@ -195,28 +185,28 @@ def validate_argument_type(name, expected_type, value):
     stripped_type = strip_non_null_from_type(expected_type)
     if is_same_type(GraphQLString, stripped_type):
         if not isinstance(value, six.string_types):
-            _raise_invalid_type_error(name, "string", value)
+            _raise_invalid_type_error(name, (str,), value)
     elif is_same_type(GraphQLID, stripped_type):
         # IDs can be strings or numbers, but the GraphQL library coerces them to strings.
         # We will follow suit and treat them as strings.
         if not isinstance(value, six.string_types):
-            _raise_invalid_type_error(name, "string", value)
+            _raise_invalid_type_error(name, (str,), value)
     elif is_same_type(GraphQLFloat, stripped_type):
         if not isinstance(value, float):
-            _raise_invalid_type_error(name, "float", value)
+            _raise_invalid_type_error(name, (float,), value)
     elif is_same_type(GraphQLInt, stripped_type):
         # Special case: in Python, isinstance(True, int) returns True.
         # Safeguard against this with an explicit check against bool type.
         if isinstance(value, bool) or not isinstance(value, six.integer_types):
-            _raise_invalid_type_error(name, "int", value)
+            _raise_invalid_type_error(name, (int,), value)
     elif is_same_type(GraphQLBoolean, stripped_type):
         if not isinstance(value, bool):
-            _raise_invalid_type_error(name, "bool", value)
+            _raise_invalid_type_error(name, (bool,), value)
     elif is_same_type(GraphQLDecimal, stripped_type):
         # Types we support are int, float, and Decimal, but not bool.
         # isinstance(True, int) returns True, so we explicitly forbid bool.
         if isinstance(value, bool):
-            _raise_invalid_type_error(name, "decimal", value)
+            _raise_invalid_type_error(name, (bool,), value)
         if not isinstance(value, decimal.Decimal):
             try:
                 decimal.Decimal(value)
@@ -232,14 +222,14 @@ def validate_argument_type(name, expected_type, value):
             raise GraphQLInvalidArgumentError(e)
     elif is_same_type(GraphQLDateTime, stripped_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
-            _raise_invalid_type_error(name, "datetime", value)
+            _raise_invalid_type_error(name, (datetime.date, arrow.Arrow), value)
         try:
             GraphQLDateTime.serialize(value)
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif isinstance(stripped_type, GraphQLList):
         if not isinstance(value, list):
-            _raise_invalid_type_error(name, "list", value)
+            _raise_invalid_type_error(name, (list,), value)
         inner_type = strip_non_null_from_type(stripped_type.of_type)
         for element in value:
             validate_argument_type(name, inner_type, element)
