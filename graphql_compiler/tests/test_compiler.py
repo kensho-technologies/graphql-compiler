@@ -83,6 +83,8 @@ def check_test_data(
         string_result = print_sqlalchemy_query_string(
             result.query, test_case.mssql_schema_info.dialect
         )
+        print("\n\n========MSSQL RESULT========")
+        print(string_result)
         compare_sql(test_case, expected_mssql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -98,6 +100,8 @@ def check_test_data(
         string_result = print_sqlalchemy_query_string(
             result.query, test_case.postgresql_schema_info.dialect
         )
+        print("\n\n========POSTGRESQL RESULT========")
+        print(string_result)
         compare_sql(test_case, expected_postgresql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -5787,7 +5791,35 @@ class CompilerTests(unittest.TestCase):
             ])}
         """
         # TODO: implement multiple traversals in a separate PR
-        expected_sql = NotImplementedError
+        expected_mssql = SKIP_TEST
+        #
+        #     SELECT
+        #         [Animal_1].name AS animal_name,
+        #         folded_subquery_1.fold_output_name AS sibling_and_self_species_list
+        #     FROM db_1.schema_1.[Animal] AS [Animal_1]
+        #     JOIN (
+        #         SELECT
+        #             [Animal_2].uuid AS uuid,
+        #             coalesce(
+        #                 (SELECT '|' + coalesce(
+        #                     REPLACE(
+        #                         REPLACE(
+        #                             REPLACE(
+        #                                 [Species_1].name, '^', '^e'
+        #                             ), '~', '^n'),
+        #                         '|', '^d'),
+        #                     '~')
+        #                 FROM db_1.schema_1.[Species] AS [Species_1]
+        #                 WHERE [Animal_3].species = [Species_1].uuid FOR XML PATH ('')
+        #                 ),
+        #             '') AS fold_output_name
+        #         FROM db_1.schema_1.[Animal] AS [Animal_2]
+        #         JOIN db_1.schema_1.[Animal] AS [Animal_4]
+        #         ON [Animal_2].parent = [Animal_4].uuid
+        #         JOIN db_1.schema_1.[Animal] AS [Animal_3]
+        #         ON [Animal_5].uuid = [Animal_3].parent
+        #     ) AS folded_subquery_1
+        #     ON [Animal_1].uuid = folded_subquery_1.uuid
         # expected_sql = '''
         #     SELECT
         #         [Animal_1].name as animal_name,
@@ -5825,15 +5857,55 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.name] AS
                 `sibling_and_self_names_list`
         """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_names_list
+            FROM
+                schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name 
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_2".parent = "Animal_4".uuid
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_4".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        """
+            SELECT
+                "Animal_1".name AS animal_name, 
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) 
+                    AS sibling_and_self_names_list 
+            FROM 
+                schema_1."Animal" AS "Animal_1" 
+            JOIN (
+                SELECT 
+                    "Animal_1".uuid AS uuid, 
+                    array_agg("Animal_2".name) AS fold_output_name 
+                FROM schema_1."Animal" AS "Animal_1" 
+                JOIN schema_1."Animal" AS "Animal_3" 
+                ON "Animal_1".parent = "Animal_3".uuid 
+                JOIN schema_1."Animal" AS "Animal_2" 
+                ON "Animal_4".uuid = "Animal_2".parent 
+                GROUP BY "Animal_1".uuid
+            ) AS folded_subquery_1 
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+"""
 
         check_test_data(
             self,
             test_data,
             expected_match,
             expected_gremlin,
-            expected_sql,
+            expected_mssql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_fold_and_deep_traverse(self):
@@ -5902,6 +5974,27 @@ class CompilerTests(unittest.TestCase):
                 collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
                 | x.name] AS `sibling_and_self_species_list`
         """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_species_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Species_1".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".parent = "Animal_3".uuid
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                JOIN schema_1."Species" AS "Species_1"
+                ON "Animal_4".species = "Species_1".uuid
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            """
 
         check_test_data(
             self,
@@ -5910,7 +6003,7 @@ class CompilerTests(unittest.TestCase):
             expected_gremlin,
             expected_sql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_traverse_and_fold_and_traverse(self):
@@ -5960,7 +6053,7 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         """
-        expected_sql = NotImplementedError
+        expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -5983,15 +6076,36 @@ class CompilerTests(unittest.TestCase):
                 collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
                 | x.name] AS `sibling_and_self_species_list`
         """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_species_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN schema_1."Animal" AS "Animal_2"
+            ON "Animal_1".parent = "Animal_2".uuid
+            JOIN (
+                SELECT
+                    "Animal_3".uuid AS uuid,
+                    array_agg("Species_1".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_3".uuid = "Animal_4".parent
+                JOIN schema_1."Species" AS "Species_1"
+                ON "Animal_4".species = "Species_1".uuid
+                GROUP BY "Animal_3".uuid
+            ) AS folded_subquery_1
+            ON "Animal_2".uuid = folded_subquery_1.uuid
+        """
 
         check_test_data(
             self,
             test_data,
             expected_match,
             expected_gremlin,
-            expected_sql,
+            expected_mssql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_multiple_outputs_in_same_fold(self):
@@ -6166,7 +6280,7 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         """
-        expected_sql = NotImplementedError
+        expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -6185,15 +6299,37 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__in_Animal_ParentOf__out_Animal_ParentOf___1 | x.uuid] AS
                 `sibling_and_self_uuids_list`
         """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_names_list,
+                coalesce(folded_subquery_1.fold_output_uuid, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_uuids_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".uuid) AS fold_output_uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_2".parent = "Animal_4".uuid
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_4".uuid = "Animal_3".parent
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
 
         check_test_data(
             self,
             test_data,
             expected_match,
             expected_gremlin,
-            expected_sql,
+            expected_mssql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_multiple_folds(self):
@@ -6465,7 +6601,7 @@ class CompilerTests(unittest.TestCase):
                 ))
             ])}
         """
-        expected_sql = NotImplementedError
+        expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -6499,15 +6635,54 @@ class CompilerTests(unittest.TestCase):
               [x IN collected_Animal__out_Animal_ParentOf__in_Animal_ParentOf___1 | x.uuid] AS
                 `spouse_and_self_uuids_list`
         """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_2.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_names_list,
+                coalesce(folded_subquery_2.fold_output_uuid, ARRAY[]::VARCHAR[])
+                    AS sibling_and_self_uuids_list,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS spouse_and_self_names_list,
+                coalesce(folded_subquery_1.fold_output_uuid, ARRAY[]::VARCHAR[])
+                    AS spouse_and_self_uuids_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".uuid) AS fold_output_uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_2".uuid = "Animal_4".parent
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_4".parent = "Animal_3".uuid
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            JOIN (
+                SELECT
+                    "Animal_5".uuid AS uuid,
+                    array_agg("Animal_6".uuid) AS fold_output_uuid,
+                    array_agg("Animal_6".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_5"
+                JOIN schema_1."Animal" AS "Animal_7"
+                ON "Animal_5".parent = "Animal_7".uuid
+                JOIN schema_1."Animal" AS "Animal_6"
+                ON "Animal_7".uuid = "Animal_6".parent
+                GROUP BY "Animal_5".uuid
+            ) AS folded_subquery_2
+            ON "Animal_1".uuid = folded_subquery_2.uuid
+        """
 
         check_test_data(
             self,
             test_data,
             expected_match,
             expected_gremlin,
-            expected_sql,
+            expected_mssql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_fold_date_and_datetime_fields(self):
@@ -7740,17 +7915,36 @@ class CompilerTests(unittest.TestCase):
                 ($Species___1___in_Animal_OfSpecies.size() = {num_animals})
         """
         expected_gremlin = NotImplementedError
-        expected_sql = NotImplementedError
+        expected_mssql = NotImplementedError
         expected_cypher = SKIP_TEST
+        expected_postgresql = """
+            SELECT
+                "Species_1".name AS name
+            FROM schema_1."Species" AS "Species_1"
+            JOIN (
+                SELECT
+                    "Species_2".uuid AS uuid,
+                    coalesce(count(*), 0) AS fold_output__x_count
+                FROM schema_1."Species" AS "Species_2"
+                JOIN schema_1."Animal" AS "Animal_1"
+                ON "Species_2".uuid = "Animal_1".species
+                JOIN schema_1."Location" AS "Location_1"
+                ON "Animal_1".lives_in = "Location_1".uuid
+                WHERE "Location_1".name = %(location)s
+                GROUP BY "Species_2".uuid
+            ) AS folded_subquery_1
+            ON "Species_1".uuid = folded_subquery_1.uuid
+            WHERE folded_subquery_1.fold_output__x_count = %(num_animals)s
+        """
 
         check_test_data(
             self,
             test_data,
             expected_match,
             expected_gremlin,
-            expected_sql,
+            expected_mssql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_optional_and_traverse(self):
@@ -9875,7 +10069,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_sql = NotImplementedError
+        expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -9904,15 +10098,40 @@ class CompilerTests(unittest.TestCase):
                   ELSE null
                 END) AS `grandparent_name`
         """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS grandchild_names_list,
+                "Animal_2".name AS grandparent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_3"
+            ON "Animal_1".parent = "Animal_3".uuid
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_2"
+            ON "Animal_3".parent = "Animal_2".uuid
+            JOIN (
+                SELECT
+                    "Animal_4".uuid AS uuid,
+                    array_agg("Animal_5".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_4"
+                JOIN schema_1."Animal" AS "Animal_6"
+                ON "Animal_4".uuid = "Animal_6".parent
+                JOIN schema_1."Animal" AS "Animal_5"
+                ON "Animal_6".uuid = "Animal_5".parent
+                GROUP BY "Animal_4".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            WHERE "Animal_2".uuid IS NOT NULL OR "Animal_3".uuid IS NULL
+"""
 
         check_test_data(
             self,
             test_data,
             expected_match,
             expected_gremlin,
-            expected_sql,
+            expected_mssql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_fold_traversal_and_optional_traversal(self):
@@ -9986,7 +10205,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_sql = NotImplementedError
+        expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -10016,15 +10235,40 @@ class CompilerTests(unittest.TestCase):
                   ELSE null
                 END) AS `grandparent_name`
         """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS grandchild_names_list,
+                "Animal_2".name AS grandparent_name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_3".uuid AS uuid,
+                    array_agg("Animal_4".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_3"
+                JOIN schema_1."Animal" AS "Animal_5"
+                ON "Animal_3".uuid = "Animal_5".parent
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_5".uuid = "Animal_4".parent
+                GROUP BY "Animal_3".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_6"
+            ON "Animal_1".parent = "Animal_6".uuid
+            LEFT OUTER JOIN schema_1."Animal" AS "Animal_2"
+            ON "Animal_6".parent = "Animal_2".uuid
+            WHERE "Animal_2".uuid IS NOT NULL OR "Animal_6".uuid IS NULL
+            """
 
         check_test_data(
             self,
             test_data,
             expected_match,
             expected_gremlin,
-            expected_sql,
+            expected_mssql,
             expected_cypher,
-            expected_sql,
+            expected_postgresql,
         )
 
     def test_between_lowering(self):
