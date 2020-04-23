@@ -97,7 +97,14 @@ def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, va
 
 def deserialize_json_argument(
     name: str,
-    expected_type: Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType],
+    expected_type: Union[
+        GraphQLScalarType,
+        GraphQLList[GraphQLScalarType],
+        GraphQLList[GraphQLNonNull[GraphQLScalarType]],
+        GraphQLNonNull[GraphQLScalarType],
+        GraphQLNonNull[GraphQLList[GraphQLScalarType]],
+        GraphQLNonNull[GraphQLList[GraphQLNonNull[GraphQLScalarType]]],
+    ],
     value: Any,
 ) -> Any:
     """Deserialize a GraphQL argument parsed from a json file.
@@ -150,7 +157,17 @@ def deserialize_json_argument(
 
 def deserialize_multiple_json_arguments(
     arguments: Mapping[str, Any],
-    expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
+    expected_types: Mapping[
+        str,
+        Union[
+            GraphQLScalarType,
+            GraphQLList[GraphQLScalarType],
+            GraphQLList[GraphQLNonNull[GraphQLScalarType]],
+            GraphQLNonNull[GraphQLScalarType],
+            GraphQLNonNull[GraphQLList[GraphQLScalarType]],
+            GraphQLNonNull[GraphQLList[GraphQLNonNull[GraphQLScalarType]]],
+        ],
+    ],
 ) -> Dict[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
 
