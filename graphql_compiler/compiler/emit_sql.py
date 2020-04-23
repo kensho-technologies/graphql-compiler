@@ -528,7 +528,9 @@ class SQLFoldObject(object):
         # Sort to make select order deterministic.
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
-    def visit_vertex(self, join_descriptor, from_table, to_table, current_fold_scope_location, all_folded_fields):
+    def visit_vertex(
+        self, join_descriptor, from_table, to_table, current_fold_scope_location, all_folded_fields
+    ):
         """Add a new traversal descriptor and add outputs, if visiting an output vertex."""
         if self._ended:
             raise AssertionError(
@@ -680,7 +682,7 @@ class CompilationState(object):
         if self._current_fold is not None and isinstance(new_location, FoldScopeLocation):
             alias_key = (
                 self._current_location.base_location.query_path,
-                self._current_location.fold_path
+                self._current_location.fold_path,
             )
         # Regardless of whether self._current_fold is None or not, if the new location is a
         # Location, relocation should occur based on a Location alias key.
@@ -760,9 +762,17 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
         if self._current_fold is not None:
-            self._current_fold.visit_vertex(edge, previous_alias, self._current_alias, self._current_location, self._all_folded_fields)
+            self._current_fold.visit_vertex(
+                edge,
+                previous_alias,
+                self._current_alias,
+                self._current_location,
+                self._all_folded_fields,
+            )
         else:
-            self._join_to_parent_location(previous_alias, edge.from_column, edge.to_column, optional)
+            self._join_to_parent_location(
+                previous_alias, edge.from_column, edge.to_column, optional
+            )
 
     def _get_current_primary_key_name(self, directive_name: str) -> str:
         """Return the name of the single-column primary key at the current location.
@@ -906,8 +916,13 @@ class CompilationState(object):
 
         # 4. Relocate to inside the fold scope and visit the first vertex.
         self._relocate(fold_scope_location)
-        self._current_fold.visit_vertex(join_descriptor, outer_alias, self._current_alias,
-                                        fold_scope_location, self._all_folded_fields)
+        self._current_fold.visit_vertex(
+            join_descriptor,
+            outer_alias,
+            self._current_alias,
+            fold_scope_location,
+            self._all_folded_fields,
+        )
 
     def unfold(self):
         """Complete the execution of a Fold Block."""
@@ -938,10 +953,7 @@ class CompilationState(object):
         # If the current location is the beginning of a fold, the current alias
         # will eventually be replaced by the resulting fold subquery during Unfold.
         self._aliases[
-            (
-                self._current_location.base_location.query_path,
-                self._current_location.fold_path,
-            )
+            (self._current_location.base_location.query_path, self._current_location.fold_path,)
             if self._current_fold is not None
             else (self._current_location.query_path, None)
         ] = self._current_alias

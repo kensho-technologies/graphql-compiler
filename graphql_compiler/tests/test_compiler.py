@@ -83,8 +83,6 @@ def check_test_data(
         string_result = print_sqlalchemy_query_string(
             result.query, test_case.mssql_schema_info.dialect
         )
-        print("\n\n========MSSQL RESULT========")
-        print(string_result)
         compare_sql(test_case, expected_mssql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -100,8 +98,6 @@ def check_test_data(
         string_result = print_sqlalchemy_query_string(
             result.query, test_case.postgresql_schema_info.dialect
         )
-        print("\n\n========POSTGRESQL RESULT========")
-        print(string_result)
         compare_sql(test_case, expected_postgresql, string_result)
         test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
         compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
@@ -5867,7 +5863,7 @@ class CompilerTests(unittest.TestCase):
             JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
-                    array_agg("Animal_3".name) AS fold_output_name 
+                    array_agg("Animal_3".name) AS fold_output_name
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_4"
                 ON "Animal_2".parent = "Animal_4".uuid
@@ -5877,26 +5873,6 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
         """
-        """
-            SELECT
-                "Animal_1".name AS animal_name, 
-                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) 
-                    AS sibling_and_self_names_list 
-            FROM 
-                schema_1."Animal" AS "Animal_1" 
-            JOIN (
-                SELECT 
-                    "Animal_1".uuid AS uuid, 
-                    array_agg("Animal_2".name) AS fold_output_name 
-                FROM schema_1."Animal" AS "Animal_1" 
-                JOIN schema_1."Animal" AS "Animal_3" 
-                ON "Animal_1".parent = "Animal_3".uuid 
-                JOIN schema_1."Animal" AS "Animal_2" 
-                ON "Animal_4".uuid = "Animal_2".parent 
-                GROUP BY "Animal_1".uuid
-            ) AS folded_subquery_1 
-            ON "Animal_1".uuid = folded_subquery_1.uuid
-"""
 
         check_test_data(
             self,
