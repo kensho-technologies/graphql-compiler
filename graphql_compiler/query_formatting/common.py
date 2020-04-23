@@ -3,6 +3,7 @@
 import datetime
 import decimal
 from typing import Any, Mapping, Union, Collection, Type
+from types import MappingProxyType
 from global_utils import validate_that_mappings_have_the_same_keys
 import arrow
 from graphql import (
@@ -45,9 +46,7 @@ def _raise_invalid_type_error(
         f"{value} of type {type(value).__name__} instead."
     )
 
-from types import MappingProxyType
-
-_ALLOWED_JSON_SCALAR_TYPES = {
+_ALLOWED_JSON_SCALAR_TYPES = MappingProxyType({
     GraphQLDate.name: (str,),
     GraphQLDateTime.name: (str,),
     GraphQLFloat.name: (str, float, int),
@@ -56,7 +55,7 @@ _ALLOWED_JSON_SCALAR_TYPES = {
     GraphQLString.name: (str,),
     GraphQLBoolean.name: (bool,),
     GraphQLID.name: (int, str,),
-}
+})
 validate_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_NAME_TO_VALUE)
 
 
@@ -75,14 +74,14 @@ def _validate_json_scalar_argument(name: str, expected_type: GraphQLScalarType, 
         _raise_invalid_type_error(name, expected_python_types, value)
 
 
-_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = {
+_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType({
     GraphQLInt.name: int,
     GraphQLFloat.name: float
-}
-_SCALAR_DESERIALIZATION_FUNCTIONS = {
+})
+_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType({
     name: _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(name, graphql_type.parse)
     for name, graphql_type in SCALAR_TYPE_NAME_TO_VALUE.items()
-}
+})
 
 
 def _deserialize_json_scalar_argument(

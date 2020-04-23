@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from collections import OrderedDict
+from types import MappingProxyType
 from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
@@ -381,9 +382,9 @@ SCALAR_TYPES = (
     GraphQLID,
 ) + CUSTOM_SCALAR_TYPES
 
-SCALAR_TYPE_NAME_TO_VALUE = {
+SCALAR_TYPE_NAME_TO_VALUE = MappingProxyType({
     scalar_type.name: scalar_type for scalar_type in SCALAR_TYPES
-}
+})
 
 DIRECTIVES = (
     FilterDirective,
