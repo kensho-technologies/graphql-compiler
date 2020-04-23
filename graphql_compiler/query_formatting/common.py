@@ -3,7 +3,7 @@
 import datetime
 import decimal
 from types import MappingProxyType
-from typing import Any, Collection, Mapping, Type, Union
+from typing import Any, Collection, Dict, Mapping, Type, Union
 
 import arrow
 from graphql import (
@@ -151,7 +151,7 @@ def deserialize_json_argument(
 def deserialize_multiple_json_arguments(
     arguments: Mapping[str, Any],
     expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
-) -> Mapping[str, Any]:
+) -> Dict[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
 
     Args:
