@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import datetime
 from decimal import Decimal
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, cast
 import unittest
 
 from graphql import (
@@ -11,6 +11,7 @@ from graphql import (
     GraphQLInt,
     GraphQLList,
     GraphQLNonNull,
+    GraphQLScalarType,
     GraphQLString,
 )
 import pytz
@@ -20,7 +21,11 @@ from .. import graphql_to_gremlin, graphql_to_match
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
-from ..query_formatting.common import deserialize_json_argument, validate_argument_type
+from ..query_formatting.common import (
+    deserialize_json_argument,
+    deserialize_multiple_json_arguments,
+    validate_argument_type,
+)
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
 from ..schema.schema_info import CommonSchemaInfo
 from .test_helpers import compare_gremlin, compare_match, get_schema
@@ -331,6 +336,24 @@ class QueryFormattingTests(unittest.TestCase):
                 ),
             )
 
+    def test_multiple_argument_deserialization(self) -> None:
+        serialized_arguments = {
+            "amount": 5,
+            "birthday": "2014-02-05",
+        }
+        expected_types = {
+            "amount": GraphQLInt,
+            "birthday": GraphQLDate,
+        }
+        expected_deserialization = {
+            "amount": 5,
+            "birthday": datetime.date(2014, 2, 5),
+        }
+        self.assertEqual(
+            expected_deserialization,
+            deserialize_multiple_json_arguments(serialized_arguments, expected_types),
+        )
+
     def test_invalid_directive_comparison(self) -> None:
         # This test will fail if the directive types in deserialize_json_argument are compared by
         # their python object reference instead of by their names.
@@ -339,6 +362,8 @@ class QueryFormattingTests(unittest.TestCase):
         # GraphQLDateTime, but refers conceptually to the same GraphQL type.
         parsed_graphql_datetime_type = get_schema().get_type("DateTime")
         value = deserialize_json_argument(
-            "birth_time", parsed_graphql_datetime_type, "2014-02-05T03:20:55Z"
+            "birth_time",
+            cast(GraphQLScalarType, parsed_graphql_datetime_type),
+            "2014-02-05T03:20:55Z",
         )
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)

@@ -22,7 +22,7 @@ from ...ast_manipulation import (
 from ...compiler.compiler_frontend import ast_to_ir
 from ...compiler.helpers import get_only_element_from_collection
 from ...exceptions import GraphQLInvalidMacroError
-from ...query_formatting.common import ensure_arguments_are_provided
+from ...query_formatting.common import validate_arguments
 from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, OptionalDirective, is_vertex_field_name
 from .ast_rewriting import remove_directives_from_ast
 from .ast_traversal import get_directives_for_ast, get_type_at_macro_edge_target
@@ -368,7 +368,7 @@ def get_and_validate_macro_edge_info(
         _get_minimal_query_ast_from_macro_ast(ast),
         type_equivalence_hints=type_equivalence_hints,
     )
-    ensure_arguments_are_provided(input_metadata, macro_edge_args)
+    validate_arguments(input_metadata, macro_edge_args)
 
     _validate_that_macro_edge_definition_is_only_top_level_field_directive(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast

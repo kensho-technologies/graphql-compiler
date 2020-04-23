@@ -908,6 +908,28 @@ def simple_recurse() -> CommonTestData:  # noqa: D103
     )
 
 
+def filter_then_recurse() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_ParentOf @recurse(depth: 1) {
+                name @output(out_name: "relation_name")
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "relation_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+    }
+    expected_input_metadata = {"animal_name": GraphQLString}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def traverse_then_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {

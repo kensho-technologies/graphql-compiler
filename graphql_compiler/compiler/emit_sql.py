@@ -1,6 +1,8 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from collections import namedtuple
+from dataclasses import dataclass
+from typing import Dict, List, Optional, Set
 
 import six
 import sqlalchemy
@@ -10,11 +12,16 @@ from sqlalchemy.dialects.postgresql.base import PGDialect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import expression
 from sqlalchemy.sql.compiler import _CompileLabel
+from sqlalchemy.sql.elements import Label
 from sqlalchemy.sql.expression import BinaryExpression
 from sqlalchemy.sql.functions import func
+from sqlalchemy.sql.selectable import Select
 
 from . import blocks
+from ..global_utils import VertexPath
 from ..schema import COUNT_META_FIELD_NAME
+from ..schema.schema_info import SQLSchemaInfo
+from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
 from .helpers import FoldScopeLocation, Location, get_edge_direction_and_name
 
@@ -68,9 +75,11 @@ def _traverse_and_validate_blocks(ir):
         yield block
 
 
-def _find_columns_used_outside_folds(sql_schema_info, ir):
+def _find_columns_used_outside_folds(
+    sql_schema_info: SQLSchemaInfo, ir: IrAndMetadata
+) -> Dict[VertexPath, Set[str]]:
     """For each query path outside of a fold output, find which columns are used."""
-    used_columns = {}
+    used_columns: Dict[VertexPath, Set[str]] = {}
 
     # Find filters used
     for location, _ in ir.query_metadata_table.registered_locations:
@@ -95,6 +104,17 @@ def _find_columns_used_outside_folds(sql_schema_info, ir):
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
                 used_columns.setdefault(child_location.query_path, set()).add(edge.from_column)
+
+    # Columns used in the base case of CTE recursions should be made available from parent scope
+    for location, _ in ir.query_metadata_table.registered_locations:
+        if isinstance(location, FoldScopeLocation):
+            continue
+        for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
+            traversal = "{}_{}".format(recurse_info.edge_direction, recurse_info.edge_name)
+            used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
+                used_columns[location.query_path + (traversal,)]
+            )
+            used_columns[location.query_path].add(edge.from_column)
 
     # Find outputs used
     for _, output_info in ir.query_metadata_table.outputs:
@@ -634,6 +654,22 @@ class UniqueAliasGenerator(object):
         return alias
 
 
+@dataclass
+class ColumnRouter:
+    """Container for columns selected from a variety of selectables.
+
+    ContextFields selecting from locations inside a CTE need to be redirected to get those columns
+    from the corresponding columns exposed by the CTE instead. A ColumnRouter can be used to store
+    these column name mappings.
+
+    The Selectable.c property is the only property of selectables used by ContextFields, so that's
+    the only property this class needs to implement to serve as a Selectable.
+    TODO(bojanserafimov): make an abstract class instead of duck-typing this.
+    """
+
+    c: Dict[str, sqlalchemy.Column]
+
+
 class CompilationState(object):
     """Mutable class used to keep track of state while emitting a sql query."""
 
@@ -663,6 +699,7 @@ class CompilationState(object):
         self._aliases = {}
         self._relocate(ir.query_metadata_table.root_location)
         self._came_from = {}  # mapping aliases to the column used to join into them.
+        self._recurse_needs_cte = False
 
         # The query being constructed as the IR is processed
         self._from_clause = self._current_alias  # the main sqlalchemy Selectable
@@ -754,8 +791,10 @@ class CompilationState(object):
         """Execute a Backtrack Block."""
         self._relocate(previous_location)
 
-    def traverse(self, vertex_field, optional):
+    def traverse(self, vertex_field: str, optional: bool) -> None:
         """Execute a Traverse Block."""
+        self._recurse_needs_cte = True
+
         # Follow the edge, either by calling visit_vertex if in a fold or joining to the
         # parent location.
         previous_alias = self._current_alias
@@ -773,6 +812,38 @@ class CompilationState(object):
             self._join_to_parent_location(
                 previous_alias, edge.from_column, edge.to_column, optional
             )
+
+    def _wrap_into_cte(self) -> None:
+        """Wrap the current query into a cte."""
+        # Additional outputs the CTE needs to export for use elsewhere in the query
+        extra_outputs: List[Label] = []
+        # Mapping alias_key -> external_name -> internal_name
+        column_mappings: Dict[str, Dict[str, str]] = {}
+        for alias_key, alias in self._aliases.items():
+            vertex_path, _ = alias_key
+            for used_column_name in sorted(self._used_columns[vertex_path]):
+                label = "_".join(vertex_path) + "__" + used_column_name
+                extra_outputs.append(alias.c[used_column_name].label(label))
+                column_mappings.setdefault(alias_key, {})[used_column_name] = label
+
+        # Wrap the query so far into a cte. Make sure to select any fields used outside the cte.
+        if self._recurse_needs_cte:
+            self._current_alias = self.get_query(extra_outputs).cte(recursive=False)
+            self._from_clause = self._current_alias
+
+            self._filters = []  # The filters are already included in the cte
+            self._aliases = {
+                alias_key: ColumnRouter(
+                    {
+                        external_name: self._current_alias.c[internal_name]
+                        for external_name, internal_name in column_mappings.get(
+                            alias_key, {}
+                        ).items()
+                    }
+                )
+                for alias_key, alias_value in self._aliases.items()
+            }
+            self._current_alias = self._aliases[(self._current_location.query_path, None)]
 
     def _get_current_primary_key_name(self, directive_name: str) -> str:
         """Return the name of the single-column primary key at the current location.
@@ -799,13 +870,19 @@ class CompilationState(object):
             )
         return self._current_alias.primary_key[0].name
 
-    def recurse(self, vertex_field, depth):
+    def recurse(self, vertex_field: str, depth: int) -> None:
         """Execute a Recurse Block."""
         if self._current_fold is not None:
             raise AssertionError("Recurse inside a fold is not allowed.")
-        previous_alias = self._current_alias
+
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         primary_key = self._get_current_primary_key_name("@recurse")
+
+        # Wrap the query so far into a cte if it would speed up the recursive query.
+        if self._recurse_needs_cte:
+            self._wrap_into_cte()
+
+        previous_alias = self._current_alias
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
 
         # Sanitize literal columns to be used in the query
@@ -822,11 +899,8 @@ class CompilationState(object):
 
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
         base = sqlalchemy.select(
-            [self._current_alias.c[col] for col in used_columns]
-            + [
-                self._current_alias.c[primary_key].label(CTE_KEY_NAME),
-                literal_0.label(CTE_DEPTH_NAME),
-            ]
+            [previous_alias.c[col].label(col) for col in used_columns]
+            + [previous_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
         ).cte(recursive=True)
 
         # The recursive step selects all needed columns, increments the depth, and joins to the base
@@ -845,14 +919,10 @@ class CompilationState(object):
             .where(base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
-        # TODO(bojanserafimov): Postgres implements CTEs by executing them ahead of everything
-        #                       else. The onclause into the CTE is not going to filter the
-        #                       recursive base case to a small set of rows, but instead the CTE
-        #                       will be created for all hypothetical starting points.
-        #                       To optimize for Postgres performance, we should instead wrap the
-        #                       part of the query preceding this @recurse into a CTE, and use
-        #                       it as the base case.
-        self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
+        # Instead of joining to the current _from_clause, we make this alias the _from_clause.
+        # If the existing _from_clause had any information in it, then the _current_alias would
+        # be a cte that contains all that information.
+        self._from_clause = self._current_alias
 
     def start_global_operations(self):
         """Execute a GlobalOperationsStart block."""
@@ -860,8 +930,10 @@ class CompilationState(object):
             raise AssertionError("CompilationState is already in global scope.")
         self._current_location = None
 
-    def filter(self, predicate):
+    def filter(self, predicate: Expression) -> None:
         """Execute a Filter Block."""
+        self._recurse_needs_cte = True
+
         # If there is an active fold, add the filter to the current fold. Note that this is only for
         # regular fields i.e. non-_x_count fields. Filtering on _x_count will use the COUNT(*)
         # output from the folded subquery and apply the filter in the global WHERE clause.
@@ -966,10 +1038,12 @@ class CompilationState(object):
             )
         )
 
-    def get_query(self):
+    def get_query(self, extra_outputs: Optional[List[Label]] = None) -> Select:
         """After all IR Blocks are processed, return the resulting sqlalchemy query."""
+        if not extra_outputs:
+            extra_outputs = []
         return (
-            sqlalchemy.select(self._outputs)
+            sqlalchemy.select(extra_outputs + self._outputs)
             .select_from(self._from_clause)
             .where(sqlalchemy.and_(*self._filters))
         )
