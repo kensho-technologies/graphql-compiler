@@ -373,7 +373,7 @@ CUSTOM_SCALAR_TYPES = (
     GraphQLDateTime,
 )
 
-SCALAR_TYPES = (
+SUPPORTED_SCALAR_TYPES = (
     GraphQLInt,
     GraphQLString,
     GraphQLBoolean,
@@ -382,7 +382,7 @@ SCALAR_TYPES = (
 ) + CUSTOM_SCALAR_TYPES
 
 SCALAR_TYPE_NAME_TO_VALUE = MappingProxyType(
-    {scalar_type.name: scalar_type for scalar_type in SCALAR_TYPES}
+    {scalar_type.name: scalar_type for scalar_type in SUPPORTED_SCALAR_TYPES}
 )
 
 DIRECTIVES = (
