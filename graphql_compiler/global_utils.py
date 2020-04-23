@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
-from typing import Any, Dict, NamedTuple, Tuple, Mapping
+from typing import Any, Dict, Mapping, NamedTuple, Tuple
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six

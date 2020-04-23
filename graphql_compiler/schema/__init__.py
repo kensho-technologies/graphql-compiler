@@ -1,17 +1,20 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from collections import OrderedDict
-from types import MappingProxyType
 from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
+from types import MappingProxyType
 
 import arrow
 from graphql import (
     DirectiveLocation,
     GraphQLArgument,
+    GraphQLBoolean,
     GraphQLDirective,
     GraphQLField,
+    GraphQLFloat,
+    GraphQLID,
     GraphQLInt,
     GraphQLInterfaceType,
     GraphQLList,
@@ -20,15 +23,11 @@ from graphql import (
     GraphQLScalarType,
     GraphQLSchema,
     GraphQLString,
-    GraphQLBoolean,
-    GraphQLFloat,
-    GraphQLID,
     lexicographic_sort_schema,
     print_schema,
 )
 from graphql.type.directives import specified_directives
 import six
-import itertools
 
 from .typedefs import (  # noqa
     ClassToFieldTypeOverridesType,
@@ -382,9 +381,9 @@ SCALAR_TYPES = (
     GraphQLID,
 ) + CUSTOM_SCALAR_TYPES
 
-SCALAR_TYPE_NAME_TO_VALUE = MappingProxyType({
-    scalar_type.name: scalar_type for scalar_type in SCALAR_TYPES
-})
+SCALAR_TYPE_NAME_TO_VALUE = MappingProxyType(
+    {scalar_type.name: scalar_type for scalar_type in SCALAR_TYPES}
+)
 
 DIRECTIVES = (
     FilterDirective,

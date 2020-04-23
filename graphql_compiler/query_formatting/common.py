@@ -2,9 +2,9 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
-from typing import Any, Mapping, Union, Collection, Type
 from types import MappingProxyType
-from global_utils import validate_that_mappings_have_the_same_keys
+from typing import Any, Collection, Mapping, Type, Union
+
 import arrow
 from graphql import (
     GraphQLBoolean,
@@ -22,7 +22,7 @@ import six
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type
+from ..global_utils import is_same_type, validate_that_mappings_have_the_same_keys
 from ..schema import SCALAR_TYPE_NAME_TO_VALUE, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -36,9 +36,7 @@ from .sql_formatting import insert_arguments_into_sql_query
 
 
 def _raise_invalid_type_error(
-    name: str,
-    expected_python_types: Collection[Type],
-    value: Any
+    name: str, expected_python_types: Collection[Type], value: Any
 ) -> None:
     """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
     raise GraphQLInvalidArgumentError(
@@ -46,16 +44,19 @@ def _raise_invalid_type_error(
         f"{value} of type {type(value).__name__} instead."
     )
 
-_ALLOWED_JSON_SCALAR_TYPES = MappingProxyType({
-    GraphQLDate.name: (str,),
-    GraphQLDateTime.name: (str,),
-    GraphQLFloat.name: (str, float, int),
-    GraphQLDecimal.name: (str, float, int),
-    GraphQLInt.name: (int, str),
-    GraphQLString.name: (str,),
-    GraphQLBoolean.name: (bool,),
-    GraphQLID.name: (int, str,),
-})
+
+_ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
+    {
+        GraphQLDate.name: (str,),
+        GraphQLDateTime.name: (str,),
+        GraphQLFloat.name: (str, float, int),
+        GraphQLDecimal.name: (str, float, int),
+        GraphQLInt.name: (int, str),
+        GraphQLString.name: (str,),
+        GraphQLBoolean.name: (bool,),
+        GraphQLID.name: (int, str,),
+    }
+)
 validate_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_NAME_TO_VALUE)
 
 
@@ -68,30 +69,30 @@ def _validate_json_scalar_argument(name: str, expected_type: GraphQLScalarType, 
         )
     elif (
         # We explicitly disallow passing boolean values for non-boolean types
-        (isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type)) or
-        not isinstance(value, expected_python_types)
+        (isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type))
+        or not isinstance(value, expected_python_types)
     ):
         _raise_invalid_type_error(name, expected_python_types, value)
 
 
-_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType({
-    GraphQLInt.name: int,
-    GraphQLFloat.name: float
-})
-_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType({
-    name: _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(name, graphql_type.parse)
-    for name, graphql_type in SCALAR_TYPE_NAME_TO_VALUE.items()
-})
+_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+    {GraphQLInt.name: int, GraphQLFloat.name: float}
+)
+_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+    {
+        name: _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(name, graphql_type.parse_value)
+        for name, graphql_type in SCALAR_TYPE_NAME_TO_VALUE.items()
+    }
+)
 
 
-def _deserialize_json_scalar_argument(
-    name,
-    expected_type: GraphQLScalarType,
-    value: Any
-) -> Any:
+def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize the json serialized scalar argument."""
     _validate_json_scalar_argument(name, expected_type, value)
-    return _SCALAR_DESERIALIZATION_FUNCTIONS[expected_type.name](value)
+    try:
+        return _SCALAR_DESERIALIZATION_FUNCTIONS[expected_type.name](value)
+    except (ValueError, TypeError) as e:
+        raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
 def deserialize_json_argument(
@@ -138,7 +139,7 @@ def deserialize_json_argument(
         if not isinstance(value, list):
             _raise_invalid_type_error(name, (list,), value)
 
-        inner_stripped_type = strip_non_null_from_type(stripped_type.inner)
+        inner_stripped_type = strip_non_null_from_type(stripped_type.of_type)
         return [
             _deserialize_json_scalar_argument(name, inner_stripped_type, element)
             for element in value
