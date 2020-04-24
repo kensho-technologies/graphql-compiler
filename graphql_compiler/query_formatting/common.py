@@ -3,9 +3,10 @@
 import datetime
 import decimal
 from types import MappingProxyType
-from typing import Any, Collection, Dict, Mapping, Type, Union, NoReturn
+from typing import Any, Callable, Collection, Dict, Mapping, NoReturn, Type, Union
 
 import arrow
+from funcy.compat import zip
 from graphql import (
     GraphQLBoolean,
     GraphQLFloat,
@@ -22,7 +23,7 @@ import six
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type, assert_that_mappings_have_the_same_keys
+from ..global_utils import assert_that_mappings_have_the_same_keys, is_same_type
 from ..schema import SCALAR_TYPE_NAME_TO_VALUE, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -57,24 +58,6 @@ _ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
         GraphQLID.name: (int, str,),
     }
 )
-assert_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_NAME_TO_VALUE)
-
-
-def _validate_json_scalar_argument(name: str, expected_type: GraphQLScalarType, value: Any) -> None:
-    """Validate that the json serialized scalar argument has the expected python type."""
-    expected_python_types = _ALLOWED_JSON_SCALAR_TYPES.get(expected_type.name)
-    if expected_python_types is None:
-        raise AssertionError(
-            f"Got unsupported GraphQL type {expected_type} for argument {name} with value {value}."
-        )
-    elif (
-        # We explicitly disallow passing boolean values for non-boolean types
-        (isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type))
-        or not isinstance(value, expected_python_types)
-    ):
-        _raise_invalid_type_error(name, expected_python_types, value)
-
-
 _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     {GraphQLInt.name: int, GraphQLFloat.name: float}
 )
@@ -84,15 +67,39 @@ _SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
         for name, graphql_type in SCALAR_TYPE_NAME_TO_VALUE.items()
     }
 )
+_ALLOWED_JSON_SCALAR_TYPES_AND_DESERIALIZATION_FUNCTION = MappingProxyType(
+    {
+        name: (allowed_types, _SCALAR_DESERIALIZATION_FUNCTIONS[name])
+        for name, allowed_types in _ALLOWED_JSON_SCALAR_TYPES.items()
+    }
+)
+assert_that_mappings_have_the_same_keys(
+    _ALLOWED_JSON_SCALAR_TYPES_AND_DESERIALIZATION_FUNCTION, SCALAR_TYPE_NAME_TO_VALUE
+)
 
 
 def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize the json serialized scalar argument."""
-    _validate_json_scalar_argument(name, expected_type, value)
-    try:
-        return _SCALAR_DESERIALIZATION_FUNCTIONS[expected_type.name](value)
-    except (ValueError, TypeError) as e:
-        raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+    allowed_types_and_deserialization = _ALLOWED_JSON_SCALAR_TYPES_AND_DESERIALIZATION_FUNCTION.get(
+        expected_type.name
+    )
+    if allowed_types_and_deserialization is None:
+        raise AssertionError(
+            f"Got unsupported GraphQL type {expected_type} for argument {name} with value {value}."
+        )
+    else:
+        expected_python_types, deserialization_function = allowed_types_and_deserialization
+        if (
+            not isinstance(value, expected_python_types) or
+            # We explicitly disallow passing boolean values for non-boolean types
+            (isinstance(value, bool) and is_same_type(GraphQLBoolean, expected_type))
+        ):
+            _raise_invalid_type_error(name, expected_python_types, value)
+        else:
+            try:
+                return deserialization_function(value)
+            except (ValueError, TypeError) as e:
+                raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
 def deserialize_json_argument(
