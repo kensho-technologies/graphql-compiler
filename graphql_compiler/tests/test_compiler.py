@@ -5833,7 +5833,7 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         """
-        # TODO: implement multiple traversals in a separate PR
+        # TODO: implement multiple traversals for MSSQL in a separate PR
         expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
