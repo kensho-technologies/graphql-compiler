@@ -3,7 +3,7 @@
 import datetime
 import decimal
 from types import MappingProxyType
-from typing import Any, Collection, Dict, Mapping, NoReturn, Type, Union
+from typing import Any, Callable, Collection, Dict, Mapping, NoReturn, Tuple, Type, Union
 
 import arrow
 from graphql import (
@@ -29,7 +29,6 @@ from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
 
-
 ######
 # Public API
 ######
@@ -45,62 +44,68 @@ def _raise_invalid_type_error(
     )
 
 
-_ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
-    {
-        GraphQLDate.name: (str,),
-        GraphQLDateTime.name: (str,),
-        GraphQLFloat.name: (str, float, int),
-        GraphQLDecimal.name: (str, float, int),
-        GraphQLInt.name: (int, str),
-        GraphQLString.name: (str,),
-        GraphQLBoolean.name: (bool,),
-        GraphQLID.name: (int, str,),
-    }
-)
 _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     {GraphQLInt.name: int, GraphQLFloat.name: float}
 )
+
+
+def _get_json_scalar_deserialization_function(
+    graphql_type: GraphQLScalarType, expected_python_types: Tuple[Type, ...],
+) -> Callable[[str, Any], Any]:
+    """Return a function that deserializes a json serialized argument of the given GraphQL type."""
+
+    def _json_scalar_deserialization_function(name: str, value: Any) -> Any:
+        """Deserialize the json serialized scalar argument of the given GraphQL type. """
+        if any(
+            (
+                not isinstance(value, expected_python_types),
+                # We explicitly disallow passing boolean values for non-boolean types
+                (isinstance(value, bool) and is_same_type(GraphQLBoolean, graphql_type)),
+            )
+        ):
+            _raise_invalid_type_error(name, expected_python_types, value)
+
+        deserialization_function = _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(
+            graphql_type.name, graphql_type.parse_value
+        )
+        try:
+            return deserialization_function(value)
+        except (ValueError, TypeError) as e:
+            raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+
+    return _json_scalar_deserialization_function
+
+
+_ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
+    {
+        GraphQLDate: (str,),
+        GraphQLDateTime: (str,),
+        GraphQLFloat: (str, float, int),
+        GraphQLDecimal: (str, float, int),
+        GraphQLInt: (int, str),
+        GraphQLString: (str,),
+        GraphQLBoolean: (bool,),
+        GraphQLID: (int, str,),
+    }
+)
+assert_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_NAME_TO_VALUE)
+
 _SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     {
-        name: _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(name, graphql_type.parse_value)
-        for name, graphql_type in SCALAR_TYPE_NAME_TO_VALUE.items()
+        graphql_type.nam: _get_json_scalar_deserialization_function(graphql_type, allowed_types)
+        for graphql_type, allowed_types in _ALLOWED_JSON_SCALAR_TYPES.items()
     }
-)
-_ALLOWED_JSON_SCALAR_TYPES_AND_DESERIALIZATION_FUNCTION = MappingProxyType(
-    {
-        name: (allowed_types, _SCALAR_DESERIALIZATION_FUNCTIONS[name])
-        for name, allowed_types in _ALLOWED_JSON_SCALAR_TYPES.items()
-    }
-)
-assert_that_mappings_have_the_same_keys(
-    _ALLOWED_JSON_SCALAR_TYPES_AND_DESERIALIZATION_FUNCTION, SCALAR_TYPE_NAME_TO_VALUE
 )
 
 
 def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize the json serialized scalar argument."""
-    allowed_types_and_deserialization = _ALLOWED_JSON_SCALAR_TYPES_AND_DESERIALIZATION_FUNCTION.get(
-        expected_type.name
-    )
-    if allowed_types_and_deserialization is None:
+    deserialization_function = _SCALAR_DESERIALIZATION_FUNCTIONS.get(expected_type.name)
+    if deserialization_function is None:
         raise AssertionError(
             f"Got unsupported GraphQL type {expected_type} for argument {name} with value {value}."
         )
-    else:
-        expected_python_types, deserialization_function = allowed_types_and_deserialization
-        if any(
-            (
-                not isinstance(value, expected_python_types),
-                # We explicitly disallow passing boolean values for non-boolean types
-                (isinstance(value, bool) and is_same_type(GraphQLBoolean, expected_type)),
-            )
-        ):
-            _raise_invalid_type_error(name, expected_python_types, value)
-        else:
-            try:
-                return deserialization_function(value)
-            except (ValueError, TypeError) as e:
-                raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+    return deserialization_function(name, value)
 
 
 SupportedArgumentGraphQLType = Union[
@@ -136,7 +141,7 @@ def deserialize_json_argument(
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
               message if an error is raised.
-        expected_type: the GraphQL type. All GraphQLNonNull type wrappers are stripped.
+        expected_type: the GraphQL type.  All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
 
     Returns:
