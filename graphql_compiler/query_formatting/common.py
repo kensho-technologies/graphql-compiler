@@ -22,7 +22,7 @@ import six
 from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LANGUAGE
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type, validate_that_mappings_have_the_same_keys
+from ..global_utils import is_same_type, assert_that_mappings_have_the_same_keys
 from ..schema import SCALAR_TYPE_NAME_TO_VALUE, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -57,7 +57,7 @@ _ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
         GraphQLID.name: (int, str,),
     }
 )
-validate_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_NAME_TO_VALUE)
+assert_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_NAME_TO_VALUE)
 
 
 def _validate_json_scalar_argument(name: str, expected_type: GraphQLScalarType, value: Any) -> None:

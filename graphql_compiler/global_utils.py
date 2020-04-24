@@ -61,10 +61,10 @@ def is_same_type(left, right):
         return False
 
 
-def validate_that_mappings_have_the_same_keys(
+def assert_that_mappings_have_the_same_keys(
     mapping1: Mapping[str, Any], mapping2: Mapping[str, Any]
 ) -> None:
-    """Validate that the mappings have the same keys."""
+    """Assert that the mappings have the same keys."""
     mapping1_keys = set(mapping1.keys())
     mapping2_keys = set(mapping2.keys())
 
