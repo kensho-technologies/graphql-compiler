@@ -61,7 +61,7 @@ assert_that_mappings_have_the_same_keys(_ALLOWED_JSON_SCALAR_TYPES, SCALAR_TYPE_
 
 
 def _validate_json_scalar_argument(name: str, expected_type: GraphQLScalarType, value: Any) -> None:
-    """Validate that the JSON serialized scalar argument has the expected python type."""
+    """Validate that the json serialized scalar argument has the expected python type."""
     expected_python_types = _ALLOWED_JSON_SCALAR_TYPES.get(expected_type.name)
     if expected_python_types is None:
         raise AssertionError(
