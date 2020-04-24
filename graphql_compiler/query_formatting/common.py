@@ -29,6 +29,7 @@ from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
 
+
 ######
 # Public API
 ######
