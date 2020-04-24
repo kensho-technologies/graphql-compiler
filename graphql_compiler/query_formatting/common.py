@@ -3,10 +3,9 @@
 import datetime
 import decimal
 from types import MappingProxyType
-from typing import Any, Callable, Collection, Dict, Mapping, NoReturn, Type, Union
+from typing import Any, Collection, Dict, Mapping, NoReturn, Type, Union
 
 import arrow
-from funcy.compat import zip
 from graphql import (
     GraphQLBoolean,
     GraphQLFloat,
@@ -89,10 +88,12 @@ def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, va
         )
     else:
         expected_python_types, deserialization_function = allowed_types_and_deserialization
-        if (
-            not isinstance(value, expected_python_types) or
-            # We explicitly disallow passing boolean values for non-boolean types
-            (isinstance(value, bool) and is_same_type(GraphQLBoolean, expected_type))
+        if any(
+            (
+                not isinstance(value, expected_python_types),
+                # We explicitly disallow passing boolean values for non-boolean types
+                (isinstance(value, bool) and is_same_type(GraphQLBoolean, expected_type)),
+            )
         ):
             _raise_invalid_type_error(name, expected_python_types, value)
         else:
@@ -102,17 +103,18 @@ def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, va
                 raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
+SupportedArgumentGraphQLType = Union[
+    GraphQLScalarType,
+    GraphQLList[GraphQLScalarType],
+    GraphQLList[GraphQLNonNull[GraphQLScalarType]],
+    GraphQLNonNull[GraphQLScalarType],
+    GraphQLNonNull[GraphQLList[GraphQLScalarType]],
+    GraphQLNonNull[GraphQLList[GraphQLNonNull[GraphQLScalarType]]],
+]
+
+
 def deserialize_json_argument(
-    name: str,
-    expected_type: Union[
-        GraphQLScalarType,
-        GraphQLList[GraphQLScalarType],
-        GraphQLList[GraphQLNonNull[GraphQLScalarType]],
-        GraphQLNonNull[GraphQLScalarType],
-        GraphQLNonNull[GraphQLList[GraphQLScalarType]],
-        GraphQLNonNull[GraphQLList[GraphQLNonNull[GraphQLScalarType]]],
-    ],
-    value: Any,
+    name: str, expected_type: SupportedArgumentGraphQLType, value: Any,
 ) -> Any:
     """Deserialize a GraphQL argument parsed from a json file.
 
@@ -165,18 +167,7 @@ def deserialize_json_argument(
 
 
 def deserialize_multiple_json_arguments(
-    arguments: Mapping[str, Any],
-    expected_types: Mapping[
-        str,
-        Union[
-            GraphQLScalarType,
-            GraphQLList[GraphQLScalarType],
-            GraphQLList[GraphQLNonNull[GraphQLScalarType]],
-            GraphQLNonNull[GraphQLScalarType],
-            GraphQLNonNull[GraphQLList[GraphQLScalarType]],
-            GraphQLNonNull[GraphQLList[GraphQLNonNull[GraphQLScalarType]]],
-        ],
-    ],
+    arguments: Mapping[str, Any], expected_types: Mapping[str, SupportedArgumentGraphQLType],
 ) -> Dict[str, Any]:
     """Deserialize GraphQL arguments parsed from a json file.
 
