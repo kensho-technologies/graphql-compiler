@@ -3,7 +3,7 @@
 import datetime
 import decimal
 from types import MappingProxyType
-from typing import Any, Collection, Dict, Mapping, Type, Union
+from typing import Any, Collection, Dict, Mapping, Type, Union, NoReturn
 
 import arrow
 from graphql import (
@@ -37,7 +37,7 @@ from .sql_formatting import insert_arguments_into_sql_query
 
 def _raise_invalid_type_error(
     name: str, expected_python_types: Collection[Type], value: Any
-) -> None:
+) -> NoReturn:
     """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
     raise GraphQLInvalidArgumentError(
         f"Invalid type for argument {name}. Expected one of {expected_python_types}. Got value "
