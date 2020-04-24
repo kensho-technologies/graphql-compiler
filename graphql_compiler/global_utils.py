@@ -74,7 +74,7 @@ def validate_that_mappings_have_the_same_keys(
     if diff1 or diff2:
         error_message_list = ["Expected mappings to have the same keys."]
         if diff1:
-            error_message_list.append(f" Keys in the first mapping but not the second: {diff1}.")
+            error_message_list.append(f"Keys in the first mapping but not the second: {diff1}.")
         if diff2:
-            error_message_list.append(f" Keys in the second mapping but not the first: {diff2}.")
+            error_message_list.append(f"Keys in the second mapping but not the first: {diff2}.")
         raise AssertionError(" ".join(error_message_list))
