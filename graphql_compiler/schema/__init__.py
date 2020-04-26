@@ -381,10 +381,6 @@ SUPPORTED_SCALAR_TYPES = (
     GraphQLID,
 ) + CUSTOM_SCALAR_TYPES
 
-SCALAR_TYPE_NAME_TO_VALUE = MappingProxyType(
-    {scalar_type.name: scalar_type for scalar_type in SUPPORTED_SCALAR_TYPES}
-)
-
 DIRECTIVES = (
     FilterDirective,
     TagDirective,
