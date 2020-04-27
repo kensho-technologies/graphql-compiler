@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
-
+from types import MappingProxyType
 import arrow
 from graphql import (
     DirectiveLocation,
@@ -379,6 +379,10 @@ SUPPORTED_SCALAR_TYPES = {
     GraphQLFloat,
     GraphQLID,
 }.union(CUSTOM_SCALAR_TYPES)
+
+SCALAR_TYPE_NAME_TO_VALUE = MappingProxyType({
+    graphql_type.name: graphql_type for graphql_type in SUPPORTED_SCALAR_TYPES
+})
 
 DIRECTIVES = (
     FilterDirective,
