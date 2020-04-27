@@ -229,7 +229,7 @@ def validate_argument_type(name, expected_type, value):
     elif is_same_type(GraphQLDate, stripped_type):
         # Datetimes pass as instances of date. We want to explicitly only allow dates.
         if isinstance(value, datetime.datetime) or not isinstance(value, datetime.date):
-            _raise_invalid_type_error(name, "date", value)
+            _raise_invalid_type_error(name, (datetime.date,), value)
         try:
             GraphQLDate.serialize(value)
         except ValueError as e:
