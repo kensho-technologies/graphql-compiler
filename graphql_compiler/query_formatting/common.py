@@ -61,7 +61,7 @@ def _get_json_scalar_deserialization_function(
             (
                 not isinstance(value, expected_python_types),
                 # We explicitly disallow passing boolean values for non-boolean types
-                (isinstance(value, bool) and is_same_type(GraphQLBoolean, graphql_type)),
+                (isinstance(value, bool) and not is_same_type(GraphQLBoolean, graphql_type)),
             )
         ):
             _raise_invalid_type_error(name, expected_python_types, value)
