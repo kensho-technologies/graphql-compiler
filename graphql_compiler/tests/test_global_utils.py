@@ -15,3 +15,11 @@ class GlobalUtilTests(unittest.TestCase):
         # Additional keys in the second type
         with self.assertRaises(AssertionError):
             assert_set_equality({"b"}, {"a", "b"})
+
+        # Different sets with same number of elements
+        with self.assertRaises(AssertionError):
+            assert_set_equality({"a", "b"}, {"c", "b"})
+
+        # Different types
+        with self.assertRaises(AssertionError):
+            assert_set_equality({"a"}, {1})
