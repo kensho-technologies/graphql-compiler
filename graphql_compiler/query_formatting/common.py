@@ -128,7 +128,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLArgumentType, val
         GraphQLString: "Hello"
         GraphQLBoolean: True
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
-        GraphQLList: [1,2,3]
+        GraphQLList: [1, 2, 3]
 
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
