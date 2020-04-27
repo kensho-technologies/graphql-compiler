@@ -109,7 +109,7 @@ def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, va
 
 
 def deserialize_json_argument(name: str, expected_type: GraphQLArgumentType, value: Any,) -> Any:
-    """Deserialize a json serialized argument.
+    """Deserialize the json serialized argument.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
     json does not support certain types like Date, Datetime, Decimal, and also confuses floats
@@ -162,7 +162,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLArgumentType, val
 def deserialize_multiple_json_arguments(
     arguments: Mapping[str, Any], expected_types: Mapping[str, GraphQLArgumentType],
 ) -> Dict[str, Any]:
-    """Deserialize json serialized GraphQL arguments.
+    """Deserialize the json serialized GraphQL arguments.
 
     Args:
         arguments: mapping of argument names to json serialized values.
