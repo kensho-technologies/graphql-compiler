@@ -22,9 +22,7 @@ from ..compiler import CYPHER_LANGUAGE, GREMLIN_LANGUAGE, MATCH_LANGUAGE, SQL_LA
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..global_utils import assert_set_equality, is_same_type
-from ..schema import (
-    SCALAR_TYPE_NAME_TO_VALUE, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-)
+from ..schema import SUPPORTED_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from ..typedefs import GraphQLArgumentType
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -47,11 +45,6 @@ def _raise_invalid_type_error(
     )
 
 
-_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
-    {GraphQLInt.name: int, GraphQLFloat.name: float}
-)
-
-
 _ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
     {
         GraphQLDate.name: (str,),
@@ -64,28 +57,47 @@ _ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
         GraphQLID.name: (int, str,),
     }
 )
-assert_set_equality(set(_ALLOWED_JSON_SCALAR_TYPES.keys()), set(SCALAR_TYPE_NAME_TO_VALUE.keys()))
+assert_set_equality(
+    set(_ALLOWED_JSON_SCALAR_TYPES.keys()),
+    {graphql_type.name for graphql_type in SUPPORTED_SCALAR_TYPES},
+)
+
+_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+    {GraphQLInt.name: int, GraphQLFloat.name: float}
+)
+
+_JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+    {
+        {
+            graphql_type.name: (
+                _ALLOWED_JSON_SCALAR_TYPES[graphql_type.name],
+                _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(
+                    graphql_type.name, graphql_type.parse_value
+                ),
+            )
+            for graphql_type in SUPPORTED_SCALAR_TYPES
+        }
+    }
+)
 
 
 def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize the json serialized scalar argument."""
-    expected_python_types = _ALLOWED_JSON_SCALAR_TYPES.get(expected_type.name)
-    if expected_python_types is None:
+    types_and_deserialization = _JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS.get(expected_type.name)
+    if types_and_deserialization is None:
         raise AssertionError(
             f"Got unsupported GraphQL type {expected_type} for argument {name} with value {value}."
         )
-    elif any(
-        (
-            not isinstance(value, expected_python_types),
-            # We explicitly disallow passing boolean values for non-boolean types
-            (isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type)),
-        )
-    ):
-        _raise_invalid_type_error(name, expected_python_types, value)
     else:
-        deserialization_function = _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(
-            expected_type.name, expected_type.parse_value
-        )
+        expected_python_types, deserialization_function = types_and_deserialization
+        if any(
+            (
+                not isinstance(value, expected_python_types),
+                # We explicitly disallow passing boolean values for non-boolean types
+                (isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type)),
+            )
+        ):
+            _raise_invalid_type_error(name, expected_python_types, value)
         try:
             return deserialization_function(value)
         except (ValueError, TypeError) as e:
@@ -93,7 +105,7 @@ def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, va
 
 
 def deserialize_json_argument(name: str, expected_type: GraphQLArgumentType, value: Any,) -> Any:
-    """Deserialize a GraphQL argument parsed from a json file.
+    """Deserialize a json serialized argument.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
     json does not support certain types like Date, Datetime, Decimal, and also confuses floats
@@ -146,7 +158,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLArgumentType, val
 def deserialize_multiple_json_arguments(
     arguments: Mapping[str, Any], expected_types: Mapping[str, GraphQLArgumentType],
 ) -> Dict[str, Any]:
-    """Deserialize GraphQL arguments parsed from a json file.
+    """Deserialize json serialized GraphQL arguments.
 
     Args:
         arguments: mapping of argument names to json serialized values.
