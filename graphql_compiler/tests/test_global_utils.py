@@ -1,34 +1,17 @@
-from types import MappingProxyType
 import unittest
 
-from ..global_utils import assert_that_mappings_have_the_same_keys
+from ..global_utils import assert_set_equality
 
 
 class GlobalUtilTests(unittest.TestCase):
-    def test_assert_that_mappings_have_the_same_keys(self):
-        # Matching keys
-        assert_that_mappings_have_the_same_keys({"a": 1, "b": 2}, {"a": 2, "b": 1})
+    def test_assert_equality(self):
+        # Matching sets
+        assert_set_equality({"a", "b"}, {"a", "b"})
 
-        # Additional keys in the first dict
+        # Additional keys in the first set
         with self.assertRaises(AssertionError):
-            assert_that_mappings_have_the_same_keys({"a": 1, "b": 2}, {"a": 2})
+            assert_set_equality({"a", "b"}, {"b"})
 
-        # Additional keys in the second dict
+        # Additional keys in the second type
         with self.assertRaises(AssertionError):
-            assert_that_mappings_have_the_same_keys({"a": 2}, {"a": 1, "b": 2})
-
-        # Matching keys with non-dict maps
-        assert_that_mappings_have_the_same_keys(
-            MappingProxyType({"a": 1, "b": 2}), MappingProxyType({"b": 1, "a": 2})
-        )
-
-        # Mismatching keys of non-dict maps
-        with self.assertRaises(AssertionError):
-            assert_that_mappings_have_the_same_keys(
-                MappingProxyType({"a": 1, "b": 2}), MappingProxyType({"a": 2})
-            )
-
-        # Same keys but different map types
-        assert_that_mappings_have_the_same_keys(
-            {"a": 1, "b": 2}, MappingProxyType({"a": 2, "b": 1})
-        )
+            assert_set_equality({"b"}, {"a", "b"})

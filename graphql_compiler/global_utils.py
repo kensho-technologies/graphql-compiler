@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
-from typing import Any, Dict, Mapping, NamedTuple, Tuple, Set
+from typing import Any, Dict, NamedTuple, Set, Tuple
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
 import six
@@ -61,9 +61,7 @@ def is_same_type(left, right):
         return False
 
 
-def assert_set_equality(
-    set1: Set[str], set2: Set[str]
-) -> None:
+def assert_set_equality(set1: Set[Any], set2: Set[Any]) -> None:
     """Assert that the sets are the same."""
     diff1 = set1.difference(set2)
     diff2 = set2.difference(set1)

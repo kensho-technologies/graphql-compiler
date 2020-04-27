@@ -3,7 +3,7 @@
 import datetime
 import decimal
 from types import MappingProxyType
-from typing import Any, Callable, Collection, Dict, Mapping, NoReturn, Tuple, Type, Union
+from typing import Any, Callable, Collection, Dict, Mapping, NoReturn, Tuple, Type
 
 import arrow
 from graphql import (
@@ -23,11 +23,12 @@ from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..global_utils import assert_set_equality, is_same_type
 from ..schema import SUPPORTED_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..typedefs import GraphQLArgumentType
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
-from ..typedefs import GraphQLArgumentType
+
 
 ######
 # Public API
@@ -55,7 +56,7 @@ def _get_json_scalar_deserialization_function(
     """Return a function that deserializes a json serialized argument of the given GraphQL type."""
 
     def _json_scalar_deserialization_function(name: str, value: Any) -> Any:
-        """Deserialize the json serialized scalar argument of the given GraphQL type. """
+        """Deserialize the json serialized scalar argument of the given GraphQL type."""
         if any(
             (
                 not isinstance(value, expected_python_types),
@@ -88,10 +89,10 @@ _ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
         GraphQLID: (int, str,),
     }
 )
-assert_set_equality(
-    {graphql_type.name for graphql_type in _ALLOWED_JSON_SCALAR_TYPES},
-    set(SUPPORTED_SCALAR_TYPES.keys())
-)
+# In general, we should compare two GraphQLScalarType objects by using their names since different
+# GraphQLScalarType objects can refer to the same type. However, in this case we can and should use
+# direct equality to ensure that the parsing and serialization functions are also the same.
+assert_set_equality(set(_ALLOWED_JSON_SCALAR_TYPES.keys()), SUPPORTED_SCALAR_TYPES)
 
 _SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     {
@@ -111,11 +112,7 @@ def _deserialize_json_scalar_argument(name, expected_type: GraphQLScalarType, va
     return deserialization_function(name, value)
 
 
-
-
-def deserialize_json_argument(
-    name: str, expected_type: GraphQLArgumentType, value: Any,
-) -> Any:
+def deserialize_json_argument(name: str, expected_type: GraphQLArgumentType, value: Any,) -> Any:
     """Deserialize a GraphQL argument parsed from a json file.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
@@ -136,7 +133,7 @@ def deserialize_json_argument(
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
               message if an error is raised.
-        expected_type: the GraphQL type.  All GraphQLNonNull type wrappers are stripped.
+        expected_type: the GraphQL type. All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
 
     Returns:

@@ -4,7 +4,6 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
-from types import MappingProxyType
 
 import arrow
 from graphql import (
@@ -367,19 +366,19 @@ GraphQLDecimal = GraphQLScalarType(
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
-CUSTOM_SCALAR_TYPES = (
+CUSTOM_SCALAR_TYPES = {
     GraphQLDecimal,
     GraphQLDate,
     GraphQLDateTime,
-)
+}
 
-SUPPORTED_SCALAR_TYPES = (
+SUPPORTED_SCALAR_TYPES = {
     GraphQLInt,
     GraphQLString,
     GraphQLBoolean,
     GraphQLFloat,
     GraphQLID,
-) + CUSTOM_SCALAR_TYPES
+}.union(CUSTOM_SCALAR_TYPES)
 
 DIRECTIVES = (
     FilterDirective,
