@@ -4,7 +4,6 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
-from types import MappingProxyType
 
 import arrow
 from graphql import (

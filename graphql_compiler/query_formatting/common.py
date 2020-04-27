@@ -63,20 +63,24 @@ assert_set_equality(
 )
 
 _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
-    {GraphQLInt.name: int, GraphQLFloat.name: float}
+    {
+        # `GraphQLInt.parse_value` requires its input to be a signed 32 bit integer. We only require
+        # that the input be either a non-bool int or a str that can be converted to an int.
+        GraphQLInt.name: int,
+        # `GraphQLInt.parse_value` requires its input to be a non-bool int or a non-NAN and
+        # non-infinite float. We only require that the input be either a non-bool int, a float or a
+        # str that can be converted to a float.
+        GraphQLFloat.name: float,
+    }
 )
 
 _JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     {
-        {
-            graphql_type.name: (
-                _ALLOWED_JSON_SCALAR_TYPES[graphql_type.name],
-                _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(
-                    graphql_type.name, graphql_type.parse_value
-                ),
-            )
-            for graphql_type in SUPPORTED_SCALAR_TYPES
-        }
+        scalar_type.name: (
+            _ALLOWED_JSON_SCALAR_TYPES[scalar_type.name],
+            _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(scalar_type.name, scalar_type.parse_value),
+        )
+        for scalar_type in SUPPORTED_SCALAR_TYPES
     }
 )
 
