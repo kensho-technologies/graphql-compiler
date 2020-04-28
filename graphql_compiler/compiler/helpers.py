@@ -45,6 +45,9 @@ FilterOperationInfo = namedtuple(
 
 T = TypeVar("T")
 
+QueryPath = Tuple[str, ...]
+FoldPath = Tuple[Tuple[str, str], ...]
+
 
 def get_only_element_from_collection(one_element_collection: Collection[T]) -> T:
     """Assert that the collection has exactly one element, then return that element."""
@@ -382,7 +385,7 @@ class BaseLocation(object):
 class Location(BaseLocation):
     """A location in the GraphQL query, anywhere except within a @fold scope."""
 
-    query_path: Tuple[str, ...]
+    query_path: QueryPath
     visit_counter: int
 
     def __init__(
@@ -545,7 +548,7 @@ class FoldScopeLocation(BaseLocation):
     """A location within a @fold scope."""
 
     base_location: Location
-    fold_path: Tuple[Tuple[str, str], ...]
+    fold_path: FoldPath
 
     def __init__(
         self,
