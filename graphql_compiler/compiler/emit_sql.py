@@ -105,17 +105,6 @@ def _find_columns_used_outside_folds(
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
                 used_columns.setdefault(child_location.query_path, set()).add(edge.from_column)
 
-    # Columns used in the base case of CTE recursions should be made available from parent scope
-    for location, _ in ir.query_metadata_table.registered_locations:
-        if isinstance(location, FoldScopeLocation):
-            continue
-        for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
-            traversal = "{}_{}".format(recurse_info.edge_direction, recurse_info.edge_name)
-            used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
-                used_columns[location.query_path + (traversal,)]
-            )
-            used_columns[location.query_path].add(edge.from_column)
-
     # Find outputs used
     for _, output_info in ir.query_metadata_table.outputs:
         if isinstance(output_info.location, FoldScopeLocation):
@@ -129,6 +118,17 @@ def _find_columns_used_outside_folds(
             continue
         query_path = output_info.location.query_path
         used_columns.setdefault(query_path, set()).add(output_info.location.field)
+
+    # Columns used in the base case of CTE recursions should be made available from parent scope
+    for location, _ in ir.query_metadata_table.registered_locations:
+        if isinstance(location, FoldScopeLocation):
+            continue
+        for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
+            traversal = "{}_{}".format(recurse_info.edge_direction, recurse_info.edge_name)
+            used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
+                used_columns[location.query_path + (traversal,)]
+            )
+            used_columns[location.query_path].add(edge.from_column)
 
     return used_columns
 
