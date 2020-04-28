@@ -908,6 +908,36 @@ def simple_recurse() -> CommonTestData:  # noqa: D103
     )
 
 
+def recurse_with_new_output_inside_recursion_and_filter_at_root() -> CommonTestData:  # noqa: D103
+    # The filter on the root location will make SQL emit a cte at the base. Since
+    # the color field is used in the base case of the recursive cte, the root cte
+    # needs to select it. If this is not implemented correctly, emit_sql would raise
+    # unexpected errors.
+    graphql_input = """{
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_ParentOf @recurse(depth: 1) {
+                name @output(out_name: "relation_name")
+                color @output(out_name: "animal_color")
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "animal_color": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "relation_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+    }
+    expected_input_metadata = {
+        "animal_name": GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def filter_then_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {

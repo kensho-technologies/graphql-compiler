@@ -2381,6 +2381,65 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
+    def test_recurse_with_new_output_inside_recursion_and_filter_at_root(self):
+        test_data = test_input_data.recurse_with_new_output_inside_recursion_and_filter_at_root()
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_mssql = """
+            WITH anon_2 AS (
+                SELECT
+                    [Animal_1].color AS [Animal__color],
+                    [Animal_1].name AS [Animal__name],
+                    [Animal_1].parent AS [Animal__parent],
+                    [Animal_1].uuid AS [Animal__uuid]
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_1]
+                WHERE
+                    [Animal_1].name = :animal_name),
+            anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    anon_2.[Animal__color] AS color,
+                    anon_2.[Animal__name] AS name,
+                    anon_2.[Animal__parent] AS parent,
+                    anon_2.[Animal__uuid] AS uuid,
+                    anon_2.[Animal__uuid] AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    anon_2
+                UNION ALL
+                SELECT
+                    [Animal_2].color AS color,
+                    [Animal_2].name AS name,
+                    [Animal_2].parent AS parent,
+                    [Animal_2].uuid AS uuid,
+                    anon_1.__cte_key AS __cte_key,
+                    anon_1.__cte_depth + 1 AS __cte_depth
+                FROM
+                    anon_1
+                    JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                        ON anon_1.uuid = [Animal_2].parent
+                WHERE
+                    anon_1.__cte_depth < 1
+            )
+            SELECT
+                anon_1.color AS animal_color,
+                anon_1.name AS relation_name
+            FROM anon_1
+        """
+        expected_cypher = SKIP_TEST
+        expected_postgresql = SKIP_TEST
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
     def test_filter_then_recurse(self):
         test_data = test_input_data.filter_then_recurse()
 
