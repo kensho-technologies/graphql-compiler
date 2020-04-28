@@ -1805,6 +1805,44 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_recurse_with_new_output_inside_recursion_and_filter_at_root(self):
+        test_data = test_input_data.recurse_with_new_output_inside_recursion_and_filter_at_root()
+
+        base_location = helpers.Location(("Animal",))
+        child_location = base_location.navigate_to_subpath("out_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Animal"}),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    u"=",
+                    expressions.LocalField("name", GraphQLString),
+                    expressions.Variable("$animal_name", GraphQLString),
+                )
+            ),
+            blocks.MarkLocation(base_location),
+            blocks.Recurse("out", "Animal_ParentOf", 1),
+            blocks.MarkLocation(child_location),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "relation_name": expressions.OutputContextField(
+                        child_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "animal_color": expressions.OutputContextField(
+                        child_location.navigate_to_field("color"), GraphQLString
+                    ),
+                }
+            ),
+        ]
+        expected_location_types = {
+            base_location: "Animal",
+            child_location: "Animal",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_filter_then_recurse(self):
         test_data = test_input_data.filter_then_recurse()
 
