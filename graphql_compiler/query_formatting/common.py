@@ -64,12 +64,14 @@ assert_set_equality(
 
 _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     {
-        # `GraphQLInt.parse_value` requires its input to be a signed 32 bit integer. We only require
-        # that the input be either a non-bool int or a str that can be converted to an int.
+        # `GraphQLInt.parse_value` requires its input to be a signed 32 bit integer.
+        # GraphQLInt is currently used to represent any backend integer type, including 64 bit
+        # integers, so we removed the signed 32 bit restriction. We also choose to allow strings as
+        # input.
         GraphQLInt.name: int,
-        # `GraphQLInt.parse_value` requires its input to be a non-bool int or a non-NAN and
-        # non-infinite float. We only require that the input be either a non-bool int, a float or a
-        # str that can be converted to a float.
+        # TODO: Disallow NAN and infinite floats.
+        # `GraphQLInt.parse_value` requires its input to be a integer or a non-NAN and non-infinite
+        # float. We choose to additionally allow strings as input.
         GraphQLFloat.name: float,
     }
 )
@@ -151,6 +153,7 @@ def deserialize_json_argument(name: str, expected_type: GraphQLArgumentType, val
             _raise_invalid_type_error(name, (list,), value)
 
         inner_stripped_type = strip_non_null_from_type(stripped_type.of_type)
+
         return [
             _deserialize_json_scalar_argument(name, inner_stripped_type, element)
             for element in value
