@@ -1008,7 +1008,6 @@ class CompilationState(object):
 
         # 4. Clear the fold from the compilation state.
         self._current_fold = None
-        self._fold_vertex_location = None
 
     def mark_location(self):
         """Execute a MarkLocation Block."""
