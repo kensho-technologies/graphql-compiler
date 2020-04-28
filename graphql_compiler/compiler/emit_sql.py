@@ -688,8 +688,6 @@ class CompilationState(object):
 
         # Current folded subquery state.
         self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
-        self._fold_vertex_location = None  # location in the IR tree where the fold starts
-        self._outside_fold_location = None
 
         # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
         # corresponding table _Aliases. some_location is either self._current_location
@@ -963,8 +961,6 @@ class CompilationState(object):
 
         # 1. Get fold metadata.
         # Location of vertex that is folded on.
-        self._fold_vertex_location = fold_scope_location
-        self._outside_fold_location = self._current_location
         outer_alias = self._current_alias.alias()
         outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
 
@@ -994,7 +990,7 @@ class CompilationState(object):
     def unfold(self):
         """Complete the execution of a Fold Block."""
         # 1. Relocate to outside of the fold.
-        self._relocate(self._outside_fold_location)
+        self._relocate(self._current_location.base_location)
 
         # 2. End the fold, collecting the folded subquery, the new from clause for the main
         # selectable, and the location of the folded outputs.
@@ -1013,7 +1009,6 @@ class CompilationState(object):
         # 4. Clear the fold from the compilation state.
         self._current_fold = None
         self._fold_vertex_location = None
-        self._outside_fold_location = None
 
     def mark_location(self):
         """Execute a MarkLocation Block."""
