@@ -29,7 +29,7 @@ from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..global_utils import is_same_type
 from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from ..typedefs import GraphQLQueryArgumentType
+from ..typedefs import QueryArgumentGraphQLType
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
@@ -186,7 +186,7 @@ def deserialize_multiple_json_arguments(
     }
 
 
-def validate_argument_type(name: str, expected_type: GraphQLQueryArgumentType, value: Any):
+def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, value: Any):
     """Ensure the value has the expected type and is usable in any of our backends, or raise errors.
 
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
@@ -275,7 +275,7 @@ def ensure_arguments_are_provided(
 
 
 def validate_arguments(
-    expected_types: Mapping[str, GraphQLQueryArgumentType], arguments: Mapping[str, Any]
+    expected_types: Mapping[str, QueryArgumentGraphQLType], arguments: Mapping[str, Any]
 ) -> None:
     """Ensure that all arguments are provided and that they are of the expected type."""
     ensure_arguments_are_provided(expected_types, arguments)
