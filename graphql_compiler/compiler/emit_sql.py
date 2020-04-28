@@ -711,24 +711,19 @@ class CompilationState(object):
     def _relocate(self, new_location):
         """Move to a different location in the query, updating the _current_alias."""
         self._current_location = new_location
-        # Create appropriate alias key based on whether or not relocation is taking place in a fold
-        # or not. Note: during end_fold relocation to outside of the fold (i.e. to a Location rather
-        # than a FoldScopeLocation) occurs before self._current_fold is set to None. Therefore, it
-        # should be checked that the current fold is not None AND that the new location is a
-        # FoldScopeLocation.
-        if self._current_fold is not None and isinstance(new_location, FoldScopeLocation):
+        # Create appropriate alias key based on whether new_location is a FoldScopeLocation or a
+        # Location.
+        if isinstance(new_location, FoldScopeLocation):
             alias_key = (
                 self._current_location.base_location.query_path,
                 self._current_location.fold_path,
             )
-        # Regardless of whether self._current_fold is None or not, if the new location is a
-        # Location, relocation should occur based on a Location alias key.
         elif isinstance(new_location, Location):
             alias_key = (self._current_location.query_path, None)
         else:
             raise AssertionError(
-                f"Attempted an invalid relocation to {new_location} while the current fold was set"
-                f"to {self._current_fold}."
+                f"Attempted an invalid relocation to a {type(new_location)}. new_location must be "
+                f"either a Location or a FoldScopeLocation. new_location was {new_location}."
             )
 
         # Update the current alias.
