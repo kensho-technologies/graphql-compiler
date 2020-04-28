@@ -28,6 +28,7 @@ from ..query_formatting.common import (
 )
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
 from ..schema.schema_info import CommonSchemaInfo
+from ..typedefs import GraphQLQueryArgumentType
 from .test_helpers import compare_gremlin, compare_match, get_schema
 
 
@@ -231,7 +232,7 @@ class QueryFormattingTests(unittest.TestCase):
                     validate_argument_type(arbitrary_argument_name, graphql_type, invalid_value)
 
     def test_non_null_types_pass_validation(self) -> None:
-        type_and_value = [
+        type_and_value: List[Tuple[GraphQLQueryArgumentType, Any]] = [
             (GraphQLString, "abc"),  # sanity check
             (GraphQLNonNull(GraphQLString), "abc"),
             (GraphQLList(GraphQLString), ["a", "b", "c"]),  # sanity check
