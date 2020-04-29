@@ -278,6 +278,7 @@ SQLFoldTraversalDescriptor = namedtuple(
 )
 
 
+# TODO(bojanserafimov): Rename to FoldSubqueryBuilder and simplify usage and spec.
 class SQLFoldObject(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
