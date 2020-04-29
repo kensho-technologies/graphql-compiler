@@ -979,18 +979,19 @@ class CompilationState(object):
         # 1. Relocate to outside of the fold.
         self._relocate(self._outside_fold_location)
 
-        # 2. End the fold, collecting the folded subquery, the new from clause for the main
-        # selectable, and the location of the folded outputs.
+        # 2. End the fold, collecting the folded subquery and the location of the folded outputs.
         fold_subquery, output_vertex_location = self._current_fold.end_fold()
         fold_subquery_alias = fold_subquery.alias(self._alias_generator.generate_subquery())
 
         # 3. Update the alias for the subquery's folded outputs and from clause for this SQL query.
-        outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
         subquery_alias_key = (
             output_vertex_location.base_location.query_path,
             output_vertex_location.fold_path,
         )
         self._aliases[subquery_alias_key] = fold_subquery_alias
+
+        # 4. Join the fold subquery to the main from clause.
+        outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
         self._from_clause = sqlalchemy.join(
             self._from_clause,
             fold_subquery_alias,
@@ -1001,7 +1002,7 @@ class CompilationState(object):
             isouter=False,
         )
 
-        # 4. Clear the fold from the compilation state.
+        # 5. Clear the fold from the compilation state.
         self._current_fold = None
         self._fold_vertex_location = None
         self._outside_fold_location = None
