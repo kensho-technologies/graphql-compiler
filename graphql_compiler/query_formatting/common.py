@@ -88,7 +88,6 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         )
 
     name_to_custom_type = {graphql_type.name: graphql_type for graphql_type in CUSTOM_SCALAR_TYPES}
-
     # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only for
     # 64-bit floating point numbers, so large floats might have to be represented as strings.
     if is_same_type(expected_type, GraphQLFloat):
