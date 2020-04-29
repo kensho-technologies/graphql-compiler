@@ -2,7 +2,7 @@
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import six
 import sqlalchemy
@@ -278,15 +278,17 @@ SQLFoldTraversalDescriptor = namedtuple(
 )
 
 
-class SQLFoldObject(object):
-    """Object used to collect info for folds in order to ensure correct code emission."""
+class FoldSubqueryBuilder(object):
+    """Class producing the SQL subquery that represents a fold scope."""
 
-    # A SQLFoldObject consists of information related to the SELECT clause of the fold subquery,
+    # TODO(bojanserafimov): update docstring.
+    # A FoldSubqueryBuilder consists of information related to the SELECT clause of the fold
+    # subquery,
     # the GROUP BY clause, the WHERE clause (if applying filters) and the FROM clause which contains
     # one JOIN per vertex traversed in the fold, including the traversal from the vertex outside
     # the fold to the folded vertex itself.
     #
-    # The life cycle for the SQLFoldObject is:
+    # The life cycle for the FoldSubqueryBuilder is:
     #   1. initializing it with the information for the outer vertex (the one outside the fold)
     #   2. at least one traversal
     #   3. visiting the output vertex to collect the output columns
@@ -339,7 +341,7 @@ class SQLFoldObject(object):
     # JOIN VertexPrecedingOutput
     # ON ...
     def __init__(self, dialect, outer_vertex_table, primary_key_name):
-        """Create an SQLFoldObject with table, type, and join information supplied by the IR.
+        """Create an FoldSubqueryBuilder with table, type, and join information supplied by the IR.
 
         Args:
             dialect: SQLAlchemy compiler object passed in from the schema, representing
@@ -373,14 +375,15 @@ class SQLFoldObject(object):
     def __str__(self):
         """Produce string used to customize error messages."""
         if self._outer_vertex_alias is None:
-            return 'SQLFoldObject("Invalid fold: no vertex preceding fold.")'
+            return 'FoldSubqueryBuilder("Invalid fold: no vertex preceding fold.")'
         elif self._output_vertex_alias is None:
             return (
-                'SQLFoldObject("Vertex outside fold: {}.' 'Output vertex for fold: None.")'
+                'FoldSubqueryBuilder("Vertex outside fold: {}.' 'Output vertex for fold: None.")'
             ).format(self._outer_vertex_alias.original)
         else:
-            return 'SQLFoldObject("Vertex outside fold: {}. Output vertex for fold: {}.")'.format(
-                self._outer_vertex_alias.original, self._output_vertex_alias.original
+            return (
+                'FoldSubqueryBuilder("Vertex outside fold: {}. Output vertex for fold: {}.")'
+                "".format(self._outer_vertex_alias.original, self._output_vertex_alias.original)
             )
 
     def _construct_fold_joins(self):
@@ -528,7 +531,7 @@ class SQLFoldObject(object):
         )
 
     def _get_fold_outputs(self, fold_scope_location, all_folded_fields):
-        """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
+        """Generate output columns for innermost fold scope and add them to this."""
         # Find outputs for this fold in all_folded_fields and add to self._outputs.
         if fold_scope_location.fold_path in all_folded_fields:
             for fold_output in all_folded_fields[fold_scope_location.fold_path]:
@@ -576,7 +579,7 @@ class SQLFoldObject(object):
             self._outputs = self._get_fold_outputs(current_fold_scope_location, all_folded_fields)
 
     def add_filter(self, predicate, aliases):
-        """Add a new filter to the SQLFoldObject."""
+        """Add a new filter to the FoldSubqueryBuilder."""
         if self._ended:
             raise AssertionError(
                 "Cannot add a filter after end_fold has been called. Invalid "
@@ -590,8 +593,8 @@ class SQLFoldObject(object):
         sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
         self._filters.append(sql_expression)
 
-    def end_fold(self):
-        """Produce the final subquery and join it onto the rest of the query."""
+    def end_fold(self) -> Tuple[Select, FoldScopeLocation]:
+        """Return the fold subquery and the location its outputs come from."""
         if self._ended:
             raise AssertionError(
                 "Cannot call end_fold more than once. "
@@ -613,17 +616,13 @@ class SQLFoldObject(object):
                 "Folds containing multiple traversals are not implemented in MSSQL."
             )
 
-        # Join together all vertices traversed.
-        subquery_from_clause = self._construct_fold_joins()
-
-        # Produce full subquery.
-        fold_subquery = self._construct_fold_subquery(subquery_from_clause)
-
         # End the fold, preventing any more functions from being called on this fold.
         self._ended = True
 
+        # Produce the subquery.
+        subquery_from_clause = self._construct_fold_joins()
+        fold_subquery = self._construct_fold_subquery(subquery_from_clause)
         return fold_subquery, self._output_vertex_location
-
 
 
 class UniqueAliasGenerator(object):
@@ -673,7 +672,7 @@ class CompilationState(object):
         self._current_alias = None  # a sqlalchemy table Alias at the current location
 
         # Current folded subquery state.
-        self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
+        self._current_fold = None  # FoldSubqueryBuilder to collect fold info and guide output query
         self._fold_vertex_location = None  # location in the IR tree where the fold starts
         self._outside_fold_location = None
 
@@ -963,7 +962,7 @@ class CompilationState(object):
         ]
 
         # 3. Initialize fold object.
-        self._current_fold = SQLFoldObject(
+        self._current_fold = FoldSubqueryBuilder(
             self._sql_schema_info.dialect, outer_alias, outer_vertex_primary_key_name
         )
 
