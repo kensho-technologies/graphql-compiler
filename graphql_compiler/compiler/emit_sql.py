@@ -2,7 +2,7 @@
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from collections import namedtuple
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set
+from typing import Dict, List, Optional, Set, Tuple
 
 import six
 import sqlalchemy
@@ -590,8 +590,8 @@ class SQLFoldObject(object):
         sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
         self._filters.append(sql_expression)
 
-    def end_fold(self):
-        """Produce the final subquery and join it onto the rest of the query."""
+    def end_fold(self) -> Tuple[Select, FoldScopeLocation]:
+        """Return the fold subquery and the location its outputs come from."""
         if self._ended:
             raise AssertionError(
                 "Cannot call end_fold more than once. "
@@ -613,17 +613,13 @@ class SQLFoldObject(object):
                 "Folds containing multiple traversals are not implemented in MSSQL."
             )
 
-        # Join together all vertices traversed.
-        subquery_from_clause = self._construct_fold_joins()
-
-        # Produce full subquery.
-        fold_subquery = self._construct_fold_subquery(subquery_from_clause)
-
         # End the fold, preventing any more functions from being called on this fold.
         self._ended = True
 
+        # Produce the subquery.
+        subquery_from_clause = self._construct_fold_joins()
+        fold_subquery = self._construct_fold_subquery(subquery_from_clause)
         return fold_subquery, self._output_vertex_location
-
 
 
 class UniqueAliasGenerator(object):
