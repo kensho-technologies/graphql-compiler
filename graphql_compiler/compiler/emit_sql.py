@@ -590,7 +590,7 @@ class SQLFoldObject(object):
         sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
         self._filters.append(sql_expression)
 
-    def end_fold(self, alias_generator, from_clause, outer_from_table):
+    def end_fold(self):
         """Produce the final subquery and join it onto the rest of the query."""
         if self._ended:
             raise AssertionError(
@@ -617,27 +617,13 @@ class SQLFoldObject(object):
         subquery_from_clause = self._construct_fold_joins()
 
         # Produce full subquery.
-        fold_subquery = self._construct_fold_subquery(subquery_from_clause).alias(
-            alias_generator.generate_subquery()
-        )
-
-        # Join the subquery onto the rest of the query.
-        joined_from_clause = sqlalchemy.join(
-            from_clause,
-            fold_subquery,
-            onclause=(
-                outer_from_table.c[self._outer_vertex_primary_key]
-                == fold_subquery.c[
-                    self._outer_vertex_primary_key
-                ]  # only support a single primary key field, no composite keys
-            ),
-            isouter=False,
-        )
+        fold_subquery = self._construct_fold_subquery(subquery_from_clause)
 
         # End the fold, preventing any more functions from being called on this fold.
         self._ended = True
 
-        return fold_subquery, joined_from_clause, self._output_vertex_location
+        return fold_subquery, self._output_vertex_location
+
 
 
 class UniqueAliasGenerator(object):
@@ -998,17 +984,27 @@ class CompilationState(object):
 
         # 2. End the fold, collecting the folded subquery, the new from clause for the main
         # selectable, and the location of the folded outputs.
-        fold_subquery, from_clause, output_vertex_location = self._current_fold.end_fold(
-            self._alias_generator, self._from_clause, self._current_alias
-        )
+        fold_subquery, output_vertex_location = self._current_fold.end_fold()
+        fold_subquery_alias = fold_subquery.alias(self._alias_generator.generate_subquery())
 
         # 3. Update the alias for the subquery's folded outputs and from clause for this SQL query.
+        outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
         subquery_alias_key = (
             output_vertex_location.base_location.query_path,
             output_vertex_location.fold_path,
         )
-        self._aliases[subquery_alias_key] = fold_subquery
-        self._from_clause = from_clause
+        self._aliases[subquery_alias_key] = fold_subquery_alias
+        self._from_clause = sqlalchemy.join(
+            self._from_clause,
+            fold_subquery_alias,
+            onclause=(
+                self._current_alias.c[outer_vertex_primary_key_name]
+                == fold_subquery_alias.c[
+                    outer_vertex_primary_key_name
+                ]  # only support a single primary key field, no composite keys
+            ),
+            isouter=False,
+        )
 
         # 4. Clear the fold from the compilation state.
         self._current_fold = None
