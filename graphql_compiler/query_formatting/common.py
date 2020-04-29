@@ -279,7 +279,7 @@ def validate_arguments(
     Args:
         arguments: mapping of argument names to arguments values.
         expected_types: mapping of argument names to the expected GraphQL types. All GraphQLNonNull
-                         type wrappers are stripped.
+                        type wrappers are stripped.
     """
     ensure_arguments_are_provided(expected_types, arguments)
     for name in expected_types:
