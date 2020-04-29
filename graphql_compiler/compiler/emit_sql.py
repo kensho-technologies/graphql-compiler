@@ -371,7 +371,7 @@ class SQLFoldObject(object):
         self._outputs: List[Label] = []  # Output columns for folded subquery.
         self._filters: List[
             BinaryExpression
-        ] = []  # SQLAlchemy Expressions to be used in the where clause.
+        ] = []  # SQLAlchemy Expressions to be used in the WHERE clause.
 
         # SQLAlchemy compiler object determining which dialect to target.
         self._dialect: DefaultDialect = dialect
