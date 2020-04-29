@@ -286,6 +286,7 @@ class SQLFoldTraversalDescriptor(NamedTuple):
     to_table: Alias
 
 
+# TODO(bojanserafimov): Rename to FoldSubqueryBuilder and simplify usage and spec.
 class SQLFoldObject(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
@@ -630,13 +631,8 @@ class SQLFoldObject(object):
         sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
         self._filters.append(sql_expression)
 
-    def end_fold(
-        self,
-        alias_generator: "UniqueAliasGenerator",
-        from_clause: FromClause,
-        outer_from_table: Alias,
-    ) -> Tuple[Select, Join, FoldScopeLocation]:
-        """Produce the final subquery and join it onto the rest of the query."""
+    def end_fold(self) -> Tuple[Select, FoldScopeLocation]:
+        """Return the fold subquery and the location its outputs come from."""
         if self._ended:
             raise AssertionError(
                 "Cannot call end_fold more than once. "
@@ -657,31 +653,13 @@ class SQLFoldObject(object):
                 "Folds containing multiple traversals are not implemented in MSSQL."
             )
 
-        # Join together all vertices traversed.
-        subquery_from_clause = self._construct_fold_joins()
-
-        # Produce full subquery.
-        fold_subquery = self._construct_fold_subquery(subquery_from_clause).alias(
-            alias_generator.generate_subquery()
-        )
-
-        # Join the subquery onto the rest of the query.
-        joined_from_clause = sqlalchemy.join(
-            from_clause,
-            fold_subquery,
-            onclause=(
-                outer_from_table.c[self._outer_vertex_primary_key]
-                == fold_subquery.c[
-                    self._outer_vertex_primary_key
-                ]  # only support a single primary key field, no composite keys
-            ),
-            isouter=False,
-        )
-
         # End the fold, preventing any more functions from being called on this fold.
         self._ended = True
 
-        return fold_subquery, joined_from_clause, self._output_vertex_location
+        # Produce the subquery.
+        subquery_from_clause = self._construct_fold_joins()
+        fold_subquery = self._construct_fold_subquery(subquery_from_clause)
+        return fold_subquery, self._output_vertex_location
 
 
 class UniqueAliasGenerator(object):
@@ -1103,21 +1081,34 @@ class CompilationState(object):
             )
         self._relocate(self._current_location.base_location)
 
-        # 2. End the fold, collecting the folded subquery, the new from clause for the main
-        # selectable, and the location of the folded outputs.
-        fold_subquery, from_clause, output_vertex_location = self._current_fold.end_fold(
-            self._alias_generator, self._from_clause, self._current_alias
-        )
+        # 2. End the fold, collecting the folded subquery and the location of the folded outputs.
+        fold_subquery, output_vertex_location = self._current_fold.end_fold()
+        fold_subquery_alias = fold_subquery.alias(self._alias_generator.generate_subquery())
 
         # 3. Update the alias for the subquery's folded outputs and from clause for this SQL query.
         subquery_alias_key = (
             output_vertex_location.base_location.query_path,
             output_vertex_location.fold_path,
         )
-        self._aliases[subquery_alias_key] = fold_subquery
-        self._from_clause = from_clause
+        self._aliases[subquery_alias_key] = fold_subquery_alias
 
-        # 4. Clear the fold from the compilation state.
+        # 4. Join the fold subquery to the main from clause.
+        if self._current_alias is None:
+            raise AssertionError(
+                f"Attempted to unfold while the _current_alias was None during fold {self}."
+            )
+        outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
+        self._from_clause = sqlalchemy.join(
+            self._from_clause,
+            fold_subquery_alias,
+            onclause=(
+                self._current_alias.c[outer_vertex_primary_key_name]
+                == fold_subquery_alias.c[outer_vertex_primary_key_name]
+            ),
+            isouter=False,
+        )
+
+        # 5. Clear the fold from the compilation state.
         self._current_fold = None
 
     def mark_location(self) -> None:
