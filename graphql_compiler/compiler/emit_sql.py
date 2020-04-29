@@ -996,9 +996,7 @@ class CompilationState(object):
             fold_subquery_alias,
             onclause=(
                 self._current_alias.c[outer_vertex_primary_key_name]
-                == fold_subquery_alias.c[
-                    outer_vertex_primary_key_name
-                ]
+                == fold_subquery_alias.c[outer_vertex_primary_key_name]
             ),
             isouter=False,
         )
