@@ -740,7 +740,7 @@ class CompilationState(object):
         self._outputs: List[Label] = []  # SQLAlchemy Columns labelled correctly for output.
         self._filters: List[
             BinaryExpression
-        ] = []  # SQLAlchemy Expressions to be used in the where clause.
+        ] = []  # SQLAlchemy Expressions to be used in the WHERE clause.
 
         # Generates aliases for fold subqueries.
         self._alias_generator: UniqueAliasGenerator = UniqueAliasGenerator()
