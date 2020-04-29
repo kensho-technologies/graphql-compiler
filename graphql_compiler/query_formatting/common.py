@@ -119,7 +119,7 @@ def deserialize_json_argument(
     expected_type: Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType],
     value: Any,
 ) -> Any:
-    """Deserialize a GraphQL argument parsed from a json file.
+    """Deserialize a json serialized GraphQL argument.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
     json does not support certain types like Date, Datetime, Decimal, and also confuses floats
@@ -162,15 +162,39 @@ def deserialize_multiple_json_arguments(
     arguments: Mapping[str, Any],
     expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
 ) -> Mapping[str, Any]:
-    """Deserialize GraphQL arguments parsed from a json file.
+    """Deserialize json serialized GraphQL arguments.
+
+    Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
+    json does not support certain types like Date, Datetime, Decimal, and also confuses floats
+    for integers if there are no decimals. This function takes in the values of json serialized
+    arguments and converts them to standard python representations that can be used in queries.
+
+    Below are examples of accepted json encodings of all the types:
+        GraphQLDate: "2018-02-01"
+        GraphQLDateTime: "2018-02-01T05:11:54Z"
+        GraphQLFloat: 4.3, "5.0", 5
+        GraphQLDecimal: "5.00000000000000000000000000001"
+        GraphQLInt: 4, "3803330000000000000000000000000000000000000000000"
+        GraphQLString: "Hello"
+        GraphQLBoolean: True
+        GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
 
     Args:
-        arguments: mapping of argument names to json serialized values.
-        expected_types: mapping of argument names to the expected GraphQL types.
+        arguments: mapping of argument names to json serialized argument values.
+        expected_types: mapping of argument names to the expected GraphQL types. All
+                        GraphQLNonNull wrappers are stripped.
 
     Returns:
-        a mapping of argument names to their deserialized values. See the docstring of
-        deserialize_json_argument for more info on how arguments are deserialized.
+        a mapping of argument names to deserialized argument values. The type of the deserialized
+        argument value depends on the argument's GraphQL type:
+            GraphQLDate: datetime.date
+            GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
+            GraphQLFloat: float
+            GraphQLDecimal: decimal.Decimal
+            GraphQLInt: int
+            GraphQLString: str
+            GraphQLBoolean: bool
+            GraphQLID: str
     """
     ensure_arguments_are_provided(expected_types, arguments)
     return {
