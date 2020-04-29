@@ -998,7 +998,7 @@ class CompilationState(object):
                 self._current_alias.c[outer_vertex_primary_key_name]
                 == fold_subquery_alias.c[
                     outer_vertex_primary_key_name
-                ]  # only support a single primary key field, no composite keys
+                ]
             ),
             isouter=False,
         )
