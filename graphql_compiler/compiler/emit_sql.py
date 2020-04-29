@@ -1,29 +1,39 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
-from collections import namedtuple
 from dataclasses import dataclass
-from typing import Dict, List, Optional, Set, Tuple
+from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 
 import six
 import sqlalchemy
 from sqlalchemy import select
 from sqlalchemy.dialects.mssql.base import MSDialect
 from sqlalchemy.dialects.postgresql.base import PGDialect
+from sqlalchemy.engine.default import DefaultDialect
 from sqlalchemy.ext.compiler import compiles
 from sqlalchemy.sql import expression
 from sqlalchemy.sql.compiler import _CompileLabel
 from sqlalchemy.sql.elements import Label
-from sqlalchemy.sql.expression import BinaryExpression
+from sqlalchemy.sql.expression import Alias, BinaryExpression
 from sqlalchemy.sql.functions import func
-from sqlalchemy.sql.selectable import Select
+from sqlalchemy.sql.schema import Column
+from sqlalchemy.sql.selectable import FromClause, Join, Select
 
 from . import blocks
 from ..global_utils import VertexPath
 from ..schema import COUNT_META_FIELD_NAME
-from ..schema.schema_info import SQLSchemaInfo
+from ..schema.schema_info import DirectJoinDescriptor, SQLAlchemySchemaInfo
+from .compiler_entities import BasicBlock
 from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
-from .helpers import FoldScopeLocation, Location, get_edge_direction_and_name
+from .helpers import (
+    BaseLocation,
+    FoldPath,
+    FoldScopeLocation,
+    Location,
+    QueryPath,
+    get_edge_direction_and_name,
+)
+from .metadata import LocationInfo
 
 
 # Some reserved column names used in emitted SQL queries
@@ -35,7 +45,7 @@ FOLD_OUTPUT_FORMAT_STRING = "fold_output_{}"
 FOLD_SUBQUERY_FORMAT_STRING = "folded_subquery_{}"
 
 
-def _traverse_and_validate_blocks(ir):
+def _traverse_and_validate_blocks(ir: IrAndMetadata) -> Iterator[BasicBlock]:
     """Yield all blocks, while validating consistency."""
     found_query_root = False
     found_global_operations_block = False
@@ -48,35 +58,30 @@ def _traverse_and_validate_blocks(ir):
             found_query_root = True
         else:
             if not found_query_root:
-                raise AssertionError(
-                    "Found block {} before QueryRoot: {}".format(block, ir.ir_blocks)
-                )
+                raise AssertionError(f"Found block {block} before QueryRoot: {ir.ir_blocks}.")
 
         if isinstance(block, blocks.GlobalOperationsStart):
             if found_global_operations_block:
-                raise AssertionError(
-                    "Found duplicate GlobalOperationsStart: {}".format(ir.ir_blocks)
-                )
+                raise AssertionError(f"Found duplicate GlobalOperationsStart: {ir.ir_blocks}.")
             found_global_operations_block = True
         else:
             if found_global_operations_block:
                 if not isinstance(block, globally_allowed_blocks):
                     raise AssertionError(
-                        "Only {} are allowed after GlobalOperationsBlock. "
-                        "Found {} in {}.".format(globally_allowed_blocks, block, ir.ir_blocks)
+                        f"Only {globally_allowed_blocks} are allowed after GlobalOperationsBlock. "
+                        f"Found {block} in {ir.ir_blocks}."
                     )
             else:
                 if isinstance(block, global_only_blocks):
                     raise AssertionError(
-                        "Block {} is only allowed after GlobalOperationsBlock: {}".format(
-                            block, ir.ir_blocks
-                        )
+                        f"Block {block} is only allowed after GlobalOperationsBlock: "
+                        f"{ir.ir_blocks}."
                     )
         yield block
 
 
 def _find_columns_used_outside_folds(
-    sql_schema_info: SQLSchemaInfo, ir: IrAndMetadata
+    sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata
 ) -> Dict[VertexPath, Set[str]]:
     """For each query path outside of a fold output, find which columns are used."""
     used_columns: Dict[VertexPath, Set[str]] = {}
@@ -95,7 +100,7 @@ def _find_columns_used_outside_folds(
             if isinstance(child_location, FoldScopeLocation):
                 continue
             edge_direction, edge_name = get_edge_direction_and_name(child_location.query_path[-1])
-            vertex_field_name = "{}_{}".format(edge_direction, edge_name)
+            vertex_field_name = f"{edge_direction}_{edge_name}"
             edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
             used_columns.setdefault(location.query_path, set()).add(edge.from_column)
             used_columns.setdefault(child_location.query_path, set()).add(edge.to_column)
@@ -124,7 +129,7 @@ def _find_columns_used_outside_folds(
         if isinstance(location, FoldScopeLocation):
             continue
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
-            traversal = "{}_{}".format(recurse_info.edge_direction, recurse_info.edge_name)
+            traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
             used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
                 used_columns[location.query_path + (traversal,)]
             )
@@ -149,9 +154,16 @@ def _find_tagged_parameters(expression_from_filter: Expression) -> bool:
     return has_context_fields
 
 
-def _find_folded_fields(ir):
-    """For each fold path, find folded fields (outputs and metafields used in filters)."""
-    folded_fields = {}
+def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldPath, Set[FoldScopeLocation]]:
+    """For each fold path, find folded fields (outputs and metafields used in filters).
+
+    Args:
+        ir: internal representation and metadata of a query for which to find the folded fields.
+
+    Returns:
+        Dictionary mapping a FoldPath to  a set of FoldScopeLocations with output field information.
+    """
+    folded_fields: Dict[FoldPath, Set[FoldScopeLocation]] = {}
     # Find outputs used for each fold path.
     for _, output_info in ir.query_metadata_table.outputs:
         if isinstance(output_info.location, FoldScopeLocation):
@@ -198,7 +210,7 @@ def compile_xmlpath(element, compiler, **kw):
     return compiler.visit_label(element, **kw)
 
 
-def _get_xml_path_clause(output_column, predicate_expression):
+def _get_xml_path_clause(output_column: Column, predicate_expression: BinaryExpression):
     """Produce an MSSQL-style XML PATH-based aggregation subquery.
 
     XML PATH clause aggregates the values of the output_column from the output vertex
@@ -232,25 +244,25 @@ def _get_xml_path_clause(output_column, predicate_expression):
     """
     delimiter = expression.literal_column("'|'")
     null = expression.literal_column("'~'")
-    encoded_column = func.REPLACE(  # replace all occurrences of '^' in the original with '^e'
+    encoded_column = func.REPLACE(  # Replace all occurrences of '^' in the original with '^e'.
         output_column, expression.literal_column("'^'"), expression.literal_column("'^e'")
     )
-    encoded_column = func.REPLACE(  # replace all occurrences of '~' in the original with '^n'
+    encoded_column = func.REPLACE(  # Replace all occurrences of '~' in the original with '^n'.
         encoded_column, null, expression.literal_column("'^n'")
     )
-    encoded_column = func.REPLACE(  # replace all occurrences of '|' in the original with '^d'
+    encoded_column = func.REPLACE(  # Replace all occurrences of '|' in the original with '^d'.
         encoded_column, delimiter, expression.literal_column("'^d'")
     )
 
-    # delimit elements in the array using '|'and mark nulls with `~`
-    xml_column = delimiter + func.COALESCE(  # denote null values with '~'
-        encoded_column, null
-    )  # allow unambiguously distinguishing (nullable) array elements using scheme above
+    # Delimit elements in the array using '|'and replace nulls in the original with `~`.
+    xml_column = delimiter + func.COALESCE(encoded_column, null)
 
-    # use constructor: you can't directly construct an XMLPathBinaryExpression from plain text
+    # Use constructor because it is not possible to directly construct an XMLPathBinaryExpression
+    # from plain text.
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
 
-    return func.COALESCE(  # coalesce to represent empty arrays as ''
+    # Coalesce to represent empty arrays as '' and return the XML PATH aggregated data.
+    return func.COALESCE(
         select([xml_column])
         .where(predicate_expression)
         .suffix_with("FOR XML PATH ('')")
@@ -259,23 +271,19 @@ def _get_xml_path_clause(output_column, predicate_expression):
     )
 
 
-# 3-tuple describing the join information for each traversal in a fold.
-#
-# Contains DirectJoinDescriptor naming the columns used in the join predicate,
-# the source/from table, and the destination/to table
-SQLFoldTraversalDescriptor = namedtuple(
-    "SQLFoldJoinInfo",
-    (
-        # DirectJoinDescriptor giving columns used to join from_table/to_table
-        "join_descriptor",
-        # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
-        # appears on the left side of the join.
-        "from_table",
-        # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
-        # appears on the right side of the join.
-        "to_table",
-    ),
-)
+class SQLFoldTraversalDescriptor(NamedTuple):
+    """Describes the join information for traversals inside a fold."""
+
+    # DirectJoinDescriptor giving columns used to join from_table/to_table.
+    join_descriptor: DirectJoinDescriptor
+
+    # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
+    # appears on the left side of the join.
+    from_table: Alias
+
+    # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
+    # appears on the right side of the join.
+    to_table: Alias
 
 
 # TODO(bojanserafimov): Rename to FoldSubqueryBuilder and simplify usage and spec.
@@ -339,12 +347,11 @@ class SQLFoldObject(object):
     #          ...
     # JOIN VertexPrecedingOutput
     # ON ...
-    def __init__(self, dialect, outer_vertex_table, primary_key_name):
+    def __init__(self, dialect: DefaultDialect, outer_vertex_table: Alias, primary_key_name: str):
         """Create an SQLFoldObject with table, type, and join information supplied by the IR.
 
         Args:
-            dialect: SQLAlchemy compiler object passed in from the schema, representing
-                     the dialect to which the query will be compiled.
+            dialect: dialect to which the query will be compiled.
             outer_vertex_table: SQLAlchemy table alias for vertex outside of fold.
             primary_key_name: name of the primary key of the vertex immediately outside the
                               fold. Used to set the group by as well as join the fold subquery
@@ -352,24 +359,26 @@ class SQLFoldObject(object):
         """
         # Table and FoldScopeLocation containing output columns are initialized to None because
         # the output table is unknown until one is found during visit_vertex.
-        self._output_vertex_alias = None
-        self._output_vertex_location = None
+        self._output_vertex_alias: Optional[Alias] = None
+        self._output_vertex_location: Optional[FoldScopeLocation] = None
 
         # Table for vertex immediately outside fold.
-        self._outer_vertex_alias = outer_vertex_table
-        self._outer_vertex_primary_key = primary_key_name
+        self._outer_vertex_alias: Alias = outer_vertex_table
+        self._outer_vertex_primary_key: str = primary_key_name
 
-        # List of SQLFoldTraversalDescriptor namedtuples describing each traversal in the fold
+        # List of SQLFoldTraversalDescriptors describing each traversal in the fold
         # starting with the join from the vertex immediately outside the fold to the folded vertex.
-        self._traversal_descriptors = []
-        self._outputs = []  # Output columns for folded subquery.
-        self._filters = []  # SQLAlchemy Expressions to be used in the where clause.
+        self._traversal_descriptors: List[SQLFoldTraversalDescriptor] = []
+        self._outputs: List[Label] = []  # Output columns for folded subquery.
+        self._filters: List[
+            BinaryExpression
+        ] = []  # SQLAlchemy Expressions to be used in the WHERE clause.
 
         # SQLAlchemy compiler object determining which dialect to target.
-        self._dialect = dialect
+        self._dialect: DefaultDialect = dialect
 
         # Whether this fold has been ended by calling the end_fold function.
-        self._ended = False
+        self._ended: bool = False
 
     def __str__(self):
         """Produce string used to customize error messages."""
@@ -377,14 +386,16 @@ class SQLFoldObject(object):
             return 'SQLFoldObject("Invalid fold: no vertex preceding fold.")'
         elif self._output_vertex_alias is None:
             return (
-                'SQLFoldObject("Vertex outside fold: {}.' 'Output vertex for fold: None.")'
-            ).format(self._outer_vertex_alias.original)
+                f'SQLFoldObject("Vertex outside fold: {self._outer_vertex_alias.original}. '
+                'Output vertex for fold: None.")'
+            )
         else:
-            return 'SQLFoldObject("Vertex outside fold: {}. Output vertex for fold: {}.")'.format(
-                self._outer_vertex_alias.original, self._output_vertex_alias.original
+            return (
+                f'SQLFoldObject("Vertex outside fold: {self._outer_vertex_alias.original}. '
+                f'Output vertex for fold: {self._output_vertex_alias.original}.")'
             )
 
-    def _construct_fold_joins(self):
+    def _construct_fold_joins(self) -> Join:
         """Use the traversal descriptors to create the join clause for the tables in the fold."""
         # Start the join clause with the from_table of the first traversal descriptor,
         # which is the vertex immediately preceding the fold.
@@ -399,7 +410,7 @@ class SQLFoldObject(object):
         else:
             raise NotImplementedError(
                 "Fold only supported for MSSQL and "
-                "PostgreSQL, dialect was set to {}".format(self._dialect.name)
+                f"PostgreSQL, dialect was set to {self._dialect.name}."
             )
 
         traversal_descriptors = self._traversal_descriptors[:terminating_index]
@@ -423,7 +434,7 @@ class SQLFoldObject(object):
 
         return join_clause
 
-    def _construct_fold_subquery(self, subquery_from_clause):
+    def _construct_fold_subquery(self, subquery_from_clause: Join) -> Select:
         """Combine all parts of the fold object to produce the complete fold subquery."""
         select_statement = (
             sqlalchemy.select(self._outputs)
@@ -441,18 +452,28 @@ class SQLFoldObject(object):
         else:
             raise NotImplementedError(
                 "Fold only supported for MSSQL and "
-                "PostgreSQL, dialect was set to {}".format(self._dialect.name)
+                "PostgreSQL, dialect was set to {self._dialect.name}."
             )
 
-    def _get_array_agg_column(self, intermediate_fold_output_name, fold_output_field):
+    def _get_array_agg_column(
+        self, intermediate_fold_output_name: str, fold_output_field: str
+    ) -> Label:
         """Select an array_agg of the fold output field, labeled as requested."""
+        if self._output_vertex_alias is None:
+            raise AssertionError(
+                "Attempted to perform array aggregation while the "
+                f"_output_vertex_alias was set to None during fold {self}."
+            )
         return sqlalchemy.func.array_agg(self._output_vertex_alias.c[fold_output_field]).label(
             intermediate_fold_output_name
         )
 
     def _get_mssql_xml_path_column(
-        self, intermediate_fold_output_name, fold_output_field, last_traversal
-    ):
+        self,
+        intermediate_fold_output_name: str,
+        fold_output_field: str,
+        last_traversal: SQLFoldTraversalDescriptor,
+    ) -> Label:
         """Select the MSSQL XML PATH aggregation of the fold output field, labeled as requested.
 
         The MSSQL equivalent of array aggregation is performed using an XML PATH subquery that has
@@ -478,8 +499,7 @@ class SQLFoldObject(object):
         direction of the edge connecting VertexPrecedingOutput to OutputVertex.
 
         Args:
-            intermediate_fold_output_name: string label to give to the resulting XML PATH
-                                            subquery built
+            intermediate_fold_output_name: string label to give to the resulting XML PATH subquery.
             fold_output_field: string name of the column requested from the output vertex.
             last_traversal: SQLFoldTraversalDescriptor describing tables/WHERE predicate
                             used in subquery.
@@ -487,7 +507,12 @@ class SQLFoldObject(object):
         Returns:
             Selectable for XML PATH aggregation subquery
         """
-        # use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery
+        if self._output_vertex_alias is None:
+            raise AssertionError(
+                "Attempted to aggregate with XML PATH before an _output_vertex_alias had been "
+                f"found  during fold {self}"
+            )
+        # Use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery.
         edge, from_alias, to_alias = last_traversal
 
         return _get_xml_path_clause(
@@ -495,19 +520,18 @@ class SQLFoldObject(object):
             (from_alias.c[edge.from_column] == to_alias.c[edge.to_column]),
         ).label(intermediate_fold_output_name)
 
-    def _get_fold_output_column_clause(self, fold_output_field):
+    def _get_fold_output_column_clause(self, fold_output_field: str) -> Label:
         """Get the SQLAlchemy column expression corresponding to the fold output field."""
         if fold_output_field == COUNT_META_FIELD_NAME:
             return sqlalchemy.func.coalesce(
                 sqlalchemy.func.count(), sqlalchemy.literal_column("0")
             ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
         else:
-            # force column to have explicit label as opposed to anon_label
+            # Force column to have explicit label as opposed to an anonymous label.
             intermediate_fold_output_name = FOLD_OUTPUT_FORMAT_STRING.format(fold_output_field)
-            # add array aggregated output column to self._outputs
-            # add aggregated output column to self._outputs
+            # Add aggregated output column to self._outputs.
             if isinstance(self._dialect, MSDialect):
-                # MSSQL uses XML PATH aggregation
+                # MSSQL uses XML PATH aggregation.
                 return self._get_mssql_xml_path_column(
                     intermediate_fold_output_name,
                     fold_output_field,
@@ -515,21 +539,25 @@ class SQLFoldObject(object):
                     self._traversal_descriptors[-1],
                 )
             elif isinstance(self._dialect, PGDialect):
-                # PostgreSQL uses ARRAY_AGG
+                # PostgreSQL uses ARRAY_AGG.
                 return self._get_array_agg_column(intermediate_fold_output_name, fold_output_field)
             else:
                 raise NotImplementedError(
                     "Fold only supported for MSSQL and PostgreSQL, "
-                    "dialect set to {}".format(self._dialect.name)
+                    f"dialect set to {self._dialect.name}."
                 )
 
-        # We should have either triggered a not implemented error, or returned earlier
         raise AssertionError(
-            "Reached end of function without returning a value, this code should be unreachable."
+            "Reached end of function _get_mssql_xml_path_column without returning a value "
+            f"during fold {self}. This code should be unreachable."
         )
 
-    def _get_fold_outputs(self, fold_scope_location, all_folded_fields):
-        """Generate output columns for innermost fold scope and add them to active SQLFoldObject."""
+    def _get_fold_outputs(
+        self,
+        fold_scope_location: FoldScopeLocation,
+        all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]],
+    ) -> List[Label]:
+        """Generate output columns for innermost fold scope and add them to _outputs."""
         # Find outputs for this fold in all_folded_fields and add to self._outputs.
         if fold_scope_location.fold_path in all_folded_fields:
             for fold_output in all_folded_fields[fold_scope_location.fold_path]:
@@ -538,6 +566,11 @@ class SQLFoldObject(object):
                     fold_scope_location.base_location,
                     fold_scope_location.fold_path,
                 ):
+                    if fold_output.field is None:
+                        raise AssertionError(
+                            f"Received invalid fold_output {fold_output}. FoldScopeLocations in "
+                            f"all_folded_fields must have their fields set."
+                        )
                     # Get SQLAlchemy column for fold_output.
                     column_clause = self._get_fold_output_column_clause(fold_output.field)
                     # Append resulting column to outputs.
@@ -550,13 +583,18 @@ class SQLFoldObject(object):
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
     def visit_vertex(
-        self, join_descriptor, from_table, to_table, current_fold_scope_location, all_folded_fields
-    ):
-        """Add a new traversal descriptor and add outputs, if visiting an output vertex."""
+        self,
+        join_descriptor: DirectJoinDescriptor,
+        from_table: Alias,
+        to_table: Alias,
+        current_fold_scope_location: FoldScopeLocation,
+        all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]],
+    ) -> None:
+        """Add a new SQLFoldTraversalDescriptor and add outputs, if visiting an output vertex."""
         if self._ended:
             raise AssertionError(
                 "Cannot visit traversed vertices after end_fold has been called."
-                "Invalid state encountered during fold {}".format(self)
+                f"Invalid state encountered during fold {self}."
             )
 
         self._traversal_descriptors.append(
@@ -570,18 +608,20 @@ class SQLFoldObject(object):
             if self._output_vertex_alias is not None:
                 raise AssertionError(
                     "Cannot visit multiple output vertices in one fold. "
-                    "Invalid state encountered during fold {}".format(self)
+                    f"Invalid state encountered during fold {self}."
                 )
             self._output_vertex_alias = to_table
             self._output_vertex_location = current_fold_scope_location
             self._outputs = self._get_fold_outputs(current_fold_scope_location, all_folded_fields)
 
-    def add_filter(self, predicate, aliases):
+    def add_filter(
+        self, predicate: Expression, aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias]
+    ) -> None:
         """Add a new filter to the SQLFoldObject."""
         if self._ended:
             raise AssertionError(
                 "Cannot add a filter after end_fold has been called. Invalid "
-                "state encountered during fold {}".format(self)
+                f"state encountered during fold {self}."
             )
         if isinstance(self._dialect, MSDialect):
             raise NotImplementedError(
@@ -596,16 +636,15 @@ class SQLFoldObject(object):
         if self._ended:
             raise AssertionError(
                 "Cannot call end_fold more than once. "
-                "Invalid state encountered during fold {}".format(self)
+                f"Invalid state encountered during fold {self}."
             )
-        if self._output_vertex_alias is None:
+        if self._output_vertex_alias is None or self._output_vertex_location is None:
             raise AssertionError(
-                "No output vertex visited. Invalid state encountered during fold {}".format(self)
+                f"No output vertex visited. Invalid state encountered during fold {self}."
             )
         if len(self._traversal_descriptors) == 0:
             raise AssertionError(
-                "No traversed vertices visited. "
-                "Invalid state encountered during fold {}".format(self)
+                f"No traversed vertices visited. Invalid state encountered during fold {self}."
             )
 
         # For now, folds with more than one traversal (i.e. join) are not implemented in MSSQL.
@@ -630,7 +669,7 @@ class UniqueAliasGenerator(object):
         """Create unique subquery aliases by tracking counter."""
         self._fold_count = 1
 
-    def generate_subquery(self):
+    def generate_subquery(self) -> str:
         """Generate a new subquery alias and increment the counter."""
         alias = FOLD_SUBQUERY_FORMAT_STRING.format(self._fold_count)
         self._fold_count += 1
@@ -656,50 +695,77 @@ class ColumnRouter:
 class CompilationState(object):
     """Mutable class used to keep track of state while emitting a sql query."""
 
-    def __init__(self, sql_schema_info, ir):
+    def __init__(self, sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata):
         """Initialize a CompilationState, setting the current location at the root of the query."""
         # Immutable metadata
-        self._sql_schema_info = sql_schema_info
-        self._ir = ir
-        self._used_columns = _find_columns_used_outside_folds(sql_schema_info, ir)
+        self._sql_schema_info: SQLAlchemySchemaInfo = sql_schema_info
+        self._ir: IrAndMetadata = ir
+        self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used_outside_folds(
+            sql_schema_info, ir
+        )
         # mapping fold paths to FoldScopeLocations with field information
-        self._all_folded_fields = _find_folded_fields(ir)
+        self._all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]] = _find_folded_fields(ir)
 
         # Current query location state. Only mutable by calling _relocate.
-        self._current_location = None  # the current location in the query. None means global.
-        self._current_alias = None  # a sqlalchemy table Alias at the current location
+        self._current_location: Optional[
+            BaseLocation
+        ] = None  # The current location in the query. None means global.
+        self._current_alias: Optional[
+            Alias
+        ] = None  # SQLAlchemy table Alias at the current location.
 
         # Current folded subquery state.
-        self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
+        self._current_fold: Optional[
+            SQLFoldObject
+        ] = None  # SQLFoldObject to collect fold info and create folded subqueries.
 
         # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
-        # corresponding table _Aliases. some_location is either self._current_location
-        # or the base location of an open FoldScopeLocation.
+        # corresponding table Aliases. some_location is either self._current_location
+        # or the base location of an open FoldScopeLocation. For Locations, the second argument of
+        # the tuple will be None.
         # Note: for tables with an _x_count column, that column will always
         # be named "fold_output__x_count".
-        self._aliases = {}
+        self._aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Union[Alias, ColumnRouter]] = {}
+
+        # Move to the beginning location of the query.
         self._relocate(ir.query_metadata_table.root_location)
-        self._came_from = {}  # mapping aliases to the column used to join into them.
-        self._recurse_needs_cte = False
+
+        # Mapping aliases to the column used to join into them.
+        self._came_from: Dict[Alias, Column] = {}
+
+        self._recurse_needs_cte: bool = False
 
         # The query being constructed as the IR is processed
-        self._from_clause = self._current_alias  # the main sqlalchemy Selectable
-        self._outputs = []  # sqlalchemy Columns labelled correctly for output
-        self._filters = []  # sqlalchemy Expressions to be used in the where clause
+        self._from_clause: FromClause = self._current_alias  # The main SQLAlchemy Selectable.
+        self._outputs: List[Label] = []  # SQLAlchemy Columns labelled correctly for output.
+        self._filters: List[
+            BinaryExpression
+        ] = []  # SQLAlchemy Expressions to be used in the WHERE clause.
 
-        self._alias_generator = UniqueAliasGenerator()  # generates aliases for the fold subqueries
+        # Generates aliases for fold subqueries.
+        self._alias_generator: UniqueAliasGenerator = UniqueAliasGenerator()
 
-    def _relocate(self, new_location):
+    def __str__(self) -> str:
+        """Return a human readable string of the CompilationState."""
+        return (
+            f"CompilationState(current location: {self._current_location}, "
+            f"current fold: {self._current_fold}, "
+            f"current query: {self.get_query()} "
+            "(note: this may be a partial query and is not guaranteed to be valid SQL.))"
+        )
+
+    def _relocate(self, new_location: BaseLocation):
         """Move to a different location in the query, updating the _current_alias."""
         self._current_location = new_location
         # Create appropriate alias key based on whether new_location is a FoldScopeLocation or a
         # Location.
-        if isinstance(new_location, FoldScopeLocation):
+        alias_key: Tuple[QueryPath, Optional[FoldPath]]
+        if isinstance(self._current_location, FoldScopeLocation):
             alias_key = (
                 self._current_location.base_location.query_path,
                 self._current_location.fold_path,
             )
-        elif isinstance(new_location, Location):
+        elif isinstance(self._current_location, Location):
             alias_key = (self._current_location.query_path, None)
         else:
             raise AssertionError(
@@ -715,8 +781,16 @@ class CompilationState(object):
                 self._current_classname
             ].alias()
 
-    def _join_to_parent_location(self, parent_alias, from_column, to_column, optional):
+    def _join_to_parent_location(
+        self, parent_alias: Alias, from_column: str, to_column: str, optional: bool
+    ):
         """Join the current location to the parent location using the column names specified."""
+        if self._current_alias is None:
+            raise AssertionError(
+                "Attempted join to parent location when _current_alias was None "
+                f"during fold {self}."
+            )
+
         self._came_from[self._current_alias] = self._current_alias.c[to_column]
 
         if self._is_in_optional_scope() and not optional:
@@ -741,7 +815,7 @@ class CompilationState(object):
                 )
             )
 
-        # Join to where we came from
+        # Join to where we came from.
         self._from_clause = self._from_clause.join(
             self._current_alias,
             onclause=(parent_alias.c[from_column] == self._current_alias.c[to_column]),
@@ -749,26 +823,32 @@ class CompilationState(object):
         )
 
     @property
-    def _current_location_info(self):
+    def _current_location_info(self) -> LocationInfo:
         """Get the LocationInfo of the current location in the query."""
         return self._ir.query_metadata_table.get_location_info(self._current_location)
 
     @property
-    def _current_classname(self):
+    def _current_classname(self) -> str:
         """Get the string class name of the current location in the query."""
         return self._current_location_info.type.name
 
-    def _is_in_optional_scope(self):
+    def _is_in_optional_scope(self) -> bool:
+        """Determine whether the _current_location is within an optional scope."""
         if self._current_location is None:
             return False
         return self._current_location_info.optional_scopes_depth > 0
 
-    def backtrack(self, previous_location):
+    def backtrack(self, previous_location: BaseLocation) -> None:
         """Execute a Backtrack Block."""
         self._relocate(previous_location)
 
     def traverse(self, vertex_field: str, optional: bool) -> None:
         """Execute a Traverse Block."""
+        if self._current_location is None:
+            raise AssertionError(
+                f"Attempted to traverse when the _current_location was None during fold {self}."
+            )
+
         self._recurse_needs_cte = True
 
         # Follow the edge, either by calling visit_vertex if in a fold or joining to the
@@ -777,6 +857,11 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         self._relocate(self._current_location.navigate_to_subpath(vertex_field))
         if self._current_fold is not None:
+            if not isinstance(self._current_location, FoldScopeLocation):
+                raise AssertionError(
+                    "Attempting to traverse inside a fold while the _current_location was not a "
+                    f"FoldScopeLocation. _current_location was set to {self._current_location}."
+                )
             self._current_fold.visit_vertex(
                 edge,
                 previous_alias,
@@ -794,7 +879,7 @@ class CompilationState(object):
         # Additional outputs the CTE needs to export for use elsewhere in the query
         extra_outputs: List[Label] = []
         # Mapping alias_key -> external_name -> internal_name
-        column_mappings: Dict[str, Dict[str, str]] = {}
+        column_mappings: Dict[Tuple[QueryPath, Optional[FoldPath]], Dict[str, str]] = {}
         for alias_key, alias in self._aliases.items():
             vertex_path, _ = alias_key
             for used_column_name in sorted(self._used_columns[vertex_path]):
@@ -819,6 +904,12 @@ class CompilationState(object):
                 )
                 for alias_key, alias_value in self._aliases.items()
             }
+            if not isinstance(self._current_location, Location):
+                raise AssertionError(
+                    f"Attempted to wrap to CTE while the _current_location of was type "
+                    f"{type(self._current_location)}, but should have been a Location. "
+                    f"_current_location was {self._current_location}."
+                )
             self._current_alias = self._aliases[(self._current_location.query_path, None)]
 
     def _get_current_primary_key_name(self, directive_name: str) -> str:
@@ -833,7 +924,7 @@ class CompilationState(object):
         Returns:
             name of the single-column primary key
         """
-        if not self._current_alias.primary_key:
+        if self._current_alias is None or not self._current_alias.primary_key:
             raise AssertionError(
                 f"The table for vertex {self._current_classname} has no primary key specified. "
                 f"This information is required to emit a {directive_name} directive."
@@ -844,12 +935,21 @@ class CompilationState(object):
                 f"{self._current_alias.primary_key}. The SQL backend does not support "
                 f"{directive_name} on tables with composite primary keys."
             )
-        return self._current_alias.primary_key[0].name
+        return str(self._current_alias.primary_key[0].name)
 
     def recurse(self, vertex_field: str, depth: int) -> None:
         """Execute a Recurse Block."""
         if self._current_fold is not None:
             raise AssertionError("Recurse inside a fold is not allowed.")
+        if self._current_alias is None:
+            raise AssertionError("Cannot recurse when _current_alias is None.")
+        if self._current_location is None:
+            raise AssertionError("Cannot recurse when _current_location is None.")
+        if not isinstance(self._current_location, Location):
+            raise AssertionError(
+                f"Cannot recurse when _current_location is not a Location. _current_location "
+                f"was set to {self._current_location}."
+            )
 
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         primary_key = self._get_current_primary_key_name("@recurse")
@@ -863,9 +963,7 @@ class CompilationState(object):
 
         # Sanitize literal columns to be used in the query
         if not isinstance(depth, int):
-            raise AssertionError(
-                "Depth must be a number. Received {} {}".format(type(depth), depth)
-            )
+            raise AssertionError(f"Depth must be a number. Received {type(depth)} {depth}.")
         literal_depth = sqlalchemy.literal_column(str(depth))
         literal_0 = sqlalchemy.literal_column("0")
         literal_1 = sqlalchemy.literal_column("1")
@@ -900,7 +998,7 @@ class CompilationState(object):
         # be a cte that contains all that information.
         self._from_clause = self._current_alias
 
-    def start_global_operations(self):
+    def start_global_operations(self) -> None:
         """Execute a GlobalOperationsStart block."""
         if self._current_location is None:
             raise AssertionError("CompilationState is already in global scope.")
@@ -932,15 +1030,15 @@ class CompilationState(object):
                 )
             self._filters.append(sql_expression)
 
-    def fold(self, fold_scope_location):
+    def fold(self, fold_scope_location: FoldScopeLocation) -> None:
         """Begin execution of a Fold Block by initializing and visiting the first vertex."""
         if self._current_fold is not None:
             raise AssertionError(
-                "Fold block {} entered while inside another "
-                "fold block at current location {}.".format(
-                    fold_scope_location, self._current_location_info
-                )
+                f"Fold block {fold_scope_location} entered while inside another "
+                f"fold block at current location {self._current_location_info}."
             )
+        if self._current_alias is None:
+            raise AssertionError("Attempted to fold while _current_alias was set to None.")
 
         # 1. Get fold metadata.
         # Location of vertex that is folded on.
@@ -949,7 +1047,7 @@ class CompilationState(object):
 
         # 2. Collect edge information to join the fold subquery to the main selectable.
         edge_direction, edge_name = fold_scope_location.fold_path[0]
-        full_edge_name = "{}_{}".format(edge_direction, edge_name)
+        full_edge_name = f"{edge_direction}_{edge_name}"
         # only works if fold scope location is the immediate child of self._current_classname
         join_descriptor = self._sql_schema_info.join_descriptors[self._current_classname][
             full_edge_name
@@ -970,9 +1068,17 @@ class CompilationState(object):
             self._all_folded_fields,
         )
 
-    def unfold(self):
+    def unfold(self) -> None:
         """Complete the execution of a Fold Block."""
+        if self._current_fold is None:
+            raise AssertionError("Attempted to unfold when _current_fold was None.")
+
         # 1. Relocate to outside of the fold.
+        if not isinstance(self._current_location, FoldScopeLocation):
+            raise AssertionError(
+                "Attempted to unfold while the _current_location was not a FoldScopeLocation. "
+                f"_current_location was {self._current_location}."
+            )
         self._relocate(self._current_location.base_location)
 
         # 2. End the fold, collecting the folded subquery and the location of the folded outputs.
@@ -987,6 +1093,10 @@ class CompilationState(object):
         self._aliases[subquery_alias_key] = fold_subquery_alias
 
         # 4. Join the fold subquery to the main from clause.
+        if self._current_alias is None:
+            raise AssertionError(
+                f"Attempted to unfold while the _current_alias was None during fold {self}."
+            )
         outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
         self._from_clause = sqlalchemy.join(
             self._from_clause,
@@ -1001,17 +1111,26 @@ class CompilationState(object):
         # 5. Clear the fold from the compilation state.
         self._current_fold = None
 
-    def mark_location(self):
+    def mark_location(self) -> None:
         """Execute a MarkLocation Block."""
+        alias_key: Tuple[QueryPath, Optional[FoldPath]]
+        if isinstance(self._current_location, FoldScopeLocation):
+            alias_key = (
+                self._current_location.base_location.query_path,
+                self._current_location.fold_path,
+            )
+        elif isinstance(self._current_location, Location):
+            alias_key = (self._current_location.query_path, None)
+        else:
+            raise AssertionError(
+                f"Attempted to mark location at a _current_location that was not a Location or a "
+                f"FoldScopeLocation. _current_location was set to {self._current_location}."
+            )
         # If the current location is the beginning of a fold, the current alias
         # will eventually be replaced by the resulting fold subquery during Unfold.
-        self._aliases[
-            (self._current_location.base_location.query_path, self._current_location.fold_path,)
-            if self._current_fold is not None
-            else (self._current_location.query_path, None)
-        ] = self._current_alias
+        self._aliases[alias_key] = self._current_alias
 
-    def construct_result(self, output_name, field):
+    def construct_result(self, output_name: str, field: Expression) -> None:
         """Execute a ConstructResult Block."""
         self._outputs.append(
             field.to_sql(self._sql_schema_info.dialect, self._aliases, self._current_alias).label(
@@ -1020,7 +1139,7 @@ class CompilationState(object):
         )
 
     def get_query(self, extra_outputs: Optional[List[Label]] = None) -> Select:
-        """After all IR Blocks are processed, return the resulting sqlalchemy query."""
+        """After all IR Blocks are processed, return the resulting SQLAlchemy query."""
         if not extra_outputs:
             extra_outputs = []
         return (
@@ -1030,8 +1149,8 @@ class CompilationState(object):
         )
 
 
-def emit_code_from_ir(sql_schema_info, ir):
-    """Return a SQLAlchemy Query from a passed SqlQueryTree.
+def emit_code_from_ir(sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata) -> Select:
+    """Return a SQLAlchemy Query for the query described by the internal representation.
 
     Args:
         sql_schema_info: SQLAlchemySchemaInfo containing all relevant schema information
@@ -1049,9 +1168,9 @@ def emit_code_from_ir(sql_schema_info, ir):
         elif isinstance(block, blocks.Backtrack):
             state.backtrack(block.location)
         elif isinstance(block, blocks.Traverse):
-            state.traverse("{}_{}".format(block.direction, block.edge_name), block.optional)
+            state.traverse(f"{block.direction}_{block.edge_name}", block.optional)
         elif isinstance(block, blocks.Recurse):
-            state.recurse("{}_{}".format(block.direction, block.edge_name), block.depth)
+            state.recurse(f"{block.direction}_{block.edge_name}", block.depth)
         elif isinstance(block, blocks.EndOptional):
             pass
         elif isinstance(block, blocks.Fold):
@@ -1066,6 +1185,6 @@ def emit_code_from_ir(sql_schema_info, ir):
             for output_name, field in sorted(six.iteritems(block.fields)):
                 state.construct_result(output_name, field)
         else:
-            raise NotImplementedError("Unsupported block {}.".format(block))
+            raise NotImplementedError(f"Unsupported block {block}.")
 
     return state.get_query()
