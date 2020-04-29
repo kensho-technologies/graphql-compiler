@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from dataclasses import dataclass
-from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple
+from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 
 import six
 import sqlalchemy
@@ -258,7 +258,7 @@ def _get_xml_path_clause(output_column: Column, predicate_expression: BinaryExpr
     xml_column = delimiter + func.COALESCE(encoded_column, null)
 
     # Use constructor because it is not possible to directly construct an XMLPathBinaryExpression
-    # from plain text
+    # from plain text.
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
 
     # Coalesce to represent empty arrays as '' and return the XML PATH aggregated data.
@@ -461,7 +461,7 @@ class SQLFoldObject(object):
         if self._output_vertex_alias is None:
             raise AssertionError(
                 "Attempted to perform array aggregation while the "
-                "_output_vertex_alias was set to None."
+                f"_output_vertex_alias was set to None during fold {self}."
             )
         return sqlalchemy.func.array_agg(self._output_vertex_alias.c[fold_output_field]).label(
             intermediate_fold_output_name
@@ -509,7 +509,7 @@ class SQLFoldObject(object):
         if self._output_vertex_alias is None:
             raise AssertionError(
                 "Attempted to aggregate with XML PATH before an _output_vertex_alias had been "
-                "found."
+                f"found  during fold {self}"
             )
         # Use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery.
         edge, from_alias, to_alias = last_traversal
@@ -526,7 +526,7 @@ class SQLFoldObject(object):
                 sqlalchemy.func.count(), sqlalchemy.literal_column("0")
             ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
         else:
-            # Force column to have explicit label as opposed to anon_label.
+            # Force column to have explicit label as opposed to an anonymous label.
             intermediate_fold_output_name = FOLD_OUTPUT_FORMAT_STRING.format(fold_output_field)
             # Add aggregated output column to self._outputs.
             if isinstance(self._dialect, MSDialect):
@@ -547,7 +547,8 @@ class SQLFoldObject(object):
                 )
 
         raise AssertionError(
-            "Reached end of function without returning a value, this code should be unreachable."
+            "Reached end of function _get_mssql_xml_path_column without returning a value "
+            f"during fold {self}. This code should be unreachable."
         )
 
     def _get_fold_outputs(
@@ -647,7 +648,7 @@ class SQLFoldObject(object):
             )
         if len(self._traversal_descriptors) == 0:
             raise AssertionError(
-                "No traversed vertices visited. " f"Invalid state encountered during fold {self}."
+                f"No traversed vertices visited. Invalid state encountered during fold {self}."
             )
 
         # For now, folds with more than one traversal (i.e. join) are not implemented in MSSQL.
@@ -740,16 +741,13 @@ class CompilationState(object):
             SQLFoldObject
         ] = None  # SQLFoldObject to collect fold info and create folded subqueries.
 
-        # Current folded subquery state.
-        self._current_fold = None  # SQLFoldObject to collect fold info and guide output query
-
         # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
         # corresponding table Aliases. some_location is either self._current_location
         # or the base location of an open FoldScopeLocation. For Locations, the second argument of
         # the tuple will be None.
         # Note: for tables with an _x_count column, that column will always
         # be named "fold_output__x_count".
-        self._aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias] = {}
+        self._aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Union[Alias, ColumnRouter]] = {}
 
         # Move to the beginning location of the query.
         self._relocate(ir.query_metadata_table.root_location)
@@ -768,6 +766,15 @@ class CompilationState(object):
 
         # Generates aliases for fold subqueries.
         self._alias_generator: UniqueAliasGenerator = UniqueAliasGenerator()
+
+    def __str__(self) -> str:
+        """Return a human readable string of the CompilationState."""
+        return (
+            f"CompilationState(current location: {self._current_location}, "
+            f"current fold: {self._current_fold}, "
+            f"current query: {self.get_query()} "
+            "(note: this may be a partial query and is not guaranteed to be valid SQL.))"
+        )
 
     def _relocate(self, new_location: BaseLocation):
         """Move to a different location in the query, updating the _current_alias."""
@@ -801,7 +808,10 @@ class CompilationState(object):
     ):
         """Join the current location to the parent location using the column names specified."""
         if self._current_alias is None:
-            raise AssertionError("Cannot join to parent location when _current_alias is None.")
+            raise AssertionError(
+                "Attempted join to parent location when _current_alias was None "
+                f"during fold {self}."
+            )
 
         self._came_from[self._current_alias] = self._current_alias.c[to_column]
 
@@ -857,7 +867,9 @@ class CompilationState(object):
     def traverse(self, vertex_field: str, optional: bool) -> None:
         """Execute a Traverse Block."""
         if self._current_location is None:
-            raise AssertionError("Cannot traverse when the _current_location is None.")
+            raise AssertionError(
+                f"Attempted to traverse when the _current_location was None during fold {self}."
+            )
 
         self._recurse_needs_cte = True
 
