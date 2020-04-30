@@ -71,6 +71,9 @@ def _deserialize_scalar_json_argument(
             GraphQLString: str
             GraphQLBoolean: bool
             GraphQLID: str
+
+    Raises:
+        GraphQLInvalidArgumentError: if the argument value was not of the expected type.
     """
     allowed_types_for_graphql_type = {
         GraphQLDate.name: (str,),
@@ -162,6 +165,9 @@ def deserialize_json_argument(
             GraphQLBoolean: bool
             GraphQLID: str
             GraphQLList: list of the inner type
+
+    Raises:
+        GraphQLInvalidArgumentError: if the argument value was not of the expected type.
     """
     stripped_type = strip_non_null_from_type(expected_type)
     if isinstance(stripped_type, GraphQLList):
@@ -218,6 +224,9 @@ def deserialize_multiple_json_arguments(
             GraphQLBoolean: bool
             GraphQLID: str
             GraphQLList: list of the inner type
+
+    Raises:
+        GraphQLInvalidArgumentError: if the argument value was not of the expected type.
     """
     ensure_arguments_are_provided(expected_types, arguments)
     return {
