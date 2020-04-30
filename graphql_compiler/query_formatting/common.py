@@ -151,8 +151,20 @@ def deserialize_json_argument(
             GraphQLBoolean: bool
             GraphQLID: str
     """
+    stripped_type = strip_non_null_from_type(expected_type)
     try:
-        return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
+        if isinstance(stripped_type, GraphQLList):
+            if not isinstance(value, list):
+                _raise_invalid_type_error(name, (list,), value)
+
+            inner_stripped_type = strip_non_null_from_type(stripped_type.of_type)
+
+            return [
+                _deserialize_anonymous_json_argument(inner_stripped_type, element)
+                for element in value
+            ]
+        else:
+            return _deserialize_anonymous_json_argument(stripped_type, value)
     except (ValueError, TypeError) as e:
         raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
