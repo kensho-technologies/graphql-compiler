@@ -54,7 +54,7 @@ def _raise_invalid_type_error(
 def _deserialize_scalar_json_argument(
     name: str, expected_type: GraphQLScalarType, value: Any
 ) -> Any:
-    """Deserialize json serialized scalar argument. See docstring of deserialize_json_argument.
+    """Deserialize a json serialized scalar argument. See docstring of deserialize_json_argument.
 
     Args:
         name: the name of the argument
