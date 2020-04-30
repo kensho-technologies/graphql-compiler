@@ -2,8 +2,8 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
-from typing import Any, Collection, Dict, Mapping, NoReturn, Type
 from types import MappingProxyType
+from typing import Any, Collection, Dict, Mapping, NoReturn, Type
 
 import arrow
 from graphql import (
@@ -27,14 +27,13 @@ from ..compiler import (
 )
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type
+from ..global_utils import assert_set_equality, is_same_type
 from ..schema import SUPPORTED_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from ..typedefs import QueryArgumentGraphQLType
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
-from ..global_utils import assert_set_equality
 
 
 ######
@@ -139,9 +138,7 @@ def _deserialize_scalar_json_argument(
 
 
 def deserialize_json_argument(
-    name: str,
-    expected_type: QueryArgumentGraphQLType,
-    value: Any,
+    name: str, expected_type: QueryArgumentGraphQLType, value: Any,
 ) -> Any:
     """Deserialize a json serialized GraphQL argument.
 
@@ -197,8 +194,7 @@ def deserialize_json_argument(
 
 
 def deserialize_multiple_json_arguments(
-    arguments: Mapping[str, Any],
-    expected_types: Mapping[str, QueryArgumentGraphQLType],
+    arguments: Mapping[str, Any], expected_types: Mapping[str, QueryArgumentGraphQLType],
 ) -> Dict[str, Any]:
     """Deserialize json serialized GraphQL arguments.
 
