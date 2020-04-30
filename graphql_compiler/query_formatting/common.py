@@ -3,6 +3,7 @@
 import datetime
 import decimal
 from typing import Any, Collection, Dict, Mapping, NoReturn, Type
+from types import MappingProxyType
 
 import arrow
 from graphql import (
@@ -27,7 +28,7 @@ from ..compiler import (
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
 from ..global_utils import is_same_type
-from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
+from ..schema import SUPPORTED_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from ..typedefs import QueryArgumentGraphQLType
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
@@ -49,6 +50,47 @@ def _raise_invalid_type_error(
         f"{value} of type {type(value).__name__} instead."
     )
 
+
+_ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
+    {
+        GraphQLDate.name: (str,),
+        GraphQLDateTime.name: (str,),
+        GraphQLFloat.name: (str, float, int),
+        GraphQLDecimal.name: (str, float, int),
+        GraphQLInt.name: (int, str),
+        GraphQLString.name: (str,),
+        GraphQLBoolean.name: (bool,),
+        GraphQLID.name: (int, str,),
+    }
+)
+assert_set_equality(
+    set(_ALLOWED_JSON_SCALAR_TYPES.keys()),
+    {graphql_type.name for graphql_type in SUPPORTED_SCALAR_TYPES},
+)
+
+_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+    {
+        # `GraphQLInt.parse_value` requires its input to be a signed 32 bit integer.
+        # GraphQLInt is currently used to represent any backend integer type, including 64 bit
+        # integers, so we removed the signed 32 bit restriction. We also choose to allow strings as
+        # input.
+        GraphQLInt.name: int,
+        # TODO: Disallow NAN and infinite floats.
+        # `GraphQLInt.parse_value` requires its input to be a integer or a non-NAN and non-infinite
+        # float. We choose to additionally allow strings as input.
+        GraphQLFloat.name: float,
+    }
+)
+
+_JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+    {
+        scalar_type.name: (
+            _ALLOWED_JSON_SCALAR_TYPES[scalar_type.name],
+            _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS.get(scalar_type.name, scalar_type.parse_value),
+        )
+        for scalar_type in SUPPORTED_SCALAR_TYPES
+    }
+)
 
 def _deserialize_scalar_json_argument(
     name: str, expected_type: GraphQLScalarType, value: Any
