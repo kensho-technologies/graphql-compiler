@@ -34,6 +34,7 @@ from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
 from .gremlin_formatting import insert_arguments_into_gremlin_query
 from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
+from ..global_utils import assert_set_equality
 
 
 ######
@@ -70,15 +71,14 @@ assert_set_equality(
 
 _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     {
-        # `GraphQLInt.parse_value` requires its input to be a signed 32 bit integer.
-        # GraphQLInt is currently used to represent any backend integer type, including 64 bit
-        # integers, so we removed the signed 32 bit restriction. We also choose to allow strings as
-        # input.
-        GraphQLInt.name: int,
-        # TODO: Disallow NAN and infinite floats.
-        # `GraphQLInt.parse_value` requires its input to be a integer or a non-NAN and non-infinite
-        # float. We choose to additionally allow strings as input.
+        # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only
+        # for 64-bit floating point numbers, so large floats might have to be represented as
+        # strings.
         GraphQLFloat.name: float,
+        # Bypass the GraphQLInt parser and allow long ints and strings as input. The JSON spec
+        # allows only for 64-bit floating point numbers, so large ints might have to be
+        # represented as strings.
+        GraphQLInt.name: int,
     }
 )
 
@@ -91,6 +91,7 @@ _JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS = MappingProxyType(
         for scalar_type in SUPPORTED_SCALAR_TYPES
     }
 )
+
 
 def _deserialize_scalar_json_argument(
     name: str, expected_type: GraphQLScalarType, value: Any
@@ -116,55 +117,25 @@ def _deserialize_scalar_json_argument(
     Raises:
         GraphQLInvalidArgumentError: if the argument value was not of the expected type.
     """
-    allowed_types_for_graphql_type = {
-        GraphQLDate.name: (str,),
-        GraphQLDateTime.name: (str,),
-        GraphQLFloat.name: (str, float, int),
-        GraphQLDecimal.name: (str, float, int),
-        GraphQLInt.name: (int, str),
-        GraphQLString.name: (str,),
-        GraphQLBoolean.name: (bool,),
-        GraphQLID.name: (int, str,),
-    }
-
-    # Check if the type of the value is correct
-    correct_type = True
-    expected_python_types = allowed_types_for_graphql_type[expected_type.name]
-    if isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type):
-        correct_type = False  # We explicitly disallow passing boolean values for non-boolean types
-    if not isinstance(value, expected_python_types):
-        correct_type = False
-    if not correct_type:
-        raise _raise_invalid_type_error(name, expected_python_types, value)
-
-    custom_deserialization_functions = merge_non_overlapping_dicts(
-        {
-            # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only
-            # for 64-bit floating point numbers, so large floats might have to be represented as
-            # strings.
-            GraphQLFloat.name: float,
-            # Bypass the GraphQLInt parser and allow long ints and strings as input. The JSON spec
-            # allows only for 64-bit floating point numbers, so large ints might have to be
-            # represented as strings.
-            GraphQLInt.name: int,
-        },
-        {
-            # Since we cannot serialize the parse_value function of custom scalar types when
-            # serializing a schema, it is possible that the parse_value is incorrectly set. We must,
-            # therefore, use the parse_value function of the original scalar type definition.
-            graphql_type.name: graphql_type.parse_value
-            for graphql_type in CUSTOM_SCALAR_TYPES
-        },
-    )
-
-    deserialization_function = custom_deserialization_functions.get(
-        expected_type.name, expected_type.parse_value
-    )
-
-    try:
-        return deserialization_function(value)
-    except (ValueError, TypeError) as e:
-        raise GraphQLInvalidArgumentError(f"Error parsing argument {name}: {e}")
+    types_and_deserialization = _JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS.get(expected_type.name)
+    if types_and_deserialization is None:
+        raise AssertionError(
+            f"Got unsupported GraphQL type {expected_type} for argument {name} with value {value}."
+        )
+    else:
+        expected_python_types, deserialization_function = types_and_deserialization
+        if any(
+            (
+                not isinstance(value, expected_python_types),
+                # We explicitly disallow passing boolean values for non-boolean types
+                (isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type)),
+            )
+        ):
+            _raise_invalid_type_error(name, expected_python_types, value)
+        try:
+            return deserialization_function(value)
+        except (ValueError, TypeError) as e:
+            raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
 def deserialize_json_argument(
