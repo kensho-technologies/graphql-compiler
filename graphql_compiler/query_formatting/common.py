@@ -101,11 +101,11 @@ def _deserialize_scalar_json_argument(
             # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only
             # for 64-bit floating point numbers, so large floats might have to be represented as
             # strings.
-            GraphQLFloat.name,
+            GraphQLFloat.name: float,
             # Bypass the GraphQLInt parser and allow long ints and strings as input. The JSON spec
             # allows only for 64-bit floating point numbers, so large ints might have to be
             # represented as strings.
-            GraphQLInt.name,
+            GraphQLInt.name: int,
         },
         {
             # Since we cannot serialize the parse_value function of custom scalar types when
