@@ -46,7 +46,7 @@ def _raise_invalid_type_error(
 ) -> NoReturn:
     """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
     raise GraphQLInvalidArgumentError(
-        "Invalid type for argument {}. Expected one {}. Got value {} of "
+        "Invalid type for argument {}. Expected one of {}. Got value {} of "
         "type {}.".format(name, expected_python_types, value, type(value).__name__)
     )
 
