@@ -51,7 +51,7 @@ def _raise_invalid_type_error(
     )
 
 
-_ALLOWED_JSON_SCALAR_TYPES: MappingProxyType[str, Tuple[Type, ...]] = MappingProxyType(
+_ALLOWED_JSON_SCALAR_TYPES: Mapping[str, Tuple[Type, ...]] = MappingProxyType(
     {
         GraphQLDate.name: (str,),
         GraphQLDateTime.name: (str,),
@@ -68,9 +68,7 @@ assert_set_equality(
     {graphql_type.name for graphql_type in SUPPORTED_SCALAR_TYPES},
 )
 
-_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS: MappingProxyType[
-    str, Callable[[Any], Any]
-] = MappingProxyType(
+_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS: Mapping[str, Callable[[Any], Any]] = MappingProxyType(
     {
         # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only
         # for 64-bit floating point numbers, so large floats might have to be represented as
@@ -83,7 +81,7 @@ _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS: MappingProxyType[
     }
 )
 
-_JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS: MappingProxyType[
+_JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS: Mapping[
     str, Tuple[Tuple[Type, ...], Callable[[Any], Any]]
 ] = MappingProxyType(
     {
