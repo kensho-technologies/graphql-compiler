@@ -82,17 +82,6 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         GraphQLID.name: (int, str,),
     }
 
-    # Check for long integers, bypassing the GraphQLInt parser
-    if is_same_type(GraphQLInt, expected_type):
-        if isinstance(value, int):
-            return value
-        elif isinstance(value, str):
-            return int(value)
-        else:
-            raise ValueError(
-                "Unexpected type {}. Expected one of {}.".format(type(value), (int, str))
-            )
-
     # Check if the type of the value is correct
     correct_type = True
     expected_python_types = allowed_types_for_graphql_type[expected_type.name]
@@ -106,11 +95,14 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         )
 
     name_to_custom_type = {graphql_type.name: graphql_type for graphql_type in CUSTOM_SCALAR_TYPES}
-    # Parse the value. In most cases we can use the default GraphQL parser, but there are some
-    # special cases where we are more permissive than the default.
-    # By default, strings cannot be parsed to float.
+    # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only for
+    # 64-bit floating point numbers, so large floats might have to be represented as strings.
     if is_same_type(expected_type, GraphQLFloat):
         return float(value)
+    # Bypass the GraphQLInt parser and allow long ints and strings as input. The JSON spec allows
+    # only for 64-bit floating point numbers, so large ints might have to be represented as strings.
+    elif is_same_type(expected_type, GraphQLInt):
+        return int(value)
     # Use the default GraphQL parser to parse the value
     elif expected_type.name in name_to_custom_type:
         # Since we cannot serialize the parse_value function of custom scalar types when
