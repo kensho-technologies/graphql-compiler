@@ -1,10 +1,13 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 from typing import Union
 
 from graphql import GraphQLList, GraphQLNonNull, GraphQLScalarType
 
 
-# Supported types for query arguments.
-GraphQLArgumentType = Union[
+# The compiler's supported GraphQL types for query arguments. The GraphQL type of a query argument
+# is the type of the field that the argument references. Not to be confused with the GraphQLArgument
+# class in the GraphQL core library.
+QueryArgumentGraphQLType = Union[
     GraphQLScalarType,
     GraphQLList[GraphQLScalarType],
     GraphQLList[GraphQLNonNull[GraphQLScalarType]],

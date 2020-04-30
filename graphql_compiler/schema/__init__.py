@@ -9,11 +9,8 @@ import arrow
 from graphql import (
     DirectiveLocation,
     GraphQLArgument,
-    GraphQLBoolean,
     GraphQLDirective,
     GraphQLField,
-    GraphQLFloat,
-    GraphQLID,
     GraphQLInt,
     GraphQLInterfaceType,
     GraphQLList,
@@ -366,11 +363,11 @@ GraphQLDecimal = GraphQLScalarType(
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
-CUSTOM_SCALAR_TYPES = frozenset({GraphQLDecimal, GraphQLDate, GraphQLDateTime,})
-
-SUPPORTED_SCALAR_TYPES = frozenset(
-    {GraphQLInt, GraphQLString, GraphQLBoolean, GraphQLFloat, GraphQLID,}
-).union(CUSTOM_SCALAR_TYPES)
+CUSTOM_SCALAR_TYPES = (
+    GraphQLDecimal,
+    GraphQLDate,
+    GraphQLDateTime,
+)
 
 DIRECTIVES = (
     FilterDirective,
