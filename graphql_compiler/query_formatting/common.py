@@ -277,7 +277,17 @@ def ensure_arguments_are_provided(
 def validate_arguments(
     expected_types: Mapping[str, QueryArgumentGraphQLType], arguments: Mapping[str, Any]
 ) -> None:
-    """Ensure that all arguments are provided and that they are of the expected type."""
+    """Ensure that all arguments are provided and that they are of the expected type.
+
+    Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
+    Gremlin, or SQLAlchemy. This function should be stricter than the validation done by any
+    specific backend. That way code that passes validation can be compiled to any backend.
+
+    Args:
+        arguments: mapping of argument names to arguments values.
+        expected_types: mapping of argument names to the expected GraphQL types. All GraphQLNonNull
+                        type wrappers are stripped.
+    """
     ensure_arguments_are_provided(expected_types, arguments)
     for name in expected_types:
         validate_argument_type(name, expected_types[name], arguments[name])
