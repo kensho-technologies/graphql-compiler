@@ -27,7 +27,7 @@ from ..compiler import (
 )
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type
+from ..global_utils import is_same_type, merge_non_overlapping_dicts
 from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from ..typedefs import QueryArgumentGraphQLType
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
@@ -51,7 +51,9 @@ def _raise_invalid_type_error(
     )
 
 
-def _deserialize_scalar_json_argument(name, expected_type: GraphQLScalarType, value: Any) -> Any:
+def _deserialize_scalar_json_argument(
+    name: str, expected_type: GraphQLScalarType, value: Any
+) -> Any:
     """Deserialize json serialized scalar argument. See docstring of deserialize_json_argument.
 
     Args:
@@ -91,24 +93,29 @@ def _deserialize_scalar_json_argument(name, expected_type: GraphQLScalarType, va
     if not correct_type:
         raise _raise_invalid_type_error(name, expected_python_types, value)
 
-    deserialization_function = None
-    # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only for
-    # 64-bit floating point numbers, so large floats might have to be represented as strings.
-    if is_same_type(expected_type, GraphQLFloat):
-        deserialization_function = float
-    # Bypass the GraphQLInt parser and allow long ints and strings as input. The JSON spec allows
-    # only for 64-bit floating point numbers, so large ints might have to be represented as strings.
-    elif is_same_type(expected_type, GraphQLInt):
-        deserialization_function = int
-    # Use the default GraphQL parser to parse the value
-    elif expected_type.name in name_to_custom_type:
-        # Since we cannot serialize the parse_value function of custom scalar types when
-        # serializing a schema, it is possible that the parse_value is incorrectly set. We must,
-        # therefore, use the parse_value function of the original scalar type definition.
-        name_to_custom_type = {custom_type.name: custom_type for custom_type in CUSTOM_SCALAR_TYPES}
-        deserialization_function = name_to_custom_type[expected_type.name].parse_value
-    else:
-        deserialization_function = expected_type.parse_value
+    custom_deserialization_functions = merge_non_overlapping_dicts(
+        {
+            # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only
+            # for 64-bit floating point numbers, so large floats might have to be represented as
+            # strings.
+            GraphQLFloat.name,
+            # Bypass the GraphQLInt parser and allow long ints and strings as input. The JSON spec
+            # allows only for 64-bit floating point numbers, so large ints might have to be
+            # represented as strings.
+            GraphQLInt.name,
+        },
+        {
+            # Since we cannot serialize the parse_value function of custom scalar types when
+            # serializing a schema, it is possible that the parse_value is incorrectly set. We must,
+            # therefore, use the parse_value function of the original scalar type definition.
+            graphql_type.name: graphql_type.parse_value
+            for graphql_type in CUSTOM_SCALAR_TYPES
+        },
+    )
+
+    deserialization_function = custom_deserialization_functions.get(
+        expected_type.name, expected_type.parse_value
+    )
 
     try:
         return deserialization_function(value)
