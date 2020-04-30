@@ -133,6 +133,7 @@ def deserialize_json_argument(
         GraphQLString: "Hello"
         GraphQLBoolean: True
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
+        GraphQLList: [1, 2, 3]
 
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
@@ -150,6 +151,7 @@ def deserialize_json_argument(
             GraphQLString: str
             GraphQLBoolean: bool
             GraphQLID: str
+            GraphQLList: list of the inner type
     """
     stripped_type = strip_non_null_from_type(expected_type)
     try:
@@ -189,6 +191,8 @@ def deserialize_multiple_json_arguments(
         GraphQLString: "Hello"
         GraphQLBoolean: True
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
+        GraphQLList: [1, 2, 3]
+
 
     Args:
         arguments: mapping of argument names to json serialized argument values.
@@ -206,6 +210,7 @@ def deserialize_multiple_json_arguments(
             GraphQLString: str
             GraphQLBoolean: bool
             GraphQLID: str
+            GraphQLList: list of the inner type
     """
     ensure_arguments_are_provided(expected_types, arguments)
     return {
