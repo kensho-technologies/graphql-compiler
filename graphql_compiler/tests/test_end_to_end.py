@@ -31,6 +31,7 @@ from ..schema.schema_info import CommonSchemaInfo
 from ..typedefs import QueryArgumentGraphQLType
 from .test_helpers import compare_gremlin, compare_match, get_schema
 
+
 EXAMPLE_GRAPHQL_QUERY = """{
     Animal @filter(op_name: "name_or_alias", value: ["$wanted_name"]) {
         name @output(out_name: "name")
