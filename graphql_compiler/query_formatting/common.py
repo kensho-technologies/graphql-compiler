@@ -2,7 +2,7 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
-from typing import Any, Dict, Mapping, Union
+from typing import Any, Dict, Mapping, Union, NoReturn
 
 import arrow
 from graphql import (
@@ -41,7 +41,7 @@ from .sql_formatting import insert_arguments_into_sql_query
 ######
 
 
-def _raise_invalid_type_error(name: str, expected_python_type_name: str, value: Any):
+def _raise_invalid_type_error(name: str, expected_python_type_name: str, value: Any) -> NoReturn:
     """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
     raise GraphQLInvalidArgumentError(
         "Invalid type for argument {}. Expected {}. Got value {} of "
@@ -160,7 +160,7 @@ def deserialize_json_argument(
 def deserialize_multiple_json_arguments(
     arguments: Mapping[str, Any],
     expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
-) -> Mapping[str, Any]:
+) -> Dict[str, Any]:
     """Deserialize json serialized GraphQL arguments.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
