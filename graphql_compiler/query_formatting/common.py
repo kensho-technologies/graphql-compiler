@@ -49,10 +49,11 @@ def _raise_invalid_type_error(name: str, expected_python_type_name: str, value: 
     )
 
 
-def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value: Any) -> Any:
-    """Deserialize argument. See docstring of deserialize_json_argument.
+def _deserialize_scalar_json_argument(name, expected_type: GraphQLScalarType, value: Any) -> Any:
+    """Deserialize json serialized scalar argument. See docstring of deserialize_json_argument.
 
     Args:
+        name: the name of the argument
         expected_type: GraphQL type we expect.
         value: object that can be interpreted as being of that type
 
@@ -66,10 +67,6 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
             GraphQLString: str
             GraphQLBoolean: bool
             GraphQLID: str
-
-    Raises:
-        ValueError if the value is not appropriate for the type. ValueError is chosen because
-        it is already the base case of exceptions raised by the GraphQL parsers.
     """
     allowed_types_for_graphql_type = {
         GraphQLDate.name: (str,),
@@ -94,23 +91,29 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
             "Unexpected type {}. Expected one of {}.".format(type(value), expected_python_types)
         )
 
-    name_to_custom_type = {graphql_type.name: graphql_type for graphql_type in CUSTOM_SCALAR_TYPES}
+    deserialization_function = None
     # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only for
     # 64-bit floating point numbers, so large floats might have to be represented as strings.
     if is_same_type(expected_type, GraphQLFloat):
-        return float(value)
+        deserialization_function = float
     # Bypass the GraphQLInt parser and allow long ints and strings as input. The JSON spec allows
     # only for 64-bit floating point numbers, so large ints might have to be represented as strings.
     elif is_same_type(expected_type, GraphQLInt):
-        return int(value)
+        deserialization_function = int
     # Use the default GraphQL parser to parse the value
     elif expected_type.name in name_to_custom_type:
         # Since we cannot serialize the parse_value function of custom scalar types when
         # serializing a schema, it is possible that the parse_value is incorrectly set. We must,
         # therefore, use the parse_value function of the original scalar type definition.
-        return name_to_custom_type[expected_type.name].parse_value(value)
+        name_to_custom_type = {custom_type.name: custom_type for custom_type in CUSTOM_SCALAR_TYPES}
+        deserialization_function = name_to_custom_type[expected_type.name].parse_value
     else:
-        return expected_type.parse_value(value)
+        deserialization_function = expected_type.parse_value
+
+    try:
+        return deserialization_function(value)
+    except (ValueError, TypeError) as e:
+        raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
 def deserialize_json_argument(
@@ -154,21 +157,18 @@ def deserialize_json_argument(
             GraphQLList: list of the inner type
     """
     stripped_type = strip_non_null_from_type(expected_type)
-    try:
-        if isinstance(stripped_type, GraphQLList):
-            if not isinstance(value, list):
-                _raise_invalid_type_error(name, (list,), value)
+    if isinstance(stripped_type, GraphQLList):
+        if not isinstance(value, list):
+            _raise_invalid_type_error(name, (list,), value)
 
-            inner_stripped_type = strip_non_null_from_type(stripped_type.of_type)
+        inner_stripped_type = strip_non_null_from_type(stripped_type.of_type)
 
-            return [
-                _deserialize_anonymous_json_argument(inner_stripped_type, element)
-                for element in value
-            ]
-        else:
-            return _deserialize_anonymous_json_argument(stripped_type, value)
-    except (ValueError, TypeError) as e:
-        raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+        return [
+            _deserialize_scalar_json_argument(inner_stripped_type, element)
+            for element in value
+        ]
+    else:
+        return _deserialize_scalar_json_argument(stripped_type, value)
 
 
 def deserialize_multiple_json_arguments(
