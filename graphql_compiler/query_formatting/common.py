@@ -2,7 +2,7 @@
 """Safely insert runtime arguments into compiled GraphQL queries."""
 import datetime
 import decimal
-from typing import Any, Collection, Dict, Mapping, NoReturn, Type, Union
+from typing import Any, Collection, Dict, Mapping, NoReturn, Type
 
 import arrow
 from graphql import (
@@ -11,7 +11,6 @@ from graphql import (
     GraphQLID,
     GraphQLInt,
     GraphQLList,
-    GraphQLNonNull,
     GraphQLScalarType,
     GraphQLString,
     GraphQLType,
@@ -27,7 +26,7 @@ from ..compiler import (
 )
 from ..compiler.helpers import strip_non_null_from_type
 from ..exceptions import GraphQLInvalidArgumentError
-from ..global_utils import is_same_type, merge_non_overlapping_dicts
+from ..global_utils import is_same_type
 from ..schema import CUSTOM_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from ..typedefs import QueryArgumentGraphQLType
 from .cypher_formatting import insert_arguments_into_cypher_query_redisgraph
@@ -128,7 +127,7 @@ def _deserialize_scalar_json_argument(
 
 def deserialize_json_argument(
     name: str,
-    expected_type: Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType],
+    expected_type: QueryArgumentGraphQLType,
     value: Any,
 ) -> Any:
     """Deserialize a json serialized GraphQL argument.
@@ -146,7 +145,7 @@ def deserialize_json_argument(
         GraphQLString: "Hello"
         GraphQLBoolean: True
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
-        GraphQLList: [1, 2, 3]
+        GraphQLList(GraphQLInt): [1, 2, 3]
 
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
@@ -186,7 +185,7 @@ def deserialize_json_argument(
 
 def deserialize_multiple_json_arguments(
     arguments: Mapping[str, Any],
-    expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
+    expected_types: Mapping[str, QueryArgumentGraphQLType],
 ) -> Dict[str, Any]:
     """Deserialize json serialized GraphQL arguments.
 
@@ -204,8 +203,7 @@ def deserialize_multiple_json_arguments(
         GraphQLString: "Hello"
         GraphQLBoolean: True
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
-        GraphQLList: [1, 2, 3]
-
+        GraphQLList(GraphQLInt): [1, 2, 3]
 
     Args:
         arguments: mapping of argument names to json serialized argument values.
