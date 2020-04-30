@@ -226,7 +226,7 @@ def deserialize_multiple_json_arguments(
             GraphQLList: list of the inner type
 
     Raises:
-        GraphQLInvalidArgumentError: if the argument value was not of the expected type.
+        GraphQLInvalidArgumentError: if any of the argument values was not of the expected type.
     """
     ensure_arguments_are_provided(expected_types, arguments)
     return {
