@@ -3,7 +3,7 @@
 import datetime
 import decimal
 from types import MappingProxyType
-from typing import Any, Collection, Dict, Mapping, NoReturn, Type
+from typing import Any, Callable, Collection, Dict, Mapping, NoReturn, Tuple, Type
 
 import arrow
 from graphql import (
@@ -51,7 +51,7 @@ def _raise_invalid_type_error(
     )
 
 
-_ALLOWED_JSON_SCALAR_TYPES = MappingProxyType(
+_ALLOWED_JSON_SCALAR_TYPES: MappingProxyType[str, Tuple[Type, ...]] = MappingProxyType(
     {
         GraphQLDate.name: (str,),
         GraphQLDateTime.name: (str,),
@@ -68,7 +68,9 @@ assert_set_equality(
     {graphql_type.name for graphql_type in SUPPORTED_SCALAR_TYPES},
 )
 
-_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+_CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS: MappingProxyType[
+    str, Callable[[Any], Any]
+] = MappingProxyType(
     {
         # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only
         # for 64-bit floating point numbers, so large floats might have to be represented as
@@ -81,7 +83,9 @@ _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS = MappingProxyType(
     }
 )
 
-_JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS = MappingProxyType(
+_JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS: MappingProxyType[
+    str, Tuple[Tuple[Type, ...], Callable[[Any], Any]]
+] = MappingProxyType(
     {
         scalar_type.name: (
             _ALLOWED_JSON_SCALAR_TYPES[scalar_type.name],

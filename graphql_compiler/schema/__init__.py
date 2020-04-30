@@ -4,6 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
+from typing import FrozenSet
 
 import arrow
 from graphql import (
@@ -366,9 +367,10 @@ GraphQLDecimal = GraphQLScalarType(
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
-CUSTOM_SCALAR_TYPES = frozenset({GraphQLDecimal, GraphQLDate, GraphQLDateTime,})
-
-SUPPORTED_SCALAR_TYPES = frozenset(
+CUSTOM_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
+    {GraphQLDecimal, GraphQLDate, GraphQLDateTime,}
+)
+SUPPORTED_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
     {GraphQLInt, GraphQLString, GraphQLBoolean, GraphQLFloat, GraphQLID,}
 ).union(CUSTOM_SCALAR_TYPES)
 

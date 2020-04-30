@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 import unittest
 
 from ..global_utils import assert_set_equality
