@@ -123,7 +123,7 @@ def _deserialize_scalar_json_argument(
     try:
         return deserialization_function(value)
     except (ValueError, TypeError) as e:
-        raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+        raise GraphQLInvalidArgumentError(f"Error parsing argument {name}: {e}")
 
 
 def deserialize_json_argument(
