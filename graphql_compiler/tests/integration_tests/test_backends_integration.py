@@ -441,7 +441,7 @@ class IntegrationTests(TestCase):
         # some backends such as MSSQL haven most, but not all, fold functionality implemented.
         # excluded_backends can be use to bypass a subset of the fold tests.
         # The queries are run in the order specified here.
-        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]]], List[str]] = [
+        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]], List[str]]] = [
             # Query 1: Unfolded children of Animal 1
             (
                 """
