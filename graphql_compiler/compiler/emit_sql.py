@@ -287,15 +287,15 @@ class SQLFoldTraversalDescriptor(NamedTuple):
 
 
 # TODO(bojanserafimov): Rename to FoldSubqueryBuilder and simplify usage and spec.
-class SQLFoldObject(object):
+class FoldSubqueryBuilder(object):
     """Object used to collect info for folds in order to ensure correct code emission."""
 
-    # A SQLFoldObject consists of information related to the SELECT clause of the fold subquery,
+    # A FoldSubqueryBuilder consists of information related to the SELECT clause of the fold subquery,
     # the GROUP BY clause, the WHERE clause (if applying filters) and the FROM clause which contains
     # one JOIN per vertex traversed in the fold, including the traversal from the vertex outside
     # the fold to the folded vertex itself.
     #
-    # The life cycle for the SQLFoldObject is:
+    # The life cycle for the FoldSubqueryBuilder is:
     #   1. initializing it with the information for the outer vertex (the one outside the fold)
     #   2. at least one traversal
     #   3. visiting the output vertex to collect the output columns
@@ -348,7 +348,7 @@ class SQLFoldObject(object):
     # JOIN VertexPrecedingOutput
     # ON ...
     def __init__(self, dialect: DefaultDialect, outer_vertex_table: Alias, primary_key_name: str):
-        """Create an SQLFoldObject with table, type, and join information supplied by the IR.
+        """Create an FoldSubqueryBuilder with table, type, and join information supplied by the IR.
 
         Args:
             dialect: dialect to which the query will be compiled.
@@ -383,15 +383,15 @@ class SQLFoldObject(object):
     def __str__(self):
         """Produce string used to customize error messages."""
         if self._outer_vertex_alias is None:
-            return 'SQLFoldObject("Invalid fold: no vertex preceding fold.")'
+            return 'FoldSubqueryBuilder("Invalid fold: no vertex preceding fold.")'
         elif self._output_vertex_alias is None:
             return (
-                f'SQLFoldObject("Vertex outside fold: {self._outer_vertex_alias.original}. '
+                f'FoldSubqueryBuilder("Vertex outside fold: {self._outer_vertex_alias.original}. '
                 'Output vertex for fold: None.")'
             )
         else:
             return (
-                f'SQLFoldObject("Vertex outside fold: {self._outer_vertex_alias.original}. '
+                f'FoldSubqueryBuilder("Vertex outside fold: {self._outer_vertex_alias.original}. '
                 f'Output vertex for fold: {self._output_vertex_alias.original}.")'
             )
 
@@ -617,7 +617,7 @@ class SQLFoldObject(object):
     def add_filter(
         self, predicate: Expression, aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias]
     ) -> None:
-        """Add a new filter to the SQLFoldObject."""
+        """Add a new filter to the FoldSubqueryBuilder."""
         if self._ended:
             raise AssertionError(
                 "Cannot add a filter after end_fold has been called. Invalid "
@@ -716,8 +716,8 @@ class CompilationState(object):
 
         # Current folded subquery state.
         self._current_fold: Optional[
-            SQLFoldObject
-        ] = None  # SQLFoldObject to collect fold info and create folded subqueries.
+            FoldSubqueryBuilder
+        ] = None  # FoldSubqueryBuilder to collect fold info and create folded subqueries.
 
         # Dict mapping (some_location.query_path, fold_scope_location.fold_path) tuples to
         # corresponding table Aliases. some_location is either self._current_location
@@ -1054,7 +1054,7 @@ class CompilationState(object):
         ]
 
         # 3. Initialize fold object.
-        self._current_fold = SQLFoldObject(
+        self._current_fold = FoldSubqueryBuilder(
             self._sql_schema_info.dialect, outer_alias, outer_vertex_primary_key_name
         )
 
