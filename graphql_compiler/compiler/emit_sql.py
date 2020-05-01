@@ -571,6 +571,13 @@ class SQLFoldObject(object):
                             f"Received invalid fold_output {fold_output}. FoldScopeLocations in "
                             f"all_folded_fields must have their fields set."
                         )
+                    if fold_output.field == COUNT_META_FIELD_NAME and isinstance(
+                        self._dialect, MSDialect
+                    ):
+                        raise NotImplementedError(
+                            f"_x_count is not implemented for MSSQL. Received _x_count "
+                            f"fold_output {fold_output}."
+                        )
                     # Get SQLAlchemy column for fold_output.
                     column_clause = self._get_fold_output_column_clause(fold_output.field)
                     # Append resulting column to outputs.
@@ -651,6 +658,17 @@ class SQLFoldObject(object):
         if len(self._traversal_descriptors) > 1 and isinstance(self._dialect, MSDialect):
             raise NotImplementedError(
                 "Folds containing multiple traversals are not implemented in MSSQL."
+            )
+
+        # For now, folds with multiple outputs are not implemented in MSSQL. Each output comes
+        # from its own selectable within the XML PATH statement so it is not guaranteed result order
+        # would be preserved across multiple outputs from the same FoldScopeLocation.
+        # Note: _outputs includes 1 output used for joining the folded subquery to the main
+        # selectable and at least 1 other folded output. Since MSSQL only supports 1 output of a
+        # field (_x_counts are not implemented), ensure that len(self.outputs) == 2.
+        if len(self._outputs) != 2 and isinstance(self._dialect, MSDialect):
+            raise NotImplementedError(
+                "Folds containing multiple outputs are not implemented in MSSQL."
             )
 
         # End the fold, preventing any more functions from being called on this fold.
