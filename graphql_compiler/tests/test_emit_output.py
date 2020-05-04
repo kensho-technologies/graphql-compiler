@@ -1,11 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import unittest
 
-from sqlalchemy.dialects.mssql.base import MSDialect
-from sqlalchemy.dialects.postgresql.base import PGDialect
 from graphql import GraphQLString
+from sqlalchemy.dialects.mssql.base import MSDialect
 
-from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..compiler import emit_cypher, emit_gremlin, emit_match, emit_sql
 from ..compiler.blocks import (
     Backtrack,
@@ -27,20 +25,21 @@ from ..compiler.expressions import (
     TernaryConditional,
     Variable,
 )
-from ..compiler.helpers import Location, FoldScopeLocation
+from ..compiler.helpers import Location
 from ..compiler.ir_lowering_common.common import OutputContextVertex
 from ..compiler.ir_lowering_match.utils import CompoundMatchQuery
 from ..compiler.match_query import convert_to_match_query
 from ..compiler.metadata import LocationInfo, QueryMetadataTable
+from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..schema import GraphQLDateTime
 from .test_helpers import (
-    compare_sql,
     compare_cypher,
     compare_gremlin,
     compare_match,
+    compare_sql,
     get_common_schema_info,
-    get_sqlalchemy_schema_info,
     get_schema,
+    get_sqlalchemy_schema_info,
 )
 
 
@@ -705,7 +704,9 @@ class EmitSQLTests(unittest.TestCase):
     def test_fold_subquery_builder(self) -> None:
         dialect = MSDialect()
         table = self.schema_infos["mssql"].vertex_name_to_table["Animal"]
-        join_descriptor = self.schema_infos["mssql"].join_descriptors["Animal"]["out_Animal_ParentOf"]
+        join_descriptor = self.schema_infos["mssql"].join_descriptors["Animal"][
+            "out_Animal_ParentOf"
+        ]
         from_alias = table.alias()
         to_alias = table.alias()
         fold_scope_location = Location(("Animal",)).navigate_to_fold("out_Animal_ParentOf")
@@ -716,7 +717,7 @@ class EmitSQLTests(unittest.TestCase):
             from_alias,
             to_alias,
             fold_scope_location,
-            {fold_scope_location.fold_path: {fold_scope_location.navigate_to_field("name")}}
+            {fold_scope_location.fold_path: {fold_scope_location.navigate_to_field("name")}},
         )
         subquery, output_location = builder.end_fold()
 
@@ -740,8 +741,8 @@ class EmitSQLTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
         """
-
         string_result = print_sqlalchemy_query_string(subquery, dialect)
         compare_sql(self, expected_mssql, string_result)
-        self.assertEqual({"uuid", "fold_output_name"}, set(subquery.c.keys()))
 
+        self.assertEqual({"uuid", "fold_output_name"}, set(subquery.c.keys()))
+        self.assertEqual(fold_scope_location, output_location)
