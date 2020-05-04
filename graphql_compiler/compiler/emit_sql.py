@@ -575,6 +575,8 @@ class FoldSubqueryBuilder(object):
         # Sort to make select order deterministic.
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
+    # TODO these arguments need to be explained. Should this function be called on the
+    #      first vertex inside the fold? If so, what is from_table in that case?
     def visit_vertex(
         self,
         join_descriptor: DirectJoinDescriptor,
