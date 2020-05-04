@@ -710,7 +710,7 @@ class EmitSQLTests(unittest.TestCase):
         to_alias = table.alias()
         fold_scope_location = Location(("Animal",)).navigate_to_fold("out_Animal_ParentOf")
 
-        builder = emit_sql.FoldSubqueryBuilder(dialect, table.alias(), "uuid")
+        builder = emit_sql.FoldSubqueryBuilder(dialect, from_alias, "uuid")
         builder.visit_vertex(
             join_descriptor,
             from_alias,
@@ -720,7 +720,6 @@ class EmitSQLTests(unittest.TestCase):
         )
         subquery, output_location = builder.end_fold()
 
-        # TODO This is not the expected sql, just the output I got.
         expected_mssql = """
             SELECT
                 [Animal_1].uuid,
@@ -735,13 +734,13 @@ class EmitSQLTests(unittest.TestCase):
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
                 WHERE
-                    [Animal_3].uuid = [Animal_2].parent
+                    [Animal_1].uuid = [Animal_2].parent
                 FOR XML PATH ('')
                 ), '') AS fold_output_name
             FROM
-                db_1.schema_1.[Animal] AS [Animal_1],
-                db_1.schema_1.[Animal] AS [Animal_3]
+                db_1.schema_1.[Animal] AS [Animal_1]
         """
+        # TODO where is the label for uuid? is fold_output_name the right label for the xml subquery?
 
         string_result = print_sqlalchemy_query_string(subquery, dialect)
         compare_sql(self, expected_mssql, string_result)
