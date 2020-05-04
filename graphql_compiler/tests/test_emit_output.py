@@ -740,7 +740,8 @@ class EmitSQLTests(unittest.TestCase):
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
         """
-        # TODO where is the label for uuid? is fold_output_name the right label for the xml subquery?
 
         string_result = print_sqlalchemy_query_string(subquery, dialect)
         compare_sql(self, expected_mssql, string_result)
+        self.assertEqual({"uuid", "fold_output_name"}, set(subquery.c.keys()))
+
