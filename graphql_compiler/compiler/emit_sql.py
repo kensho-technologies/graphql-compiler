@@ -286,21 +286,14 @@ class SQLFoldTraversalDescriptor(NamedTuple):
     to_table: Alias
 
 
-# TODO(bojanserafimov): Rename to FoldSubqueryBuilder and simplify usage and spec.
 class FoldSubqueryBuilder(object):
-    """Object used to collect info for folds in order to ensure correct code emission."""
+    """Builder that emits a subquery for a fold scope."""
 
-    # A FoldSubqueryBuilder consists of information related to the SELECT clause of the fold subquery,
-    # the GROUP BY clause, the WHERE clause (if applying filters) and the FROM clause which contains
-    # one JOIN per vertex traversed in the fold, including the traversal from the vertex outside
-    # the fold to the folded vertex itself.
-    #
     # The life cycle for the FoldSubqueryBuilder is:
-    #   1. initializing it with the information for the outer vertex (the one outside the fold)
-    #   2. at least one traversal
-    #   3. visiting the output vertex to collect the output columns
-    #   4. optionally adding a filter condition
-    #   5. ending the fold by producing the resulting subquery
+    #   1. initialize at the vertex preceding the fold
+    #   2. visit all locations inside the fold scope
+    #   3. optinally add fold scope filters
+    #   5. end the fold, producing the resulting subquery
     #
     # This life cycle is completed via calls to __init__, visit_vertex, add_filter, and end_fold.
     #
