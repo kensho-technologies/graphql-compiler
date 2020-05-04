@@ -438,7 +438,7 @@ class IntegrationTests(TestCase):
     def test_fold_basic(self, backend_name: str) -> None:
         # (query, args, expected_results, excluded_backends) tuples.
         # Note: excluded_backends is distinct from `@use_all_backends(expect_backends=(...)) because
-        # some backends such as MSSQL haven most, but not all, fold functionality implemented.
+        # some backends such as MSSQL have most, but not all, fold functionality implemented.
         # excluded_backends can be use to bypass a subset of the fold tests.
         # The queries are run in the order specified here.
         queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]], List[str]]] = [
