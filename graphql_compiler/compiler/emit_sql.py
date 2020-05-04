@@ -575,10 +575,18 @@ class FoldSubqueryBuilder(object):
         # Sort to make select order deterministic.
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
-    # TODO these arguments need to be explained/simplified:
-    #      - the relationship between the two tables and the vertex mentioned
-    #      - the meaning of current in current_fold_scope_location
-    #      - spec for all_folded_fields. What is a folded field?
+    # This function communicates both a traversal to a new node and output information at the
+    # new node. It could be split into two functions that are easier to spec:
+    # 1. traverse(self, join_descriptor)
+    # 2. expose_column(self, column_name)
+    #
+    # This way there is no need to define what is considered a folded field. It is up to the
+    # caller to expose all they will want to use.
+    #
+    # Note: The traverse and expose_colum functions would look very similar to the
+    #       _join_to_parent_location and output functions of CompilationState. A generic
+    #       query bulder could simplify both these classes, if we continue down the object
+    #       oriented approach of emitting sql.
     def visit_vertex(
         self,
         join_descriptor: DirectJoinDescriptor,
@@ -587,7 +595,11 @@ class FoldSubqueryBuilder(object):
         current_fold_scope_location: FoldScopeLocation,
         all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]],
     ) -> None:
-        """Add a new SQLFoldTraversalDescriptor and add outputs, if visiting an output vertex."""
+        """Add a new SQLFoldTraversalDescriptor and add outputs, if visiting an output vertex.
+
+        Args:
+            join_descriptor: the join descriptor corresponding to the edge leading to this vertex
+        """
         if self._ended:
             raise AssertionError(
                 "Cannot visit traversed vertices after end_fold has been called."
@@ -778,6 +790,7 @@ class CompilationState(object):
                 self._current_classname
             ].alias()
 
+    # TODO merge from_column and to_column into a joindescriptor
     def _join_to_parent_location(
         self, parent_alias: Alias, from_column: str, to_column: str, optional: bool
     ):
