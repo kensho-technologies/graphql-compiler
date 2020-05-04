@@ -293,7 +293,7 @@ class FoldSubqueryBuilder(object):
     #   1. initialize at the vertex preceding the fold
     #   2. visit all locations inside the fold scope
     #   3. optinally add fold scope filters
-    #   5. end the fold, producing the resulting subquery
+    #   4. end the fold, producing the resulting subquery
     #
     # This life cycle is completed via calls to __init__, visit_vertex, add_filter, and end_fold.
     #
