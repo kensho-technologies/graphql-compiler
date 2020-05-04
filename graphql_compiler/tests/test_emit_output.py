@@ -708,9 +708,7 @@ class EmitSQLTests(unittest.TestCase):
         join_descriptor = self.schema_infos["mssql"].join_descriptors["Animal"]["out_Animal_ParentOf"]
         from_alias = table.alias()
         to_alias = table.alias()
-
-        fold_path = (("out", "Animal_ParentOf"),)
-        fold_scope_location = FoldScopeLocation(Location(("Animal",)), fold_path)
+        fold_scope_location = Location(("Animal",)).navigate_to_fold("out_Animal_ParentOf")
 
         builder = emit_sql.FoldSubqueryBuilder(dialect, table.alias(), "uuid")
         builder.visit_vertex(
@@ -718,7 +716,7 @@ class EmitSQLTests(unittest.TestCase):
             from_alias,
             to_alias,
             fold_scope_location,
-            {fold_path: {fold_scope_location.navigate_to_field("name")}}
+            {fold_scope_location.fold_path: {fold_scope_location.navigate_to_field("name")}}
         )
         subquery, output_location = builder.end_fold()
 
