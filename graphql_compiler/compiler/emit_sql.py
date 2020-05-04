@@ -575,8 +575,10 @@ class FoldSubqueryBuilder(object):
         # Sort to make select order deterministic.
         return sorted(self._outputs, key=lambda column: column.name, reverse=True)
 
-    # TODO these arguments need to be explained. Should this function be called on the
-    #      first vertex inside the fold? If so, what is from_table in that case?
+    # TODO these arguments need to be explained/simplified:
+    #      - the relationship between the two tables and the vertex mentioned
+    #      - the meaning of current in current_fold_scope_location
+    #      - spec for all_folded_fields. What is a folded field?
     def visit_vertex(
         self,
         join_descriptor: DirectJoinDescriptor,
