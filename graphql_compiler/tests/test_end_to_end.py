@@ -368,3 +368,63 @@ class QueryFormattingTests(unittest.TestCase):
             "2014-02-05T03:20:55Z",
         )
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
+
+    def test_deserialize_lists(self):
+        # Non-collection
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument("numbers", GraphQLList(GraphQLInt), 1)
+
+        # Tuple
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument("numbers", GraphQLList(GraphQLInt), (1, 2))
+
+        # Second element is of unexpected kind.
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument("numbers", GraphQLList(GraphQLInt), (1, 1.2, 3))
+
+        # Second element is "unparseable".
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_json_argument("numbers", GraphQLList(GraphQLInt), (1, "asda", 3))
+
+        # Basic
+        self.assertEqual(
+            [1.2, 2.3], deserialize_json_argument("numbers", GraphQLList(GraphQLFloat), [1.2, 2.3])
+        )
+
+        # With empty list
+        self.assertEqual([], deserialize_json_argument("numbers", GraphQLList(GraphQLFloat), []))
+
+        # With list with one element
+        self.assertEqual(
+            [1.2], deserialize_json_argument("numbers", GraphQLList(GraphQLFloat), [1.2])
+        )
+
+        # With outer null wrapper.
+        self.assertEqual(
+            [1.2, 2.3],
+            deserialize_json_argument(
+                "numbers", GraphQLNonNull(GraphQLList(GraphQLFloat)), [1.2, 2.3]
+            ),
+        )
+
+        # With inner null wrapper.
+        self.assertEqual(
+            [1.2, 2.3],
+            deserialize_json_argument(
+                "numbers", GraphQLList(GraphQLNonNull(GraphQLFloat)), [1.2, 2.3]
+            ),
+        )
+
+        # With outer and inner null wrapper.
+        self.assertEqual(
+            [1.2, 2.3],
+            deserialize_json_argument(
+                "numbers", GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLFloat))), [1.2, 2.3]
+            ),
+        )
+
+        # With custom scalar type
+        self.assertEqual(
+            [datetime.date(2014, 2, 5)],
+            deserialize_json_argument("dates", GraphQLList(GraphQLDate), ["2014-02-05"]),
+        )
