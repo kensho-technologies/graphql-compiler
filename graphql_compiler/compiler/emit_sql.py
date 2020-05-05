@@ -291,8 +291,8 @@ class FoldSubqueryBuilder(object):
 
     # The life cycle for the FoldSubqueryBuilder is:
     #   1. initialize at the vertex preceding the fold
-    #   2. visit all locations inside the fold scope
-    #   3. optinally add fold scope filters
+    #   2. visit all locations inside the fold scope. Must visit at least one location with outputs.
+    #   3. optionally add fold scope filters
     #   4. end the fold, producing the resulting subquery
     #
     # This life cycle is completed via calls to __init__, visit_vertex, add_filter, and end_fold.
@@ -341,7 +341,7 @@ class FoldSubqueryBuilder(object):
     # JOIN VertexPrecedingOutput
     # ON ...
     def __init__(self, dialect: DefaultDialect, outer_vertex_table: Alias, primary_key_name: str):
-        """Create an FoldSubqueryBuilder with table, type, and join information supplied by the IR.
+        """Create a FoldSubqueryBuilder with table, type, and join information supplied by the IR.
 
         Args:
             dialect: dialect to which the query will be compiled.
