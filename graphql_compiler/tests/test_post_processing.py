@@ -3,7 +3,7 @@ import datetime
 from unittest import TestCase
 
 from dateutil.tz import tzoffset, tzutc
-from graphql import GraphQLList, GraphQLString
+from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
 from graphql_compiler import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
@@ -39,7 +39,7 @@ class MssqlXmlPathTests(TestCase):
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
 
-    def test_convert_basic(self):
+    def test_convert_basic_string(self):
         """Test basic XML path encoding (only pipe separations) is correctly decoded.
 
         {
@@ -278,6 +278,118 @@ class MssqlXmlPathTests(TestCase):
                         2000, 2, 29, 13, 2, 27, 1835, tzinfo=tzutc()
                     ),  # with microsecond information
                     None,
+                ],
+            }
+        ]
+
+        post_process_mssql_folds(query_output, output_metadata)
+        self.assertEqual(query_output, expected_result)
+
+    def test_convert_basic_int(self):
+        """Test basic XML path encoding for datetimes is correctly decoded.
+
+        Example query for the given results:
+        {
+            Animal {
+                in_Animal_ParentOf @fold {
+                    int_field @output(out_name: "child_int_fields")
+                }
+            }
+        }"""
+        query_output = [{"child_names": "|1|~|100", }]
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLInt), optional=False, folded=True
+            ),
+        }
+
+        expected_result = [
+            {
+                "child_datetime_fields": [1, None, 100
+                ],
+            }
+        ]
+
+        post_process_mssql_folds(query_output, output_metadata)
+        self.assertEqual(query_output, expected_result)
+
+    def test_convert_basic_float(self):
+        """Test basic XML path encoding for datetimes is correctly decoded.
+
+        Example query for the given results:
+        {
+            Animal {
+                in_Animal_ParentOf @fold {
+                    int_field @output(out_name: "child_int_fields")
+                }
+            }
+        }"""
+        query_output = [{"child_names": "|1|~|100", }]
+        output_metadata = {
+            "child_names": OutputMetadata(
+                type=GraphQLList(GraphQLFloat), optional=False, folded=True
+            ),
+        }
+
+        expected_result = [
+            {
+                "child_datetime_fields": [1, None, 100
+                ],
+            }
+        ]
+
+        post_process_mssql_folds(query_output, output_metadata)
+        self.assertEqual(query_output, expected_result)
+
+    def test_convert_basic_bool(self):
+        """Test basic XML path encoding for datetimes is correctly decoded.
+
+        Example query for the given results:
+        {
+            Animal {
+                in_Animal_ParentOf @fold {
+                    int_field @output(out_name: "child_int_fields")
+                }
+            }
+        }"""
+        query_output = [{"child_bool_fields": "|~|True", }]
+        output_metadata = {
+            "child_bool_fields": OutputMetadata(
+                type=GraphQLList(GraphQLBoolean), optional=False, folded=True
+            ),
+        }
+
+        expected_result = [
+            {
+                "child_bool_fields": [1, None, 100
+                ],
+            }
+        ]
+
+        post_process_mssql_folds(query_output, output_metadata)
+        self.assertEqual(query_output, expected_result)
+
+    def test_convert_basic_id(self):
+        """Test basic XML path encoding for datetimes is correctly decoded.
+
+        Example query for the given results:
+        {
+            Animal {
+                in_Animal_ParentOf @fold {
+                    id_field @output(out_name: "child_id_fields")
+                }
+            }
+        }"""
+        query_output = [{"child_id_fields": "|1|~|100|uuids_can_be_strings_too", }]
+        output_metadata = {
+            "child_id_fields": OutputMetadata(
+                type=GraphQLList(GraphQLID), optional=False, folded=True
+            ),
+        }
+
+        expected_result = [
+            {
+                "child_id_fields": ["1", None, "100", "uuids_can_be_strings_too"
                 ],
             }
         ]
