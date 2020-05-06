@@ -36,11 +36,6 @@ from .match_formatting import insert_arguments_into_match_query
 from .sql_formatting import insert_arguments_into_sql_query
 
 
-######
-# Public API
-######
-
-
 def _raise_invalid_type_error(name: str, expected_python_type_name: str, value: Any):
     """Raise a GraphQLInvalidArgumentError that states that the argument type is invalid."""
     raise GraphQLInvalidArgumentError(
@@ -49,8 +44,13 @@ def _raise_invalid_type_error(name: str, expected_python_type_name: str, value: 
     )
 
 
-def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value: Any) -> Any:
-    """Deserialize argument. See docstring of deserialize_json_argument.
+######
+# Public API
+######
+
+
+def deserialize_anonymous_argument(expected_type: GraphQLScalarType, value: Any) -> Any:
+    """Deserialize argument. See docstring of deserialize_argument.
 
     Args:
         expected_type: GraphQL type we expect.
@@ -64,7 +64,7 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
             GraphQLDecimal: decimal.Decimal
             GraphQLInt: int
             GraphQLString: str
-            GraphQLBoolean: bool
+            GraphQLBoolean: bool, int, str
             GraphQLID: str
 
     Raises:
@@ -78,7 +78,7 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         GraphQLDecimal.name: (str, float, int),
         GraphQLInt.name: (int, str),
         GraphQLString.name: (str,),
-        GraphQLBoolean.name: (bool,),
+        GraphQLBoolean.name: (bool, str, int),
         GraphQLID.name: (int, str,),
     }
 
@@ -91,8 +91,11 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         correct_type = False
     if not correct_type:
         raise ValueError(
-            "Unexpected type {}. Expected one of {}.".format(type(value), expected_python_types)
+            f"Unexpected type {type(value)}. Expected one of {expected_python_types}."
         )
+
+    true_values = [1, "1", "true", "True", True]
+    false_values = [0, "0", "false", "False", False]
 
     name_to_custom_type = {graphql_type.name: graphql_type for graphql_type in CUSTOM_SCALAR_TYPES}
     # Bypass the GraphQLFloat parser and allow strings as input. The JSON spec allows only for
@@ -103,6 +106,16 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
     # only for 64-bit floating point numbers, so large ints might have to be represented as strings.
     elif is_same_type(expected_type, GraphQLInt):
         return int(value)
+    elif is_same_type(expected_type, GraphQLBoolean):
+        if value in true_values:
+            return True
+        elif value in false_values:
+            return False
+        else:
+            raise ValueError(
+                f"Received unexpected GraphQLBoolean value {value} ({type(value)}). Expected one "
+                f"of the following {true_values + false_values}."
+            )
     # Use the default GraphQL parser to parse the value
     elif expected_type.name in name_to_custom_type:
         # Since we cannot serialize the parse_value function of custom scalar types when
@@ -113,25 +126,25 @@ def _deserialize_anonymous_json_argument(expected_type: GraphQLScalarType, value
         return expected_type.parse_value(value)
 
 
-def deserialize_json_argument(
+def deserialize_argument(
     name: str,
     expected_type: Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType],
     value: Any,
 ) -> Any:
-    """Deserialize a json serialized GraphQL argument.
+    """Deserialize a GraphQL argument.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
     json does not support certain types like Date, Datetime, Decimal, and also confuses floats
-    for integers if there are no decimals. This function takes in a value received from a json,
+    for integers if there are no decimals. This function takes in a value received from a,
     and converts it to a standard python representation that can be used in the query. Below are
-    examples of accepted json encodings of all the types:
+    examples of accepted encodings of all the types:
         GraphQLDate: "2018-02-01"
         GraphQLDateTime: "2018-02-01T05:11:54Z"
         GraphQLFloat: 4.3, "5.0", 5
         GraphQLDecimal: "5.00000000000000000000000000001"
         GraphQLInt: 4, "3803330000000000000000000000000000000000000000000"
         GraphQLString: "Hello"
-        GraphQLBoolean: True
+        GraphQLBoolean: True, 1, "1", "True", "true"
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
 
     Args:
@@ -152,23 +165,23 @@ def deserialize_json_argument(
             GraphQLID: str
     """
     try:
-        return _deserialize_anonymous_json_argument(strip_non_null_from_type(expected_type), value)
+        return deserialize_anonymous_argument(strip_non_null_from_type(expected_type), value)
     except (ValueError, TypeError) as e:
-        raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
+        raise GraphQLInvalidArgumentError(f"Error parsing argument {name}: {e}")
 
 
-def deserialize_multiple_json_arguments(
+def deserialize_multiple_arguments(
     arguments: Mapping[str, Any],
     expected_types: Mapping[str, Union[GraphQLNonNull[GraphQLScalarType], GraphQLScalarType]],
 ) -> Mapping[str, Any]:
-    """Deserialize json serialized GraphQL arguments.
+    """Deserialize serialized GraphQL arguments.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
     json does not support certain types like Date, Datetime, Decimal, and also confuses floats
-    for integers if there are no decimals. This function takes in the values of json serialized
+    for integers if there are no decimals. This function takes in the values of serialized
     arguments and converts them to standard python representations that can be used in queries.
 
-    Below are examples of accepted json encodings of all the types:
+    Below are examples of accepted encodings of all the types:
         GraphQLDate: "2018-02-01"
         GraphQLDateTime: "2018-02-01T05:11:54Z"
         GraphQLFloat: 4.3, "5.0", 5
@@ -197,7 +210,7 @@ def deserialize_multiple_json_arguments(
     """
     ensure_arguments_are_provided(expected_types, arguments)
     return {
-        name: deserialize_json_argument(name, expected_types[name], value)
+        name: deserialize_argument(name, expected_types[name], value)
         for name, value in arguments.items()
     }
 

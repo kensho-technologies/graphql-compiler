@@ -6,12 +6,11 @@ from typing import Any, Dict, List, Optional, Sequence
 from graphql import GraphQLList, GraphQLScalarType
 
 from ..compiler.compiler_frontend import OutputMetadata
-
-from ..query_formatting.common import deserialize_json_argument
+from ..query_formatting.common import deserialize_anonymous_argument
 
 
 def _mssql_xml_path_string_to_list(
-    output_name: str, xml_path_result: str, list_entry_type: GraphQLScalarType
+    xml_path_result: str, list_entry_type: GraphQLScalarType
 ) -> List[Any]:
     """Convert the string result produced with XML PATH for MSSQL folds to a list.
 
@@ -80,12 +79,8 @@ def _mssql_xml_path_string_to_list(
     ]
 
     # Convert to the appropriate return type.
-    # list_result_to_return: List[Optional[Any]] = [
-    #     list_entry_type.parse_value(result) if result is not None else None
-    #     for result in list_result
-    # ]
     list_result_to_return: List[Optional[Any]] = [
-        deserialize_json_argument(output_name, list_entry_type, result) if result is not None else None
+        deserialize_anonymous_argument(list_entry_type, result) if result is not None else None
         for result in list_result
     ]
 
@@ -123,5 +118,5 @@ def post_process_mssql_folds(
         if metadata.folded and isinstance(metadata.type, GraphQLList):
             for query_result in query_results:
                 xml_path_result = query_result[out_name]
-                list_result = _mssql_xml_path_string_to_list(out_name, xml_path_result, metadata.type.of_type)
+                list_result = _mssql_xml_path_string_to_list(xml_path_result, metadata.type.of_type)
                 query_result[out_name] = list_result
