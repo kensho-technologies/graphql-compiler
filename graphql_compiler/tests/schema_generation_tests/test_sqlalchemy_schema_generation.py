@@ -308,3 +308,21 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
         faulty_vertex_name_to_table = {table_without_primary_key.name: table_without_primary_key}
         with self.assertRaises(MissingPrimaryKeyError):
             get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())
+
+    def test_missing_multiply_primary_keys(self):
+        metadata = MetaData()
+        table_without_primary_key = Table(
+            "TableWithoutPrimaryKey", metadata, Column("arbitrary_column", String()),
+        )
+        second_table_without_primary_key = Table(
+            "SecondTableWithoutPrimaryKey", metadata, Column("second_arbitrary_column", String()),
+        )
+        faulty_vertex_name_to_table = {
+            table_without_primary_key.name: table_without_primary_key,
+            second_table_without_primary_key.name: second_table_without_primary_key,
+        }
+        with self.assertRaises(MissingPrimaryKeyError) as missing_primary_key_error_info:
+            get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())
+        exception_message = missing_primary_key_error_info.exception.args[0]
+        for table_name in faulty_vertex_name_to_table:
+            self.assertIn(table_name, exception_message)
