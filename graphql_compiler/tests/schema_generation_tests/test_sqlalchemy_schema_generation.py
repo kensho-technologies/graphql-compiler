@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-import unittest
 from typing import Dict
+import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
 import pytest

@@ -1,8 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from typing import Set, List, Iterable
+from typing import Iterable, List, Set
+
+from sqlalchemy import Table
 
 from ..exceptions import MissingPrimaryKeyError
-from sqlalchemy import Table
 
 
 def validate_that_tables_have_primary_keys(tables: Iterable[Table]):
@@ -20,7 +21,10 @@ def validate_that_tables_have_primary_keys(tables: Iterable[Table]):
             "non-null identifiers of each row. The tables missing primary "
             "keys have names and schemas as follows: "
         )
-        faulty_tables: List[str] = ["name: {} schema: {} ".format(table.name, table.schema) for table in tables_missing_primary_keys]
+        faulty_tables: List[str] = [
+            "name: {} schema: {} ".format(table.name, table.schema)
+            for table in tables_missing_primary_keys
+        ]
         error_message += " ".join(faulty_tables)
         raise MissingPrimaryKeyError(error_message)
 
