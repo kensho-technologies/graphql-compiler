@@ -1,15 +1,18 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import Set, List, Iterable
+
 from ..exceptions import MissingPrimaryKeyError
+from sqlalchemy import Table
 
 
-def validate_that_tables_have_primary_keys(tables):
+def validate_that_tables_have_primary_keys(tables: Iterable[Table]):
     """Validate that each SQLAlchemy Table object has a primary key."""
-    tables_missing_primary_keys = set()
+    tables_missing_primary_keys: Set[Table] = set()
     for table in tables:
         if not table.primary_key:
             tables_missing_primary_keys.add(table)
     if tables_missing_primary_keys:
-        error_message = (
+        error_message: str = (
             "At least one SQLAlchemy Table is missing a "
             "primary key. Note that the primary keys in SQLAlchemy "
             "Table objects do not have to match the primary keys in "
@@ -17,8 +20,8 @@ def validate_that_tables_have_primary_keys(tables):
             "non-null identifiers of each row. The tables missing primary "
             "keys have names and schemas as follows: "
         )
-        for table in tables_missing_primary_keys:
-            error_message += "name: {} schema: {} ".format(table.name, table.schema)
+        faulty_tables: List[str] = ["name: {} schema: {} ".format(table.name, table.schema) for table in tables_missing_primary_keys]
+        error_message += " ".join(faulty_tables)
         raise MissingPrimaryKeyError(error_message)
 
 
