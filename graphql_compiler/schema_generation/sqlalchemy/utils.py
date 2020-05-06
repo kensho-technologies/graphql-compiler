@@ -6,7 +6,7 @@ from sqlalchemy import Table
 from ..exceptions import MissingPrimaryKeyError
 
 
-def validate_that_tables_have_primary_keys(tables: Iterable[Table]):
+def validate_that_tables_have_primary_keys(tables: Iterable[Table]) -> None:
     """Validate that each SQLAlchemy Table object has a primary key."""
     tables_missing_primary_keys: Set[Table] = set()
     for table in tables:
@@ -22,7 +22,7 @@ def validate_that_tables_have_primary_keys(tables: Iterable[Table]):
             "keys have names and schemas as follows: "
         )
         faulty_tables: List[str] = [
-            "name: {} schema: {} ".format(table.name, table.schema)
+            "name: {} schema: {}".format(table.name, table.schema)
             for table in tables_missing_primary_keys
         ]
         error_message += " ".join(faulty_tables)
