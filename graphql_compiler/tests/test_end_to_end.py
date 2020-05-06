@@ -393,24 +393,18 @@ class QueryFormattingTests(unittest.TestCase):
         self.assertEqual([], deserialize_argument("numbers", GraphQLList(GraphQLFloat), []))
 
         # With list with one element
-        self.assertEqual(
-            [1.2], deserialize_argument("numbers", GraphQLList(GraphQLFloat), [1.2])
-        )
+        self.assertEqual([1.2], deserialize_argument("numbers", GraphQLList(GraphQLFloat), [1.2]))
 
         # With outer null wrapper.
         self.assertEqual(
             [1.2, 2.3],
-            deserialize_argument(
-                "numbers", GraphQLNonNull(GraphQLList(GraphQLFloat)), [1.2, 2.3]
-            ),
+            deserialize_argument("numbers", GraphQLNonNull(GraphQLList(GraphQLFloat)), [1.2, 2.3]),
         )
 
         # With inner null wrapper.
         self.assertEqual(
             [1.2, 2.3],
-            deserialize_argument(
-                "numbers", GraphQLList(GraphQLNonNull(GraphQLFloat)), [1.2, 2.3]
-            ),
+            deserialize_argument("numbers", GraphQLList(GraphQLNonNull(GraphQLFloat)), [1.2, 2.3]),
         )
 
         # With outer and inner null wrapper.

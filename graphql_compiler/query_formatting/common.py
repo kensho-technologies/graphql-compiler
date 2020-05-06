@@ -74,9 +74,9 @@ def _custom_boolean_deserialization(value: Any) -> bool:
         return False
     else:
         raise ValueError(
-                f"Received unexpected GraphQLBoolean value {value} ({type(value)}). Expected one "
-                f"of the following {true_values + false_values}."
-            )
+            f"Received unexpected GraphQLBoolean value {value} ({type(value)}). Expected one "
+            f"of the following {true_values + false_values}."
+        )
 
 
 _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS: Mapping[str, Callable[[Any], Any]] = MappingProxyType(
@@ -112,14 +112,14 @@ _JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS: Mapping[
 ######
 
 
-def deserialize_scalar_argument(
-    name: str, expected_type: GraphQLScalarType, value: Any
-) -> Any:
+def deserialize_scalar_argument(name: str, expected_type: GraphQLScalarType, value: Any) -> Any:
     """Deserialize a serialized scalar argument. See docstring of deserialize_argument.
+
     Args:
         name: the name of the argument
         expected_type: GraphQL type we expect.
         value: object that can be interpreted as being of that type
+
     Returns:
         a value of the type produced by the parser of the expected type:
             GraphQLDate: datetime.date
@@ -130,6 +130,7 @@ def deserialize_scalar_argument(
             GraphQLString: str
             GraphQLBoolean: bool
             GraphQLID: str
+
     Raises:
         GraphQLInvalidArgumentError: if the argument value was not of the expected type.
     """
@@ -154,9 +155,7 @@ def deserialize_scalar_argument(
             raise GraphQLInvalidArgumentError("Error parsing argument {}: {}".format(name, e))
 
 
-def deserialize_argument(
-    name: str, expected_type: QueryArgumentGraphQLType, value: Any,
-) -> Any:
+def deserialize_argument(name: str, expected_type: QueryArgumentGraphQLType, value: Any,) -> Any:
     """Deserialize a serialized GraphQL argument.
 
     Passing arguments via jsonrpc, or via the GUI of standard GraphQL editors is tricky because
@@ -174,11 +173,13 @@ def deserialize_argument(
         GraphQLBoolean: True, 1, "1", "True", "true"
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
         GraphQLList(GraphQLInt): [1, 2, 3]
+
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
               message if an error is raised.
         expected_type: the GraphQL type. All GraphQLNonNull type wrappers are stripped.
         value: object that can be interpreted as being of that type
+
     Returns:
         a value of the type produced by the parser of the expected type:
             GraphQLDate: datetime.date
@@ -190,6 +191,7 @@ def deserialize_argument(
             GraphQLBoolean: bool
             GraphQLID: str
             GraphQLList: list of the inner type
+
     Raises:
         GraphQLInvalidArgumentError: if the argument value was not of the expected type.
     """
@@ -201,8 +203,7 @@ def deserialize_argument(
         inner_stripped_type = strip_non_null_from_type(stripped_type.of_type)
 
         return [
-            deserialize_scalar_argument(name, inner_stripped_type, element)
-            for element in value
+            deserialize_scalar_argument(name, inner_stripped_type, element) for element in value
         ]
     else:
         return deserialize_scalar_argument(name, stripped_type, value)
@@ -228,10 +229,12 @@ def deserialize_multiple_arguments(
         GraphQLBoolean: True, 1, "1", "True", "true"
         GraphQLID: "13d72846-1777-6c3a-5743-5d9ced3032ed"
         GraphQLList(GraphQLInt): [1, 2, 3]
+
     Args:
         arguments: mapping of argument names to serialized argument values.
         expected_types: mapping of argument names to the expected GraphQL types. All
                         GraphQLNonNull wrappers are stripped.
+
     Returns:
         a mapping of argument names to deserialized argument values. The type of the deserialized
         argument value depends on the argument's GraphQL type:
@@ -244,6 +247,7 @@ def deserialize_multiple_arguments(
             GraphQLBoolean: bool
             GraphQLID: str
             GraphQLList: list of the inner type
+
     Raises:
         GraphQLInvalidArgumentError: if any of the argument values was not of the expected type.
     """
@@ -256,9 +260,11 @@ def deserialize_multiple_arguments(
 
 def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, value: Any):
     """Ensure the value has the expected type and is usable in any of our backends, or raise errors.
+
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
     Gremlin, or SQLAlchemy. This function should be stricter than the validation done by any
     specific backend. That way code that passes validation can be compiled to any backend.
+
     Args:
         name: string, the name of the argument. It will be used to provide a more descriptive error
               message if an error is raised.
@@ -344,9 +350,11 @@ def validate_arguments(
     expected_types: Mapping[str, QueryArgumentGraphQLType], arguments: Mapping[str, Any]
 ) -> None:
     """Ensure that all arguments are provided and that they are of the expected type.
+
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
     Gremlin, or SQLAlchemy. This function should be stricter than the validation done by any
     specific backend. That way code that passes validation can be compiled to any backend.
+
     Args:
         arguments: mapping of argument names to arguments values.
         expected_types: mapping of argument names to the expected GraphQL types. All GraphQLNonNull
@@ -359,9 +367,11 @@ def validate_arguments(
 
 def insert_arguments_into_query(compilation_result: CompilationResult, arguments: Dict[str, Any]):
     """Insert the arguments into the compiled GraphQL query to form a complete query.
+
     Args:
         compilation_result: a CompilationResult object derived from the GraphQL compiler
         arguments: dict, mapping argument name to its value, for every parameter the query expects.
+
     Returns:
         string, a query in the appropriate output language, with inserted argument data
     """

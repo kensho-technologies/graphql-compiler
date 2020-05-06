@@ -81,7 +81,8 @@ def _mssql_xml_path_string_to_list(
     # Convert to the appropriate return type.
     list_result_to_return: List[Optional[Any]] = [
         deserialize_scalar_argument(output_name, list_entry_type, result)
-        if result is not None else None
+        if result is not None
+        else None
         for result in list_result
     ]
 
@@ -119,5 +120,7 @@ def post_process_mssql_folds(
         if metadata.folded and isinstance(metadata.type, GraphQLList):
             for query_result in query_results:
                 xml_path_result = query_result[out_name]
-                list_result = _mssql_xml_path_string_to_list(out_name, xml_path_result, metadata.type.of_type)
+                list_result = _mssql_xml_path_string_to_list(
+                    out_name, xml_path_result, metadata.type.of_type
+                )
                 query_result[out_name] = list_result
