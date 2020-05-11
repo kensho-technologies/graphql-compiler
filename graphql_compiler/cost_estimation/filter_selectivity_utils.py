@@ -300,7 +300,7 @@ def get_integer_interval_for_filters_on_field(
 ) -> Interval[int]:
     """Get the interval of possible values on this field, constrained by its inequality filters."""
     interval = Interval[int](None, None)
-    for filter_info in filters_on_field:
+    for filter_info in sorted(filters_on_field):
         if filter_info.op_name in INEQUALITY_OPERATORS:
             if not filter_uses_only_runtime_parameters(filter_info):
                 continue  # We can't reason about tagged parameters in inequality filters
