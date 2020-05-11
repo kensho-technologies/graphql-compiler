@@ -18,8 +18,8 @@ import pytz
 import six
 
 from .. import graphql_to_gremlin, graphql_to_match
-from ..deserialization import deserialize_argument, deserialize_multiple_arguments
 from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
+from ..deserialization import deserialize_argument, deserialize_multiple_arguments
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
 from ..query_formatting.common import ensure_arguments_are_provided, validate_argument_type
