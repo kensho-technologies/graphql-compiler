@@ -316,7 +316,7 @@ def _serialize_datetime(value: Any) -> str:
 
 def _parse_datetime_value(value: Any) -> datetime:
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
-    # arrow parses datetime naive strings into UTC arrow datetime objects.
+    # attempt to parse with microsecond information
     return arrow.get(value, "YYYY-MM-DDTHH:mm:ss").datetime.replace(tzinfo=None)
 
 

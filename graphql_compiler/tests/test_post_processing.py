@@ -260,7 +260,7 @@ class MssqlXmlPathTests(TestCase):
         }
         """
         query_output = [
-            {"child_datetime_fields": "|2020-01-01T05:45:00+04:00|2000-02-29T13:02:27.0018349Z|~"}
+            {"child_datetime_fields": "|2020-01-01T05:45:00|2000-02-29T13:02:27.018349|~"}
         ]
         output_metadata = {
             "child_datetime_fields": OutputMetadata(
@@ -271,13 +271,8 @@ class MssqlXmlPathTests(TestCase):
         expected_result = [
             {
                 "child_datetime_fields": [
-                    datetime.datetime(
-                        2020, 1, 1, 5, 45, tzinfo=tzoffset(None, 14400)
-                    ),  # 4 hours * 60 minutes/hour * 60 second/minutes = 14400
-                    datetime.datetime(
-                        2000, 2, 29, 13, 2, 27, 1835, tzinfo=tzutc()
-                    ),  # with microsecond information
-                    None,
+                    datetime.datetime(2020, 1, 1, 5, 45),
+                    datetime.datetime(2000, 2, 29, 13, 2, 27, 18349),
                 ],
             }
         ]

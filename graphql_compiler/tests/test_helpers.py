@@ -139,10 +139,10 @@ SCHEMA_TEXT = """
     scalar Date
 
     \"\"\"
-    The `DateTime` scalar type represents timezone-aware second-accuracy
+    The `DateTime` scalar type represents timezone-naive second-accuracy
     timestamps.Values are serialized following the ISO-8601 datetime format
-    specification, for example "2017-03-21T12:34:56+00:00". All of these fields must
-    be included, including the seconds and the time zone, and the format followed
+    specification, for example "2017-03-21T12:34:56". All of these fields must
+    be included, including the seconds, and the format followed
     exactly, or the behavior is undefined.
     \"\"\"
     scalar DateTime
