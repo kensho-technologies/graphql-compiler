@@ -38,6 +38,8 @@ def get_integration_data():
         "A4": "cfc6e625-8594-0927-468f-f53d864a7a54",
         "S1": "c2c14d8b-0e13-4e64-be63-c86704161850",
         "S2": "35d33f6a-14ab-4b5c-a797-ee9ab817c1fb",
+        "B1": "cfc6e625-8594-0927-468f-f53d864a7a55",
+        "B2": "cfc6e625-8594-0927-468f-f53d864a7a56",
     }
     vertex_values = {
         "Animal": (
@@ -70,6 +72,18 @@ def get_integration_data():
             {"uuid": uuids["S1"], "name": "Species 1",},
             {"uuid": uuids["S2"], "name": "Species 2",},
         ),
+        "BirthEvent": (
+            {
+                "uuid": uuids["B1"],
+                "name": "birth_event_1",
+                "event_date": datetime.datetime(2000, 1, 1, 1, 1, 1),
+            },
+            {
+                "uuid": uuids["B2"],
+                "name": "birth_event_2",
+                "event_date": datetime.datetime(2000, 1, 1, 1, 1, 2),
+            },
+        )
     }
     edge_values = {
         "Entity_Related": ({"from_uuid": uuids["S1"], "to_uuid": uuids["S2"],},),
@@ -127,7 +141,7 @@ def _write_orient_equality(field_name, field_value):
 
     field_value_representation = repr(field_value)
     if isinstance(field_value, datetime.date):
-        field_value_representation = 'DATE("' + field_value.isoformat() + ' 00:00:00")'
+        field_value_representation = 'DATE("' + field_value.strftime("%Y-%m-%d %H:%M:%S") + '")'
     template = "{} = {}"
     return template.format(field_name, field_value_representation)
 
