@@ -111,9 +111,8 @@ def deserialize_scalar_value(expected_type: GraphQLScalarType, value: Any) -> An
             GraphQLID: str
 
     Raises:
-        AssertionError: if the expected_type does not have a known deserialization function.
         ValueError: if the value is not appropriate for the type. ValueError is chosen because
-            it is already the base case of exceptions raised by the GraphQL parsers.
+                    it is already the base case of exceptions raised by the GraphQL parsers.
     """
     types_and_deserialization = _JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS.get(expected_type.name)
     if types_and_deserialization is None:
@@ -123,7 +122,7 @@ def deserialize_scalar_value(expected_type: GraphQLScalarType, value: Any) -> An
 
     # Explicitly disallow passing boolean values for non-boolean types.
     if isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type):
-        raise AssertionError(
+        raise ValueError(
             f"Cannot deserialize boolean value {value} to non-GraphQLBoolean type {expected_type}."
         )
 
@@ -159,14 +158,13 @@ def deserialize_value(expected_type: QueryArgumentGraphQLType, value: Any) -> An
             GraphQLList: list of the inner type
 
     Raises:
-        AssertionError: if the expected_type does not have a known deserialization function.
         ValueError: if the value is not appropriate for the type. ValueError is chosen because
-            it is already the base case of exceptions raised by the GraphQL parsers.
+                    it is already the base case of exceptions raised by the GraphQL parsers.
     """
     stripped_type = strip_non_null_from_type(expected_type)
     if isinstance(stripped_type, GraphQLList):
         if not isinstance(value, list):
-            raise AssertionError(f"Cannot deserialize non-list value {value} to GraphQLList type.")
+            raise ValueError(f"Cannot deserialize non-list value {value} to GraphQLList type.")
         inner_stripped_type = strip_non_null_from_type(stripped_type.of_type)
 
         return [deserialize_scalar_value(inner_stripped_type, element) for element in value]

@@ -187,7 +187,7 @@ def deserialize_argument(name: str, expected_type: QueryArgumentGraphQLType, val
     """Deserialize a GraphQL argument, raising a GraphQLInvalidArgumentError if invalid."""
     try:
         return deserialize_value(expected_type, value)
-    except (ValueError, TypeError, AssertionError) as e:
+    except (ValueError, TypeError) as e:
         raise GraphQLInvalidArgumentError(f"Error parsing argument {name}: {e}")
 
 
@@ -200,6 +200,5 @@ def deserialize_multiple_arguments(
         name: deserialize_argument(name, expected_types[name], value)
         for name, value in arguments.items()
     }
-
 
 ######
