@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
-
+from typing import Any
 import arrow
 from graphql import (
     DirectiveLocation,
@@ -297,26 +297,27 @@ def _parse_date_value(value):
     return arrow.get(value, "YYYY-MM-DD").date()
 
 
-def _serialize_datetime(value):
+def _serialize_datetime(value: Any) -> str:
     """Serialize a DateTime object to its proper ISO-8601 representation."""
     # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
     # interchangeable. Rather than using isinstance, we will therefore check for exact type
     # equality.
-    if type(value) not in {datetime, arrow.Arrow}:
-        raise ValueError(
-            "Expected argument to be a python datetime object. "
-            "Got {} of type {} instead.".format(value, type(value))
-        )
-    return value.isoformat()
+    if type(value) in {datetime, arrow.Arrow}:
+        datetime_value = (value if type(value) == datetime else value.datetime)
+        timezone = datetime_value.tzinfo
+        if timezone is None:
+            return value.isoformat()
+
+    raise ValueError(
+        f"Expected a timezone naive datetime object. Got {value} of type {type(value)} "
+        f"instead."
+    )
 
 
-def _parse_datetime_value(value):
+def _parse_datetime_value(value: Any) -> datetime:
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
-    # attempt to parse with microsecond information
-    try:
-        return arrow.get(value, "YYYY-MM-DDTHH:mm:ss.SZZ").datetime
-    except arrow.parser.ParserMatchError:
-        return arrow.get(value, "YYYY-MM-DDTHH:mm:ssZZ").datetime
+    # arrow parses datetime naive strings into UTC arrow datetime objects.
+    return arrow.get(value, "YYYY-MM-DDTHH:mm:ss").datetime.replace(tzinfo=None)
 
 
 GraphQLDate = GraphQLScalarType(
@@ -336,11 +337,10 @@ GraphQLDate = GraphQLScalarType(
 GraphQLDateTime = GraphQLScalarType(
     name="DateTime",
     description=(
-        "The `DateTime` scalar type represents timezone-aware second-accuracy timestamps."
+        "The `DateTime` scalar type represents timezone-naive second-accuracy timestamps."
         "Values are serialized following the ISO-8601 datetime format specification, "
-        'for example "2017-03-21T12:34:56+00:00". All of these fields must be included, '
-        "including the seconds and the time zone, and the format followed exactly, "
-        "or the behavior is undefined."
+        'for example "2017-03-21T12:34:56". All of these fields must be included, '
+        "including the seconds, and the format followed exactly, or the behavior is undefined."
     ),
     serialize=_serialize_datetime,
     parse_value=_parse_datetime_value,
