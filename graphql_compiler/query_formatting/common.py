@@ -24,6 +24,7 @@ from ..compiler import (
     CompilationResult,
 )
 from ..compiler.helpers import strip_non_null_from_type
+from ..deserialization import deserialize_value
 from ..exceptions import GraphQLInvalidArgumentError
 from ..global_utils import is_same_type
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
@@ -180,6 +181,25 @@ def insert_arguments_into_query(compilation_result: CompilationResult, arguments
         raise AssertionError(
             "Unrecognized language in compilation result: {}".format(compilation_result)
         )
+
+
+def deserialize_argument(name: str, expected_type: QueryArgumentGraphQLType, value: Any,) -> Any:
+    """Deserialize a GraphQL argument, raising a GraphQLInvalidArgumentError if invalid."""
+    try:
+        return deserialize_value(expected_type, value)
+    except (ValueError, TypeError, AssertionError) as e:
+        raise GraphQLInvalidArgumentError(f"Error parsing argument {name}: {e}")
+
+
+def deserialize_multiple_arguments(
+    arguments: Mapping[str, Any], expected_types: Mapping[str, QueryArgumentGraphQLType],
+) -> Dict[str, Any]:
+    """Deserialize GraphQL arguments, raising GraphQLInvalidArgumentError if any are invalid."""
+    ensure_arguments_are_provided(expected_types, arguments)
+    return {
+        name: deserialize_argument(name, expected_types[name], value)
+        for name, value in arguments.items()
+    }
 
 
 ######
