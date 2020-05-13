@@ -83,7 +83,7 @@ def get_integration_data():
                 "name": "birth_event_2",
                 "event_date": datetime.datetime(2000, 1, 1, 1, 1, 2),
             },
-        )
+        ),
     }
     edge_values = {
         "Entity_Related": ({"from_uuid": uuids["S1"], "to_uuid": uuids["S2"],},),

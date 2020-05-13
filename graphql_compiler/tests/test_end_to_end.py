@@ -214,8 +214,14 @@ class QueryFormattingTests(unittest.TestCase):
                     datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),
                     datetime.datetime(2007, 12, 6),
                 ),
-                ("2007-12-06 16:29:43", datetime.date(2007, 12, 6), datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.utc),
-                 datetime.datetime(2009, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.timezone("US/Eastern")), ),
+                (
+                    "2007-12-06 16:29:43",
+                    datetime.date(2007, 12, 6),
+                    datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.utc),
+                    datetime.datetime(
+                        2009, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.timezone("US/Eastern")
+                    ),
+                ),
             ),
             (GraphQLList(GraphQLInt), ([], [1], [3, 5]), (4, ["a"], [1, "a"], [True])),
             (GraphQLList(GraphQLString), ([], ["a"]), (1, "a", ["a", 4])),
@@ -269,9 +275,7 @@ class QueryFormattingTests(unittest.TestCase):
             deserialize_json_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55Z")
 
         # Valid datetime
-        value = deserialize_json_argument(
-            "birth_time", GraphQLDateTime, "2014-02-05T03:20:55"
-        )
+        value = deserialize_json_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55")
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55), value)
 
     def test_float_deserialization(self) -> None:

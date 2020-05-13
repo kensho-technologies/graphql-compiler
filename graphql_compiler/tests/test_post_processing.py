@@ -2,7 +2,6 @@
 import datetime
 from unittest import TestCase
 
-from dateutil.tz import tzoffset, tzutc
 from graphql import GraphQLList, GraphQLString
 
 from graphql_compiler import GraphQLDate, GraphQLDateTime, GraphQLDecimal
@@ -273,7 +272,7 @@ class MssqlXmlPathTests(TestCase):
                 "child_datetime_fields": [
                     datetime.datetime(2020, 1, 1, 5, 45),
                     datetime.datetime(2000, 2, 29, 13, 2, 27, 18349),
-                    None
+                    None,
                 ],
             }
         ]

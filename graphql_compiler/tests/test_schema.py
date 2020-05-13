@@ -112,14 +112,12 @@ class SchemaTests(unittest.TestCase):
             # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
             central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
             # Date instead of datetime
-            date(2017, 1, 1)
+            date(2017, 1, 1),
         }
 
         for serialization_input in invalid_serialization_inputs:
             with self.assertRaises(ValueError):
                 schema.GraphQLDateTime.parse_value(serialization_input)
-
-
 
     def test_meta_fields_from_constant(self):
         fields = schema.EXTENDED_META_FIELD_DEFINITIONS.copy()

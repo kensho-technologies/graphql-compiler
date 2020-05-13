@@ -5,7 +5,6 @@ import unittest
 
 from graphql import print_ast
 import pytest
-import pytz
 
 from .. import test_input_data
 from ...ast_manipulation import safe_parse_graphql

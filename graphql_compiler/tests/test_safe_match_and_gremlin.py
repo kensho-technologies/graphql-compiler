@@ -4,7 +4,6 @@ import unittest
 
 import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
-import pytz
 import six
 
 from ..exceptions import GraphQLInvalidArgumentError

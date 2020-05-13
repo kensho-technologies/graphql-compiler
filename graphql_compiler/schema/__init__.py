@@ -5,6 +5,7 @@ from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
 from typing import Any
+
 import arrow
 from graphql import (
     DirectiveLocation,
@@ -303,14 +304,13 @@ def _serialize_datetime(value: Any) -> str:
     # interchangeable. Rather than using isinstance, we will therefore check for exact type
     # equality.
     if type(value) in {datetime, arrow.Arrow}:
-        datetime_value = (value if type(value) == datetime else value.datetime)
+        datetime_value = value if type(value) == datetime else value.datetime
         timezone = datetime_value.tzinfo
         if timezone is None:
             return value.isoformat()
 
     raise ValueError(
-        f"Expected a timezone naive datetime object. Got {value} of type {type(value)} "
-        f"instead."
+        f"Expected a timezone naive datetime object. Got {value} of type {type(value)} " f"instead."
     )
 
 
