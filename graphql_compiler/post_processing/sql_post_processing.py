@@ -6,6 +6,7 @@ from typing import Any, Dict, List, Optional, Sequence
 from graphql import GraphQLList, GraphQLScalarType
 
 from ..compiler.compiler_frontend import OutputMetadata
+from ..deserialization import deserialize_scalar_value
 
 
 def _mssql_xml_path_string_to_list(
@@ -79,7 +80,7 @@ def _mssql_xml_path_string_to_list(
 
     # Convert to the appropriate return type.
     list_result_to_return: List[Optional[Any]] = [
-        list_entry_type.parse_value(result) if result is not None else None
+        deserialize_scalar_value(list_entry_type, result) if result is not None else None
         for result in list_result
     ]
 

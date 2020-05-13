@@ -1185,7 +1185,7 @@ class CompilerTests(unittest.TestCase):
             )
         """
         expected_gremlin = NotImplementedError
-        expected_mssql = SKIP_TEST
+        expected_mssql = NotImplementedError
         expected_cypher = SKIP_TEST
         expected_postgresql = """
             SELECT
@@ -5448,52 +5448,7 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
         """
-        expected_mssql = """
-            SELECT
-                [Animal_1].name AS animal_name,
-                folded_subquery_1.fold_output_color AS child_color_list,
-                folded_subquery_1.fold_output_name AS child_names_list
-            FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN(
-                SELECT
-                    [Animal_2].uuid AS uuid,
-                    coalesce((
-                        SELECT
-                            '|' + coalesce(
-                                REPLACE(
-                                    REPLACE(
-                                        REPLACE([Animal_3].name, '^', '^e'),
-                                    '~',
-                                    '^n'),
-                                '|',
-                                '^d'),
-                            '~')
-                        FROM
-                            db_1.schema_1.[Animal] AS [Animal_3]
-                        WHERE
-                            [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')),
-                    '') AS fold_output_name,
-                    coalesce((
-                        SELECT
-                            '|' + coalesce(
-                                REPLACE(
-                                    REPLACE(
-                                        REPLACE([Animal_3].color, '^', '^e'),
-                                    '~',
-                                    '^n'),
-                                '|',
-                                '^d'),
-                            '~')
-                        FROM
-                            db_1.schema_1.[Animal] AS [Animal_3]
-                        WHERE
-                            [Animal_2].uuid = [Animal_3].parent FOR XML PATH('')),
-                    '') AS fold_output_color
-                FROM
-                  db_1.schema_1.[Animal] AS [Animal_2]
-            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-        """
+        expected_mssql = NotImplementedError
         expected_match = SKIP_TEST
         expected_gremlin = SKIP_TEST
         expected_cypher = SKIP_TEST
@@ -6178,52 +6133,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = """
-            SELECT
-                [Animal_1].name AS animal_name,
-                folded_subquery_1.fold_output_name AS child_names_list,
-                folded_subquery_1.fold_output_uuid AS child_uuids_list
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN (
-                SELECT
-                    [Animal_2].uuid AS uuid,
-                    coalesce(
-                        (
-                            SELECT
-                                '|' + coalesce(
-                                    REPLACE(
-                                        REPLACE(
-                                            REPLACE(
-                                                [Animal_3].uuid, '^', '^e'
-                                            ),
-                                        '~', '^n'),
-                                    '|', '^d'),
-                                '~')
-                            FROM db_1.schema_1.[Animal] AS [Animal_3]
-                            WHERE [Animal_2].uuid = [Animal_3].parent
-                            FOR XML PATH ('')
-                        ),
-                    '') AS fold_output_uuid,
-                    coalesce(
-                        (
-                            SELECT
-                                '|' + coalesce(
-                                    REPLACE(
-                                        REPLACE(
-                                            REPLACE(
-                                                [Animal_3].name, '^', '^e'
-                                            ),
-                                        '~', '^n'),
-                                    '|', '^d'),
-                                '~')
-                            FROM db_1.schema_1.[Animal] AS [Animal_3]
-                            WHERE [Animal_2].uuid = [Animal_3].parent
-                            FOR XML PATH ('')
-                        ),
-                    '') AS fold_output_name
-                FROM db_1.schema_1.[Animal] AS [Animal_2]
-            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-        """
+        expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
@@ -6413,91 +6323,7 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = """
-            SELECT
-                [Animal_1].name AS animal_name,
-                folded_subquery_1.fold_output_name AS child_names_list,
-                folded_subquery_1.fold_output_uuid AS child_uuids_list,
-                folded_subquery_2.fold_output_name AS parent_names_list,
-                folded_subquery_2.fold_output_uuid AS parent_uuids_list
-            FROM db_1.schema_1.[Animal] AS [Animal_1]
-            JOIN (
-                SELECT
-                    [Animal_2].uuid AS uuid,
-                    coalesce(
-                        (
-                            SELECT
-                                '|' + coalesce(
-                                REPLACE(
-                                    REPLACE(
-                                        REPLACE(
-                                            [Animal_3].uuid, '^', '^e'
-                                        ),
-                                    '~', '^n'),
-                                '|', '^d'),
-                            '~')
-                            FROM db_1.schema_1.[Animal] AS [Animal_3]
-                            WHERE [Animal_2].uuid = [Animal_3].parent
-                            FOR XML PATH ('')
-                        ),
-                    '') AS fold_output_uuid,
-                    coalesce(
-                        (
-                            SELECT '|' + coalesce(
-                                REPLACE(
-                                    REPLACE(
-                                        REPLACE(
-                                            [Animal_3].name, '^', '^e'
-                                        ),
-                                    '~', '^n'),
-                                '|', '^d'),
-                            '~')
-                            FROM db_1.schema_1.[Animal] AS [Animal_3]
-                            WHERE [Animal_2].uuid = [Animal_3].parent
-                            FOR XML PATH ('')
-                        ),
-                    '') AS fold_output_name
-                    FROM db_1.schema_1.[Animal] AS [Animal_2]
-            ) AS folded_subquery_1 ON [Animal_1].uuid = folded_subquery_1.uuid
-            JOIN (
-                SELECT
-                    [Animal_4].uuid AS uuid,
-                        coalesce(
-                            (
-                                SELECT '|' + coalesce(
-                                    REPLACE(
-                                        REPLACE(
-                                            REPLACE(
-                                                [Animal_5].uuid, '^', '^e'
-                                            ),
-                                        '~', '^n'),
-                                    '|', '^d'),
-                                '~')
-                                FROM db_1.schema_1.[Animal] AS [Animal_5]
-                                WHERE [Animal_4].parent = [Animal_5].uuid
-                                FOR XML PATH ('')
-                            ),
-                        '') AS fold_output_uuid,
-                        coalesce(
-                            (
-                                SELECT
-                                    '|' + coalesce(
-                                        REPLACE(
-                                            REPLACE(
-                                                REPLACE(
-                                                    [Animal_5].name, '^', '^e'
-                                                ),
-                                            '~', '^n'),
-                                        '|', '^d'),
-                                    '~')
-                                FROM db_1.schema_1.[Animal] AS [Animal_5]
-                                WHERE [Animal_4].parent = [Animal_5].uuid
-                                FOR XML PATH ('')
-                            ),
-                        '') AS fold_output_name
-                        FROM db_1.schema_1.[Animal] AS [Animal_4]
-                ) AS folded_subquery_2 ON [Animal_1].uuid = folded_subquery_2.uuid
-                """
+        expected_mssql = NotImplementedError
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -7535,7 +7361,7 @@ class CompilerTests(unittest.TestCase):
                 $Animal___1___out_Animal_ParentOf = Animal___1.out("Animal_ParentOf").asList()
         """
         expected_gremlin = NotImplementedError
-        expected_mssql = SKIP_TEST
+        expected_mssql = NotImplementedError
         expected_postgresql = """
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
@@ -7588,7 +7414,7 @@ class CompilerTests(unittest.TestCase):
         """
         expected_gremlin = NotImplementedError
 
-        expected_mssql = SKIP_TEST
+        expected_mssql = NotImplementedError
 
         expected_postgresql = """
             SELECT
@@ -7737,7 +7563,7 @@ class CompilerTests(unittest.TestCase):
             )
         """
         expected_gremlin = NotImplementedError
-        expected_mssql = SKIP_TEST
+        expected_mssql = NotImplementedError
         expected_postgresql = """
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
@@ -7796,7 +7622,7 @@ class CompilerTests(unittest.TestCase):
                 ($Animal___1___out_Animal_ParentOf.size() >= Animal__out_Animal_OfSpecies___1.limbs)
         """
         expected_gremlin = NotImplementedError
-        expected_mssql = SKIP_TEST
+        expected_mssql = NotImplementedError
         expected_postgresql = """
             SELECT
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_names,
@@ -7888,7 +7714,7 @@ class CompilerTests(unittest.TestCase):
                 )
         """
         expected_gremlin = NotImplementedError
-        expected_mssql = SKIP_TEST
+        expected_mssql = NotImplementedError
         expected_postgresql = """
             SELECT
                 "Animal_1".name AS name

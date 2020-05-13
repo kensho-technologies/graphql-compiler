@@ -4,14 +4,17 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
-from typing import Any
+from typing import Any, FrozenSet
 
 import arrow
 from graphql import (
     DirectiveLocation,
     GraphQLArgument,
+    GraphQLBoolean,
     GraphQLDirective,
     GraphQLField,
+    GraphQLFloat,
+    GraphQLID,
     GraphQLInt,
     GraphQLInterfaceType,
     GraphQLList,
@@ -370,11 +373,12 @@ GraphQLDecimal = GraphQLScalarType(
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
-CUSTOM_SCALAR_TYPES = (
-    GraphQLDecimal,
-    GraphQLDate,
-    GraphQLDateTime,
+CUSTOM_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
+    {GraphQLDecimal, GraphQLDate, GraphQLDateTime,}
 )
+SUPPORTED_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
+    {GraphQLInt, GraphQLString, GraphQLBoolean, GraphQLFloat, GraphQLID,}
+).union(CUSTOM_SCALAR_TYPES)
 
 DIRECTIVES = (
     FilterDirective,

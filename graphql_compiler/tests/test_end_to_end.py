@@ -22,8 +22,8 @@ from ..compiler import compile_graphql_to_gremlin, compile_graphql_to_match
 from ..exceptions import GraphQLInvalidArgumentError
 from ..query_formatting import insert_arguments_into_query
 from ..query_formatting.common import (
-    deserialize_json_argument,
-    deserialize_multiple_json_arguments,
+    deserialize_argument,
+    deserialize_multiple_arguments,
     validate_argument_type,
 )
 from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLSchemaFieldType
@@ -251,77 +251,77 @@ class QueryFormattingTests(unittest.TestCase):
     def test_date_deserialization(self) -> None:
         # Invalid month
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("birthday", GraphQLDate, "2014-14-01")
+            deserialize_argument("birthday", GraphQLDate, "2014-14-01")
 
         # Invalid day
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("birthday", GraphQLDate, "2014-02-31")
+            deserialize_argument("birthday", GraphQLDate, "2014-02-31")
 
         # Valid date
-        value = deserialize_json_argument("birthday", GraphQLDate, "2014-02-05")
+        value = deserialize_argument("birthday", GraphQLDate, "2014-02-05")
         self.assertEqual(datetime.date(2014, 2, 5), value)
 
     def test_datetime_deserialization(self) -> None:
         # No time provided
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("birth_time", GraphQLDateTime, "2014-02-05")
+            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05")
 
         # With timezone
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55+00:00")
+            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55+00:00")
 
         # With timezone alternate format
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55Z")
+            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55Z")
 
         # Valid datetime
-        value = deserialize_json_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55")
+        value = deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55")
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55), value)
 
     def test_float_deserialization(self) -> None:
         # Invalid string
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("amount", GraphQLFloat, "sdg")
+            deserialize_argument("amount", GraphQLFloat, "sdg")
 
         # Bool
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("amount", GraphQLFloat, True)
+            deserialize_argument("amount", GraphQLFloat, True)
 
         # Valid string
-        self.assertEqual(float(5), deserialize_json_argument("amount", GraphQLFloat, "5"))
+        self.assertEqual(float(5), deserialize_argument("amount", GraphQLFloat, "5"))
 
         # Valid string with decimals
-        self.assertEqual(float(5.1), deserialize_json_argument("amount", GraphQLFloat, "5.1"))
+        self.assertEqual(float(5.1), deserialize_argument("amount", GraphQLFloat, "5.1"))
 
         # Valid int
-        self.assertEqual(float(5), deserialize_json_argument("amount", GraphQLFloat, 5))
+        self.assertEqual(float(5), deserialize_argument("amount", GraphQLFloat, 5))
 
         # Valid float
-        self.assertEqual(float(5), deserialize_json_argument("amount", GraphQLFloat, float(5)))
+        self.assertEqual(float(5), deserialize_argument("amount", GraphQLFloat, float(5)))
 
         # Valid float with comma
-        self.assertEqual(float(5.1), deserialize_json_argument("amount", GraphQLFloat, float(5.1)))
+        self.assertEqual(float(5.1), deserialize_argument("amount", GraphQLFloat, float(5.1)))
 
     def test_id_deserialization(self) -> None:
         # Float
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_json_argument("amount", GraphQLID, 5.3)
+            deserialize_argument("amount", GraphQLID, 5.3)
 
         # Int
-        self.assertEqual("5", deserialize_json_argument("amount", GraphQLID, 5))
+        self.assertEqual("5", deserialize_argument("amount", GraphQLID, 5))
 
         # String
-        self.assertEqual("5", deserialize_json_argument("amount", GraphQLID, "5"))
+        self.assertEqual("5", deserialize_argument("amount", GraphQLID, "5"))
 
     def test_int_deserialization(self) -> None:
         # Int
-        self.assertEqual(5, deserialize_json_argument("amount", GraphQLInt, 5))
+        self.assertEqual(5, deserialize_argument("amount", GraphQLInt, 5))
 
         if six.PY3:
             # Long
             self.assertEqual(
                 50000000000000000000000000000000000000000,
-                deserialize_json_argument(
+                deserialize_argument(
                     "amount", GraphQLInt, 50000000000000000000000000000000000000000
                 ),
             )
@@ -329,7 +329,7 @@ class QueryFormattingTests(unittest.TestCase):
             # Long string
             self.assertEqual(
                 50000000000000000000000000000000000000000,
-                deserialize_json_argument(
+                deserialize_argument(
                     "amount", GraphQLInt, "50000000000000000000000000000000000000000"
                 ),
             )
@@ -349,19 +349,74 @@ class QueryFormattingTests(unittest.TestCase):
         }
         self.assertEqual(
             expected_deserialization,
-            deserialize_multiple_json_arguments(serialized_arguments, expected_types),
+            deserialize_multiple_arguments(serialized_arguments, expected_types),
         )
 
     def test_invalid_directive_comparison(self) -> None:
-        # This test will fail if the directive types in deserialize_json_argument are compared by
+        # This test will fail if the directive types in deserialize_argument are compared by
         # their python object reference instead of by their names.
         #
         # Note that parsed_graphql_datetime_type has a different python object reference than
         # GraphQLDateTime, but refers conceptually to the same GraphQL type.
         parsed_graphql_datetime_type = get_schema().get_type("DateTime")
-        value = deserialize_json_argument(
+        value = deserialize_argument(
             "birth_time",
             cast(GraphQLScalarType, parsed_graphql_datetime_type),
             "2014-02-05T03:20:55",
         )
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55), value)
+
+    def test_deserialize_lists(self):
+        # Non-collection
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_argument("numbers", GraphQLList(GraphQLInt), 1)
+
+        # Tuple
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_argument("numbers", GraphQLList(GraphQLInt), (1, 2))
+
+        # Second element is of unexpected kind.
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_argument("numbers", GraphQLList(GraphQLInt), (1, 1.2, 3))
+
+        # Second element is "unparseable".
+        with self.assertRaises(GraphQLInvalidArgumentError):
+            deserialize_argument("numbers", GraphQLList(GraphQLInt), (1, "asda", 3))
+
+        # Basic
+        self.assertEqual(
+            [1.2, 2.3], deserialize_argument("numbers", GraphQLList(GraphQLFloat), [1.2, 2.3])
+        )
+
+        # With empty list
+        self.assertEqual([], deserialize_argument("numbers", GraphQLList(GraphQLFloat), []))
+
+        # With list with one element
+        self.assertEqual([1.2], deserialize_argument("numbers", GraphQLList(GraphQLFloat), [1.2]))
+
+        # With outer null wrapper.
+        self.assertEqual(
+            [1.2, 2.3],
+            deserialize_argument("numbers", GraphQLNonNull(GraphQLList(GraphQLFloat)), [1.2, 2.3]),
+        )
+
+        # With inner null wrapper.
+        self.assertEqual(
+            [1.2, 2.3],
+            deserialize_argument("numbers", GraphQLList(GraphQLNonNull(GraphQLFloat)), [1.2, 2.3]),
+        )
+
+        # With outer and inner null wrapper.
+        self.assertEqual(
+            [1.2, 2.3],
+            deserialize_argument(
+                "numbers", GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLFloat))), [1.2, 2.3]
+            ),
+        )
+
+        # With custom scalar type
+        self.assertEqual(
+            [datetime.date(2014, 2, 5)],
+            deserialize_argument("dates", GraphQLList(GraphQLDate), ["2014-02-05"]),
+        )
+>>>>>>> master

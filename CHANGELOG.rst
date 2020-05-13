@@ -7,8 +7,9 @@ Current development version
 v2.0.0
 ------
 
-- **BREAKING** Change the GraphQLDateTime scalar type from being timezone aware to timezone naive.
-  In the future, we plan to add timezone
+- **BREAKING** Change the GraphQLDateTime scalar type from being timezone-aware aware to being
+  timezone-naive. This change will break MATCH and gremlin queries filtering on or outputting
+  datetime fields.
 
 v1.11.0
 -------

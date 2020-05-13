@@ -436,9 +436,12 @@ class IntegrationTests(TestCase):
     @use_all_backends(except_backends=(test_backend.REDISGRAPH,))  # Not implemented yet
     @integration_fixtures
     def test_fold_basic(self, backend_name: str) -> None:
-        # (query, args, expected_results) tuples.
-        # The queries are ran in the order specified here.
-        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]]]] = [
+        # (query, args, expected_results, excluded_backends) tuples.
+        # Note: excluded_backends is distinct from `@use_all_backends(expect_backends=(...)) because
+        # some backends such as MSSQL have most, but not all, fold functionality implemented.
+        # excluded_backends can be use to bypass a subset of the fold tests.
+        # The queries are run in the order specified here.
+        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]], List[str]]] = [
             # Query 1: Unfolded children of Animal 1
             (
                 """
@@ -456,6 +459,7 @@ class IntegrationTests(TestCase):
                     {"descendant_name": "Animal 2"},
                     {"descendant_name": "Animal 3"},
                 ],
+                [],
             ),
             # Query 2: Folded children of Animal 1
             (
@@ -470,6 +474,7 @@ class IntegrationTests(TestCase):
             }""",
                 {"starting_animal_name": "Animal 1",},
                 [{"child_names": ["Animal 1", "Animal 2", "Animal 3"]},],
+                [],
             ),
             # Query 3: Unfolded children of Animal 4
             (
@@ -483,6 +488,7 @@ class IntegrationTests(TestCase):
                 }
             }""",
                 {"starting_animal_name": "Animal 4",},
+                [],
                 [],
             ),
             # Query 4: Folded children of Animal 4
@@ -498,6 +504,7 @@ class IntegrationTests(TestCase):
             }""",
                 {"starting_animal_name": "Animal 4",},
                 [{"child_names": []},],
+                [],
             ),
             # Query 5: Multiple outputs in a fold scope.
             (
@@ -522,10 +529,13 @@ class IntegrationTests(TestCase):
                         ],
                     },
                 ],
+                [test_backend.MSSQL],
             ),
         ]
 
-        for graphql_query, parameters, expected_results in queries:
+        for graphql_query, parameters, expected_results, excluded_backends in queries:
+            if backend_name in excluded_backends:
+                continue
             self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     @use_all_backends(
