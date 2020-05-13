@@ -27,7 +27,6 @@ REPRESENTATIVE_DATA_FOR_EACH_TYPE = {
     GraphQLList(GraphQLDate): [date(2017, 1, 22), date(2017, 1, 23), date(2017, 1, 24)],
     GraphQLList(GraphQLDateTime): [
         datetime(2017, 1, 22, 9, 54, 35),
-        arrow.get(2017, 1, 23, 9, 54, 35).naive,
     ],
 }
 

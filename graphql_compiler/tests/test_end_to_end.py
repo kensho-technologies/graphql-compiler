@@ -270,7 +270,7 @@ class QueryFormattingTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55+00:00")
 
-        # With timezone alternate format
+        # With alternate timezone format
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55Z")
 

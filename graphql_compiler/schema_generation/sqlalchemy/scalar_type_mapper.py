@@ -49,7 +49,6 @@ GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE = {
     sqltypes.String: GraphQLString,
     sqltypes.Text: GraphQLString,
     sqltypes.TEXT: GraphQLString,
-    sqltypes.TIMESTAMP: GraphQLDateTime,
     sqltypes.Unicode: GraphQLString,
     sqltypes.UnicodeText: GraphQLString,
     sqltypes.VARCHAR: GraphQLString,
@@ -106,7 +105,6 @@ UNSUPPORTED_MSSQL_TYPES = frozenset(
 POSTGRES_CLASS_TO_GRAPHQL_TYPES = {
     postgrestypes.UUID: GraphQLID,
     postgrestypes.DOUBLE_PRECISION: GraphQLFloat,
-    postgrestypes.TIMESTAMP: GraphQLDateTime,
     postgrestypes.ENUM: GraphQLString,
 }
 
@@ -156,7 +154,6 @@ MYSQL_CLASS_TO_GRAPHQL_TYPE = {
     mysqltypes.SMALLINT: GraphQLInt,
     mysqltypes.REAL: GraphQLFloat,
     mysqltypes.TEXT: GraphQLString,
-    mysqltypes.TIMESTAMP: GraphQLDateTime,
     mysqltypes.TINYINT: GraphQLInt,
     mysqltypes.TINYTEXT: GraphQLString,
     mysqltypes.VARCHAR: GraphQLString,
