@@ -8,8 +8,9 @@ v2.0.0
 ------
 
 - **BREAKING** Change the :code:`GraphQLDateTime` scalar type from being timezone-aware aware to
-  being timezone-naive in order to follow the usual database convention of naming the timezone-naive
-  type "datetime". This change breaks OrientDB queries filtering on or outputting datetime fields.
+  being timezone-naive to follow the usual database convention of naming the timezone-naive
+  type "datetime" and avoid confusion after we've added both timezone-aware and timezone-naive
+  types.
 
 v1.11.0
 -------
