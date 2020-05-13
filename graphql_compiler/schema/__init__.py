@@ -316,8 +316,14 @@ def _serialize_datetime(value: Any) -> str:
 
 def _parse_datetime_value(value: Any) -> datetime:
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
-    # attempt to parse with microsecond information
-    return arrow.get(value, "YYYY-MM-DDTHH:mm:ss").datetime.replace(tzinfo=None)
+    try:
+        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss")
+    except arrow.parser.ParserMatchError:
+        # attempt to parse with microsecond information
+        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss.S")
+
+    # arrow parses datetime naive strings as utc datetime strings
+    return arrow_result.datetime.replace(tzinfo=None)
 
 
 GraphQLDate = GraphQLScalarType(

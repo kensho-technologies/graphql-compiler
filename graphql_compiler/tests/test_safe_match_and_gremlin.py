@@ -22,14 +22,13 @@ REPRESENTATIVE_DATA_FOR_EACH_TYPE = {
     GraphQLInt: 42,
     GraphQLString: "foobar",
     GraphQLDate: date(2017, 3, 22),
-    GraphQLDateTime: datetime(2017, 3, 22, 9, 54, 35, tzinfo=pytz.utc),
+    GraphQLDateTime: datetime(2017, 3, 22, 9, 54, 35),
     GraphQLList(GraphQLString): ["foo", "bar", "baz"],
     GraphQLList(GraphQLInt): [1, 2, 3, 4, 5],
     GraphQLList(GraphQLDate): [date(2017, 1, 22), date(2017, 1, 23), date(2017, 1, 24)],
     GraphQLList(GraphQLDateTime): [
-        datetime(2017, 1, 22, 9, 54, 35, tzinfo=pytz.utc),
-        arrow.get(2017, 1, 23, 9, 54, 35, tzinfo=pytz.utc),
-        arrow.get(datetime(2017, 1, 24, 9, 54, 35, tzinfo=pytz.utc)),
+        datetime(2017, 1, 22, 9, 54, 35),
+        arrow.get(2017, 1, 23, 9, 54, 35).naive,
     ],
 }
 
