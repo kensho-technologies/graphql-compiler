@@ -87,7 +87,7 @@ def deserialize_scalar_value(expected_type: GraphQLScalarType, value: Any) -> An
 
     Below are examples of accepted encodings of all the types:
         GraphQLDate: "2018-02-01"
-        GraphQLDateTime: "2018-02-01T05:11:54Z"
+        GraphQLDateTime: "2018-02-01T05:11:54"
         GraphQLFloat: 4.3, "5.0", 5
         GraphQLDecimal: "5.00000000000000000000000000001"
         GraphQLInt: 4, "3803330000000000000000000000000000000000000000000"
@@ -102,7 +102,7 @@ def deserialize_scalar_value(expected_type: GraphQLScalarType, value: Any) -> An
     Returns:
         a value of the type produced by the parser of the expected type:
             GraphQLDate: datetime.date
-            GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
+            GraphQLDateTime: datetime.datetime with tzinfo=None
             GraphQLFloat: float
             GraphQLDecimal: decimal.Decimal
             GraphQLInt: int
@@ -148,7 +148,7 @@ def deserialize_value(expected_type: QueryArgumentGraphQLType, value: Any) -> An
     Returns:
         a value of the type produced by the parser of the expected type:
             GraphQLDate: datetime.date
-            GraphQLDateTime: datetime.datetime with tzinfo=pytz.utc
+            GraphQLDateTime: datetime.datetime with tzinfo=None
             GraphQLFloat: float
             GraphQLDecimal: decimal.Decimal
             GraphQLInt: int
