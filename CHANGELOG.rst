@@ -4,6 +4,12 @@ Changelog
 Current development version
 ---------------------------
 
+v2.0.0
+------
+
+- **BREAKING** Change the GraphQLDateTime scalar type from being timezone aware to timezone naive.
+  In the future, we plan to add timezone
+
 v1.11.0
 -------
 

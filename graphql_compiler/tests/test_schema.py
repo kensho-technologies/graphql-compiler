@@ -97,6 +97,8 @@ class SchemaTests(unittest.TestCase):
             "2017-01-01T00:00:00+01:00",
             # Zero utc offset.
             "2017-01-01T00:00:00+00:00",
+            # Alternate format that indicates zero utc offset.
+            "2017-01-01T00:00:00+00:00Z",
         }
 
         for parsing_input in invalid_parsing_inputs:
@@ -111,7 +113,7 @@ class SchemaTests(unittest.TestCase):
             # N.B.: See the link below to understand why we use localize() to set the time zone.
             # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
             central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
-            # Date instead of datetime
+            # Date instead of datetime.
             date(2017, 1, 1),
         }
 

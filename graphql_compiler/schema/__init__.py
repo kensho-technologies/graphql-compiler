@@ -303,27 +303,28 @@ def _serialize_datetime(value: Any) -> str:
     # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
     # interchangeable. Rather than using isinstance, we will therefore check for exact type
     # equality.
-    if type(value) in {datetime, arrow.Arrow}:
-        datetime_value = value if type(value) == datetime else value.datetime
-        timezone = datetime_value.tzinfo
-        if timezone is None:
-            return value.isoformat()
-
-    raise ValueError(
-        f"Expected a timezone naive datetime object. Got {value} of type {type(value)} " f"instead."
-    )
+    #
+    # We don't allow Arrow objects as input since it seems that Arrow objects are always tz aware.
+    # This is supported by the fact that the `.naive` Arrow method returns a datetime object instead
+    # of an Arrow object.
+    if type(value) == datetime and value.tzinfo is None:
+        return value.isoformat()
+    else:
+        raise ValueError(
+            f"Expected a timezone naive datetime object. Got {value} of type {type(value)} instead."
+        )
 
 
 def _parse_datetime_value(value: Any) -> datetime:
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
+    # attempt to parse with microsecond information
     try:
         arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss")
     except arrow.parser.ParserMatchError:
-        # attempt to parse with microsecond information
         arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss.S")
 
-    # arrow parses datetime naive strings as utc datetime strings
-    return arrow_result.datetime.replace(tzinfo=None)
+    # arrow parses datetime naive strings into Arrow objects with a UTC timezone.
+    return arrow_result.naive
 
 
 GraphQLDate = GraphQLScalarType(

@@ -215,7 +215,7 @@ class QueryFormattingTests(unittest.TestCase):
                     datetime.datetime(2007, 12, 6),
                 ),
                 (
-                    "2007-12-06 16:29:43",
+                    "2007-12-06T16:29:43",
                     datetime.date(2007, 12, 6),
                     datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.utc),
                     datetime.datetime(

@@ -259,7 +259,7 @@ class MssqlXmlPathTests(TestCase):
         }
         """
         query_output = [
-            {"child_datetime_fields": "|2020-01-01T05:45:00|2000-02-29T13:02:27.018349|~"}
+            {"child_datetime_fields": "|2020-01-01T05:45:00|2000-02-29T13:02:27.0018349|~"}
         ]
         output_metadata = {
             "child_datetime_fields": OutputMetadata(
@@ -271,7 +271,7 @@ class MssqlXmlPathTests(TestCase):
             {
                 "child_datetime_fields": [
                     datetime.datetime(2020, 1, 1, 5, 45),
-                    datetime.datetime(2000, 2, 29, 13, 2, 27, 18349),
+                    datetime.datetime(2000, 2, 29, 13, 2, 27, 1835),
                     None,
                 ],
             }
