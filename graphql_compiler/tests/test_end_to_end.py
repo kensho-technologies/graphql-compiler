@@ -419,4 +419,3 @@ class QueryFormattingTests(unittest.TestCase):
             [datetime.date(2014, 2, 5)],
             deserialize_argument("dates", GraphQLList(GraphQLDate), ["2014-02-05"]),
         )
->>>>>>> master

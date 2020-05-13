@@ -7,9 +7,9 @@ Current development version
 v2.0.0
 ------
 
-- **BREAKING** Change the GraphQLDateTime scalar type from being timezone-aware aware to being
-  timezone-naive. This change will break MATCH and gremlin queries filtering on or outputting
-  datetime fields.
+- **BREAKING** Change the :code:`GraphQLDateTime` scalar type from being timezone-aware aware to
+  being timezone-naive in order to follow the usual database convention of naming the timezone-naive
+  type "datetime". This change breaks OrientDB queries filtering on or outputting datetime fields.
 
 v1.11.0
 -------
