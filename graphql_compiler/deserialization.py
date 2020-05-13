@@ -69,7 +69,7 @@ _CUSTOM_SCALAR_DESERIALIZATION_FUNCTIONS: Mapping[str, Callable[[Any], Any]] = M
     }
 )
 
-_JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS: Mapping[
+_ALLOWED_TYPES_AND_DESERIALIZATION_FUNCTIONS: Mapping[
     str, Tuple[Tuple[Type, ...], Callable[[Any], Any]]
 ] = MappingProxyType(
     {
@@ -114,7 +114,7 @@ def deserialize_scalar_value(expected_type: GraphQLScalarType, value: Any) -> An
         ValueError: if the value is not appropriate for the type. ValueError is chosen because
                     it is already the base case of exceptions raised by the GraphQL parsers.
     """
-    types_and_deserialization = _JSON_TYPES_AND_DESERIALIZATION_FUNCTIONS.get(expected_type.name)
+    types_and_deserialization = _ALLOWED_TYPES_AND_DESERIALIZATION_FUNCTIONS.get(expected_type.name)
     if types_and_deserialization is None:
         raise AssertionError(
             f"Unexpected GraphQLType {expected_type}. No deserialization function known."
