@@ -4,8 +4,8 @@ Changelog
 Current development version
 ---------------------------
 
-v2.0.0
-------
+v2.0.0 (upcoming release)
+-------------------------
 
 - **BREAKING** Change the :code:`GraphQLDateTime` scalar type from being timezone-aware aware to
   being timezone-naive to follow the usual database convention of naming the timezone-naive

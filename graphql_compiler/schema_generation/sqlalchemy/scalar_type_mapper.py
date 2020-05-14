@@ -180,9 +180,6 @@ def try_get_graphql_scalar_type(
     column_name: str, column_type: TypeEngine
 ) -> Optional[GraphQLScalarType]:
     """Return the matching GraphQLScalarType for the SQL datatype or None if none is found."""
-    # HACK(pmantica1): The code above implies that the GraphQL type is just a factor of the class
-    #                  of column_type. However, it is also a function of the attributes of
-    #                  column_type. We should probably refactor this file to better reflect that.
     if isinstance(column_type, sqltypes.DateTime) and column_type.timezone:
         warnings.warn(
             f'Ignoring column "{column_name}". Timezone aware datetime types are '
