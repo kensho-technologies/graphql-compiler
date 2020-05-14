@@ -5,7 +5,6 @@ import unittest
 
 from graphql import print_ast
 import pytest
-import pytz
 
 from .. import test_input_data
 from ...ast_manipulation import safe_parse_graphql
@@ -712,7 +711,7 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def test_pagination_datetime_existing_tz_aware_filter(self):
+    def test_pagination_existing_datetime_filter(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
@@ -744,7 +743,7 @@ class QueryPaginationTests(unittest.TestCase):
                 event_date @filter(op_name: ">=", value: ["$date_lower"])
             }
         }""",
-            {"date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc)},
+            {"date_lower": datetime.datetime(2050, 1, 1, 0, 0)},
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 100)
@@ -763,7 +762,7 @@ class QueryPaginationTests(unittest.TestCase):
                 }
             }""",
             {
-                "date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc),
+                "date_lower": datetime.datetime(2050, 1, 1, 0, 0),
                 "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
             },
         )

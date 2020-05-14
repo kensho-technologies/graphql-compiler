@@ -13,9 +13,10 @@ from sqlalchemy import (
     Table,
 )
 from sqlalchemy.dialects.mssql import TINYINT, dialect
-from sqlalchemy.types import Integer, LargeBinary, String
+from sqlalchemy.types import TIMESTAMP, DateTime, Integer, LargeBinary, String
 
 from ... import get_sqlalchemy_schema_info
+from ...schema import GraphQLDateTime
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
 from ...schema_generation.schema_graph import IndexDefinition
 from ...schema_generation.sqlalchemy import (
@@ -116,7 +117,21 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_warn_when_type_is_not_supported(self):
         with pytest.warns(Warning):
-            try_get_graphql_scalar_type("binary", LargeBinary)
+            try_get_graphql_scalar_type("binary", LargeBinary())
+
+    def test_support_sql_tz_naive_datetime_types(self):
+        column_name = "tz_naive_datetime"
+        tz_naive_types = (DateTime(timezone=False), TIMESTAMP(timezone=False))
+        for sql_type in tz_naive_types:
+            self.assertEqual(GraphQLDateTime, try_get_graphql_scalar_type(column_name, sql_type))
+
+    def test_do_not_support_sql_tz_aware_datetime_types(self):
+        column_name = "tz_aware_datetime"
+        tz_aware_types = (DateTime(timezone=True), TIMESTAMP(timezone=True))
+        for sql_type in tz_aware_types:
+            with self.assertWarns(Warning):
+                graphql_type = try_get_graphql_scalar_type(column_name, sql_type)
+            self.assertIsNone(graphql_type)
 
     def test_mssql_scalar_type_representation(self):
         table1_graphql_object = self.schema_info.schema.get_type("Table1")

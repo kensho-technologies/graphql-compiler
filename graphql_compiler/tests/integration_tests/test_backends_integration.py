@@ -633,6 +633,26 @@ class IntegrationTests(TestCase):
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
+    # RedisGraph doesn't support temporal types, so DateTime types aren't supported.
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH,))
+    @integration_fixtures
+    def test_filter_on_datetime(self, backend_name: str) -> None:
+        graphql_query = """
+        {
+            BirthEvent {
+                uuid @output(out_name: "uuid")
+                event_date @filter(op_name: "=", value: ["$event_date"])
+            }
+        }
+        """
+        parameters = {
+            "event_date": datetime.datetime(2000, 1, 1, 1, 1, 1),
+        }
+        expected_results = [
+            {"uuid": "cfc6e625-8594-0927-468f-f53d864a7a55"},
+        ]
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
     @integration_fixtures
     def test_snapshot_graphql_schema_from_orientdb_schema(self):
         class_to_field_type_overrides: Dict[str, Dict[str, GraphQLScalarType]] = {

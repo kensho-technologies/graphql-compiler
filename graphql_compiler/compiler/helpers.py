@@ -29,7 +29,7 @@ from ..schema import (
 
 # These are the Java (OrientDB) representations of the ISO-8601 standard date and datetime formats.
 STANDARD_DATE_FORMAT = "yyyy-MM-dd"
-STANDARD_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ssX"
+STANDARD_DATETIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss"
 
 VARIABLE_ALLOWED_CHARS = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
 

@@ -177,8 +177,8 @@ class EmitMatchTests(unittest.TestCase):
                 MATCH {{
                     class: BirthEvent,
                     where: ((
-                        (event_date >= date({start}, "yyyy-MM-dd'T'HH:mm:ssX")) AND
-                        (event_date <= date({end}, "yyyy-MM-dd'T'HH:mm:ssX"))
+                        (event_date >= date({start}, "yyyy-MM-dd'T'HH:mm:ss")) AND
+                        (event_date <= date({end}, "yyyy-MM-dd'T'HH:mm:ss"))
                     )),
                     as: BirthEvent___1
                 }}
@@ -211,7 +211,7 @@ class EmitMatchTests(unittest.TestCase):
         compound_match_query = CompoundMatchQuery(match_queries=[match_query])
 
         expected_match = """
-            SELECT BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `event_date` FROM (
+            SELECT BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `event_date` FROM (
                 MATCH {{
                     class: BirthEvent,
                     as: BirthEvent___1
@@ -401,8 +401,8 @@ class EmitGremlinTests(unittest.TestCase):
         expected_gremlin = """
              g.V('@class', 'BirthEvent')
             .as('BirthEvent___1')
-            .filter{it, m -> ((it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $start)) &&
-                              (it.event_date <= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $end)))}
+            .filter{it, m -> ((it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ss", $start)) &&
+                              (it.event_date <= Date.parse("yyyy-MM-dd'T'HH:mm:ss", $end)))}
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                 name: m.BirthEvent___1.name
             ])}
@@ -434,7 +434,7 @@ class EmitGremlinTests(unittest.TestCase):
             g.V('@class', 'BirthEvent')
             .as('BirthEvent___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                event_date: m.BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                event_date: m.BirthEvent___1.event_date.format("yyyy-MM-dd'T'HH:mm:ss")
             ])}
         """
 

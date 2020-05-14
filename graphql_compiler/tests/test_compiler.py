@@ -1352,14 +1352,14 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = """
             SELECT
-                Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `event_date`
+                Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `event_date`
             FROM (
                 MATCH {{
                     class: Event,
                     where: ((
                         event_date BETWEEN
-                            date({lower}, "yyyy-MM-dd'T'HH:mm:ssX")
-                            AND date({upper}, "yyyy-MM-dd'T'HH:mm:ssX")
+                            date({lower}, "yyyy-MM-dd'T'HH:mm:ss")
+                            AND date({upper}, "yyyy-MM-dd'T'HH:mm:ss")
                     )),
                     as: Event___1
                 }}
@@ -1369,12 +1369,12 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = """
             g.V('@class', 'Event')
             .filter{it, m -> (
-                (it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $lower)) &&
-                (it.event_date <= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $upper))
+                (it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ss", $lower)) &&
+                (it.event_date <= Date.parse("yyyy-MM-dd'T'HH:mm:ss", $upper))
             )}
             .as('Event___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ss")
             ])}
         """
         expected_mssql = """
@@ -1629,16 +1629,16 @@ class CompilerTests(unittest.TestCase):
                 if(
                     eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                     Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `child_fed_at`,
                 Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`,
+                    .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandparent_fed_at`,
                 if(
                     eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
                         IS NOT null)"),
                     Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `other_parent_fed_at`
             FROM (
@@ -1771,16 +1771,16 @@ class CompilerTests(unittest.TestCase):
                 child_fed_at: (
                     (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 ),
                 grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                    .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    .format("yyyy-MM-dd'T'HH:mm:ss"),
                 other_parent_fed_at: (
                     (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
                         __out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 )
             ])}
@@ -1920,16 +1920,16 @@ class CompilerTests(unittest.TestCase):
                 if(
                     eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                     Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `child_fed_at`,
                 Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`,
+                    .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandparent_fed_at`,
                 if(
                     eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
                         IS NOT null)"),
                     Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `other_parent_fed_at`
             FROM (
@@ -2061,16 +2061,16 @@ class CompilerTests(unittest.TestCase):
                 child_fed_at: (
                     (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 ),
                 grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                    .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    .format("yyyy-MM-dd'T'HH:mm:ss"),
                 other_parent_fed_at: (
                     (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
                         __out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 )
             ])}
@@ -6553,7 +6553,7 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.birthday.format("yyyy-MM-dd")
                     AS `child_birthdays_list`,
-                $Animal___1___out_Animal_FedAt.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                $Animal___1___out_Animal_FedAt.event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                     AS `fed_at_datetimes_list`
             FROM (
                 MATCH {{
@@ -6584,7 +6584,7 @@ class CompilerTests(unittest.TestCase):
                         m.Animal___1.out_Animal_FedAt.collect{
                             entry ->
                                 entry.inV.next()
-                                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                                    .event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                         }
                     )
                 )
@@ -9004,10 +9004,10 @@ class CompilerTests(unittest.TestCase):
             $optional__0 = (
                 SELECT
                     Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandchild_fed_at`,
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandchild_fed_at`,
                     if(eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                         Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                            .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                            .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                             null
                     ) AS `parent_fed_at`
                 FROM (
@@ -9067,12 +9067,12 @@ class CompilerTests(unittest.TestCase):
             $optional__1 = (
                 SELECT
                     Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandchild_fed_at`,
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandchild_fed_at`,
                     Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `other_child_fed_at`,
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `other_child_fed_at`,
                     if(eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                         Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                            .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                            .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                         null
                     ) AS `parent_fed_at`
                 FROM (
@@ -9197,18 +9197,18 @@ class CompilerTests(unittest.TestCase):
            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                    grandchild_fed_at:
                        m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                           .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                           .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                    other_child_fed_at: (
                        (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
                            __out_Animal_FedAt___1 != null) ?
                            m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                               .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                               .event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                            : null
                    ),
                    parent_fed_at: (
                        (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
                            m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                               .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                               .event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                            : null
                    )
                ])
