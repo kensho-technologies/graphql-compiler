@@ -202,8 +202,13 @@ class InputSchemaStrings(object):
           friend: Dog!
         }
 
+        type Cat {
+            id: String
+        }
+
         type SchemaQuery {
           Dog: Dog!
+          Cat: Cat
         }
     """
     )

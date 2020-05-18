@@ -719,13 +719,102 @@ class TestRenameSchema(unittest.TestCase):
               friend: NewDog!
             }
 
+            type Cat {
+              id: String
+            }
+
             type SchemaQuery {
               NewDog: NewDog!
+              Cat: Cat
             }
         """
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
+
+    def test_non_null_one_to_many_rename(self):
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["Dog", "NewDog", "OtherNewDog"]})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Dog {
+              id: String!
+              friend: NewDog!
+            }
+
+            type NewDog {
+              id: String!
+              friend: NewDog!
+            }
+
+            type OtherNewDog {
+              id: String!
+              friend: NewDog!
+            }
+
+            type Cat {
+              id: String
+            }
+
+            type SchemaQuery {
+              Dog: Dog!
+              NewDog: NewDog!
+              OtherNewDog: OtherNewDog!
+              Cat: Cat
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"NewDog": "Dog", "OtherNewDog": "Dog"}, renamed_schema.reverse_name_map)
+
+    def test_suppress_non_null(self):
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": []})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Cat {
+              id: String
+            }
+
+            type SchemaQuery {
+              Cat: Cat
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
+
+    def test_non_null_cycle(self):
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["Cat"], "Cat": ["Dog"]})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Cat {
+              id: String!
+              friend: Cat!
+            }
+
+            type Dog {
+              id: String
+            }
+
+            type SchemaQuery {
+              Cat: Cat!
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"Dog": "Cat", "Cat": "Dog"}, renamed_schema.reverse_name_map)
 
     def test_directive_rename(self):
         renamed_schema = rename_schema(
