@@ -470,6 +470,62 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
 
+    def test_scalar_one_to_many_rename(self):
+        renamed_schema = rename_schema(
+            parse(ISS.scalar_schema),
+            {"Human": ["NewHuman"], "Date": ["Date", "NewDate", "OtherNewDate"], "String": ["NewString"]},
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type NewHuman {
+              id: String
+              birthday: Date
+            }
+
+            scalar Date
+
+            type SchemaQuery {
+              NewHuman: NewHuman
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
+
+    def test_suppress_scalar(self):
+        renamed_schema = rename_schema(
+            parse(ISS.scalar_schema),
+            {"Human": ["NewHuman"], "Date": [], "String": ["NewString"]},
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type NewHuman {
+              id: String
+              birthday: Date
+            }
+
+            scalar Date
+
+            type SchemaQuery {
+              NewHuman: NewHuman
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
+
     def test_union_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.union_schema), {"HumanOrDroid": ["NewHumanOrDroid"], "Droid": ["NewDroid"]}
