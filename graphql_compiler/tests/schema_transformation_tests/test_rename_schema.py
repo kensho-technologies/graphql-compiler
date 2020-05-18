@@ -33,7 +33,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_basic_rename(self):
-        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": "NewHuman"})
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["NewHuman"]})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -56,12 +56,12 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_original_unmodified(self):
         original_ast = parse(ISS.basic_schema)
-        rename_schema(original_ast, {"Human": "NewHuman"})
+        rename_schema(original_ast, {"Human": ["NewHuman"]})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
 
     def test_swap_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Human"}
+            parse(ISS.multiple_objects_schema), {"Human": ["Droid"], "Droid": ["Human"]}
         )
         renamed_schema_string = dedent(
             """\
@@ -93,7 +93,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_cyclic_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Dog", "Dog": "Human"}
+            parse(ISS.multiple_objects_schema), {"Human": ["Droid"], "Droid": ["Dog"], "Dog": ["Human"]}
         )
         renamed_schema_string = dedent(
             """\
@@ -127,7 +127,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_enum_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}
+            parse(ISS.enum_schema), {"Droid": ["NewDroid"], "Height": ["NewHeight"]}
         )
         renamed_schema_string = dedent(
             """\
@@ -156,7 +156,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_interface_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.interface_schema), {"Kid": "NewKid", "Character": "NewCharacter"}
+            parse(ISS.interface_schema), {"Kid": ["NewKid"], "Character": ["NewCharacter"]}
         )
         renamed_schema_string = dedent(
             """\
@@ -186,7 +186,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_multiple_interfaces_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_interfaces_schema),
-            {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "Creature"},
+            {"Human": ["NewHuman"], "Character": ["NewCharacter"], "Creature": ["Creature"]},
         )
         renamed_schema_string = dedent(
             """\
@@ -222,7 +222,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_scalar_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.scalar_schema),
-            {"Human": "NewHuman", "Date": "NewDate", "String": "NewString"},
+            {"Human": ["NewHuman"], "Date": ["NewDate"], "String": ["NewString"]},
         )
         renamed_schema_string = dedent(
             """\
@@ -249,7 +249,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_union_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.union_schema), {"HumanOrDroid": "NewHumanOrDroid", "Droid": "NewDroid"}
+            parse(ISS.union_schema), {"HumanOrDroid": ["NewHumanOrDroid"], "Droid": ["NewDroid"]}
         )
         renamed_schema_string = dedent(
             """\
@@ -283,12 +283,12 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
             {
-                "Droid": "NewDroid",
-                "Character": "NewCharacter",
-                "Height": "NewHeight",
-                "Date": "NewDate",
-                "id": "NewId",
-                "String": "NewString",
+                "Droid": ["NewDroid"],
+                "Character": ["NewCharacter"],
+                "Height": ["NewHeight"],
+                "Date": ["NewDate"],
+                "id": ["NewId"],
+                "String": ["NewString"],
             },
         )
         renamed_schema_string = dedent(
@@ -328,7 +328,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_non_null_rename(self):
-        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "NewDog"})
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["NewDog"]})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -351,7 +351,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_directive_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.directive_schema),
-            {"Human": "NewHuman", "Droid": "NewDroid", "stitch": "NewStitch",},
+            {"Human": ["NewHuman"], "Droid": ["NewDroid"], "stitch": ["NewStitch"],},
         )
         renamed_schema_string = dedent(
             """\
@@ -397,7 +397,7 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        renamed_schema = rename_schema(parse(schema_string), {"Human": "NewHuman", "id": "Id"})
+        renamed_schema = rename_schema(parse(schema_string), {"Human": ["NewHuman"], "id": ["Id"]})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -439,7 +439,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human1": "Human", "Human2": "Human"})
+            rename_schema(parse(schema_string), {"Human1": ["Human"], "Human2": ["Human"]})
 
     def test_clashing_type_single_rename(self):
         schema_string = dedent(
@@ -464,7 +464,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human2": "Human"})
+            rename_schema(parse(schema_string), {"Human2": ["Human"]})
 
     def test_clashing_type_one_unchanged_rename(self):
         schema_string = dedent(
@@ -489,7 +489,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human": "Human", "Human2": "Human"})
+            rename_schema(parse(schema_string), {"Human": ["Human"], "Human2": ["Human"]})
 
     def test_clashing_scalar_type_rename(self):
         schema_string = dedent(
@@ -511,7 +511,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human": "SCALAR"})
+            rename_schema(parse(schema_string), {"Human": ["SCALAR"]})
 
     def test_builtin_type_conflict_rename(self):
         schema_string = dedent(
@@ -531,32 +531,32 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human": "String"})
+            rename_schema(parse(schema_string), {"Human": ["String"]})
 
     def test_illegal_rename_start_with_number(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "0Human"})
+            rename_schema(parse(ISS.basic_schema), {"Human": ["0Human"]})
 
     def test_illegal_rename_contains_illegal_char(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "Human!"})
+            rename_schema(parse(ISS.basic_schema), {"Human": ["Human!"]})
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"})
+            rename_schema(parse(ISS.basic_schema), {"Human": ["H-uman"]})
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"})
+            rename_schema(parse(ISS.basic_schema), {"Human": ["H.uman"]})
 
     def test_illegal_rename_to_double_underscore(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "__Human"})
+            rename_schema(parse(ISS.basic_schema), {"Human": ["__Human"]})
 
     def test_illegal_rename_to_reserved_name_type(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
+            rename_schema(parse(ISS.basic_schema), {"Human": ["__Type"]})
 
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
             def get(self, key, default=None):
-                return "New" + key
+                return ["New" + key]
 
         renamed_schema = rename_schema(parse(ISS.various_types_schema), PrefixNewDict())
         renamed_schema_string = dedent(
