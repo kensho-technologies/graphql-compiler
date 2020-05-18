@@ -558,6 +558,63 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
+    def test_suppress_entire_union(self):
+        renamed_schema = rename_schema(
+            parse(ISS.union_schema), {"HumanOrDroid": [], "Droid": ["NewDroid"]}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Human {
+              id: String
+            }
+
+            type NewDroid {
+              id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+              NewDroid: NewDroid
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"NewDroid": "Droid"},
+            renamed_schema.reverse_name_map,
+        )
+
+    def test_suppress_union_member(self):
+        renamed_schema = rename_schema(
+            parse(ISS.union_schema), {"HumanOrDroid": ["NewHumanOrDroid"], "Droid": []}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Human {
+              id: String
+            }
+
+            union NewHumanOrDroid = Human
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"NewHumanOrDroid": "HumanOrDroid"},
+            renamed_schema.reverse_name_map,
+        )
+
     def test_list_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
