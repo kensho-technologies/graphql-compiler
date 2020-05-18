@@ -663,6 +663,49 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
+    def test_suppress_list(self):
+        renamed_schema = rename_schema(
+            parse(ISS.list_schema),
+            {
+                "Droid": ["NewDroid"],
+                "Character": ["NewCharacter"],
+                "Height": [],
+                "Date": ["NewDate"],
+                "id": ["NewId"],
+                "String": ["NewString"],
+            },
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type NewDroid implements NewCharacter {
+              id: String
+              dates: [Date]
+              friends: [NewDroid]
+              enemies: [NewCharacter]
+            }
+
+            type SchemaQuery {
+              NewDroid: [NewDroid]
+            }
+
+            scalar Date
+
+            interface NewCharacter {
+              id: String
+            }
+
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"NewCharacter": "Character", "NewDroid": "Droid",},
+            renamed_schema.reverse_name_map,
+        )
+
     def test_non_null_rename(self):
         renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["NewDog"]})
         renamed_schema_string = dedent(
