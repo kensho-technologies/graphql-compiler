@@ -59,6 +59,149 @@ class TestRenameSchema(unittest.TestCase):
         rename_schema(original_ast, {"Human": ["NewHuman"]})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
 
+    def test_suppress_type(self):
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": []})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              id: String
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_no_op_rename(self):
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["Human"]})
+        self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_rename_one_to_many_including_original(self):
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["Human", "NewHuman", "OtherNewHuman"]})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              id: String
+            }
+
+            type NewHuman {
+              id: String
+            }
+
+            type OtherNewHuman {
+              id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+              NewHuman: NewHuman
+              OtherNewHuman: OtherNewHuman
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"OtherNewHuman": "Human", "NewHuman": "Human"}, renamed_schema.reverse_name_map)
+
+    def test_rename_one_to_many_not_including_original(self):
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["NewHuman", "OtherNewHuman"]})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type NewHuman {
+              id: String
+            }
+
+            type OtherNewHuman {
+              id: String
+            }
+
+            type SchemaQuery {
+              NewHuman: NewHuman
+              OtherNewHuman: OtherNewHuman
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"OtherNewHuman": "Human", "NewHuman": "Human"}, renamed_schema.reverse_name_map)
+
+    def test_suppress_multiple_types(self):
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_objects_schema), {"Human": [], "Droid": []}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_suppress_one_of_multiple_types(self):
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_objects_schema), {"Human": [], "Droid": ["Droid", "NewDroid"]}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              id: String
+            }
+
+            type NewDroid {
+              id: String
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              NewDroid: NewDroid
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"NewDroid": "Droid"}, renamed_schema.reverse_name_map)
+
     def test_swap_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_objects_schema), {"Human": ["Droid"], "Droid": ["Human"]}
@@ -123,6 +266,86 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
+        )
+
+    def test_one_to_many_cyclic_rename(self):
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_objects_schema), {"Human": ["Droid", "Dog"], "Droid": ["Human"], "Dog": []}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              name: String
+            }
+
+            type Dog {
+              name: String
+            }
+
+            type Human {
+              id: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              Dog: Dog
+              Human: Human
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"Dog": "Human", "Human": "Droid", "Droid": "Human"}, renamed_schema.reverse_name_map
+        )
+
+    def test_complicated_one_to_many_cyclic_rename(self):
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_objects_schema),
+            {"Human": ["Droid", "Dog"], "Droid": ["OtherDroid", "OtherHuman"], "Dog": ["Human"]}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              name: String
+            }
+
+            type Dog {
+              name: String
+            }
+
+            type OtherDroid {
+              id: String
+            }
+
+            type OtherHuman {
+              id: String
+            }
+
+            type Human {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              Dog: Dog
+              OtherDroid: OtherDroid
+              OtherHuman: OtherHuman
+              Human: Human
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"Dog": "Human", "Droid": "Human", "OtherDroid": "Droid", "OtherHuman": "Droid", "Human": "Dog"},
+            renamed_schema.reverse_name_map
         )
 
     def test_enum_rename(self):
