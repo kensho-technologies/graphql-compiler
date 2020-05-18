@@ -1021,6 +1021,10 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(InvalidTypeNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": ["__Type"]})
 
+    def test_illegal_name_in_one_to_many_rename(self):
+        with self.assertRaises(InvalidTypeNameError):
+            rename_schema(parse(ISS.basic_schema), {"Human": ["Human", "NewHuman", "__Type"]})
+
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
             def get(self, key, default=None):
