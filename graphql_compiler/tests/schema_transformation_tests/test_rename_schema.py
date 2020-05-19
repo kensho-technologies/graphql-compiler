@@ -59,7 +59,7 @@ class TestRenameSchema(unittest.TestCase):
         rename_schema(original_ast, {"Human": ["NewHuman"]})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
 
-    def test_suppress_type(self):
+    def test_basic_suppress(self):
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": []})
         renamed_schema_string = dedent(
             """\
@@ -89,7 +89,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_rename_one_to_many_including_original(self):
+    def test_one_to_many_rename_including_original(self):
         renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["Human", "NewHuman", "OtherNewHuman"]})
         renamed_schema_string = dedent(
             """\
@@ -121,7 +121,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"OtherNewHuman": "Human", "NewHuman": "Human"}, renamed_schema.reverse_name_map)
 
-    def test_rename_one_to_many_not_including_original(self):
+    def test_one_to_many_rename_not_including_original(self):
         renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["NewHuman", "OtherNewHuman"]})
         renamed_schema_string = dedent(
             """\
@@ -148,7 +148,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"OtherNewHuman": "Human", "NewHuman": "Human"}, renamed_schema.reverse_name_map)
 
-    def test_suppress_multiple_types(self):
+    def test_multiple_type_suppress(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_objects_schema), {"Human": [], "Droid": []}
         )
@@ -170,7 +170,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_suppress_one_of_multiple_types(self):
+    def test_one_to_many_rename_and_suppress(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_objects_schema), {"Human": [], "Droid": ["Droid", "NewDroid"]}
         )
@@ -268,7 +268,7 @@ class TestRenameSchema(unittest.TestCase):
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
 
-    def test_one_to_many_cyclic_rename(self):
+    def test_cyclic_one_to_many_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_objects_schema), {"Human": ["Droid", "Dog"], "Droid": ["Human"], "Dog": []}
         )
@@ -302,7 +302,7 @@ class TestRenameSchema(unittest.TestCase):
             {"Dog": "Human", "Human": "Droid", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
 
-    def test_complicated_one_to_many_cyclic_rename(self):
+    def test_cyclic_one_to_many_rename_complicated(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_objects_schema),
             {"Human": ["Droid", "Dog"], "Droid": ["OtherDroid", "OtherHuman"], "Dog": ["Human"]}
@@ -498,7 +498,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
 
-    def test_suppress_scalar(self):
+    def test_scalar_suppress(self):
         renamed_schema = rename_schema(
             parse(ISS.scalar_schema),
             {"Human": ["NewHuman"], "Date": [], "String": ["NewString"]},
@@ -558,7 +558,7 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
-    def test_suppress_entire_union(self):
+    def test_entire_union_suppress(self):
         renamed_schema = rename_schema(
             parse(ISS.union_schema), {"HumanOrDroid": [], "Droid": ["NewDroid"]}
         )
@@ -588,7 +588,7 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
-    def test_suppress_union_member(self):
+    def test_union_member_suppress(self):
         renamed_schema = rename_schema(
             parse(ISS.union_schema), {"HumanOrDroid": ["NewHumanOrDroid"], "Droid": []}
         )
@@ -663,7 +663,7 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
-    def test_suppress_list(self):
+    def test_list_suppress(self):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
             {
@@ -770,7 +770,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewDog": "Dog", "OtherNewDog": "Dog"}, renamed_schema.reverse_name_map)
 
-    def test_suppress_non_null(self):
+    def test_non_null_suppress(self):
         renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": []})
         renamed_schema_string = dedent(
             """\
@@ -790,7 +790,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
 
-    def test_non_null_cycle(self):
+    def test_non_null_cyclic_rename(self):
         renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["Cat"], "Cat": ["Dog"]})
         renamed_schema_string = dedent(
             """\
