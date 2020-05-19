@@ -226,7 +226,7 @@ def compile_xmlpath(element, compiler, **kw):
 
 
 def _construct_traversal_joins(traversals: List[SQLFoldTraversalDescriptor]) -> Join:
-    """Perform JOINs corresponding the described traversals.
+    """Perform JOINs corresponding to the described traversals.
 
     Args:
         traversals: list of at least 1 SQLFoldTraversalDescriptors in the order they were traversed,
@@ -237,7 +237,7 @@ def _construct_traversal_joins(traversals: List[SQLFoldTraversalDescriptor]) -> 
     """
     if len(traversals) == 0:
         raise AssertionError(
-            "Must pass at least 1 traversal in order to construct traversals JOINs. Received an "
+            "Must pass at least 1 traversal in order to construct traversal JOINs. Received an "
             "empty traversals list."
         )
     join_clause = traversals[0].from_table
@@ -504,7 +504,7 @@ class FoldSubqueryBuilder(object):
         - ENCODE is shorthand for a function composition which replaces '~' (null),
         '|' (list delimiter), '^' (escape) with '^n', '^d', '^e', respectively.
 
-        - Additional JOINs are optional and correspond to traversals inside the fold scope.
+        - JOINs are optional and correspond to traversals inside the fold scope.
 
         - VertexPrecedingOutput is the vertex immediately preceding the output vertex in the
         chain of traversals, beginning at the vertex immediately outside the fold.
