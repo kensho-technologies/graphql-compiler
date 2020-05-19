@@ -182,6 +182,21 @@ def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldPath, Set[FoldScopeLocati
     return folded_fields
 
 
+class SQLFoldTraversalDescriptor(NamedTuple):
+    """Describes the join information for traversals inside a fold."""
+
+    # DirectJoinDescriptor giving columns used to join from_table/to_table.
+    join_descriptor: DirectJoinDescriptor
+
+    # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
+    # appears on the left side of the join.
+    from_table: Alias
+
+    # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
+    # appears on the right side of the join.
+    to_table: Alias
+
+
 class XMLPathBinaryExpression(BinaryExpression):
     """Special override of BinaryExpression used to trigger `compile_xmlpath` during compile.
 
@@ -210,7 +225,41 @@ def compile_xmlpath(element, compiler, **kw):
     return compiler.visit_label(element, **kw)
 
 
-def _get_xml_path_clause(output_column: Column, predicate_expression: BinaryExpression):
+def _construct_traversal_joins(traversals: List[SQLFoldTraversalDescriptor]) -> Join:
+    """Perform JOINs corresponding the described traversals.
+
+    Args:
+        traversals: list of at least 1 SQLFoldTraversalDescriptors in the order they were traversed,
+                    from earliest to latest traversal.
+
+    Returns:
+        A Join statement describing the traversals.
+    """
+    if len(traversals) == 0:
+        raise AssertionError(
+            "Must pass at least 1 traversal in order to construct traversals JOINs. Received an "
+            "empty traversals list."
+        )
+    join_clause = traversals[0].from_table
+    for traversal_descriptor in traversals:
+        # JOINs from earlier in the chain of traversals are at the beginning of the list
+        # because JOINs are appended in the order they are traversed.
+        from_table = traversal_descriptor.from_table
+        to_table = traversal_descriptor.to_table
+        join_descriptor = traversal_descriptor.join_descriptor
+        join_clause = sqlalchemy.join(
+            join_clause,
+            to_table,
+            onclause=(
+                from_table.c[join_descriptor.from_column] == to_table.c[join_descriptor.to_column]
+            ),
+        )
+    return join_clause
+
+
+def _get_xml_path_clause(
+    output_column: Column, traversals: List[SQLFoldTraversalDescriptor]
+) -> Select:
     """Produce an MSSQL-style XML PATH-based aggregation subquery.
 
     XML PATH clause aggregates the values of the output_column from the output vertex
@@ -227,17 +276,19 @@ def _get_xml_path_clause(output_column: Column, predicate_expression: BinaryExpr
     Undoing the encoding above, as well as the XML reference entity encoding performed
     by the XML PATH statement, is deferred to post-processing when the list is retrieved
     from the string representation produced by the subquery. See post_process_mssql_folds
-    in graphql_compiler/post_processing/sql_post_processing.py for more information of
+    in graphql_compiler/post_processing/sql_post_processing.py for more information on
     post-processing the results.
 
-    Joining from the preceding vertex to the correct output vertex
-    is performed with the WHERE clause. This is contrasted with PostgreSQL subqueries,
-    in which the join from penultimate vertex to output vertex is done within
+    JOINing from the preceding vertex to the correct output vertex is performed in the WHERE
+    clause, while any other traversals are performed in the FROM/JOIN clause of the XML PATH query.
+    This is contrasted with PostgreSQL subqueries, in which all traversals are performed within
     the FROM/JOIN clause of the aggregation subquery.
 
     Args:
         output_column: SQLAlchemy Column, value being aggregated with XML PATH
-        predicate_expression: SQLAlchemy BinaryExpression, predicate used to filter
+        traversals: traversals performed within the fold. The earliest (first in the list) traversal
+                    is performed as a part of the WHERE clause. All other traversals will be JOINed
+                    to the FROM clause.
 
     Returns:
         A SQLAlchemy Selectable corresponding to the XML PATH subquery
@@ -261,29 +312,24 @@ def _get_xml_path_clause(output_column: Column, predicate_expression: BinaryExpr
     # from plain text.
     xml_column = XMLPathBinaryExpression(xml_column.left, xml_column.right, xml_column.operator)
 
+    select_statement = select([xml_column])
+
+    # Construct traversals. The earliest traversal (the first in the list of traversals) is
+    # performed as a part of the WHERE statement.
+    edge, from_alias, to_alias = traversals[0]
+    predicate_expression = from_alias.c[edge.from_column] == to_alias.c[edge.to_column]
+
+    # Any other traversals are performed as JOINs to the FROM statement.
+    traversals = traversals[1:]
+    if traversals:
+        join_clause = _construct_traversal_joins(traversals)
+        select_statement = select_statement.select_from(join_clause)
+
     # Coalesce to represent empty arrays as '' and return the XML PATH aggregated data.
     return func.COALESCE(
-        select([xml_column])
-        .where(predicate_expression)
-        .suffix_with("FOR XML PATH ('')")
-        .as_scalar(),
+        select_statement.where(predicate_expression).suffix_with("FOR XML PATH ('')").as_scalar(),
         expression.literal_column("''"),
     )
-
-
-class SQLFoldTraversalDescriptor(NamedTuple):
-    """Describes the join information for traversals inside a fold."""
-
-    # DirectJoinDescriptor giving columns used to join from_table/to_table.
-    join_descriptor: DirectJoinDescriptor
-
-    # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
-    # appears on the left side of the join.
-    from_table: Alias
-
-    # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
-    # appears on the right side of the join.
-    to_table: Alias
 
 
 class FoldSubqueryBuilder(object):
@@ -390,42 +436,19 @@ class FoldSubqueryBuilder(object):
 
     def _construct_fold_joins(self) -> Join:
         """Use the traversal descriptors to create the join clause for the tables in the fold."""
-        # Start the join clause with the from_table of the first traversal descriptor,
-        # which is the vertex immediately preceding the fold.
-        join_clause = self._traversal_descriptors[0].from_table
         if isinstance(self._dialect, MSDialect):
-            # For MSSQL the logic of the final join predicate (from the vertex preceding the output
-            # to the output vertex) occurs in the WHERE clause of the SELECT ... FOR XML PATH('')
-            # so we don't iterate all n joins for MSSQL, just the first n-1.
-            terminating_index = len(self._traversal_descriptors) - 1
+            # For MSSQL, traversals are performed as a part of the SELECT ... FOR XML PATH('')
+            # statement, which is contained in self._outputs. The JOIN clause is simply the
+            # from_table of the first traversal descriptor, which is the vertex immediately
+            # preceding the fold.
+            return self._traversal_descriptors[0].from_table
         elif isinstance(self._dialect, PGDialect):
-            terminating_index = len(self._traversal_descriptors)
+            return _construct_traversal_joins(self._traversal_descriptors)
         else:
             raise NotImplementedError(
-                "Fold only supported for MSSQL and "
-                f"PostgreSQL, dialect was set to {self._dialect.name}."
+                "Fold only supported for MSSQL and PostgreSQL, "
+                f"dialect was set to {self._dialect.name}."
             )
-
-        traversal_descriptors = self._traversal_descriptors[:terminating_index]
-        # Starting at the first from_table, join traversed vertices in order until the output
-        # vertex (PostgreSQL) is reached, or until the last vertex preceding the output
-        # vertex (MSSQL) is reached.
-        for traversal_descriptor in traversal_descriptors:
-            # Joins from earlier in the chain of traversals are at the beginning of the list
-            # b/c joins are appended in the order they are traversed.
-            from_table = traversal_descriptor.from_table
-            to_table = traversal_descriptor.to_table
-            join_descriptor = traversal_descriptor.join_descriptor
-            join_clause = sqlalchemy.join(
-                join_clause,
-                to_table,
-                onclause=(
-                    from_table.c[join_descriptor.from_column]
-                    == to_table.c[join_descriptor.to_column]
-                ),
-            )
-
-        return join_clause
 
     def _construct_fold_subquery(self, subquery_from_clause: Join) -> Select:
         """Combine all parts of the fold object to produce the complete fold subquery."""
@@ -462,10 +485,7 @@ class FoldSubqueryBuilder(object):
         )
 
     def _get_mssql_xml_path_column(
-        self,
-        intermediate_fold_output_name: str,
-        fold_output_field: str,
-        last_traversal: SQLFoldTraversalDescriptor,
+        self, intermediate_fold_output_name: str, fold_output_field: str,
     ) -> Label:
         """Select the MSSQL XML PATH aggregation of the fold output field, labeled as requested.
 
@@ -476,41 +496,39 @@ class FoldSubqueryBuilder(object):
             COALESCE('|' + ENCODE(OutputVertex.output_field), '~')
         FROM
             OutputVertex
+        JOIN ... ON ...
         WHERE
             VertexPrecedingOutput.primary_key = OutputVertex.foreign_key
         FOR XML PATH ('')
 
         - ENCODE is shorthand for a function composition which replaces '~' (null),
-        '|' (list delimiter), '^' (escape) with '^n', '^d', '^e', resp.
+        '|' (list delimiter), '^' (escape) with '^n', '^d', '^e', respectively.
+
+        - Additional JOINs are optional and correspond to traversals inside the fold scope.
 
         - VertexPrecedingOutput is the vertex immediately preceding the output vertex in the
         chain of traversals, beginning at the vertex immediately outside the fold.
-        VertexPrecedingOutput is the `from_table` of the last traversal descriptor tuple
-        added to the fold's `traversal_descriptors` list.
+        VertexPrecedingOutput is the `from_table` of the last SQLFoldTraversalDescriptor
+        added to the fold's `_traversal_descriptors` list.
 
-        - The join predicate may have primary_key and foreign_key reversed depending on the
+        - The JOIN predicate may have primary_key and foreign_key reversed depending on the
         direction of the edge connecting VertexPrecedingOutput to OutputVertex.
 
         Args:
             intermediate_fold_output_name: string label to give to the resulting XML PATH subquery.
             fold_output_field: string name of the column requested from the output vertex.
-            last_traversal: SQLFoldTraversalDescriptor describing tables/WHERE predicate
-                            used in subquery.
 
         Returns:
-            Selectable for XML PATH aggregation subquery
+            Selectable for XML PATH aggregation subquery.
         """
         if self._output_vertex_alias is None:
             raise AssertionError(
                 "Attempted to aggregate with XML PATH before an _output_vertex_alias had been "
                 f"found  during fold {self}"
             )
-        # Use join info tuple for most recent traversal to set WHERE clause for XML PATH subquery.
-        edge, from_alias, to_alias = last_traversal
 
         return _get_xml_path_clause(
-            self._output_vertex_alias.c[fold_output_field],
-            (from_alias.c[edge.from_column] == to_alias.c[edge.to_column]),
+            self._output_vertex_alias.c[fold_output_field], self._traversal_descriptors,
         ).label(intermediate_fold_output_name)
 
     def _get_fold_output_column_clause(self, fold_output_field: str) -> Label:
@@ -526,10 +544,7 @@ class FoldSubqueryBuilder(object):
             if isinstance(self._dialect, MSDialect):
                 # MSSQL uses XML PATH aggregation.
                 return self._get_mssql_xml_path_column(
-                    intermediate_fold_output_name,
-                    fold_output_field,
-                    # output is last vertex traversed
-                    self._traversal_descriptors[-1],
+                    intermediate_fold_output_name, fold_output_field,
                 )
             elif isinstance(self._dialect, PGDialect):
                 # PostgreSQL uses ARRAY_AGG.
@@ -541,7 +556,7 @@ class FoldSubqueryBuilder(object):
                 )
 
         raise AssertionError(
-            "Reached end of function _get_mssql_xml_path_column without returning a value "
+            "Reached end of function _get_fold_output_column_clause without returning a value "
             f"during fold {self}. This code should be unreachable."
         )
 
@@ -652,12 +667,6 @@ class FoldSubqueryBuilder(object):
         if len(self._traversal_descriptors) == 0:
             raise AssertionError(
                 f"No traversed vertices visited. Invalid state encountered during fold {self}."
-            )
-
-        # For now, folds with more than one traversal (i.e. join) are not implemented in MSSQL.
-        if len(self._traversal_descriptors) > 1 and isinstance(self._dialect, MSDialect):
-            raise NotImplementedError(
-                "Folds containing multiple traversals are not implemented in MSSQL."
             )
 
         # For now, folds with multiple outputs are not implemented in MSSQL. Each output comes

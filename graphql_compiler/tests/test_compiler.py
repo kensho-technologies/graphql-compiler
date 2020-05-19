@@ -5847,8 +5847,32 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         """
-        # TODO: implement multiple traversals for MSSQL in a separate PR
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS sibling_and_self_names_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_4]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                        ON [Animal_4].uuid = [Animal_3].parent
+                        WHERE [Animal_2].parent = [Animal_4].uuid
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]) AS folded_subquery_1
+                ON [Animal_1].uuid = folded_subquery_1.uuid
+            """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -5939,7 +5963,35 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS sibling_and_self_species_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Species_1].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_3]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                        ON [Animal_3].uuid = [Animal_4].parent
+                        JOIN db_1.schema_1.[Species] AS [Species_1]
+                        ON [Animal_4].species = [Species_1].uuid
+                        WHERE [Animal_2].parent = [Animal_3].uuid
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -6042,7 +6094,34 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS sibling_and_self_species_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_1].parent = [Animal_2].uuid
+            JOIN (
+                SELECT
+                    [Animal_3].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Species_1].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_4]
+                        JOIN db_1.schema_1.[Species] AS [Species_1]
+                        ON [Animal_4].species = [Species_1].uuid
+                        WHERE [Animal_3].uuid = [Animal_4].parent
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -9945,7 +10024,39 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS grandchild_names_list,
+                [Animal_2].name AS grandparent_name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+            ON [Animal_1].parent = [Animal_3].uuid
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_3].parent = [Animal_2].uuid
+            JOIN (
+                SELECT
+                    [Animal_4].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_5].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_6]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_5]
+                        ON [Animal_6].uuid = [Animal_5].parent
+                        WHERE [Animal_4].uuid = [Animal_6].parent
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_4]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+            WHERE [Animal_2].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -10081,7 +10192,39 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS grandchild_names_list,
+                [Animal_2].name AS grandparent_name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_3].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_4].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_5]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                        ON [Animal_5].uuid = [Animal_4].parent
+                        WHERE [Animal_3].uuid = [Animal_5].parent
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_6]
+            ON [Animal_1].parent = [Animal_6].uuid
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_6].parent = [Animal_2].uuid
+            WHERE [Animal_2].uuid IS NOT NULL OR [Animal_6].uuid IS NULL
+"""
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
