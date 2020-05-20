@@ -1186,7 +1186,7 @@ class CompilerTests(unittest.TestCase):
         """
         expected_gremlin = NotImplementedError
         expected_mssql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = NotImplementedError
         expected_postgresql = """
             SELECT
                 "Species_1".name AS species_name
@@ -7460,7 +7460,7 @@ class CompilerTests(unittest.TestCase):
               ON "Animal_1".uuid = folded_subquery_1.uuid
               """
 
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7514,7 +7514,7 @@ class CompilerTests(unittest.TestCase):
             WHERE folded_subquery_1.fold_output__x_count >= %(min_children)s
         """
 
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7756,7 +7756,7 @@ class CompilerTests(unittest.TestCase):
         """
         expected_gremlin = NotImplementedError
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7822,7 +7822,7 @@ class CompilerTests(unittest.TestCase):
                 folded_subquery_1.fold_output__x_count >= %(min_children)s AND
                 folded_subquery_2.fold_output__x_count >= %(min_related)s
         """
-        expected_cypher = SKIP_TEST
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7855,7 +7855,7 @@ class CompilerTests(unittest.TestCase):
         """
         expected_gremlin = NotImplementedError
         expected_mssql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = NotImplementedError
         expected_postgresql = """
             SELECT
                 "Species_1".name AS name
