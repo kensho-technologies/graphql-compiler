@@ -531,6 +531,27 @@ class IntegrationTests(TestCase):
                 ],
                 [test_backend.MSSQL],
             ),
+            # Query 6: _x_count.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        name @output(out_name: "child_names")
+                        _x_count @output(out_name: "child_count")
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1", },
+                [
+                    {
+                        "child_names": ["Animal 1", "Animal 2", "Animal 3"],
+                        "child_count": 3,
+                    },
+                ],
+                [test_backend.MSSQL, test_backend.NEO4J],
+            ),
         ]
 
         for graphql_query, parameters, expected_results, excluded_backends in queries:
