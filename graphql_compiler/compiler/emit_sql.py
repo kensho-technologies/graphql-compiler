@@ -188,7 +188,7 @@ class SQLFoldTraversalDescriptor(NamedTuple):
     # DirectJoinDescriptor giving columns used to join from_table/to_table.
     join_descriptor: DirectJoinDescriptor
 
-    # SQLAlchemy table corresponding to corresponding to the outside vertex of the traversal,
+    # SQLAlchemy table corresponding to the outside vertex of the traversal,
     # appears on the left side of the join.
     from_table: Alias
 
