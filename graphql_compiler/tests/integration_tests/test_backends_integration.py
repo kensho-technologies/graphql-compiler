@@ -543,13 +543,8 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1", },
-                [
-                    {
-                        "child_names": ["Animal 1", "Animal 2", "Animal 3"],
-                        "child_count": 3,
-                    },
-                ],
+                {"starting_animal_name": "Animal 1",},
+                [{"child_names": ["Animal 1", "Animal 2", "Animal 3"], "child_count": 3,},],
                 [test_backend.MSSQL, test_backend.NEO4J],
             ),
         ]
