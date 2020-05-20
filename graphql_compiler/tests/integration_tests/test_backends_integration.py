@@ -531,6 +531,23 @@ class IntegrationTests(TestCase):
                 ],
                 [test_backend.MSSQL],
             ),
+            # Query 6: Traversal in a fold scope.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        out_Animal_ParentOf {
+                            name @output(out_name: "grandchild_names")
+                        }
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1",},
+                [{"grandchild_names": ["Animal 1", "Animal 2", "Animal 3", "Animal 4"],},],
+                [],
+            ),
         ]
 
         for graphql_query, parameters, expected_results, excluded_backends in queries:
