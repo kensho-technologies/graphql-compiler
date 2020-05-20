@@ -531,7 +531,24 @@ class IntegrationTests(TestCase):
                 ],
                 [test_backend.MSSQL],
             ),
-            # Query 6: _x_count.
+            # Query 6: Traversal in a fold scope.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        out_Animal_ParentOf {
+                            name @output(out_name: "grandchild_names")
+                        }
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1",},
+                [{"grandchild_names": ["Animal 1", "Animal 2", "Animal 3", "Animal 4"],},],
+                [],
+            ),
+            # Query 7: _x_count.
             (
                 """
             {
