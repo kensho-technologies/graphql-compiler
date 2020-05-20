@@ -192,7 +192,7 @@ class SQLFoldTraversalDescriptor(NamedTuple):
     # appears on the left side of the join.
     from_table: Alias
 
-    # SQLAlchemy table corresponding to corresponding to the inside vertex of the traversal,
+    # SQLAlchemy table corresponding to the inside vertex of the traversal,
     # appears on the right side of the join.
     to_table: Alias
 
