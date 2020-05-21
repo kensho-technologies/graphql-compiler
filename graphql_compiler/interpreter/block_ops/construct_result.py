@@ -2,6 +2,7 @@ from typing import Any, Dict, Iterable
 
 from ...compiler.blocks import ConstructResult
 from ...compiler.expressions import Expression
+from ...compiler.metadata import QueryMetadataTable
 from ..debugging import print_tap
 from ..typedefs import GLOBAL_LOCATION_TYPE_NAME, DataContext, DataToken, InterpreterAdapter
 from ..expression_ops import evaluate_expression
@@ -9,6 +10,7 @@ from ..expression_ops import evaluate_expression
 
 def _produce_output(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     output_name: str,
     output_expression: Expression,
@@ -18,7 +20,9 @@ def _produce_output(
         'outputting ' + output_name, data_contexts)
 
     contexts_and_values = evaluate_expression(
-        adapter, query_arguments, GLOBAL_LOCATION_TYPE_NAME, output_expression, data_contexts)
+        adapter, query_metadata_table, query_arguments,
+        GLOBAL_LOCATION_TYPE_NAME, output_expression, data_contexts,
+    )
 
     for data_context, value in contexts_and_values:
         data_context.peek_value_on_stack()[output_name] = value
@@ -27,6 +31,7 @@ def _produce_output(
 
 def generate_construct_result_outputs(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     block: ConstructResult,
     data_contexts: Iterable[DataContext],
@@ -40,7 +45,9 @@ def generate_construct_result_outputs(
 
     for output_name, output_expression in output_fields.items():
         data_contexts = _produce_output(
-            adapter, query_arguments, output_name, output_expression, data_contexts)
+            adapter, query_metadata_table, query_arguments,
+            output_name, output_expression, data_contexts,
+        )
 
     return (
         data_context.pop_value_from_stack()

@@ -2,6 +2,7 @@ from itertools import chain
 from typing import Any, Dict, Iterable, Optional
 
 from ...compiler.blocks import Recurse
+from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 
 
@@ -69,6 +70,7 @@ def _unwrap_recursed_data_context(
 
 def handle_recurse_block(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     block: Recurse,

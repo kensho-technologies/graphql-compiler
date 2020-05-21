@@ -3,6 +3,7 @@ from typing import Any, Dict, Iterable, Tuple, Union
 from ...compiler.expressions import (
     ContextField, ContextFieldExistence, Literal, LocalField, OutputContextField, Variable,
 )
+from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .typedefs import ExpressionEvaluatorFunc
 
@@ -10,6 +11,7 @@ from .typedefs import ExpressionEvaluatorFunc
 def evaluate_local_field(
     expression_evaluator_func: ExpressionEvaluatorFunc,
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: LocalField,
@@ -22,6 +24,7 @@ def evaluate_local_field(
 def evaluate_context_field(
     expression_evaluator_func: ExpressionEvaluatorFunc,
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: Union[ContextField, OutputContextField],
@@ -35,14 +38,16 @@ def evaluate_context_field(
         for data_context in data_contexts
     )
 
-    # TODO(predrag): Current_type_name here is passed incorrectly!
-    #                It's the type of the current evaluation scope, whereas it should be
-    #                the type of the location from the given context!
+    # The ContextField being evaluated points to a location different than the location of the scope
+    # within which it is found. That means the "current_type_name" when evaluating that field may
+    # be different than the caller-provided value for "current_type_name". We load the correct value
+    # from the query metadata on the basis of the location within the expression.
+    context_type_name = query_metadata_table.get_location_info(location).type.name
 
     return (
         (moved_data_context.pop_value_from_stack(), value)
         for moved_data_context, value in adapter.project_property(
-            moved_contexts, current_type_name, field_name,
+            moved_contexts, context_type_name, field_name,
         )
     )
 
@@ -50,6 +55,7 @@ def evaluate_context_field(
 def evaluate_context_field_existence(
     expression_evaluator_func: ExpressionEvaluatorFunc,
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: ContextFieldExistence,
@@ -65,6 +71,7 @@ def evaluate_context_field_existence(
 def evaluate_variable(
     expression_evaluator_func: ExpressionEvaluatorFunc,
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: Variable,
@@ -80,6 +87,7 @@ def evaluate_variable(
 def evaluate_literal(
     expression_evaluator_func: ExpressionEvaluatorFunc,
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: Literal,

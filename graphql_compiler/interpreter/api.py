@@ -130,9 +130,11 @@ def interpret_ir(
 
     for block, current_type_name in zip(middle_blocks, current_type_list):
         current_data_contexts = generate_block_outputs(
-            adapter, query_arguments, current_type_name, block, current_data_contexts)
+            adapter, query_metadata_table, query_arguments,
+            current_type_name, block, current_data_contexts,
+        )
 
     current_data_contexts = print_tap('ending contexts', current_data_contexts)
 
     return generate_construct_result_outputs(
-        adapter, query_arguments, last_block, current_data_contexts)
+        adapter, query_metadata_table, query_arguments, last_block, current_data_contexts)

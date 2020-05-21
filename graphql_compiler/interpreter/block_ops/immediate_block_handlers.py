@@ -2,12 +2,14 @@ from typing import Any, Dict, Iterable
 
 from ...compiler.blocks import Backtrack, CoerceType, Filter, MarkLocation, Traverse
 from ...compiler.helpers import get_only_element_from_collection
+from ...compiler.metadata import QueryMetadataTable
 from ..expression_ops import evaluate_expression
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 
 
 def handle_filter_block(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     block: Filter,
@@ -25,7 +27,8 @@ def handle_filter_block(
     yield from (
         data_context
         for data_context, predicate_value in evaluate_expression(
-            adapter, query_arguments, current_type_name, predicate, data_contexts
+            adapter, query_metadata_table, query_arguments,
+            current_type_name, predicate, data_contexts,
         )
         if predicate_value or data_context.current_token is None
     )
@@ -33,6 +36,7 @@ def handle_filter_block(
 
 def handle_traverse_block(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     block: Traverse,
@@ -59,6 +63,7 @@ def handle_traverse_block(
 
 def handle_coerce_type_block(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     block: CoerceType,
@@ -76,6 +81,7 @@ def handle_coerce_type_block(
 
 def handle_mark_location_block(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     block: MarkLocation,
@@ -94,6 +100,7 @@ def handle_mark_location_block(
 
 def handle_backtrack_block(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     block: Backtrack,

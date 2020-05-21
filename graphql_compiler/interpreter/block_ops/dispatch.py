@@ -4,6 +4,7 @@ from ...compiler.blocks import (
     Backtrack, BasicBlock, CoerceType, EndOptional, Filter, GlobalOperationsStart, MarkLocation,
     Recurse, Traverse,
 )
+from ...compiler.metadata import QueryMetadataTable
 from ..debugging import print_tap
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .immediate_block_handlers import (
@@ -15,6 +16,7 @@ from .recurse_block_handler import handle_recurse_block
 
 def generate_block_outputs(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     block: BasicBlock,
@@ -36,4 +38,6 @@ def generate_block_outputs(
     }
     handler = handler_functions[type(block)]
 
-    return handler(adapter, query_arguments, current_type_name, block, data_contexts)
+    return handler(
+        adapter, query_metadata_table, query_arguments, current_type_name, block, data_contexts,
+    )

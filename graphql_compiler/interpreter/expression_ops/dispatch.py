@@ -4,6 +4,7 @@ from ...compiler.expressions import (
     BinaryComposition, ContextField, ContextFieldExistence, Expression, Literal, LocalField,
     OutputContextField, TernaryConditional, Variable,
 )
+from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .composition_expression_handlers import (
     evaluate_binary_composition, evaluate_ternary_conditional,
@@ -16,6 +17,7 @@ from .immediate_expression_handlers import (
 
 def evaluate_expression(
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: Expression,
@@ -39,5 +41,6 @@ def evaluate_expression(
     #       the specific expression handler since some expressions contain nested sub-expressions.
     #       If we hadn't passed in this function as an argument, we'd have a circular import issue.
     return handler(
-        evaluate_expression, adapter, query_arguments, current_type_name, expression, data_contexts
+        evaluate_expression, adapter, query_metadata_table,
+        query_arguments, current_type_name, expression, data_contexts,
     )

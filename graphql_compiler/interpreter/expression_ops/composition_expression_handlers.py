@@ -1,6 +1,7 @@
 from typing import Any, Dict, Iterable, Tuple
 
 from ...compiler.expressions import BinaryComposition, TernaryConditional
+from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .operators import apply_operator
 from .typedefs import ExpressionEvaluatorFunc
@@ -18,6 +19,7 @@ def _push_values_onto_data_context_stack(
 def evaluate_binary_composition(
     expression_evaluator_func: ExpressionEvaluatorFunc,
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: BinaryComposition,
@@ -25,12 +27,14 @@ def evaluate_binary_composition(
 ) -> Iterable[Tuple[DataContext, Any]]:
     data_contexts = _push_values_onto_data_context_stack(
         expression_evaluator_func(
-            adapter, query_arguments, current_type_name, expression.left, data_contexts,
+            adapter, query_metadata_table, query_arguments,
+            current_type_name, expression.left, data_contexts,
         )
     )
     data_contexts = _push_values_onto_data_context_stack(
         expression_evaluator_func(
-            adapter, query_arguments, current_type_name, expression.right, data_contexts,
+            adapter, query_metadata_table, query_arguments,
+            current_type_name, expression.right, data_contexts,
         )
     )
 
@@ -48,6 +52,7 @@ def evaluate_binary_composition(
 def evaluate_ternary_conditional(
     expression_evaluator_func: ExpressionEvaluatorFunc,
     adapter: InterpreterAdapter[DataToken],
+    query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_type_name: str,
     expression: TernaryConditional,
@@ -56,17 +61,20 @@ def evaluate_ternary_conditional(
     # TODO(predrag): Try to optimize this to avoid evaluating sides of expressions we might not use.
     data_contexts = _push_values_onto_data_context_stack(
         expression_evaluator_func(
-            adapter, query_arguments, current_type_name, expression.predicate, data_contexts
+            adapter, query_metadata_table, query_arguments,
+            current_type_name, expression.predicate, data_contexts,
         )
     )
     data_contexts = _push_values_onto_data_context_stack(
         expression_evaluator_func(
-            adapter, query_arguments, current_type_name, expression.if_true, data_contexts
+            adapter, query_metadata_table, query_arguments,
+            current_type_name, expression.if_true, data_contexts,
         )
     )
     data_contexts = _push_values_onto_data_context_stack(
         expression_evaluator_func(
-            adapter, query_arguments, current_type_name, expression.if_false, data_contexts
+            adapter, query_metadata_table, query_arguments,
+            current_type_name, expression.if_false, data_contexts,
         )
     )
 
