@@ -33,7 +33,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_basic_rename(self):
-        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["NewHuman"]})
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": "NewHuman"})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -56,25 +56,22 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_original_unmodified(self):
         original_ast = parse(ISS.basic_schema)
-        rename_schema(original_ast, {"Human": ["NewHuman"]})
+        rename_schema(original_ast, {"Human": "NewHuman"})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
 
     def test_basic_suppress(self):
-        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": []})
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
         renamed_schema_string = dedent(
             """\
             schema {
               query: SchemaQuery
             }
-
             type Droid {
               id: String
             }
-
             type Dog {
               nickname: String
             }
-
             type SchemaQuery {
               Droid: Droid
               Dog: Dog
@@ -89,79 +86,18 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_one_to_many_rename_including_original(self):
-        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["Human", "NewHuman", "OtherNewHuman"]})
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type Human {
-              id: String
-            }
-
-            type NewHuman {
-              id: String
-            }
-
-            type OtherNewHuman {
-              id: String
-            }
-
-            type SchemaQuery {
-              Human: Human
-              NewHuman: NewHuman
-              OtherNewHuman: OtherNewHuman
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"OtherNewHuman": "Human", "NewHuman": "Human"}, renamed_schema.reverse_name_map)
-
-    def test_one_to_many_rename_not_including_original(self):
-        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": ["NewHuman", "OtherNewHuman"]})
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type NewHuman {
-              id: String
-            }
-
-            type OtherNewHuman {
-              id: String
-            }
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-              OtherNewHuman: OtherNewHuman
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"OtherNewHuman": "Human", "NewHuman": "Human"}, renamed_schema.reverse_name_map)
-
     def test_multiple_type_suppress(self):
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": [], "Droid": []}
+            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": None}
         )
         renamed_schema_string = dedent(
             """\
             schema {
               query: SchemaQuery
             }
-
             type Dog {
               nickname: String
             }
-
             type SchemaQuery {
               Dog: Dog
             }
@@ -170,41 +106,9 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_one_to_many_rename_and_suppress(self):
-        renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": [], "Droid": ["Droid", "NewDroid"]}
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Droid {
-              id: String
-            }
-
-            type NewDroid {
-              id: String
-            }
-
-            type Dog {
-              nickname: String
-            }
-
-            type SchemaQuery {
-              Droid: Droid
-              NewDroid: NewDroid
-              Dog: Dog
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewDroid": "Droid"}, renamed_schema.reverse_name_map)
-
     def test_swap_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": ["Droid"], "Droid": ["Human"]}
+            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Human"}
         )
         renamed_schema_string = dedent(
             """\
@@ -236,7 +140,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_cyclic_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": ["Droid"], "Droid": ["Dog"], "Dog": ["Human"]}
+            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Dog", "Dog": "Human"}
         )
         renamed_schema_string = dedent(
             """\
@@ -268,89 +172,9 @@ class TestRenameSchema(unittest.TestCase):
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
 
-    def test_cyclic_one_to_many_rename(self):
-        renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": ["Droid", "Dog"], "Droid": ["Human"], "Dog": []}
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Droid {
-              name: String
-            }
-
-            type Dog {
-              name: String
-            }
-
-            type Human {
-              id: String
-            }
-
-            type SchemaQuery {
-              Droid: Droid
-              Dog: Dog
-              Human: Human
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual(
-            {"Dog": "Human", "Human": "Droid", "Droid": "Human"}, renamed_schema.reverse_name_map
-        )
-
-    def test_cyclic_one_to_many_rename_complicated(self):
-        renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema),
-            {"Human": ["Droid", "Dog"], "Droid": ["OtherDroid", "OtherHuman"], "Dog": ["Human"]}
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Droid {
-              name: String
-            }
-
-            type Dog {
-              name: String
-            }
-
-            type OtherDroid {
-              id: String
-            }
-
-            type OtherHuman {
-              id: String
-            }
-
-            type Human {
-              nickname: String
-            }
-
-            type SchemaQuery {
-              Droid: Droid
-              Dog: Dog
-              OtherDroid: OtherDroid
-              OtherHuman: OtherHuman
-              Human: Human
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual(
-            {"Dog": "Human", "Droid": "Human", "OtherDroid": "Droid", "OtherHuman": "Droid", "Human": "Dog"},
-            renamed_schema.reverse_name_map
-        )
-
     def test_enum_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.enum_schema), {"Droid": ["NewDroid"], "Height": ["NewHeight"]}
+            parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}
         )
         renamed_schema_string = dedent(
             """\
@@ -379,7 +203,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_interface_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.interface_schema), {"Kid": ["NewKid"], "Character": ["NewCharacter"]}
+            parse(ISS.interface_schema), {"Kid": "NewKid", "Character": "NewCharacter"}
         )
         renamed_schema_string = dedent(
             """\
@@ -409,7 +233,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_multiple_interfaces_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_interfaces_schema),
-            {"Human": ["NewHuman"], "Character": ["NewCharacter"], "Creature": ["Creature"]},
+            {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "Creature"},
         )
         renamed_schema_string = dedent(
             """\
@@ -445,63 +269,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_scalar_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.scalar_schema),
-            {"Human": ["NewHuman"], "Date": ["NewDate"], "String": ["NewString"]},
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type NewHuman {
-              id: String
-              birthday: Date
-            }
-
-            scalar Date
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
-
-    def test_scalar_one_to_many_rename(self):
-        renamed_schema = rename_schema(
-            parse(ISS.scalar_schema),
-            {"Human": ["NewHuman"], "Date": ["Date", "NewDate", "OtherNewDate"], "String": ["NewString"]},
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type NewHuman {
-              id: String
-              birthday: Date
-            }
-
-            scalar Date
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
-
-    def test_scalar_suppress(self):
-        renamed_schema = rename_schema(
-            parse(ISS.scalar_schema),
-            {"Human": ["NewHuman"], "Date": [], "String": ["NewString"]},
+            {"Human": "NewHuman", "Date": "NewDate", "String": "NewString"},
         )
         renamed_schema_string = dedent(
             """\
@@ -528,7 +296,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_union_rename(self):
         renamed_schema = rename_schema(
-            parse(ISS.union_schema), {"HumanOrDroid": ["NewHumanOrDroid"], "Droid": ["NewDroid"]}
+            parse(ISS.union_schema), {"HumanOrDroid": "NewHumanOrDroid", "Droid": "NewDroid"}
         )
         renamed_schema_string = dedent(
             """\
@@ -560,22 +328,19 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_entire_union_suppress(self):
         renamed_schema = rename_schema(
-            parse(ISS.union_schema), {"HumanOrDroid": [], "Droid": ["NewDroid"]}
+            parse(ISS.union_schema), {"HumanOrDroid": None, "Droid": "NewDroid"}
         )
         renamed_schema_string = dedent(
             """\
             schema {
               query: SchemaQuery
             }
-
             type Human {
               id: String
             }
-
             type NewDroid {
               id: String
             }
-
             type SchemaQuery {
               Human: Human
               NewDroid: NewDroid
@@ -590,20 +355,17 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_union_member_suppress(self):
         renamed_schema = rename_schema(
-            parse(ISS.union_schema), {"HumanOrDroid": ["NewHumanOrDroid"], "Droid": []}
+            parse(ISS.union_schema), {"HumanOrDroid": "NewHumanOrDroid", "Droid": None}
         )
         renamed_schema_string = dedent(
             """\
             schema {
               query: SchemaQuery
             }
-
             type Human {
               id: String
             }
-
             union NewHumanOrDroid = Human
-
             type SchemaQuery {
               Human: Human
             }
@@ -619,12 +381,12 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
             {
-                "Droid": ["NewDroid"],
-                "Character": ["NewCharacter"],
-                "Height": ["NewHeight"],
-                "Date": ["NewDate"],
-                "id": ["NewId"],
-                "String": ["NewString"],
+                "Droid": "NewDroid",
+                "Character": "NewCharacter",
+                "Height": "NewHeight",
+                "Date": "NewDate",
+                "id": "NewId",
+                "String": "NewString",
             },
         )
         renamed_schema_string = dedent(
@@ -667,12 +429,12 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
             {
-                "Droid": ["NewDroid"],
-                "Character": ["NewCharacter"],
-                "Height": [],
-                "Date": ["NewDate"],
-                "id": ["NewId"],
-                "String": ["NewString"],
+                "Droid": "NewDroid",
+                "Character": "NewCharacter",
+                "Height": None,
+                "Date": "NewDate",
+                "id": "NewId",
+                "String": "NewString",
             },
         )
         renamed_schema_string = dedent(
@@ -680,24 +442,19 @@ class TestRenameSchema(unittest.TestCase):
             schema {
               query: SchemaQuery
             }
-
             type NewDroid implements NewCharacter {
               id: String
               dates: [Date]
               friends: [NewDroid]
               enemies: [NewCharacter]
             }
-
             type SchemaQuery {
               NewDroid: [NewDroid]
             }
-
             scalar Date
-
             interface NewCharacter {
               id: String
             }
-
         """
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
@@ -707,7 +464,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_non_null_rename(self):
-        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["NewDog"]})
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "NewDog"})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -719,94 +476,46 @@ class TestRenameSchema(unittest.TestCase):
               friend: NewDog!
             }
 
-            type Cat {
-              id: String
-            }
-
             type SchemaQuery {
               NewDog: NewDog!
-              Cat: Cat
             }
         """
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
-
-    def test_non_null_one_to_many_rename(self):
-        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["Dog", "NewDog", "OtherNewDog"]})
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Dog {
-              id: String!
-              friend: NewDog!
-            }
-
-            type NewDog {
-              id: String!
-              friend: NewDog!
-            }
-
-            type OtherNewDog {
-              id: String!
-              friend: NewDog!
-            }
-
-            type Cat {
-              id: String
-            }
-
-            type SchemaQuery {
-              Dog: Dog!
-              NewDog: NewDog!
-              OtherNewDog: OtherNewDog!
-              Cat: Cat
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewDog": "Dog", "OtherNewDog": "Dog"}, renamed_schema.reverse_name_map)
 
     def test_non_null_suppress(self):
-        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": []})
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": None})
         renamed_schema_string = dedent(
             """\
             schema {
               query: SchemaQuery
             }
-
             type Cat {
               id: String
             }
-
             type SchemaQuery {
               Cat: Cat
             }
         """
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_non_null_cyclic_rename(self):
-        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": ["Cat"], "Cat": ["Dog"]})
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "Cat", "Cat": "Dog"})
         renamed_schema_string = dedent(
             """\
             schema {
               query: SchemaQuery
             }
-
             type Cat {
               id: String!
               friend: Cat!
             }
-
             type Dog {
               id: String
             }
-
             type SchemaQuery {
               Cat: Cat!
               Dog: Dog
@@ -819,7 +528,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_directive_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.directive_schema),
-            {"Human": ["NewHuman"], "Droid": ["NewDroid"], "stitch": ["NewStitch"],},
+            {"Human": "NewHuman", "Droid": "NewDroid", "stitch": "NewStitch",},
         )
         renamed_schema_string = dedent(
             """\
@@ -865,7 +574,7 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        renamed_schema = rename_schema(parse(schema_string), {"Human": ["NewHuman"], "id": ["Id"]})
+        renamed_schema = rename_schema(parse(schema_string), {"Human": "NewHuman", "id": "Id"})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -907,7 +616,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human1": ["Human"], "Human2": ["Human"]})
+            rename_schema(parse(schema_string), {"Human1": "Human", "Human2": "Human"})
 
     def test_clashing_type_single_rename(self):
         schema_string = dedent(
@@ -932,7 +641,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human2": ["Human"]})
+            rename_schema(parse(schema_string), {"Human2": "Human"})
 
     def test_clashing_type_one_unchanged_rename(self):
         schema_string = dedent(
@@ -957,7 +666,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human": ["Human"], "Human2": ["Human"]})
+            rename_schema(parse(schema_string), {"Human": "Human", "Human2": "Human"})
 
     def test_clashing_scalar_type_rename(self):
         schema_string = dedent(
@@ -979,7 +688,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human": ["SCALAR"]})
+            rename_schema(parse(schema_string), {"Human": "SCALAR"})
 
     def test_builtin_type_conflict_rename(self):
         schema_string = dedent(
@@ -999,36 +708,32 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaNameConflictError):
-            rename_schema(parse(schema_string), {"Human": ["String"]})
+            rename_schema(parse(schema_string), {"Human": "String"})
 
     def test_illegal_rename_start_with_number(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": ["0Human"]})
+            rename_schema(parse(ISS.basic_schema), {"Human": "0Human"})
 
     def test_illegal_rename_contains_illegal_char(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": ["Human!"]})
+            rename_schema(parse(ISS.basic_schema), {"Human": "Human!"})
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": ["H-uman"]})
+            rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"})
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": ["H.uman"]})
+            rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"})
 
     def test_illegal_rename_to_double_underscore(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": ["__Human"]})
+            rename_schema(parse(ISS.basic_schema), {"Human": "__Human"})
 
     def test_illegal_rename_to_reserved_name_type(self):
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": ["__Type"]})
-
-    def test_illegal_name_in_one_to_many_rename(self):
-        with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": ["Human", "NewHuman", "__Type"]})
+            rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
 
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
             def get(self, key, default=None):
-                return ["New" + key]
+                return "New" + key
 
         renamed_schema = rename_schema(parse(ISS.various_types_schema), PrefixNewDict())
         renamed_schema_string = dedent(
