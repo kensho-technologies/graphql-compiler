@@ -29,11 +29,13 @@ done
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 # Assert script is running inside pipenv shell
+set +u
 if [[ "$VIRTUAL_ENV" == "" ]]
 then
     echo "Please run pipenv shell first"
     exit 1
 fi
+set -u
 
 # Get all python files or directories that need to be linted.
 lintable_locations="."
