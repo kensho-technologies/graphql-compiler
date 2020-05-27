@@ -88,6 +88,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
               Character: Character
               Kid: Kid
               Dog: Dog!
+              Cat: Cat
             }
 
             directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
@@ -116,6 +117,10 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             type Dog {
               id: String!
               friend: Dog!
+            }
+
+            type Cat {
+              id: String
             }
         """
         )

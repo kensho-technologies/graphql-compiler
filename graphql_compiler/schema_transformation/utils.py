@@ -57,6 +57,13 @@ class InvalidCrossSchemaEdgeError(SchemaTransformError):
     """
 
 
+class CascadingSuppressionError(SchemaTransformError):
+    """Raised if the schema suppressions would result in empty types that would need to be, in turn, suppressed (possibly leading to a cascade of suppressions).
+
+    This may be raised if all the fields of a type are suppressed but the type itself is not suppressed, if all the members of a union are suppressed but the union itself is not suppressed, or if a type is suppressed but a field of that type is not suppressed.
+    """
+
+
 _alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
 
 

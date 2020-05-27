@@ -202,8 +202,13 @@ class InputSchemaStrings(object):
           friend: Dog!
         }
 
+        type Cat {
+            id: String
+        }
+
         type SchemaQuery {
           Dog: Dog!
+          Cat: Cat
         }
     """
     )
@@ -368,6 +373,29 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Person: Person
           Kid: Kid
+        }
+    """
+    )
+
+    multiple_fields_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Human  {
+          id: String
+          name: String
+          pet: Dog
+        }
+
+        type Dog {
+          nickname: String
+        }
+
+        type SchemaQuery {
+          Human: Human
+          Dog: Dog
         }
     """
     )

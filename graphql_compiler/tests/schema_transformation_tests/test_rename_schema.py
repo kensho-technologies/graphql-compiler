@@ -8,7 +8,7 @@ from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
 from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
-from ...schema_transformation.utils import InvalidTypeNameError, SchemaNameConflictError
+from ...schema_transformation.utils import InvalidTypeNameError, SchemaNameConflictError, CascadingSuppressionError
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -58,6 +58,53 @@ class TestRenameSchema(unittest.TestCase):
         original_ast = parse(ISS.basic_schema)
         rename_schema(original_ast, {"Human": "NewHuman"})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
+
+    def test_basic_suppress(self):
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              id: String
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_multiple_type_suppress(self):
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": None}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_swap_rename(self):
         renamed_schema = rename_schema(
@@ -279,6 +326,36 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
+    def test_entire_union_suppress(self):
+        renamed_schema = rename_schema(
+            parse(ISS.union_schema), {"HumanOrDroid": None, "Droid": "NewDroid"}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Human {
+              id: String
+            }
+
+            type NewDroid {
+              id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+              NewDroid: NewDroid
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"NewDroid": "Droid"},
+            renamed_schema.reverse_name_map,
+        )
+
     def test_list_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
@@ -327,6 +404,48 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
+    def test_list_suppress(self):
+        renamed_schema = rename_schema(
+            parse(ISS.list_schema),
+            {
+                "Droid": "NewDroid",
+                "Character": "NewCharacter",
+                "Height": None,
+                "Date": "NewDate",
+                "id": "NewId",
+                "String": "NewString",
+            },
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type NewDroid implements NewCharacter {
+              id: String
+              dates: [Date]
+              friends: [NewDroid]
+              enemies: [NewCharacter]
+            }
+
+            type SchemaQuery {
+              NewDroid: [NewDroid]
+            }
+
+            scalar Date
+
+            interface NewCharacter {
+              id: String
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"NewCharacter": "Character", "NewDroid": "Droid",},
+            renamed_schema.reverse_name_map,
+        )
+
     def test_non_null_rename(self):
         renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "NewDog"})
         renamed_schema_string = dedent(
@@ -340,13 +459,38 @@ class TestRenameSchema(unittest.TestCase):
               friend: NewDog!
             }
 
+            type Cat {
+              id: String
+            }
+
             type SchemaQuery {
               NewDog: NewDog!
+              Cat: Cat
             }
         """
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
+
+    def test_non_null_suppress(self):
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": None})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Cat {
+              id: String
+            }
+
+            type SchemaQuery {
+              Cat: Cat
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_directive_rename(self):
         renamed_schema = rename_schema(
@@ -552,6 +696,18 @@ class TestRenameSchema(unittest.TestCase):
     def test_illegal_rename_to_reserved_name_type(self):
         with self.assertRaises(InvalidTypeNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
+
+    def test_suppress_every_type(self):
+        with self.assertRaises(CascadingSuppressionError):
+            rename_schema(parse(ISS.basic_schema), {"Human": None})
+
+    def test_suppress_all_union_members_cascading_error(self):
+        with self.assertRaises(CascadingSuppressionError):
+            rename_schema(parse(ISS.union_schema), {"Human": None, "Droid": None})
+
+    def test_suppress_still_needed_type_cascading_error(self):
+        with self.assertRaises(CascadingSuppressionError):
+            rename_schema(parse(ISS.multiple_fields_schema), {"Dog": None})  # a field in Human is of type Dog.
 
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
