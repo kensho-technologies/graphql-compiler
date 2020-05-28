@@ -21,7 +21,7 @@ from sqlalchemy.sql.selectable import FromClause, Join, Select
 from . import blocks
 from ..global_utils import VertexPath
 from ..schema import COUNT_META_FIELD_NAME
-from ..schema.schema_info import DirectJoinDescriptor, SQLAlchemySchemaInfo
+from ..schema.schema_info import DirectJoinDescriptor, SQLSchemaInfo
 from .compiler_entities import BasicBlock
 from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
@@ -81,7 +81,7 @@ def _traverse_and_validate_blocks(ir: IrAndMetadata) -> Iterator[BasicBlock]:
 
 
 def _find_columns_used_outside_folds(
-    sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata
+    sql_schema_info: SQLSchemaInfo, ir: IrAndMetadata
 ) -> Dict[VertexPath, Set[str]]:
     """For each query path outside of a fold output, find which columns are used."""
     used_columns: Dict[VertexPath, Set[str]] = {}
@@ -713,10 +713,10 @@ class ColumnRouter:
 class CompilationState(object):
     """Mutable class used to keep track of state while emitting a sql query."""
 
-    def __init__(self, sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata):
+    def __init__(self, sql_schema_info: SQLSchemaInfo, ir: IrAndMetadata):
         """Initialize a CompilationState, setting the current location at the root of the query."""
         # Immutable metadata
-        self._sql_schema_info: SQLAlchemySchemaInfo = sql_schema_info
+        self._sql_schema_info: SQLSchemaInfo = sql_schema_info
         self._ir: IrAndMetadata = ir
         self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used_outside_folds(
             sql_schema_info, ir
@@ -1168,11 +1168,11 @@ class CompilationState(object):
         )
 
 
-def emit_code_from_ir(sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata) -> Select:
+def emit_code_from_ir(sql_schema_info: SQLSchemaInfo, ir: IrAndMetadata) -> Select:
     """Return a SQLAlchemy Query for the query described by the internal representation.
 
     Args:
-        sql_schema_info: SQLAlchemySchemaInfo containing all relevant schema information
+        sql_schema_info: SQLSchemaInfo containing all relevant schema information
         ir: IrAndMetadata containing query information with lowered blocks
 
     Returns:

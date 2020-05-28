@@ -25,7 +25,7 @@ from .test_helpers import (
     compare_match,
     compare_sql,
     get_schema,
-    get_sqlalchemy_schema_info,
+    get_sql_schema_info,
 )
 
 
@@ -119,8 +119,8 @@ class CompilerTests(unittest.TestCase):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
-        self.mssql_schema_info = get_sqlalchemy_schema_info(dialect="mssql")
-        self.postgresql_schema_info = get_sqlalchemy_schema_info(dialect="postgresql")
+        self.mssql_schema_info = get_sql_schema_info(dialect="mssql")
+        self.postgresql_schema_info = get_sql_schema_info(dialect="postgresql")
 
     def test_immediate_output(self):
         test_data = test_input_data.immediate_output()

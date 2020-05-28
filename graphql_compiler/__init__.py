@@ -28,9 +28,9 @@ from .schema import (  # noqa
     insert_meta_fields_into_existing_schema,
     is_meta_field,
 )
-from .schema.schema_info import CommonSchemaInfo, SQLAlchemySchemaInfo
+from .schema.schema_info import CommonSchemaInfo, SQLSchemaInfo
 from .schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data  # noqa
-from .schema_generation.sqlalchemy import get_sqlalchemy_schema_info  # noqa
+from .schema_generation.sqlalchemy import get_sql_schema_info  # noqa
 
 
 __package_name__ = "graphql-compiler"
@@ -61,12 +61,12 @@ def graphql_to_match(
 
 
 def graphql_to_sql(
-    sql_schema_info: SQLAlchemySchemaInfo, graphql_query: str, parameters: Dict[str, Any]
+    sql_schema_info: SQLSchemaInfo, graphql_query: str, parameters: Dict[str, Any]
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a SQL query and associated metadata.
 
     Args:
-        sql_schema_info: SQLAlchemySchemaInfo used to compile the query.
+        sql_schema_info: SQLSchemaInfo used to compile the query.
         graphql_query: str, GraphQL query to compile to SQL
         parameters: dict, mapping argument name to its value, for every parameter the query expects.
 

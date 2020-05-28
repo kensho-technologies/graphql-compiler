@@ -210,8 +210,8 @@ CommonSchemaInfo = namedtuple(
 # - RootSchemaQuery is a special type that does not need a corresponding table.
 # - Builtin types like __Schema, __Type, etc. don't need corresponding tables.
 # - Builtin fields like _x_count do not need corresponding columns.
-SQLAlchemySchemaInfo = namedtuple(
-    "SQLAlchemySchemaInfo",
+SQLSchemaInfo = namedtuple(
+    "SQLSchemaInfo",
     (
         # GraphQLSchema
         "schema",
@@ -247,10 +247,10 @@ SQLAlchemySchemaInfo = namedtuple(
 )
 
 
-def make_sqlalchemy_schema_info(
+def make_sql_schema_info(
     schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors, validate=True
 ):
-    """Make a SQLAlchemySchemaInfo if the input provided is valid.
+    """Make a SQLSchemaInfo if the input provided is valid.
 
     See the documentation of SQLAlchemyschemaInfo for more detailed documentation of the args.
 
@@ -279,11 +279,11 @@ def make_sqlalchemy_schema_info(
                              DirectJoinDescriptor. The tables the join is to be performed on are not
                              specified. They are inferred from the schema and the tables dictionary.
         validate: Optional bool (default True), specifying whether to validate that the given
-                  input is valid for creation of a SQLAlchemySchemaInfo. Consider not validating
+                  input is valid for creation of a SQLSchemaInfo. Consider not validating
                   to save on performance when dealing with a large schema.
 
     Returns:
-        SQLAlchemySchemaInfo containing the input arguments provided
+        SQLSchemaInfo containing the input arguments provided
     """
     if validate:
         types_to_map = (GraphQLInterfaceType, GraphQLObjectType)
@@ -322,7 +322,7 @@ def make_sqlalchemy_schema_info(
                                     "for property field {}".format(type_name, field_name)
                                 )
 
-    return SQLAlchemySchemaInfo(
+    return SQLSchemaInfo(
         schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
     )
 

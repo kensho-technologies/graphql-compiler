@@ -9,12 +9,12 @@ from graphql_compiler import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 
 from ..compiler.compiler_frontend import OutputMetadata
 from ..post_processing.sql_post_processing import post_process_mssql_folds
-from .test_helpers import get_sqlalchemy_schema_info
+from .test_helpers import get_sql_schema_info
 
 
 class MssqlXmlPathTests(TestCase):
     def setUp(self) -> None:
-        self.mssql_schema_info = get_sqlalchemy_schema_info(dialect="mssql")
+        self.mssql_schema_info = get_sql_schema_info(dialect="mssql")
 
     def test_convert_empty_string(self):
         """Test empty list is correctly decoded.

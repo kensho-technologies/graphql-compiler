@@ -41,7 +41,7 @@ class EmptySchemaError(SchemaError):
 
 
 class InvalidSQLEdgeError(SchemaError):
-    """Raised when a SQL edge provided during SQLAlchemySchemaInfo generation is invalid.
+    """Raised when a SQL edge provided during SQLSchemaInfo generation is invalid.
 
     This may be raised if the provided SQL edge refers to a non-existent vertex, or a non-exist
     column in a table. In the future, this class might encompass other sort of issues in

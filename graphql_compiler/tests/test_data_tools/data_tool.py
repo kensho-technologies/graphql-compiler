@@ -16,7 +16,7 @@ from ..integration_tests.integration_backend_config import (
     SQL_BACKEND_TO_CONNECTION_STRING,
     SqlTestBackend,
 )
-from ..test_helpers import get_sqlalchemy_schema_info
+from ..test_helpers import get_sql_schema_info
 
 
 def get_integration_data():
@@ -301,7 +301,7 @@ def tear_down_integration_test_backends(sql_test_backends):
 
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
-    sql_schema_info = get_sqlalchemy_schema_info()
+    sql_schema_info = get_sql_schema_info()
     vertex_values, edge_values, uuid_to_class_name = get_integration_data()
 
     # Represent all edges as foreign keys

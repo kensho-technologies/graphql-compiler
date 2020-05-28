@@ -4,7 +4,7 @@ from typing import Union
 
 from .. import backend
 from ..backend import Backend
-from ..schema.schema_info import CommonSchemaInfo, SQLAlchemySchemaInfo
+from ..schema.schema_info import CommonSchemaInfo, SQLSchemaInfo
 from .compiler_frontend import graphql_to_ir
 
 
@@ -55,12 +55,12 @@ def compile_graphql_to_gremlin(
 
 
 def compile_graphql_to_sql(
-    sql_schema_info: SQLAlchemySchemaInfo, graphql_query: str
+    sql_schema_info: SQLSchemaInfo, graphql_query: str
 ) -> CompilationResult:
     """Compile the GraphQL input using the schema into a SQL query and associated metadata.
 
     Args:
-        sql_schema_info: SQLAlchemySchemaInfo used to compile the query.
+        sql_schema_info: SQLSchemaInfo used to compile the query.
         graphql_query: str, GraphQL query to compile to SQL
 
     Returns:
@@ -86,7 +86,7 @@ def compile_graphql_to_cypher(
 
 def _compile_graphql_generic(
     target_backend: Backend,
-    schema_info: Union[CommonSchemaInfo, SQLAlchemySchemaInfo],
+    schema_info: Union[CommonSchemaInfo, SQLSchemaInfo],
     graphql_string: str,
 ) -> CompilationResult:
     """Compile the GraphQL input, lowering and emitting the query using the given functions.

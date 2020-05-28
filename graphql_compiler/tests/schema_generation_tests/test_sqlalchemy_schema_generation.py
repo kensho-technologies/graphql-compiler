@@ -15,11 +15,11 @@ from sqlalchemy import (
 from sqlalchemy.dialects.mssql import TINYINT, dialect
 from sqlalchemy.types import Integer, LargeBinary, String
 
-from ... import get_sqlalchemy_schema_info
+from ... import get_sql_schema_info
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
 from ...schema_generation.schema_graph import IndexDefinition
 from ...schema_generation.sqlalchemy import (
-    SQLAlchemySchemaInfo,
+    SQLSchemaInfo,
     get_graphql_schema_from_schema_graph,
     get_join_descriptors_from_edge_descriptors,
 )
@@ -80,7 +80,7 @@ def _get_test_direct_edges():
 
 
 @pytest.mark.filterwarnings("ignore: Ignoring column .* with unsupported SQL datatype.*")
-class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
+class SQLSchemaInfoGenerationTests(unittest.TestCase):
     def setUp(self):
         self.maxDiff = None
         vertex_name_to_table = _get_test_vertex_name_to_table()
@@ -92,7 +92,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         )
         join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
 
-        self.schema_info = SQLAlchemySchemaInfo(
+        self.schema_info = SQLSchemaInfo(
             graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
         )
 
@@ -262,7 +262,7 @@ class SQLAlchemyForeignKeyEdgeGenerationTests(unittest.TestCase):
         self.assertEqual(direct_edge_descriptors, set())
 
 
-class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
+class SQLSchemaInfoGenerationErrorTests(unittest.TestCase):
     def setUp(self):
         self.vertex_name_to_table = _get_test_vertex_name_to_table()
 
@@ -273,7 +273,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
+            get_sql_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_vertex(self):
         direct_edges = {
@@ -282,7 +282,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
+            get_sql_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_source_column(self):
         direct_edges = {
@@ -291,7 +291,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
+            get_sql_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_column(self):
         direct_edges = {
@@ -300,7 +300,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             )
         }
         with self.assertRaises(InvalidSQLEdgeError):
-            get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
+            get_sql_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_missing_primary_key(self):
         table_without_primary_key = Table(
@@ -308,7 +308,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
         )
         faulty_vertex_name_to_table = {table_without_primary_key.name: table_without_primary_key}
         with self.assertRaises(MissingPrimaryKeyError):
-            get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())
+            get_sql_schema_info(faulty_vertex_name_to_table, {}, dialect())
 
     def test_missing_multiple_primary_keys(self):
         metadata: MetaData = MetaData()
@@ -323,7 +323,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             second_table_without_primary_key.name: second_table_without_primary_key,
         }
         with self.assertRaises(MissingPrimaryKeyError) as missing_primary_key_error_info:
-            get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())
+            get_sql_schema_info(faulty_vertex_name_to_table, {}, dialect())
         exception_message: str = missing_primary_key_error_info.exception.args[0]
         for table_name in faulty_vertex_name_to_table:
             self.assertIn(table_name, exception_message)

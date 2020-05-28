@@ -7,7 +7,7 @@ from redisgraph.client import Graph
 import six
 from sqlalchemy.engine.base import Engine
 
-from graphql_compiler.schema.schema_info import SQLAlchemySchemaInfo
+from graphql_compiler.schema.schema_info import SQLSchemaInfo
 from graphql_compiler.tests.test_data_tools.neo4j_graph import Neo4jClient
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
@@ -82,7 +82,7 @@ def compile_and_run_match_query(
 
 
 def compile_and_run_sql_query(
-    sql_schema_info: SQLAlchemySchemaInfo,
+    sql_schema_info: SQLSchemaInfo,
     graphql_query: str,
     parameters: Dict[str, Any],
     engine: Engine,

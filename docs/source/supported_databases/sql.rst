@@ -25,7 +25,7 @@ as in the example below:
 
 .. code:: python
 
-    from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
+    from graphql_compiler import get_sql_schema_info, graphql_to_sql
     from sqlalchemy import MetaData, create_engine
 
     engine = create_engine('<connection string>')
@@ -35,8 +35,8 @@ as in the example below:
     metadata = MetaData(bind=engine)
     metadata.reflect()
 
-    # Wrap the schema information into a SQLAlchemySchemaInfo object.
-    sql_schema_info = get_sqlalchemy_schema_info(metadata.tables, {}, engine.dialect)
+    # Wrap the schema information into a SQLSchemaInfo object.
+    sql_schema_info = get_sql_schema_info(metadata.tables, {}, engine.dialect)
 
     # Write GraphQL query.
     graphql_query = '''
@@ -67,7 +67,7 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
 
 .. code:: python
 
-    from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
+    from graphql_compiler import get_sql_schema_info, graphql_to_sql
     from graphql_compiler.schema_generation.sqlalchemy.edge_descriptors import DirectEdgeDescriptor
     from sqlalchemy import MetaData, create_engine
 
@@ -86,8 +86,8 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
          )
     }
 
-    # Wrap the schema information into a SQLAlchemySchemaInfo object.
-    sql_schema_info = get_sqlalchemy_schema_info(metadata.tables, direct_edges, engine.dialect)
+    # Wrap the schema information into a SQLSchemaInfo object.
+    sql_schema_info = get_sql_schema_info(metadata.tables, direct_edges, engine.dialect)
 
     # Write GraphQL query with edge traversal.
     graphql_query = '''
@@ -121,7 +121,7 @@ Including tables from multiple schemas
 SQLAlchemy and SQL database management systems support the concept of multiple `schemas
 <https://docs.sqlalchemy.org/en/13/core/metadata.html?highlight=schema#specifying-the-schema-name>`__.
 One can include :code:`Table` objects from multiple schemas in the same
-:code:`SQLAlchemySchemaInfo`. However, when doing so, one cannot simply use table names as
+:code:`SQLSchemaInfo`. However, when doing so, one cannot simply use table names as
 GraphQL object names because two tables in different schemas can have the
 same the name. A solution that is not quite guaranteed to work, but will likely work in practice
 is to prepend the schema name as follows:
@@ -148,9 +148,9 @@ is to prepend the schema name as follows:
 Including manually defined :code:`Table` objects
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-The :code:`Table` objects in the :code:`SQLAlchemySchemaInfo` do not need to be reflected from the
+The :code:`Table` objects in the :code:`SQLSchemaInfo` do not need to be reflected from the
 database. They also can be manually specified as in `this link
 <https://docs.sqlalchemy.org/en/13/core/metadata.html#creating-and-dropping-database-tables>`__.
 However, if specifying :code:`Table` objects manually, please make sure to include a primary key
 for each table and to use only SQL types allowed for the dialect specified in the
-:code:`SQLAlchemySchemaInfo`.
+:code:`SQLSchemaInfo`.

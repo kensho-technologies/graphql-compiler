@@ -39,7 +39,7 @@ from .test_helpers import (
     compare_sql,
     get_common_schema_info,
     get_schema,
-    get_sqlalchemy_schema_info,
+    get_sql_schema_info,
 )
 
 
@@ -697,8 +697,8 @@ class EmitSQLTests(unittest.TestCase):
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema_infos = {
-            "mssql": get_sqlalchemy_schema_info("mssql"),
-            "postgresql": get_sqlalchemy_schema_info("postgresql"),
+            "mssql": get_sql_schema_info("mssql"),
+            "postgresql": get_sql_schema_info("postgresql"),
         }
 
     def test_fold_subquery_builder(self) -> None:

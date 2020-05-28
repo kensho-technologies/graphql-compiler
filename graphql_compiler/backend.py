@@ -58,7 +58,7 @@ cypher_backend = Backend(
 
 sql_backend = Backend(
     language="SQL",
-    SchemaInfoClass=schema_info.SQLAlchemySchemaInfo,
+    SchemaInfoClass=schema_info.SQLSchemaInfo,
     lower_func=ir_lowering_sql.lower_ir,
     emit_func=emit_sql.emit_code_from_ir,
 )

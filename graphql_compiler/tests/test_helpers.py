@@ -31,8 +31,8 @@ from ..schema import (
 from ..schema.schema_info import (
     CommonSchemaInfo,
     DirectJoinDescriptor,
-    SQLAlchemySchemaInfo,
-    make_sqlalchemy_schema_info,
+    SQLSchemaInfo,
+    make_sql_schema_info,
 )
 from ..schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data
 from ..schema_generation.orientdb.schema_graph_builder import get_orientdb_schema_graph
@@ -615,8 +615,8 @@ def _get_schema_without_list_valued_property_fields() -> GraphQLSchema:
     return schema
 
 
-def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
-    """Get a SQLAlchemySchemaInfo for testing."""
+def get_sql_schema_info(dialect: str = "mssql") -> SQLSchemaInfo:
+    """Get a SQLSchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
     schema = _get_schema_without_list_valued_property_fields()
     type_equivalence_hints = get_type_equivalence_hints()
@@ -830,7 +830,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
         sqlalchemy_compiler_dialect = mssql.dialect()
     else:
         raise AssertionError("Unrecognized dialect {}".format(dialect))
-    return make_sqlalchemy_schema_info(
+    return make_sql_schema_info(
         schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors
     )
 
