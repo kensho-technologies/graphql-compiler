@@ -8,7 +8,11 @@ from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
 from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
-from ...schema_transformation.utils import InvalidTypeNameError, SchemaNameConflictError, CascadingSuppressionError
+from ...schema_transformation.utils import (
+    CascadingSuppressionError,
+    InvalidTypeNameError,
+    SchemaNameConflictError,
+)
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -352,14 +356,11 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
-            {"NewDroid": "Droid"},
-            renamed_schema.reverse_name_map,
+            {"NewDroid": "Droid"}, renamed_schema.reverse_name_map,
         )
 
     def test_union_member_suppress(self):
-        renamed_schema = rename_schema(
-            parse(ISS.union_schema), {"Droid": None}
-        )
+        renamed_schema = rename_schema(parse(ISS.union_schema), {"Droid": None})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -379,8 +380,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
-            {},
-            renamed_schema.reverse_name_map,
+            {}, renamed_schema.reverse_name_map,
         )
 
     def test_list_rename(self):
@@ -693,7 +693,9 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_field_still_depends_on_suppressed_type(self):
         with self.assertRaises(CascadingSuppressionError):
-            rename_schema(parse(ISS.multiple_fields_schema), {"Dog": None})  # a field in Human is of type Dog.
+            rename_schema(
+                parse(ISS.multiple_fields_schema), {"Dog": None}
+            )  # a field in Human is of type Dog.
 
     def test_field_in_list_still_depends_on_suppressed_type(self):
         with self.assertRaises(CascadingSuppressionError):

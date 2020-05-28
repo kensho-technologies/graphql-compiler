@@ -1,20 +1,22 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Optional, Dict
+from typing import Dict, Optional
 
-from graphql import build_ast_schema, DocumentNode
-from graphql.language.visitor import Visitor, visit, REMOVE
+from graphql import DocumentNode, build_ast_schema
+from graphql.language.visitor import REMOVE, Visitor, visit
 import six
 
+from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
+    CascadingSuppressionError,
     SchemaNameConflictError,
     check_ast_schema_is_valid,
     check_type_name_is_valid,
     get_copy_of_node_with_new_name,
     get_query_type_name,
-    get_scalar_names, CascadingSuppressionError,
+    get_scalar_names,
 )
-from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
+
 
 RenamedSchemaDescriptor = namedtuple(
     "RenamedSchemaDescriptor",
@@ -27,7 +29,9 @@ RenamedSchemaDescriptor = namedtuple(
 )
 
 
-def rename_schema(ast: DocumentNode, renamings: Dict[str, Optional[str]]) -> RenamedSchemaDescriptor:
+def rename_schema(
+    ast: DocumentNode, renamings: Dict[str, Optional[str]]
+) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; types and query type fields are renamed using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
@@ -75,6 +79,7 @@ def rename_schema(ast: DocumentNode, renamings: Dict[str, Optional[str]]) -> Ren
 
     # Rename query type fields
     from graphql.language.printer import print_ast
+
     ast = _rename_fields(ast, renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=ast,
