@@ -81,8 +81,11 @@ def rename_schema(
         if renamed_name != original_name
     }
 
-    # Rename fields, including query type fields
-    ast = _rename_fields(ast, renamings, query_type)
+    # Rename query type fields
+    ast = _rename_query_type_fields(ast, renamings, query_type)
+
+    # check for fields or unions that depend on types that were suppressed
+    ast = _check_for_cascading_type_suppression(ast, renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=ast,
         schema=build_ast_schema(ast),
@@ -121,8 +124,8 @@ def _rename_types(ast, renamings, query_type, scalars):
     return renamed_ast, visitor.reverse_name_map
 
 
-def _rename_fields(ast, renamings, query_type):
-    """Rename fields, including query type fields.
+def _rename_query_type_fields(ast, renamings, query_type):
+    """Rename all fields of the query type.
 
     The input AST will not be modified.
 
@@ -135,7 +138,13 @@ def _rename_fields(ast, renamings, query_type):
     Returns:
         DocumentNode, representing the modified version of the input schema AST
     """
-    visitor = RenameFieldsVisitor(renamings, query_type)
+    visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
+    renamed_ast = visit(ast, visitor)
+    return renamed_ast
+
+
+def _check_for_cascading_type_suppression(ast, renamings, query_type):
+    visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
     return renamed_ast
 
@@ -288,9 +297,9 @@ class RenameSchemaTypesVisitor(Visitor):
             raise AssertionError('Unreachable code reached. Missed type: "{}"'.format(node_type))
 
 
-class RenameFieldsVisitor(Visitor):
+class RenameQueryTypeFieldsVisitor(Visitor):
     def __init__(self, renamings, query_type):
-        """Create a visitor for renaming fields in a schema AST.
+        """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
             renamings: Dict[str, str], from original field name to renamed field name. Any
@@ -324,17 +333,9 @@ class RenameFieldsVisitor(Visitor):
             self.in_query_type = False
 
     def enter_field_definition(self, node, *args):
-        """Update fields as needed.
-
-        If inside the query type, rename field and add the name pair to reverse_field_map.
-        If not inside the query type, check that no field depends on a type that was suppressed.
-
-        Raises:
-            CascadingSuppressionError if a non-suppressed field still depends on a type that was
-            suppressed.
-        """
-        field_name = node.name.value
+        """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
+            field_name = node.name.value
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
             if new_field_name == field_name:
                 return None
@@ -344,21 +345,54 @@ class RenameFieldsVisitor(Visitor):
             else:  # Make copy of node with the changed name, return the copy
                 field_node_with_new_name = get_copy_of_node_with_new_name(node, new_field_name)
                 return field_node_with_new_name
-        else:
-            # at a field of a type that is not the query type
-            node_type = get_ast_with_non_null_and_list_stripped(node.type)
-            if node_type == REMOVE:
-                # then this field depends on a type that was suppressed, which is illegal
-                type_name = args[-1][-1].name.value
-                raise CascadingSuppressionError(
-                    f"Type renamings {self.renamings} attempted to suppress a type, but type "
-                    f"{type_name}'s field {field_name} still depends on that type. Suppressing "
-                    f"individual fields hasn't been implemented yet, but when it is, you can fix "
-                    f"this error by suppressing the field as well. Note that adding suppressions "
-                    f"may lead to other types, fields, unions, etc. requiring suppression so you "
-                    f"may need to iterate on this before getting a legal schema."
-                )
+
+
+class CascadingSuppressionCheckVisitor(Visitor):
+    def __init__(self, renamings, query_type):
+        """Create a visitor to check that suppression does not cause an illegal state.
+
+        Args:
+            renamings: Dict[str, str], from original field name to renamed field name. Any
+                       name not in the dict will be unchanged
+            query_type: str, name of the query type (e.g. RootSchemaQuery)
+        """
+        # Note that as field names and type names have been confirmed to match up, any renamed
+        # query type field already has a corresponding renamed type. If no errors, due to either
+        # invalid names or name conflicts, were raised when renaming type, no errors will occur when
+        # renaming query type fields.
+        self.in_query_type = False
+        self.renamings = renamings
+        self.query_type = query_type
+
+    def enter_object_type_definition(self, node, *args):
+        """If the node's name matches the query type, record that we entered the query type."""
+        if node.name.value == self.query_type:
+            self.in_query_type = True
+
+    def leave_object_type_definition(self, node, key, parent, path, ancestors):
+        """If the node's name matches the query type, record that we left the query type."""
+        if node.name.value == self.query_type:
+            self.in_query_type = False
+
+    def enter_field_definition(self, node, *args):
+        """If not at query type, check that no field depends on a type that was suppressed."""
+        if self.in_query_type:
             return None
+        # at a field of a type that is not the query type
+        field_name = node.name.value
+        node_type = get_ast_with_non_null_and_list_stripped(node.type)
+        if node_type == REMOVE:
+            # then this field depends on a type that was suppressed, which is illegal
+            type_name = args[-1][-1].name.value
+            raise CascadingSuppressionError(
+                f"Type renamings {self.renamings} attempted to suppress a type, but type "
+                f"{type_name}'s field {field_name} still depends on that type. Suppressing "
+                f"individual fields hasn't been implemented yet, but when it is, you can fix "
+                f"this error by suppressing the field as well. Note that adding suppressions "
+                f"may lead to other types, fields, unions, etc. requiring suppression so you "
+                f"may need to iterate on this before getting a legal schema."
+            )
+        return None
 
     def enter_union_type_definition(self, node, *args):
         """Check that each union still has at least one member.
