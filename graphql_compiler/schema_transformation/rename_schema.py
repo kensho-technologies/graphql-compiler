@@ -250,8 +250,9 @@ class RenameSchemaTypesVisitor(Visitor):
                   NameNode.
 
         Returns:
-            Node object, identical to the input node, except with possibly a new name. If the
-            name was not changed, the returned object is the exact same object as the input
+            Node object or REMOVE. If it returns REMOVE, then the type was suppressed. Otherwise, it
+            returns a Node object identical to the input node, except with possibly a new name. If
+            the name was not changed, the returned object is the exact same object as the input
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
