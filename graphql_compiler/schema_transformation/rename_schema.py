@@ -316,7 +316,9 @@ class RenameFieldsVisitor(Visitor):
             raise CascadingSuppressionError(
                 f"Type renamings {self.renamings} suppressed every type in the schema so it will be"
                 f" impossible to query for anything. To fix this, check why the `renamings` "
-                f"argument of `rename_schema` mapped every type to None."
+                f"argument of `rename_schema` mapped every type to None. Note that adding "
+                f"suppressions may lead to other types, fields, unions, etc. requiring suppression "
+                f"so you may need to iterate on this before getting a legal schema."
             )
         if node.name.value == self.query_type:
             self.in_query_type = False
@@ -352,7 +354,9 @@ class RenameFieldsVisitor(Visitor):
                     f"Type renamings {self.renamings} attempted to suppress a type, but type "
                     f"{type_name}'s field {field_name} still depends on that type. Suppressing "
                     f"individual fields hasn't been implemented yet, but when it is, you can fix "
-                    f"this error by suppressing the field as well."
+                    f"this error by suppressing the field as well. Note that adding suppressions "
+                    f"may lead to other types, fields, unions, etc. requiring suppression so you "
+                    f"may need to iterate on this before getting a legal schema."
                 )
             return None
 
@@ -367,5 +371,7 @@ class RenameFieldsVisitor(Visitor):
             raise CascadingSuppressionError(
                 f"Type renamings {self.renamings} suppressed all types belonging to the union "
                 f"{union_name}. To fix this, you can suppress the union as well by adding "
-                f"`{union_name}: None` to the `renamings` argument of `rename_schema`."
+                f"`{union_name}: None` to the `renamings` argument of `rename_schema`. Note that "
+                f"adding suppressions may lead to other types, fields, unions, etc. requiring "
+                f"suppression so you may need to iterate on this before getting a legal schema."
             )
