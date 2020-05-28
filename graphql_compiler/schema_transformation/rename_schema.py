@@ -35,16 +35,20 @@ def rename_schema(
     """Create a RenamedSchemaDescriptor; types and query type fields are renamed using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
-    appears in renamings will be renamed to the corresponding value. Any such names that do not
-    appear in renamings will be unchanged. Scalars, directives, enum values, and fields not
-    belonging to the root/query type will never be renamed.
+    appears in renamings will be renamed to the corresponding value if the value is not None. If the
+    value is None, it will be suppressed in the renamed schema and queries will not be able to
+    access it.
+    Any such names that do not appear in renamings will be unchanged.
+    Scalars, directives, enum values, and fields not belonging to the root/query type will never be
+    renamed.
 
     Args:
         ast: Document, representing a valid schema that does not contain extensions, input
              object definitions, mutations, or subscriptions, whose fields of the query type share
              the same name as the types they query. Not modified by this function
-        renamings: Dict[str, Optional[str]], mapping original type/field names to renamed type/field names or None.
-                   Type or query type field names that do not appear in the dict will be unchanged. If a type is mapped to None, it will be suppressed in the renamed schema and queries will not be able to access it. Any dict-like object that implements get(key, [default]) may also be used
+        renamings: Dict[str, Optional[str]], mapping original type/root type field names to renamed
+                   type/root type field names or None.
+                   Any dict-like object that implements get(key, [default]) may also be used
 
     Returns:
         RenamedSchemaDescriptor, a namedtuple that contains the AST of the renamed schema, and the
@@ -77,9 +81,7 @@ def rename_schema(
         if renamed_name != original_name
     }
 
-    # Rename query type fields
-    from graphql.language.printer import print_ast
-
+    # Rename fields, including query type fields
     ast = _rename_fields(ast, renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=ast,
@@ -277,7 +279,9 @@ class RenameSchemaTypesVisitor(Visitor):
             renamed_node = self._rename_name_and_add_to_record(node)
             if renamed_node is node:  # Name unchanged, continue traversal
                 return None
-            else:  # Name changed or suppressed, return new node, `visit` will make shallow copies along path
+            else:
+                # Name changed or suppressed, return new node, `visit` will make shallow copies
+                # along path
                 return renamed_node
         else:
             # All Node types should've been taken care of, this line should never be reached
@@ -294,8 +298,8 @@ class RenameFieldsVisitor(Visitor):
             query_type: str, name of the query type (e.g. RootSchemaQuery)
         """
         # Note that as field names and type names have been confirmed to match up, any renamed
-        # query type field already has a corresponding renamed type. If no errors, due to either invalid
-        # names or name conflicts, were raised when renaming type, no errors will occur when
+        # query type field already has a corresponding renamed type. If no errors, due to either
+        # invalid names or name conflicts, were raised when renaming type, no errors will occur when
         # renaming query type fields.
         self.in_query_type = False
         self.renamings = renamings
@@ -310,7 +314,9 @@ class RenameFieldsVisitor(Visitor):
         """If the node's name matches the query type, record that we left the query type."""
         if len(node.fields) == 0:
             raise CascadingSuppressionError(
-                f"Type renamings {self.renamings} suppressed every type in the schema so it will be impossible to query for anything. To fix this, check why the `renamings` argument of `rename_schema` mapped every type to None."
+                f"Type renamings {self.renamings} suppressed every type in the schema so it will be"
+                f" impossible to query for anything. To fix this, check why the `renamings` "
+                f"argument of `rename_schema` mapped every type to None."
             )
         if node.name.value == self.query_type:
             self.in_query_type = False
@@ -322,7 +328,8 @@ class RenameFieldsVisitor(Visitor):
         If not inside the query type, check that no field depends on a type that was suppressed.
 
         Raises:
-            CascadingSuppressionError if a field that was not suppressed depends on a type that was suppressed.
+            CascadingSuppressionError if a non-suppressed field still depends on a type that was
+            suppressed.
         """
         field_name = node.name.value
         if self.in_query_type:
@@ -337,18 +344,28 @@ class RenameFieldsVisitor(Visitor):
                 return field_node_with_new_name
         else:
             # at a field of a type that is not the query type
-            type = get_ast_with_non_null_and_list_stripped(node.type)
-            if type == REMOVE:
+            node_type = get_ast_with_non_null_and_list_stripped(node.type)
+            if node_type == REMOVE:
                 # then this field depends on a type that was suppressed, which is illegal
                 type_name = args[-1][-1].name.value
                 raise CascadingSuppressionError(
-                    f"Type renamings {self.renamings} attempted to suppress a type, but type {type_name}'s field {field_name} still depends on that type. Suppressing individual fields hasn't been implemented yet, but when it is, you can fix this error by suppressing the field as well."
+                    f"Type renamings {self.renamings} attempted to suppress a type, but type "
+                    f"{type_name}'s field {field_name} still depends on that type. Suppressing "
+                    f"individual fields hasn't been implemented yet, but when it is, you can fix "
+                    f"this error by suppressing the field as well."
                 )
             return None
 
     def enter_union_type_definition(self, node, *args):
+        """Check that each union still has at least one member.
+
+        Raises:
+            CascadingSuppressionError if all the members of this union were suppressed.
+        """
         union_name = node.name.value
         if len(node.types) == 0:
             raise CascadingSuppressionError(
-                f"Type renamings {self.renamings} suppressed all types belonging to the union {union_name}. To fix this, you can suppress the union as well by adding {union_name}: None to the `renamings` argument of `rename_schema`."
+                f"Type renamings {self.renamings} suppressed all types belonging to the union "
+                f"{union_name}. To fix this, you can suppress the union as well by adding "
+                f"`{union_name}: None` to the `renamings` argument of `rename_schema`."
             )

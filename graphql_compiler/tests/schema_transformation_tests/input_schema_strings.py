@@ -173,11 +173,11 @@ class InputSchemaStrings(object):
         type Droid {
           id: String
         }
-        
+
         type Dog {
           nickname: String
         }
-        
+
         union HumanOrDroid = Human | Droid
 
         type SchemaQuery {

@@ -688,7 +688,10 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_suppress_all_union_members(self):
         with self.assertRaises(CascadingSuppressionError):
-            # Note that we can't use ISS.union_schema directly here because suppressing all the members of the union would mean suppressing every type in general, which means we couldn't be sure what was causing the CascadingSuppressionError.
+            # Can't use ISS.union_schema here because suppressing all the members of the union would
+            # mean suppressing every type in general, which means we couldn't be sure that
+            # suppressing every member of a union specifically was raising the
+            # CascadingSuppressionError.
             rename_schema(parse(ISS.extended_union_schema), {"Human": None, "Droid": None})
 
     def test_field_still_depends_on_suppressed_type(self):

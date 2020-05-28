@@ -58,9 +58,11 @@ class InvalidCrossSchemaEdgeError(SchemaTransformError):
 
 
 class CascadingSuppressionError(SchemaTransformError):
-    """Raised if the schema suppressions would result in empty types that would need to be, in turn, suppressed (possibly leading to a cascade of suppressions).
+    """Raised if existing suppressions would require further suppressions.
 
-    This may be raised if all the fields of a type are suppressed but the type itself is not suppressed, if all the members of a union are suppressed but the union itself is not suppressed, or if a type is suppressed but a field of that type is not suppressed.
+    This may be raised during schema renaming if it suppresses all the fields of a type but not the
+    type itself, if it suppresses all the members of a union but not the union itself, or if it
+    suppresses a type but fails to suppress all fields that depend on that type.
     """
 
 
