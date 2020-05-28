@@ -1,8 +1,15 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Dict, Optional
+from typing import Dict, Optional, Set, Tuple
 
-from graphql import DocumentNode, build_ast_schema
+from graphql import (
+    DocumentNode,
+    FieldDefinitionNode,
+    Node,
+    ObjectTypeDefinitionNode,
+    UnionTypeDefinitionNode,
+    build_ast_schema,
+)
 from graphql.language.visitor import REMOVE, Visitor, visit
 import six
 
@@ -93,7 +100,9 @@ def rename_schema(
     )
 
 
-def _rename_types(ast, renamings, query_type, scalars):
+def _rename_types(
+    ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str, scalars: Set[str]
+) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename types, enums, interfaces using renamings.
 
     The query type will not be renamed. Scalar types, field names, enum values will not be renamed.
@@ -124,7 +133,9 @@ def _rename_types(ast, renamings, query_type, scalars):
     return renamed_ast, visitor.reverse_name_map
 
 
-def _rename_query_type_fields(ast, renamings, query_type):
+def _rename_query_type_fields(
+    ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str
+) -> DocumentNode:
     """Rename all fields of the query type.
 
     The input AST will not be modified.
@@ -143,7 +154,9 @@ def _rename_query_type_fields(ast, renamings, query_type):
     return renamed_ast
 
 
-def _check_for_cascading_type_suppression(ast, renamings, query_type):
+def _check_for_cascading_type_suppression(
+    ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str
+) -> DocumentNode:
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
     return renamed_ast
@@ -203,19 +216,21 @@ class RenameSchemaTypesVisitor(Visitor):
         }
     )
 
-    def __init__(self, renamings, query_type, scalar_types):
+    def __init__(
+        self, renamings: Dict[str, Optional[str]], query_type: str, scalar_types: Set[str]
+    ):
         """Create a visitor for renaming types in a schema AST.
 
         Args:
-            renamings: Dict[str, str], mapping from original type name to renamed type name.
-                       Any name not in the dict will be unchanged
+            renamings: Dict[str, Optional[str]], mapping from original type name to renamed type
+            name. Any name not in the dict will be unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery), which will not
                         be renamed
             scalar_types: Set[str], set of names of all scalars used in the schema, including
                           all user defined scalars and any builtin scalars that were used
         """
         self.renamings = renamings
-        self.reverse_name_map = {}  # Dict[str, str], from renamed type name to original type name
+        self.reverse_name_map: Dict[str, str] = {}  # from renamed type name to original type name
         # reverse_name_map contains all types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
@@ -277,7 +292,7 @@ class RenameSchemaTypesVisitor(Visitor):
             node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
 
-    def enter(self, node, key, parent, path, ancestors):
+    def enter(self, node: Node, key, parent, path, ancestors):
         """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
         if node_type in self.noop_types:
@@ -298,11 +313,11 @@ class RenameSchemaTypesVisitor(Visitor):
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
-    def __init__(self, renamings, query_type):
+    def __init__(self, renamings: Dict[str, Optional[str]], query_type: str):
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
-            renamings: Dict[str, str], from original field name to renamed field name. Any
+            renamings: Dict[str, Optional[str]], from original field name to renamed field name. Any
                        name not in the dict will be unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery)
         """
@@ -314,14 +329,16 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         self.renamings = renamings
         self.query_type = query_type
 
-    def enter_object_type_definition(self, node, *args):
+    def enter_object_type_definition(self, node: ObjectTypeDefinitionNode, *args):
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_object_type_definition(self, node, key, parent, path, ancestors):
+    def leave_object_type_definition(
+        self, node: ObjectTypeDefinitionNode, key, parent, path, ancestors
+    ):
         """If the node's name matches the query type, record that we left the query type."""
-        if len(node.fields) == 0:
+        if not node.fields:
             raise CascadingSuppressionError(
                 f"Type renamings {self.renamings} suppressed every type in the schema so it will be"
                 f" impossible to query for anything. To fix this, check why the `renamings` "
@@ -332,7 +349,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node, *args):
+    def enter_field_definition(self, node: FieldDefinitionNode, *args):
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
@@ -348,11 +365,11 @@ class RenameQueryTypeFieldsVisitor(Visitor):
 
 
 class CascadingSuppressionCheckVisitor(Visitor):
-    def __init__(self, renamings, query_type):
+    def __init__(self, renamings: Dict[str, Optional[str]], query_type: str):
         """Create a visitor to check that suppression does not cause an illegal state.
 
         Args:
-            renamings: Dict[str, str], from original field name to renamed field name. Any
+            renamings: Dict[str, Optional[str]], from original field name to renamed field name. Any
                        name not in the dict will be unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery)
         """
@@ -364,17 +381,19 @@ class CascadingSuppressionCheckVisitor(Visitor):
         self.renamings = renamings
         self.query_type = query_type
 
-    def enter_object_type_definition(self, node, *args):
+    def enter_object_type_definition(self, node: ObjectTypeDefinitionNode, *args):
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_object_type_definition(self, node, key, parent, path, ancestors):
+    def leave_object_type_definition(
+        self, node: ObjectTypeDefinitionNode, key, parent, path, ancestors
+    ):
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node, *args):
+    def enter_field_definition(self, node: FieldDefinitionNode, *args):
         """If not at query type, check that no field depends on a type that was suppressed."""
         if self.in_query_type:
             return None
@@ -394,14 +413,14 @@ class CascadingSuppressionCheckVisitor(Visitor):
             )
         return None
 
-    def enter_union_type_definition(self, node, *args):
+    def enter_union_type_definition(self, node: UnionTypeDefinitionNode, *args):
         """Check that each union still has at least one member.
 
         Raises:
             CascadingSuppressionError if all the members of this union were suppressed.
         """
         union_name = node.name.value
-        if len(node.types) == 0:
+        if not node.types:
             raise CascadingSuppressionError(
                 f"Type renamings {self.renamings} suppressed all types belonging to the union "
                 f"{union_name}. To fix this, you can suppress the union as well by adding "
