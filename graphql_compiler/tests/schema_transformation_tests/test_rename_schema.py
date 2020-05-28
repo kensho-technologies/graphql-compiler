@@ -404,48 +404,6 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
-    def test_list_suppress(self):
-        renamed_schema = rename_schema(
-            parse(ISS.list_schema),
-            {
-                "Droid": "NewDroid",
-                "Character": "NewCharacter",
-                "Height": None,
-                "Date": "NewDate",
-                "id": "NewId",
-                "String": "NewString",
-            },
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type NewDroid implements NewCharacter {
-              id: String
-              dates: [Date]
-              friends: [NewDroid]
-              enemies: [NewCharacter]
-            }
-
-            type SchemaQuery {
-              NewDroid: [NewDroid]
-            }
-
-            scalar Date
-
-            interface NewCharacter {
-              id: String
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual(
-            {"NewCharacter": "Character", "NewDroid": "Droid",},
-            renamed_schema.reverse_name_map,
-        )
-
     def test_non_null_rename(self):
         renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "NewDog"})
         renamed_schema_string = dedent(
@@ -701,13 +659,17 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(CascadingSuppressionError):
             rename_schema(parse(ISS.basic_schema), {"Human": None})
 
-    def test_suppress_all_union_members_cascading_error(self):
+    def test_suppress_all_union_members(self):
         with self.assertRaises(CascadingSuppressionError):
             rename_schema(parse(ISS.union_schema), {"Human": None, "Droid": None})
 
-    def test_suppress_still_needed_type_cascading_error(self):
+    def test_field_still_depends_on_suppressed_type(self):
         with self.assertRaises(CascadingSuppressionError):
             rename_schema(parse(ISS.multiple_fields_schema), {"Dog": None})  # a field in Human is of type Dog.
+
+    def test_field_in_list_still_depends_on_suppressed_type(self):
+        with self.assertRaises(CascadingSuppressionError):
+            rename_schema(parse(ISS.list_schema), {"Height": None})
 
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
