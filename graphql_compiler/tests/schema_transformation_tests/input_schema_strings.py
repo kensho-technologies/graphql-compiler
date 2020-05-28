@@ -160,6 +160,34 @@ class InputSchemaStrings(object):
     """
     )
 
+    extended_union_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Human {
+          id: String
+        }
+
+        type Droid {
+          id: String
+        }
+        
+        type Dog {
+          nickname: String
+        }
+        
+        union HumanOrDroid = Human | Droid
+
+        type SchemaQuery {
+          Human: Human
+          Droid: Droid
+          Dog: Dog
+        }
+    """
+    )
+
     list_schema = dedent(
         """\
         schema {

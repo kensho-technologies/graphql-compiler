@@ -356,6 +356,33 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
+    def test_union_member_suppress(self):
+        renamed_schema = rename_schema(
+            parse(ISS.union_schema), {"Droid": None}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Human {
+              id: String
+            }
+
+            union HumanOrDroid = Human
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {},
+            renamed_schema.reverse_name_map,
+        )
+
     def test_list_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
@@ -661,7 +688,8 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_suppress_all_union_members(self):
         with self.assertRaises(CascadingSuppressionError):
-            rename_schema(parse(ISS.union_schema), {"Human": None, "Droid": None})
+            # Note that we can't use ISS.union_schema directly here because suppressing all the members of the union would mean suppressing every type in general, which means we couldn't be sure what was causing the CascadingSuppressionError.
+            rename_schema(parse(ISS.extended_union_schema), {"Human": None, "Droid": None})
 
     def test_field_still_depends_on_suppressed_type(self):
         with self.assertRaises(CascadingSuppressionError):
