@@ -30,7 +30,7 @@ from .schema import (  # noqa
 )
 from .schema.schema_info import CommonSchemaInfo, SQLSchemaInfo
 from .schema_generation.orientdb import get_graphql_schema_from_orientdb_schema_data  # noqa
-from .schema_generation.sqlalchemy import get_sql_schema_info  # noqa
+from .schema_generation.sql import get_sql_schema_info  # noqa
 
 
 __package_name__ = "graphql-compiler"

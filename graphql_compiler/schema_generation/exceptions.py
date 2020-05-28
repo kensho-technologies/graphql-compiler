@@ -53,7 +53,7 @@ class InvalidSQLEdgeError(SchemaError):
 class MissingPrimaryKeyError(SchemaError):
     """Raised when a SQLAlchemy Table object is missing a primary key.
 
-    The compiler requires that each SQLAlchemy Table object in the SQLALchemySchemaInfo
+    The compiler requires that each SQLAlchemy Table object in the SQLSchemaInfo
     has a primary key. However, the primary key in the SQLAlchemy Table object need not be the
     primary key in the underlying table. It may simply be a non-null and unique identifier of each
     row.

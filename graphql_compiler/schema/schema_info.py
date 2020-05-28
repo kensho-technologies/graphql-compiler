@@ -200,7 +200,7 @@ CommonSchemaInfo = namedtuple(
 )
 
 
-# Complete schema information sufficient to compile GraphQL queries to SQLAlchemy
+# Complete schema information sufficient to compile GraphQL queries to SQL
 #
 # It describes the tables that correspond to each type (object type or interface type),
 # and gives instructions on how to perform joins for each vertex field. The property fields on each
@@ -252,7 +252,7 @@ def make_sql_schema_info(
 ):
     """Make a SQLSchemaInfo if the input provided is valid.
 
-    See the documentation of SQLAlchemyschemaInfo for more detailed documentation of the args.
+    See the documentation of SQLSchemaInfo for more detailed documentation of the args.
 
     Args:
         schema: GraphQLSchema

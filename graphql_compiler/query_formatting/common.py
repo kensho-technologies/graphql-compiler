@@ -54,7 +54,7 @@ def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, v
     """Ensure the value has the expected type and is usable in any of our backends, or raise errors.
 
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
-    Gremlin, or SQLAlchemy. This function should be stricter than the validation done by any
+    Gremlin, or SQL. This function should be stricter than the validation done by any
     specific backend. That way code that passes validation can be compiled to any backend.
 
     Args:
@@ -144,7 +144,7 @@ def validate_arguments(
     """Ensure that all arguments are provided and that they are of the expected type.
 
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
-    Gremlin, or SQLAlchemy. This function should be stricter than the validation done by any
+    Gremlin, or SQL. This function should be stricter than the validation done by any
     specific backend. That way code that passes validation can be compiled to any backend.
 
     Args:

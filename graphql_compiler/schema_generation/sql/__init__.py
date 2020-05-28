@@ -2,7 +2,7 @@
 from ...schema.schema_info import SQLSchemaInfo
 from ..graphql_schema import get_graphql_schema_from_schema_graph
 from .edge_descriptors import get_join_descriptors_from_edge_descriptors
-from .schema_graph_builder import get_sqlalchemy_schema_graph
+from .schema_graph_builder import get_sql_schema_graph
 
 
 def get_sql_schema_info(
@@ -50,7 +50,7 @@ def get_sql_schema_info(
     Returns:
         SQLSchemaInfo containing the full information needed to compile SQL queries.
     """
-    schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
+    schema_graph = get_sql_schema_graph(vertex_name_to_table, direct_edges)
 
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
         schema_graph,

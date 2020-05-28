@@ -20,7 +20,7 @@ from ...compiler.compiler_frontend import OutputMetadata
 from ...post_processing.sql_post_processing import post_process_mssql_folds
 from ...schema.schema_info import CommonSchemaInfo
 from ...schema_generation.orientdb.schema_properties import ORIENTDB_BASE_VERTEX_CLASS_NAME
-from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
+from ...schema_generation.sql.sqlalchemy_reflector import (
     fast_sql_server_reflect,
     get_first_column_in_table,
 )

@@ -1921,7 +1921,7 @@ backed by SQL `association tables <https://en.wikipedia.org/wiki/Associative_ent
 Including tables without explicitly enforced primary keys
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The compiler requires that each SQLAlchemy :code:`Table` object in the :code:`SQLALchemySchemaInfo`
+The compiler requires that each SQLAlchemy :code:`Table` object in the :code:`SQLSchemaInfo`
 has a primary key. However, the primary key in the :code:`Table` need not be the primary key in
 the underlying table. It may simply be a non-null and unique identifier of each row. To override
 the primary key of SQLAlchemy :code:`Table` objects reflected from a database please follow the

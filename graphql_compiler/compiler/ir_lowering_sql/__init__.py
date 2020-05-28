@@ -132,7 +132,7 @@ def lower_ir(schema_info, ir):
     """Lower the IR blocks into a form that can be represented by a SQL query.
 
     Args:
-        schema_info: SqlAlchemySchemaInfo containing all relevant schema information
+        schema_info: SQLSchemaInfo containing all relevant schema information
         ir: IrAndMetadata representing the query to lower into SQL-compatible form
 
     Returns:

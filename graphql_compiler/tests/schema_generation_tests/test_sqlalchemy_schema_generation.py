@@ -18,18 +18,18 @@ from sqlalchemy.types import Integer, LargeBinary, String
 from ... import get_sql_schema_info
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
 from ...schema_generation.schema_graph import IndexDefinition
-from ...schema_generation.sqlalchemy import (
+from ...schema_generation.sql import (
     SQLSchemaInfo,
     get_graphql_schema_from_schema_graph,
     get_join_descriptors_from_edge_descriptors,
 )
-from ...schema_generation.sqlalchemy.edge_descriptors import (
+from ...schema_generation.sql.edge_descriptors import (
     DirectEdgeDescriptor,
     DirectJoinDescriptor,
     generate_direct_edge_descriptors_from_foreign_keys,
 )
-from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
-from ...schema_generation.sqlalchemy.schema_graph_builder import get_sqlalchemy_schema_graph
+from ...schema_generation.sql.scalar_type_mapper import try_get_graphql_scalar_type
+from ...schema_generation.sql.schema_graph_builder import get_sql_schema_graph
 
 
 def _get_test_vertex_name_to_table():
@@ -85,7 +85,7 @@ class SQLSchemaInfoGenerationTests(unittest.TestCase):
         self.maxDiff = None
         vertex_name_to_table = _get_test_vertex_name_to_table()
         direct_edges = _get_test_direct_edges()
-        self.schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
+        self.schema_graph = get_sql_schema_graph(vertex_name_to_table, direct_edges)
 
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
             self.schema_graph, class_to_field_type_overrides={}, hidden_classes=set()

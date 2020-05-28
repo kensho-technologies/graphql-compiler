@@ -19,7 +19,7 @@ from .utils import (
 )
 
 
-def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
+def get_sql_schema_graph(vertex_name_to_table, direct_edges):
     """Return a SchemaGraph from the metadata.
 
     Args:
@@ -56,7 +56,7 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
     direct_superclass_sets = {element_name: set() for element_name in elements}
     inheritance_structure = InheritanceStructure(direct_superclass_sets)
     link_schema_elements(elements, inheritance_structure)
-    indexes = _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types)
+    indexes = _get_sql_indexes(vertex_name_to_table, vertex_types)
     return SchemaGraph(elements, inheritance_structure, indexes)
 
 
@@ -84,7 +84,7 @@ def _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor):
     )
 
 
-def _get_sqlalchemy_indexes(vertex_name_to_table, vertex_types):
+def _get_sql_indexes(vertex_name_to_table, vertex_types):
     """Return the IndexDefinition objects corresponding to the indexes in the SQL tables."""
     # TODO(pmantica): Add indexes that do not correspond to either unique constraints nor
     #                 primary keys.
