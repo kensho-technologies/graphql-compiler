@@ -6,11 +6,9 @@ services:
 install:
   - pip install --upgrade pip
   - pip install --upgrade pipenv
-  - pipenv --support
-  - pipenv install --deploy --system --verbose
 matrix:
   include:
   - name: "Lint and static analysis"
     python: "3.8"
     script:
-      python --version
+      pipenv --support
