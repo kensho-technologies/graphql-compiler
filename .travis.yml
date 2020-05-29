@@ -6,7 +6,8 @@ services:
 install:
   - pip install --upgrade pip
   - pip install --upgrade pipenv
-  - pipenv install --deploy --system
+  - pipenv --support
+  - pipenv install --deploy --system --verbose
 matrix:
   include:
   - name: "Lint and static analysis"
