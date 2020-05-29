@@ -923,7 +923,7 @@ class FoldedContextField(Expression):
         template = "[x IN {mark_name} | x.{field_name}]"
 
         if field_name == COUNT_META_FIELD_NAME:
-            raise NotImplementedError()
+            raise NotImplementedError("_x_count is not implemented in the Cypher backend.")
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
@@ -1038,11 +1038,11 @@ class FoldCountContextField(Expression):
 
     def to_gremlin(self) -> str:
         """Not supported yet."""
-        raise NotImplementedError()
+        raise NotImplementedError("_x_count is not implemented in the Gremlin backend")
 
     def to_cypher(self) -> str:
         """Not supported yet."""
-        raise NotImplementedError()
+        raise NotImplementedError("_x_count is not implemented in the Cypher backend.")
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a SQLAlchemy column of a coalesced COUNT(*) from a folded subquery."""
@@ -1187,7 +1187,7 @@ class UnaryTransformation(Expression):
 
     def to_cypher(self) -> str:
         """Not implemented yet."""
-        raise NotImplementedError()
+        raise NotImplementedError("Unary operators are not implemented in the Cypher backend.")
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Not implemented yet."""

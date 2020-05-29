@@ -77,31 +77,49 @@ class SchemaTests(unittest.TestCase):
             self.assertEqual(date_obj, schema.GraphQLDate.parse_value(iso_date))
 
     def test_datetime_serialization_and_parsing(self):
-        eastern_us_tz = pytz.timezone("US/Eastern")
-        central_eu_tz = pytz.timezone("Europe/Amsterdam")
-
         test_data = {
-            # Timezone offsets.
-            # N.B.: See the link below to understand why we use localize() to set the time zone.
-            # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
-            "2017-01-01T00:00:00+00:00": datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
-            "2017-01-01T00:00:00+01:00": central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
-            "2017-01-01T00:00:00-05:00": eastern_us_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
+            # Basic.
+            "2017-01-01T00:00:00": datetime(2017, 1, 1, 0, 0, 0),
             # Leap day.
-            "2008-02-29T22:34:56+00:00": datetime(2008, 2, 29, 22, 34, 56, tzinfo=pytz.utc),
+            "2008-02-29T22:34:56": datetime(2008, 2, 29, 22, 34, 56),
             # High numbers in all positions, except year and timezone.
-            "1991-12-31T23:59:59+00:00": datetime(1991, 12, 31, 23, 59, 59, tzinfo=pytz.utc),
+            "1991-12-31T23:59:59": datetime(1991, 12, 31, 23, 59, 59),
         }
-
-        # Special case: a "Z" suffix == "00:00" timezone
-        self.assertEqual(
-            datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
-            schema.GraphQLDateTime.parse_value("2017-01-01T00:00:00Z"),
-        )
 
         for iso_datetime, datetime_obj in six.iteritems(test_data):
             self.assertEqual(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
             self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(iso_datetime))
+
+        invalid_parsing_inputs = {
+            # Non-string.
+            datetime(2017, 1, 1, 0, 0, 0),
+            # Including utc offset.
+            "2017-01-01T00:00:00+01:00",
+            # Zero utc offset.
+            "2017-01-01T00:00:00+00:00",
+            # Alternate format that indicates zero utc offset.
+            "2017-01-01T00:00:00+00:00Z",
+        }
+
+        for parsing_input in invalid_parsing_inputs:
+            with self.assertRaises(ValueError):
+                schema.GraphQLDateTime.parse_value(parsing_input)
+
+        central_eu_tz = pytz.timezone("Europe/Amsterdam")
+        invalid_serialization_inputs = {
+            # With UTC timezone.
+            datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
+            # With non-UTC timezone.
+            # N.B.: See the link below to understand why we use localize() to set the time zone.
+            # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
+            central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
+            # Date instead of datetime.
+            date(2017, 1, 1),
+        }
+
+        for serialization_input in invalid_serialization_inputs:
+            with self.assertRaises(ValueError):
+                schema.GraphQLDateTime.parse_value(serialization_input)
 
     def test_meta_fields_from_constant(self):
         fields = schema.EXTENDED_META_FIELD_DEFINITIONS.copy()

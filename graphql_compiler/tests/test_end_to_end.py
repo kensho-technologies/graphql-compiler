@@ -212,13 +212,16 @@ class QueryFormattingTests(unittest.TestCase):
                 GraphQLDateTime,
                 (
                     datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),
+                    datetime.datetime(2007, 12, 6),
+                ),
+                (
+                    "2007-12-06T16:29:43",
+                    datetime.date(2007, 12, 6),
                     datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.utc),
                     datetime.datetime(
                         2009, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.timezone("US/Eastern")
                     ),
-                    datetime.datetime(2007, 12, 6),
                 ),
-                ("2007-12-06 16:29:43", datetime.date(2007, 12, 6),),
             ),
             (GraphQLList(GraphQLInt), ([], [1], [3, 5]), (4, ["a"], [1, "a"], [True])),
             (GraphQLList(GraphQLString), ([], ["a"]), (1, "a", ["a", 4])),
@@ -263,21 +266,17 @@ class QueryFormattingTests(unittest.TestCase):
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05")
 
-        # No timezone provided
+        # With timezone
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55")
+            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55+00:00")
 
-        # Invalid format
+        # With alternate timezone format
         with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05 03:20:55Z")
+            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55Z")
 
         # Valid datetime
-        value = deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55Z")
-        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
-
-        # Valid datetime alternate timezone format
-        value = deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55+00:00")
-        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
+        value = deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55")
+        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55), value)
 
     def test_float_deserialization(self) -> None:
         # Invalid string
@@ -363,9 +362,9 @@ class QueryFormattingTests(unittest.TestCase):
         value = deserialize_argument(
             "birth_time",
             cast(GraphQLScalarType, parsed_graphql_datetime_type),
-            "2014-02-05T03:20:55Z",
+            "2014-02-05T03:20:55",
         )
-        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55, tzinfo=pytz.utc), value)
+        self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55), value)
 
     def test_deserialize_lists(self):
         # Non-collection

@@ -1186,7 +1186,7 @@ class CompilerTests(unittest.TestCase):
         """
         expected_gremlin = NotImplementedError
         expected_mssql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = NotImplementedError
         expected_postgresql = """
             SELECT
                 "Species_1".name AS species_name
@@ -1352,14 +1352,14 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = """
             SELECT
-                Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `event_date`
+                Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `event_date`
             FROM (
                 MATCH {{
                     class: Event,
                     where: ((
                         event_date BETWEEN
-                            date({lower}, "yyyy-MM-dd'T'HH:mm:ssX")
-                            AND date({upper}, "yyyy-MM-dd'T'HH:mm:ssX")
+                            date({lower}, "yyyy-MM-dd'T'HH:mm:ss")
+                            AND date({upper}, "yyyy-MM-dd'T'HH:mm:ss")
                     )),
                     as: Event___1
                 }}
@@ -1369,12 +1369,12 @@ class CompilerTests(unittest.TestCase):
         expected_gremlin = """
             g.V('@class', 'Event')
             .filter{it, m -> (
-                (it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $lower)) &&
-                (it.event_date <= Date.parse("yyyy-MM-dd'T'HH:mm:ssX", $upper))
+                (it.event_date >= Date.parse("yyyy-MM-dd'T'HH:mm:ss", $lower)) &&
+                (it.event_date <= Date.parse("yyyy-MM-dd'T'HH:mm:ss", $upper))
             )}
             .as('Event___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                event_date: m.Event___1.event_date.format("yyyy-MM-dd'T'HH:mm:ss")
             ])}
         """
         expected_mssql = """
@@ -1629,16 +1629,16 @@ class CompilerTests(unittest.TestCase):
                 if(
                     eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                     Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `child_fed_at`,
                 Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`,
+                    .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandparent_fed_at`,
                 if(
                     eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
                         IS NOT null)"),
                     Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `other_parent_fed_at`
             FROM (
@@ -1771,16 +1771,16 @@ class CompilerTests(unittest.TestCase):
                 child_fed_at: (
                     (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 ),
                 grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                    .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    .format("yyyy-MM-dd'T'HH:mm:ss"),
                 other_parent_fed_at: (
                     (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
                         __out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 )
             ])}
@@ -1920,16 +1920,16 @@ class CompilerTests(unittest.TestCase):
                 if(
                     eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                     Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `child_fed_at`,
                 Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandparent_fed_at`,
+                    .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandparent_fed_at`,
                 if(
                     eval("(Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
                         IS NOT null)"),
                     Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                     null
                 ) AS `other_parent_fed_at`
             FROM (
@@ -2061,16 +2061,16 @@ class CompilerTests(unittest.TestCase):
                 child_fed_at: (
                     (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                        .format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 ),
                 grandparent_fed_at: m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1.event_date
-                    .format("yyyy-MM-dd'T'HH:mm:ssX"),
+                    .format("yyyy-MM-dd'T'HH:mm:ss"),
                 other_parent_fed_at: (
                     (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
                         __out_Animal_FedAt___1 != null) ?
                     m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") :
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") :
                     null
                 )
             ])}
@@ -5847,8 +5847,32 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         """
-        # TODO: implement multiple traversals for MSSQL in a separate PR
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS sibling_and_self_names_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_4]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                        ON [Animal_4].uuid = [Animal_3].parent
+                        WHERE [Animal_2].parent = [Animal_4].uuid
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]) AS folded_subquery_1
+                ON [Animal_1].uuid = folded_subquery_1.uuid
+            """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -5939,7 +5963,35 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS sibling_and_self_species_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Species_1].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_3]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                        ON [Animal_3].uuid = [Animal_4].parent
+                        JOIN db_1.schema_1.[Species] AS [Species_1]
+                        ON [Animal_4].species = [Species_1].uuid
+                        WHERE [Animal_2].parent = [Animal_3].uuid
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -6042,7 +6094,34 @@ class CompilerTests(unittest.TestCase):
                     ))
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS sibling_and_self_species_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_1].parent = [Animal_2].uuid
+            JOIN (
+                SELECT
+                    [Animal_3].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Species_1].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_4]
+                        JOIN db_1.schema_1.[Species] AS [Species_1]
+                        ON [Animal_4].species = [Species_1].uuid
+                        WHERE [Animal_3].uuid = [Animal_4].parent
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1 ON [Animal_2].uuid = folded_subquery_1.uuid
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -6553,7 +6632,7 @@ class CompilerTests(unittest.TestCase):
                 Animal___1.name AS `animal_name`,
                 $Animal___1___out_Animal_ParentOf.birthday.format("yyyy-MM-dd")
                     AS `child_birthdays_list`,
-                $Animal___1___out_Animal_FedAt.event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                $Animal___1___out_Animal_FedAt.event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                     AS `fed_at_datetimes_list`
             FROM (
                 MATCH {{
@@ -6584,7 +6663,7 @@ class CompilerTests(unittest.TestCase):
                         m.Animal___1.out_Animal_FedAt.collect{
                             entry ->
                                 entry.inV.next()
-                                    .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                                    .event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                         }
                     )
                 )
@@ -7381,7 +7460,7 @@ class CompilerTests(unittest.TestCase):
               ON "Animal_1".uuid = folded_subquery_1.uuid
               """
 
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7435,7 +7514,7 @@ class CompilerTests(unittest.TestCase):
             WHERE folded_subquery_1.fold_output__x_count >= %(min_children)s
         """
 
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7677,7 +7756,7 @@ class CompilerTests(unittest.TestCase):
         """
         expected_gremlin = NotImplementedError
         expected_sql = NotImplementedError
-        expected_cypher = SKIP_TEST  # _x_count not implemented for Cypher
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7743,7 +7822,7 @@ class CompilerTests(unittest.TestCase):
                 folded_subquery_1.fold_output__x_count >= %(min_children)s AND
                 folded_subquery_2.fold_output__x_count >= %(min_related)s
         """
-        expected_cypher = SKIP_TEST
+        expected_cypher = NotImplementedError
 
         check_test_data(
             self,
@@ -7776,7 +7855,7 @@ class CompilerTests(unittest.TestCase):
         """
         expected_gremlin = NotImplementedError
         expected_mssql = NotImplementedError
-        expected_cypher = SKIP_TEST
+        expected_cypher = NotImplementedError
         expected_postgresql = """
             SELECT
                 "Species_1".name AS name
@@ -9004,10 +9083,10 @@ class CompilerTests(unittest.TestCase):
             $optional__0 = (
                 SELECT
                     Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandchild_fed_at`,
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandchild_fed_at`,
                     if(eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                         Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                            .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                            .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                             null
                     ) AS `parent_fed_at`
                 FROM (
@@ -9067,12 +9146,12 @@ class CompilerTests(unittest.TestCase):
             $optional__1 = (
                 SELECT
                     Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `grandchild_fed_at`,
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `grandchild_fed_at`,
                     Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                        .event_date.format("yyyy-MM-dd'T'HH:mm:ssX") AS `other_child_fed_at`,
+                        .event_date.format("yyyy-MM-dd'T'HH:mm:ss") AS `other_child_fed_at`,
                     if(eval("(Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)"),
                         Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                            .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                            .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                         null
                     ) AS `parent_fed_at`
                 FROM (
@@ -9197,18 +9276,18 @@ class CompilerTests(unittest.TestCase):
            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
                    grandchild_fed_at:
                        m.Animal__in_Animal_ParentOf__out_Animal_FedAt___1
-                           .event_date.format("yyyy-MM-dd'T'HH:mm:ssX"),
+                           .event_date.format("yyyy-MM-dd'T'HH:mm:ss"),
                    other_child_fed_at: (
                        (m.Animal__out_Animal_ParentOf__in_Animal_ParentOf
                            __out_Animal_FedAt___1 != null) ?
                            m.Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
-                               .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                               .event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                            : null
                    ),
                    parent_fed_at: (
                        (m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1 != null) ?
                            m.Animal__out_Animal_ParentOf__out_Animal_FedAt___1
-                               .event_date.format("yyyy-MM-dd'T'HH:mm:ssX")
+                               .event_date.format("yyyy-MM-dd'T'HH:mm:ss")
                            : null
                    )
                ])
@@ -9945,7 +10024,39 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS grandchild_names_list,
+                [Animal_2].name AS grandparent_name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_3]
+            ON [Animal_1].parent = [Animal_3].uuid
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_3].parent = [Animal_2].uuid
+            JOIN (
+                SELECT
+                    [Animal_4].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_5].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_6]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_5]
+                        ON [Animal_6].uuid = [Animal_5].parent
+                        WHERE [Animal_4].uuid = [Animal_6].parent
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_4]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+            WHERE [Animal_2].uuid IS NOT NULL OR [Animal_3].uuid IS NULL
+        """
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
@@ -10081,7 +10192,39 @@ class CompilerTests(unittest.TestCase):
                 )
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS grandchild_names_list,
+                [Animal_2].name AS grandparent_name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_3].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_4].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_5]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                        ON [Animal_5].uuid = [Animal_4].parent
+                        WHERE [Animal_3].uuid = [Animal_5].parent
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_3]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_6]
+            ON [Animal_1].parent = [Animal_6].uuid
+            LEFT OUTER JOIN db_1.schema_1.[Animal] AS [Animal_2]
+            ON [Animal_6].parent = [Animal_2].uuid
+            WHERE [Animal_2].uuid IS NOT NULL OR [Animal_6].uuid IS NULL
+"""
         expected_cypher = """
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)

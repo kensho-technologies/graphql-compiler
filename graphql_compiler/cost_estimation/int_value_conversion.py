@@ -88,8 +88,6 @@ def convert_int_to_field_value(
     See module docstring for details. The int_value is expected to be in the range of
     convert_field_value_to_int.
 
-    Datetimes are returned in the UTC timezone.
-
     Args:
         schema_info: QueryPlanningSchemaInfo
         vertex_class: str, name of vertex class to which the property field belongs.
