@@ -13,4 +13,4 @@ matrix:
   - name: "Lint and static analysis"
     python: "3.8"
     script:
-      pipenv --support
+      python --version
