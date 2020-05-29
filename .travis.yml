@@ -20,9 +20,9 @@ before_install:
   - sudo ACCEPT_EULA=Y apt-get install msodbcsql17
 install:
   - pip install --upgrade pip
+  - pip install --upgrade setuptools
   # The pipenv install --deploy --system command has a bug in the latest release.
   - pip install pipenv==2018.11.26
-  - pip install --upgrade setuptools
   - pipenv install --dev --deploy --system
   - pipenv install --system --skip-lock -e .
 matrix:
