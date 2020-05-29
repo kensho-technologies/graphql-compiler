@@ -4,7 +4,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [packages]  # Make sure to keep in sync with setup.py requirements.
-cached-property = ">=1.5.1,<2"
 # The below is necessary to make a few pylint passes work properly, since pylint expects to be able
 # to run "import graphql_compiler" in the environment in which it runs.
 graphql-compiler = {editable = true, path = "."}
