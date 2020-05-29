@@ -436,9 +436,12 @@ class IntegrationTests(TestCase):
     @use_all_backends(except_backends=(test_backend.REDISGRAPH,))  # Not implemented yet
     @integration_fixtures
     def test_fold_basic(self, backend_name: str) -> None:
-        # (query, args, expected_results) tuples.
-        # The queries are ran in the order specified here.
-        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]]]] = [
+        # (query, args, expected_results, excluded_backends) tuples.
+        # Note: excluded_backends is distinct from `@use_all_backends(expect_backends=(...)) because
+        # some backends such as MSSQL have most, but not all, fold functionality implemented.
+        # excluded_backends can be use to bypass a subset of the fold tests.
+        # The queries are run in the order specified here.
+        queries: List[Tuple[str, Dict[str, Any], List[Dict[str, Any]], List[str]]] = [
             # Query 1: Unfolded children of Animal 1
             (
                 """
@@ -456,6 +459,7 @@ class IntegrationTests(TestCase):
                     {"descendant_name": "Animal 2"},
                     {"descendant_name": "Animal 3"},
                 ],
+                [],
             ),
             # Query 2: Folded children of Animal 1
             (
@@ -470,6 +474,7 @@ class IntegrationTests(TestCase):
             }""",
                 {"starting_animal_name": "Animal 1",},
                 [{"child_names": ["Animal 1", "Animal 2", "Animal 3"]},],
+                [],
             ),
             # Query 3: Folded children's net worths of Animal 1
             (
@@ -498,6 +503,7 @@ class IntegrationTests(TestCase):
             }""",
                 {"starting_animal_name": "Animal 4",},
                 [],
+                [],
             ),
             # Query 5: Folded children of Animal 4
             (
@@ -512,10 +518,71 @@ class IntegrationTests(TestCase):
             }""",
                 {"starting_animal_name": "Animal 4",},
                 [{"child_names": []},],
+                [],
+            ),
+            # Query 5: Multiple outputs in a fold scope.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        name @output(out_name: "child_names")
+                        uuid @output(out_name: "child_uuids")
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1",},
+                [
+                    {
+                        "child_names": ["Animal 1", "Animal 2", "Animal 3"],
+                        "child_uuids": [
+                            "cfc6e625-8594-0927-468f-f53d864a7a51",
+                            "cfc6e625-8594-0927-468f-f53d864a7a52",
+                            "cfc6e625-8594-0927-468f-f53d864a7a53",
+                        ],
+                    },
+                ],
+                [test_backend.MSSQL],
+            ),
+            # Query 6: Traversal in a fold scope.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        out_Animal_ParentOf {
+                            name @output(out_name: "grandchild_names")
+                        }
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1",},
+                [{"grandchild_names": ["Animal 1", "Animal 2", "Animal 3", "Animal 4"],},],
+                [],
+            ),
+            # Query 7: _x_count.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf @fold {
+                        name @output(out_name: "child_names")
+                        _x_count @output(out_name: "child_count")
+                    }
+                }
+            }""",
+                {"starting_animal_name": "Animal 1",},
+                [{"child_names": ["Animal 1", "Animal 2", "Animal 3"], "child_count": 3,},],
+                [test_backend.MSSQL, test_backend.NEO4J],
             ),
         ]
 
-        for graphql_query, parameters, expected_results in queries:
+        for graphql_query, parameters, expected_results, excluded_backends in queries:
+            if backend_name in excluded_backends:
+                continue
             self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 
     @use_all_backends(
@@ -610,6 +677,26 @@ class IntegrationTests(TestCase):
         }
         expected_results = [
             {"animal_name": "Animal 3"},
+        ]
+        self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
+
+    # RedisGraph doesn't support temporal types, so DateTime types aren't supported.
+    @use_all_backends(except_backends=(test_backend.REDISGRAPH,))
+    @integration_fixtures
+    def test_filter_on_datetime(self, backend_name: str) -> None:
+        graphql_query = """
+        {
+            BirthEvent {
+                uuid @output(out_name: "uuid")
+                event_date @filter(op_name: "=", value: ["$event_date"])
+            }
+        }
+        """
+        parameters = {
+            "event_date": datetime.datetime(2000, 1, 1, 1, 1, 1),
+        }
+        expected_results = [
+            {"uuid": "cfc6e625-8594-0927-468f-f53d864a7a55"},
         ]
         self.assertResultsEqual(graphql_query, parameters, backend_name, expected_results)
 

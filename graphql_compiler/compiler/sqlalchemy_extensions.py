@@ -14,13 +14,13 @@ def contains_operator(collection, element):
     """
     if not isinstance(collection, sqlalchemy.sql.elements.BindParameter):
         raise AssertionError(
-            u"Argument collection was expected to be a {}, but was a {}.".format(
+            "Argument collection was expected to be a {}, but was a {}.".format(
                 sqlalchemy.sql.elements.BindParameter, type(collection)
             )
         )
     if not isinstance(element, sqlalchemy.sql.schema.Column):
         raise AssertionError(
-            u"Argument element was expected to be a {}, but was a {}.".format(
+            "Argument element was expected to be a {}, but was a {}.".format(
                 sqlalchemy.sql.schema.Column, type(element)
             )
         )
@@ -40,13 +40,13 @@ def not_contains_operator(collection, element):
     """
     if not isinstance(collection, sqlalchemy.sql.elements.BindParameter):
         raise AssertionError(
-            u"Argument collection was expected to be a {}, but was a {}.".format(
+            "Argument collection was expected to be a {}, but was a {}.".format(
                 sqlalchemy.sql.elements.BindParameter, type(collection)
             )
         )
     if not isinstance(element, sqlalchemy.sql.schema.Column):
         raise AssertionError(
-            u"Argument element was expected to be a {}, but was a {}.".format(
+            "Argument element was expected to be a {}, but was a {}.".format(
                 sqlalchemy.sql.schema.Column, type(element)
             )
         )

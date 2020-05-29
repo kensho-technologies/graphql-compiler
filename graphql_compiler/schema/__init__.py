@@ -4,13 +4,17 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
+from typing import Any, FrozenSet
 
 import arrow
 from graphql import (
     DirectiveLocation,
     GraphQLArgument,
+    GraphQLBoolean,
     GraphQLDirective,
     GraphQLField,
+    GraphQLFloat,
+    GraphQLID,
     GraphQLInt,
     GraphQLInterfaceType,
     GraphQLList,
@@ -274,8 +278,8 @@ def is_vertex_field_name(field_name):
 def _unused_function(*args, **kwargs):
     """Must not be called. Placeholder for functions that are required but aren't used."""
     raise NotImplementedError(
-        u"The function you tried to call is not implemented, args / kwargs: "
-        u"{} {}".format(args, kwargs)
+        "The function you tried to call is not implemented, args / kwargs: "
+        "{} {}".format(args, kwargs)
     )
 
 
@@ -286,8 +290,8 @@ def _serialize_date(value):
     # equality.
     if type(value) != date:
         raise ValueError(
-            u"Expected argument to be a python date object. "
-            u"Got {} of type {} instead.".format(value, type(value))
+            "Expected argument to be a python date object. "
+            "Got {} of type {} instead.".format(value, type(value))
         )
     return value.isoformat()
 
@@ -297,26 +301,33 @@ def _parse_date_value(value):
     return arrow.get(value, "YYYY-MM-DD").date()
 
 
-def _serialize_datetime(value):
+def _serialize_datetime(value: Any) -> str:
     """Serialize a DateTime object to its proper ISO-8601 representation."""
     # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
     # interchangeable. Rather than using isinstance, we will therefore check for exact type
     # equality.
-    if type(value) not in {datetime, arrow.Arrow}:
+    #
+    # We don't allow Arrow objects as input since it seems that Arrow objects are always tz aware.
+    # This is supported by the fact that the `.naive` Arrow method returns a datetime object instead
+    # of an Arrow object.
+    if type(value) == datetime and value.tzinfo is None:
+        return value.isoformat()
+    else:
         raise ValueError(
-            u"Expected argument to be a python datetime object. "
-            u"Got {} of type {} instead.".format(value, type(value))
+            f"Expected a timezone naive datetime object. Got {value} of type {type(value)} instead."
         )
-    return value.isoformat()
 
 
-def _parse_datetime_value(value):
+def _parse_datetime_value(value: Any) -> datetime:
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
     # attempt to parse with microsecond information
     try:
-        return arrow.get(value, "YYYY-MM-DDTHH:mm:ss.SZZ").datetime
+        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss")
     except arrow.parser.ParserMatchError:
-        return arrow.get(value, "YYYY-MM-DDTHH:mm:ssZZ").datetime
+        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss.S")
+
+    # arrow parses datetime naive strings into Arrow objects with a UTC timezone.
+    return arrow_result.naive
 
 
 GraphQLDate = GraphQLScalarType(
@@ -336,11 +347,10 @@ GraphQLDate = GraphQLScalarType(
 GraphQLDateTime = GraphQLScalarType(
     name="DateTime",
     description=(
-        "The `DateTime` scalar type represents timezone-aware second-accuracy timestamps."
+        "The `DateTime` scalar type represents timezone-naive second-accuracy timestamps."
         "Values are serialized following the ISO-8601 datetime format specification, "
-        'for example "2017-03-21T12:34:56+00:00". All of these fields must be included, '
-        "including the seconds and the time zone, and the format followed exactly, "
-        "or the behavior is undefined."
+        'for example "2017-03-21T12:34:56". All of these fields must be included, '
+        "including the seconds, and the format followed exactly, or the behavior is undefined."
     ),
     serialize=_serialize_datetime,
     parse_value=_parse_datetime_value,
@@ -363,11 +373,12 @@ GraphQLDecimal = GraphQLScalarType(
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
-CUSTOM_SCALAR_TYPES = (
-    GraphQLDecimal,
-    GraphQLDate,
-    GraphQLDateTime,
+CUSTOM_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
+    {GraphQLDecimal, GraphQLDate, GraphQLDateTime,}
 )
+SUPPORTED_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
+    {GraphQLInt, GraphQLString, GraphQLBoolean, GraphQLFloat, GraphQLID,}
+).union(CUSTOM_SCALAR_TYPES)
 
 DIRECTIVES = (
     FilterDirective,
@@ -429,9 +440,9 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
         for meta_field_name, meta_field in six.iteritems(EXTENDED_META_FIELD_DEFINITIONS):
             if meta_field_name in type_obj.fields:
                 raise AssertionError(
-                    u"Unexpectedly encountered an existing field named {} while "
-                    u"attempting to add a meta-field of the same name. Make sure "
-                    u"you are not attempting to add meta-fields twice.".format(meta_field_name)
+                    "Unexpectedly encountered an existing field named {} while "
+                    "attempting to add a meta-field of the same name. Make sure "
+                    "you are not attempting to add meta-fields twice.".format(meta_field_name)
                 )
 
             type_obj.fields[meta_field_name] = meta_field
@@ -448,9 +459,7 @@ def check_for_nondefault_directive_names(directives):
 
     nondefault_directives_found = directive_names - expected_directive_names
     if nondefault_directives_found:
-        raise AssertionError(
-            u"Unsupported directives found: {}".format(nondefault_directives_found)
-        )
+        raise AssertionError("Unsupported directives found: {}".format(nondefault_directives_found))
 
 
 def compute_schema_fingerprint(schema: GraphQLSchema) -> str:

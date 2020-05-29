@@ -97,8 +97,8 @@ def validate_schema_and_query_ast(schema, query_ast):
     missing_directives = expected_directives - actual_directives
     if missing_directives:
         missing_message = (
-            u"The following directives were missing from the "
-            u"provided schema: {}".format(missing_directives)
+            "The following directives were missing from the "
+            "provided schema: {}".format(missing_directives)
         )
         core_graphql_errors.append(missing_message)
 
@@ -115,8 +115,8 @@ def validate_schema_and_query_ast(schema, query_ast):
     )
     if extra_directives:
         extra_message = (
-            u"The following directives were supplied in the given schema, but are not "
-            u"not supported by the GraphQL compiler: {}".format(extra_directives)
+            "The following directives were supplied in the given schema, but are not "
+            "not supported by the GraphQL compiler: {}".format(extra_directives)
         )
         core_graphql_errors.append(extra_message)
 

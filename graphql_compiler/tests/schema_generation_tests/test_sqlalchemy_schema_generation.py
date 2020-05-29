@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import Dict
 import unittest
 
 from graphql.type import GraphQLInt, GraphQLObjectType, GraphQLString
@@ -12,9 +13,10 @@ from sqlalchemy import (
     Table,
 )
 from sqlalchemy.dialects.mssql import TINYINT, dialect
-from sqlalchemy.types import Integer, LargeBinary, String
+from sqlalchemy.types import TIMESTAMP, DateTime, Integer, LargeBinary, String
 
 from ... import get_sqlalchemy_schema_info
+from ...schema import GraphQLDateTime
 from ...schema_generation.exceptions import InvalidSQLEdgeError, MissingPrimaryKeyError
 from ...schema_generation.schema_graph import IndexDefinition
 from ...schema_generation.sqlalchemy import (
@@ -115,7 +117,21 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_warn_when_type_is_not_supported(self):
         with pytest.warns(Warning):
-            try_get_graphql_scalar_type("binary", LargeBinary)
+            try_get_graphql_scalar_type("binary", LargeBinary())
+
+    def test_support_sql_tz_naive_datetime_types(self):
+        column_name = "tz_naive_datetime"
+        tz_naive_types = (DateTime(timezone=False), TIMESTAMP(timezone=False))
+        for sql_type in tz_naive_types:
+            self.assertEqual(GraphQLDateTime, try_get_graphql_scalar_type(column_name, sql_type))
+
+    def test_do_not_support_sql_tz_aware_datetime_types(self):
+        column_name = "tz_aware_datetime"
+        tz_aware_types = (DateTime(timezone=True), TIMESTAMP(timezone=True))
+        for sql_type in tz_aware_types:
+            with self.assertWarns(Warning):
+                graphql_type = try_get_graphql_scalar_type(column_name, sql_type)
+            self.assertIsNone(graphql_type)
 
     def test_mssql_scalar_type_representation(self):
         table1_graphql_object = self.schema_info.schema.get_type("Table1")
@@ -308,3 +324,21 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
         faulty_vertex_name_to_table = {table_without_primary_key.name: table_without_primary_key}
         with self.assertRaises(MissingPrimaryKeyError):
             get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())
+
+    def test_missing_multiple_primary_keys(self):
+        metadata: MetaData = MetaData()
+        table_without_primary_key: Table = Table(
+            "TableWithoutPrimaryKey", metadata, Column("arbitrary_column", String()),
+        )
+        second_table_without_primary_key: Table = Table(
+            "SecondTableWithoutPrimaryKey", metadata, Column("second_arbitrary_column", String()),
+        )
+        faulty_vertex_name_to_table: Dict[str, Table] = {
+            table_without_primary_key.name: table_without_primary_key,
+            second_table_without_primary_key.name: second_table_without_primary_key,
+        }
+        with self.assertRaises(MissingPrimaryKeyError) as missing_primary_key_error_info:
+            get_sqlalchemy_schema_info(faulty_vertex_name_to_table, {}, dialect())
+        exception_message: str = missing_primary_key_error_info.exception.args[0]
+        for table_name in faulty_vertex_name_to_table:
+            self.assertIn(table_name, exception_message)

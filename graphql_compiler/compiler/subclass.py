@@ -43,7 +43,7 @@ def compute_subclass_sets(schema, type_equivalence_hints=None):
             for subclass in equivalent_type.types:
                 subclass_set[graphql_type.name].add(subclass.name)
         else:
-            raise AssertionError(u"Unexpected type {}".format(type(equivalent_type)))
+            raise AssertionError("Unexpected type {}".format(type(equivalent_type)))
 
     # Note that the inheritance structure in the GraphQL schema is already transitive. Union types
     # encompass all of the object type subclasses of their equivalent object type and cannot

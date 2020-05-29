@@ -41,7 +41,7 @@ def pretty_print_gremlin(gremlin):
         elif current_part.startswith(".back") or current_part.startswith(".optional"):
             indentation -= indentation_increment
             if indentation < 0:
-                raise AssertionError(u"Indentation became negative: {}".format(indentation))
+                raise AssertionError("Indentation became negative: {}".format(indentation))
 
         output.append((" " * indentation) + current_part)
 
@@ -64,16 +64,16 @@ def pretty_print_match(match, parameterized=True):
         if current_part == left_curly:
             if inside_braces:
                 raise AssertionError(
-                    u"Found open-braces pair while already inside braces: "
-                    u"{} {} {}".format(current_index, parts, match)
+                    "Found open-braces pair while already inside braces: "
+                    "{} {} {}".format(current_index, parts, match)
                 )
             inside_braces = True
             output.append(current_part + "\n")
         elif current_part == right_curly:
             if not inside_braces:
                 raise AssertionError(
-                    u"Found close-braces pair while not inside braces: "
-                    u"{} {} {}".format(current_index, parts, match)
+                    "Found close-braces pair while not inside braces: "
+                    "{} {} {}".format(current_index, parts, match)
                 )
             inside_braces = False
             output.append(current_part)

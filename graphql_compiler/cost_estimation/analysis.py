@@ -23,7 +23,7 @@ from ..cost_estimation.int_value_conversion import (
 )
 from ..cost_estimation.interval import Interval
 from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
-from ..query_formatting.common import ensure_arguments_are_provided
+from ..query_formatting.common import validate_arguments
 from ..schema import is_meta_field
 from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
 from .filter_selectivity_utils import (
@@ -398,15 +398,26 @@ class QueryPlanningAnalysis:
             self.ast_with_parameters.query_ast,
             type_equivalence_hints=self.schema_info.type_equivalence_hints,
         )
-        ensure_arguments_are_provided(
-            ir_and_metadata.input_metadata, self.ast_with_parameters.parameters
-        )
+        validate_arguments(ir_and_metadata.input_metadata, self.ast_with_parameters.parameters)
         return ir_and_metadata.query_metadata_table
 
     @cached_property
     def types(self) -> Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]]:
         """Find the type at each VertexPath."""
         return get_types(self.metadata_table)
+
+    @cached_property
+    def classes_with_missing_counts(self) -> Set[str]:
+        """Return classes that don't have count statistics."""
+        classes_with_missing_counts = set()
+        for vertex_path, vertex_type in self.types.items():
+            if self.schema_info.statistics.get_class_count(vertex_type.name) is None:
+                classes_with_missing_counts.add(vertex_type.name)
+            if len(vertex_path) > 1:
+                _, edge_name = get_edge_direction_and_name(vertex_path[-1])
+                if self.schema_info.statistics.get_class_count(edge_name) is None:
+                    classes_with_missing_counts.add(edge_name)
+        return classes_with_missing_counts
 
     @cached_property
     def cardinality_estimate(self) -> float:

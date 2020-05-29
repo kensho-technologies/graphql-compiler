@@ -60,15 +60,15 @@ class QueryMetadataTable(object):
         """Create a new empty QueryMetadataTable object."""
         if not isinstance(root_location, Location):
             raise AssertionError(
-                u"Expected Location object as the root of the QueryMetadataTable. "
-                u"Note that FoldScopeLocation objects cannot be root locations. "
-                u"Got: {} {}".format(type(root_location).__name__, root_location)
+                "Expected Location object as the root of the QueryMetadataTable. "
+                "Note that FoldScopeLocation objects cannot be root locations. "
+                "Got: {} {}".format(type(root_location).__name__, root_location)
             )
 
         if len(root_location.query_path) != 1 or root_location.visit_counter != 1:
             raise AssertionError(
-                u"Expected a root location with a query path of length 1, and a "
-                u"visit counter of 1, but received: {}".format(root_location)
+                "Expected a root location with a query path of length 1, and a "
+                "visit counter of 1, but received: {}".format(root_location)
             )
 
         self._root_location = root_location  # Location, the root location of the entire query
@@ -103,14 +103,14 @@ class QueryMetadataTable(object):
         old_info = self._locations.get(location, None)
         if old_info is not None:
             raise AssertionError(
-                u"Attempting to register an already-registered location {}: "
-                u"old info {}, new info {}".format(location, old_info, location_info)
+                "Attempting to register an already-registered location {}: "
+                "old info {}, new info {}".format(location, old_info, location_info)
             )
 
         if location.field is not None:
             raise AssertionError(
-                u"Attempting to register a location at a field, this is "
-                u"not allowed: {} {}".format(location, location_info)
+                "Attempting to register a location at a field, this is "
+                "not allowed: {} {}".format(location, location_info)
             )
 
         if location_info.parent_location is None:
@@ -120,9 +120,9 @@ class QueryMetadataTable(object):
             is_revisit_of_root_location = self._root_location.is_revisited_at(location)
             if not (is_root_location or is_revisit_of_root_location):
                 raise AssertionError(
-                    u"All locations other than the root location and its revisits "
-                    u"must have a parent location, but received a location with "
-                    u"no parent: {} {}".format(location, location_info)
+                    "All locations other than the root location and its revisits "
+                    "must have a parent location, but received a location with "
+                    "no parent: {} {}".format(location, location_info)
                 )
         else:
             self._child_locations.setdefault(location_info.parent_location, set()).add(location)
@@ -153,14 +153,14 @@ class QueryMetadataTable(object):
         current_info = self._locations.get(location, None)
         if current_info is None:
             raise AssertionError(
-                u"Attempting to record a coercion at an unregistered location {}: "
-                u"coerced_to_type {}".format(location, coerced_to_type)
+                "Attempting to record a coercion at an unregistered location {}: "
+                "coerced_to_type {}".format(location, coerced_to_type)
             )
 
         if current_info.coerced_from_type is not None:
             raise AssertionError(
-                u"Attempting to record a second coercion at the same location {}: "
-                u"{} {}".format(location, current_info, coerced_to_type)
+                "Attempting to record a second coercion at the same location {}: "
+                "{} {}".format(location, current_info, coerced_to_type)
             )
 
         new_info = current_info._replace(type=coerced_to_type, coerced_from_type=current_info.type)
@@ -171,8 +171,8 @@ class QueryMetadataTable(object):
         location_info = self._locations.get(location, None)
         if location_info is None:
             raise AssertionError(
-                u"Attempted to get the location info of an unregistered location: "
-                u"{}".format(location)
+                "Attempted to get the location info of an unregistered location: "
+                "{}".format(location)
             )
         return location_info
 
@@ -187,8 +187,8 @@ class QueryMetadataTable(object):
         old_info = self._outputs.get(output_name, None)
         if old_info is not None:
             raise AssertionError(
-                u"Attempting to reuse an already-defined output name {}. "
-                u"old info {}, new info {}.".format(output_name, old_info, output_info)
+                "Attempting to reuse an already-defined output name {}. "
+                "old info {}, new info {}.".format(output_name, old_info, output_info)
             )
         self._outputs[output_name] = output_info
 
@@ -207,8 +207,8 @@ class QueryMetadataTable(object):
         old_info = self._tags.get(tag_name, None)
         if old_info is not None:
             raise AssertionError(
-                u"Attempting to define an already-defined tag {}. "
-                u"old info {}, new info {}".format(tag_name, old_info, tag_info)
+                "Attempting to define an already-defined tag {}. "
+                "old info {}, new info {}".format(tag_name, old_info, tag_info)
             )
         self._tags[tag_name] = tag_info
 
@@ -271,8 +271,8 @@ class QueryMetadataTable(object):
     def __str__(self):
         """Return a human-readable str representation of the QueryMetadataTable object."""
         return (
-            u"QueryMetadataTable(root_location={}, locations={}, inputs={}, "
-            u"outputs={}, tags={})".format(
+            "QueryMetadataTable(root_location={}, locations={}, inputs={}, "
+            "outputs={}, tags={})".format(
                 self._root_location, self._locations, self._inputs, self._outputs, self._tags
             )
         )

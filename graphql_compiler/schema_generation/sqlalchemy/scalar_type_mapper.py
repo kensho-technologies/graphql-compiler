@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from functools import reduce
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 import warnings
 
 from graphql.type import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLScalarType, GraphQLString
@@ -8,6 +8,7 @@ import sqlalchemy.dialects.mssql.base as mssqltypes
 import sqlalchemy.dialects.mysql.base as mysqltypes
 import sqlalchemy.dialects.postgresql as postgrestypes
 import sqlalchemy.sql.sqltypes as sqltypes
+from sqlalchemy.sql.type_api import TypeEngine
 
 from ...global_utils import merge_non_overlapping_dicts
 from ...schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal, GraphQLInt
@@ -175,15 +176,23 @@ SQL_CLASS_TO_GRAPHQL_TYPE: Dict[Any, GraphQLScalarType] = reduce(
 )
 
 
-def try_get_graphql_scalar_type(column_name, column_type):
+def try_get_graphql_scalar_type(
+    column_name: str, column_type: TypeEngine
+) -> Optional[GraphQLScalarType]:
     """Return the matching GraphQLScalarType for the SQL datatype or None if none is found."""
-    maybe_graphql_type = SQL_CLASS_TO_GRAPHQL_TYPE.get(type(column_type), None)
-    if maybe_graphql_type is None:
-        # Trying to get the string representation of the SQLAlchemy JSON and ARRAY types
-        # will lead to an error. We therefore use repr instead.
+    if isinstance(column_type, sqltypes.DateTime) and column_type.timezone:
         warnings.warn(
-            u'Ignoring column "{}" with unsupported SQL datatype: {}'.format(
-                column_name, type(column_type).__name__
-            )
+            f'Ignoring column "{column_name}". Timezone aware datetime types are '
+            f"currently not supported."
         )
-    return maybe_graphql_type
+        return None
+    else:
+        maybe_graphql_type = SQL_CLASS_TO_GRAPHQL_TYPE.get(type(column_type), None)
+        if maybe_graphql_type is None:
+            # Trying to get the string representation of the SQLAlchemy JSON and ARRAY types
+            # will lead to an error. We therefore use repr instead.
+            warnings.warn(
+                f'Ignoring column "{column_name}" with unsupported SQL datatype: '
+                f"{type(column_type).__name__}"
+            )
+        return maybe_graphql_type

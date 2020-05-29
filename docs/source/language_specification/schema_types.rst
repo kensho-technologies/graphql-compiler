@@ -158,7 +158,7 @@ The compiler uses the built-in GraphQL
 `scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalar
 types:
 
-- :code:`DateTime` represents timezone-aware second-accuracy timestamps.
+- :code:`DateTime` represents timezone-naive second-accuracy timestamps.
 - :code:`Date` represents day-accuracy date objects.
 - :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
   that should never be rounded, such as currency amounts.

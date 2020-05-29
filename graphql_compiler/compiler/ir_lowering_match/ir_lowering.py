@@ -37,7 +37,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
         # into the following:
         # - if X is of type BinaryComposition, and Y is not,
         #    BinaryComposition(
-        #        u'=',
+        #        '=',
         #        TernaryConditional(
         #            predicate,
         #            TernaryConditional(X, true, false),
@@ -47,7 +47,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
         #    )
         # - if Y is of type BinaryComposition, and X is not,
         #    BinaryComposition(
-        #        u'=',
+        #        '=',
         #        TernaryConditional(
         #            predicate,
         #            X,
@@ -57,7 +57,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
         #    )
         # - if both X and Y are of type BinaryComposition,
         #    BinaryComposition(
-        #        u'=',
+        #        '=',
         #        TernaryConditional(
         #            predicate,
         #            TernaryConditional(X, true, false),
@@ -85,7 +85,7 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
             if_false = TernaryConditional(if_false, TrueLiteral, FalseLiteral)
 
         ternary = TernaryConditional(expression.predicate, if_true, if_false)
-        return BinaryComposition(u"=", ternary, TrueLiteral)
+        return BinaryComposition("=", ternary, TrueLiteral)
 
     new_ir_blocks = [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
 
@@ -94,12 +94,12 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
 
 def _prepend_wildcard(expression):
     """Prepend an SQL-MATCH wildcard to an expression."""
-    return BinaryComposition(u"+", Literal("%"), expression)
+    return BinaryComposition("+", Literal("%"), expression)
 
 
 def _append_wildcard(expression):
     """Append an SQL-MATCH wildcard to an expression."""
-    return BinaryComposition(u"+", expression, Literal("%"))
+    return BinaryComposition("+", expression, Literal("%"))
 
 
 def lower_string_operators(ir_blocks):
@@ -108,34 +108,34 @@ def lower_string_operators(ir_blocks):
     def visitor_fn(expression):
         if not isinstance(expression, BinaryComposition):
             return expression
-        elif expression.operator == u"has_substring":
+        elif expression.operator == "has_substring":
             # The implementation of "has_substring" must use the LIKE operator in MATCH, and must
             # prepend and append "%" (wildcard) symbols to the substring being matched.
             # We transform any structures that resemble the following:
-            #    BinaryComposition(u'has_substring', X, Y)
+            #    BinaryComposition('has_substring', X, Y)
             # into the following:
             #    BinaryComposition(
-            #        u'LIKE',
+            #        'LIKE',
             #        X,
             #        BinaryComposition(
-            #            u'+',
+            #            '+',
             #            Literal("%"),
             #            BinaryComposition(
-            #                 u'+',
+            #                 '+',
             #                 Y,
             #                 Literal("%")
             #            )
             #        )
             #    )
             return BinaryComposition(
-                u"LIKE", expression.left, _prepend_wildcard(_append_wildcard(expression.right))
+                "LIKE", expression.left, _prepend_wildcard(_append_wildcard(expression.right))
             )
-        elif expression.operator == u"starts_with":
+        elif expression.operator == "starts_with":
             # Append a wildcard to the right of the argument string
-            return BinaryComposition(u"LIKE", expression.left, _append_wildcard(expression.right))
-        elif expression.operator == u"ends_with":
+            return BinaryComposition("LIKE", expression.left, _append_wildcard(expression.right))
+        elif expression.operator == "ends_with":
             # Prepend a wildcard to the left of the argument string
-            return BinaryComposition(u"LIKE", expression.left, _prepend_wildcard(expression.right))
+            return BinaryComposition("LIKE", expression.left, _prepend_wildcard(expression.right))
         else:
             return expression
 
@@ -158,8 +158,8 @@ def truncate_repeated_single_step_traversals(match_query):
             single_step = current_match_traversal[0]
             if single_step.as_block is None:
                 raise AssertionError(
-                    u"Unexpectedly found a single-step traversal with no as_block:"
-                    u" {} {}".format(current_match_traversal, match_query)
+                    "Unexpectedly found a single-step traversal with no as_block:"
+                    " {} {}".format(current_match_traversal, match_query)
                 )
 
             if single_step.as_block.location in visited_locations:
@@ -215,8 +215,8 @@ def lower_backtrack_blocks(match_query, query_metadata_table):
 
                 if step.coerce_type_block is not None:
                     raise AssertionError(
-                        u"Encountered type coercion in a MatchStep with "
-                        u"a Backtrack root block, this is unexpected: {} {}".format(
+                        "Encountered type coercion in a MatchStep with "
+                        "a Backtrack root block, this is unexpected: {} {}".format(
                             step, match_query
                         )
                     )
@@ -232,9 +232,9 @@ def lower_backtrack_blocks(match_query, query_metadata_table):
 
     if locations_needing_translation != set(six.iterkeys(location_translations)):
         raise AssertionError(
-            u"Unexpectedly, the revisit location translations table computed from "
-            u"the query metadata table did not match the locations needing "
-            u"translation. This is a bug. {} {}".format(
+            "Unexpectedly, the revisit location translations table computed from "
+            "the query metadata table did not match the locations needing "
+            "translation. This is a bug. {} {}".format(
                 location_translations, locations_needing_translation
             )
         )
