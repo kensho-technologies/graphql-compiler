@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "7ec3f43205420c606d0cb97ea6061ce34ee092d25a18b39ab07f85ea99fca715"
+            "sha256": "d2f03e8d0f72c31f2dc4a8616d58475cdd149c711635c775760d0ea1b90b425a"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -21,7 +21,7 @@
                 "sha256:a24c1de90850f6fb2033fd6bf8a11f281e84cb54825e5eabdda219e673b52aac",
                 "sha256:eb5d339f00072cc297d7de252a2e75f272085d1231a3723f1026d1fa91367118"
             ],
-            "index": "pypi",
+            "markers": "python_version >= '2.7' and python_version not in '3.0, 3.1, 3.2, 3.3, 3.4'",
             "version": "==0.15.6"
         },
         "cached-property": {
@@ -32,19 +32,10 @@
             "index": "pypi",
             "version": "==1.5.1"
         },
-        "dataclasses": {
-            "hashes": [
-                "sha256:454a69d788c7fda44efd71e259be79577822f5e3f53f029a22d08004e951dc9f",
-                "sha256:6988bd2b895eef432d562370bb707d540f32f7360ab13da45340101bc2307d84"
-            ],
-            "index": "pypi",
-            "version": "==0.6"
-        },
         "funcy": {
             "hashes": [
                 "sha256:75ee84c3b446f92e68a857c2267b15a1b49c631c9d5a87a5f063cd2d6761a5c4"
             ],
-            "index": "pypi",
             "version": "==1.14"
         },
         "graphql-compiler": {
@@ -56,7 +47,7 @@
                 "sha256:51f7dab06b5035515b23984f6fcb677ed909b56c672152699cca32e03624992e",
                 "sha256:dfc374d3426677727772d8da9dd010e92d10305ddd9c2f7f0fc388f07cee94c4"
             ],
-            "index": "pypi",
+            "markers": "python_version >= '3.6' and python_version < '4'",
             "version": "==3.0.5"
         },
         "python-dateutil": {
@@ -72,7 +63,6 @@
                 "sha256:a494d53b6d39c3c6e44c3bec237336e14305e4f29bbf800b599253057fbb79ed",
                 "sha256:c35965d010ce31b23eeb663ed3cc8c906275d6be1a34393a1d73a41febf4a048"
             ],
-            "index": "pypi",
             "version": "==2020.1"
         },
         "six": {
