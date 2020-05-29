@@ -477,6 +477,7 @@ class IntegrationTests(TestCase):
                 [],
             ),
             # Query 3: Folded children's net worths of Animal 1
+            # (to ensure folded non string values are outputted properly)
             (
                 """
             {
