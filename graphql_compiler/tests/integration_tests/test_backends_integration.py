@@ -489,6 +489,7 @@ class IntegrationTests(TestCase):
             }""",
                 {"starting_animal_name": "Animal 1",},
                 [{"child_net_worths": [Decimal("100"), Decimal("200"), Decimal("300")]},],
+                [],
             ),
             # Query 4: Unfolded children of Animal 4
             (
