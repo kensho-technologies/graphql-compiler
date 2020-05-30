@@ -1026,6 +1026,7 @@ def _make_schema_info_and_get_filter_selectivity(
     )
 
 
+@pytest.mark.slow
 class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_combine_filter_selectivities(self) -> None:
         """Test filter combination function."""
@@ -1478,6 +1479,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
 # which pylint does not recognize as a class member.
 # pylint: disable=no-member
+@pytest.mark.slow
 class IntegerIntervalTests(unittest.TestCase):
     """Test methods that create IntegerIntervals."""
 
