@@ -591,7 +591,7 @@ class FoldSubqueryBuilder(object):
             SQLFoldTraversalDescriptor(join_descriptor, from_table, to_table)
         )
 
-    def mark_output_location(self, output_table: Alias, output_table_location: FoldScopeLocation):
+    def mark_output_location(self, output_table: Alias, output_table_location: FoldScopeLocation) -> None:
         """Mark the location of the output vertex."""
         if self._ended:
             raise AssertionError(
