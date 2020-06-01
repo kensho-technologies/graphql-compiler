@@ -713,10 +713,8 @@ class EmitSQLTests(unittest.TestCase):
 
         builder = emit_sql.FoldSubqueryBuilder(dialect, from_alias, "uuid")
         builder.add_traversal(join_descriptor, from_alias, to_alias)
-        builder.mark_output_location(to_alias, fold_scope_location)
-        subquery, output_location = builder.end_fold(
-            {fold_scope_location.fold_path: {fold_scope_location.navigate_to_field("name")}}
-        )
+        builder.mark_output_location_and_fields(to_alias, fold_scope_location, {"name"})
+        subquery, output_location = builder.end_fold()
 
         expected_mssql = """
             SELECT
