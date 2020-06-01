@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Dict, Optional, Set, Tuple, Any, List, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 
 from graphql import (
     DocumentNode,
@@ -237,7 +237,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: Node) -> Optional[Node]:
+    def _rename_name_and_add_to_record(self, node: Node) -> Union[ellipsis, Optional[Node]]:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -251,7 +251,11 @@ class RenameSchemaTypesVisitor(Visitor):
                   NameNode.
 
         Returns:
-            Node object or REMOVE. REMOVE is a special return value defined by the GraphQL library. A visitor function returns REMOVE to delete the node it's currently at. This function returns REMOVE to suppress types. If the current node is not a type to be suppressed, it returns a Node object identical to the input node, except with possibly a new name. If the name was not changed, the returned object is the exact same object as the input
+            Node object or REMOVE. REMOVE is a special return value defined by the GraphQL library.
+            A visitor function returns REMOVE to delete the node it's currently at. This function
+            returns REMOVE to suppress types. If the current node is not to be suppressed, it
+            returns a Node object identical to the input node, except with possibly a new name. If
+            the name was not changed, the returned object is the exact same object as the input
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
@@ -292,7 +296,14 @@ class RenameSchemaTypesVisitor(Visitor):
             node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
 
-    def enter(self, node: Node, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]) -> Optional[Node]:
+    def enter(
+        self,
+        node: Node,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> Union[ellipsis, Optional[Node]]:
         """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
         if node_type in self.noop_types:
@@ -329,13 +340,25 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         self.renamings = renamings
         self.query_type = query_type
 
-    def enter_object_type_definition(self, node: ObjectTypeDefinitionNode, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]) -> None:
+    def enter_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
     def leave_object_type_definition(
-        self, node: ObjectTypeDefinitionNode, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
     ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
         if not node.fields:
@@ -347,7 +370,14 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node: FieldDefinitionNode, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]) -> Optional[Node]:
+    def enter_field_definition(
+        self,
+        node: FieldDefinitionNode,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> Union[ellipsis, Optional[Node]]:
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
@@ -356,10 +386,11 @@ class RenameQueryTypeFieldsVisitor(Visitor):
                 return None
             if new_field_name is None:
                 # Suppress the type
-                return REMOVE # TODO leave a note that the return is weird even though REMOVE is None because REMOVE is ellipsis and that might not necessarily be None in the future. Hence Union[ellipsis, Optional[Node]]
+                return REMOVE
             else:  # Make copy of node with the changed name, return the copy
                 field_node_with_new_name = get_copy_of_node_with_new_name(node, new_field_name)
                 return field_node_with_new_name
+        return None
 
 
 class CascadingSuppressionCheckVisitor(Visitor):
@@ -379,19 +410,38 @@ class CascadingSuppressionCheckVisitor(Visitor):
         self.renamings = renamings
         self.query_type = query_type
 
-    def enter_object_type_definition(self, node: ObjectTypeDefinitionNode, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]) -> None:
+    def enter_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
     def leave_object_type_definition(
-        self, node: ObjectTypeDefinitionNode, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
     ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node: FieldDefinitionNode, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]) -> None:
+    def enter_field_definition(
+        self,
+        node: FieldDefinitionNode,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If not at query type, check that no field depends on a type that was suppressed."""
         if self.in_query_type:
             return None
@@ -400,7 +450,12 @@ class CascadingSuppressionCheckVisitor(Visitor):
         node_type = get_ast_with_non_null_and_list_stripped(node.type)
         if node_type == REMOVE:
             # Then this field depends on a type that was suppressed, which is illegal
-            # Note that we refer to the last item in ancestors, which is not the same as parent. The last item in ancestors is actually the grandparent of node, specifically the ObjectTypeDefinitionNode that has this field. We use the grandparent node instead of the parent because the parent of a FieldDefinitionNode is simply a list of FieldDefinitionNodes, which doesn't contain the name of the type containing this node (which we need for the error message).
+            # Note that we refer to the last item in ancestors, which is not the same as parent. The
+            # last item in ancestors is actually the grandparent of node, specifically the
+            # ObjectTypeDefinitionNode that has this field. We use the grandparent node instead of
+            # the parent because the parent of a FieldDefinitionNode is simply a list of
+            # FieldDefinitionNodes, which doesn't contain the name of the type containing this node
+            # (which we need for the error message).
             type_name = ancestors[-1].name.value
             raise CascadingSuppressionError(
                 f"Type renamings {self.renamings} attempted to suppress a type, but type "
@@ -412,7 +467,14 @@ class CascadingSuppressionCheckVisitor(Visitor):
             )
         return None
 
-    def enter_union_type_definition(self, node: UnionTypeDefinitionNode, key: Optional[Any], parent: Optional[Any], path: List[Any], ancestors: List[Any]) -> None:
+    def enter_union_type_definition(
+        self,
+        node: UnionTypeDefinitionNode,
+        key: Optional[Any],
+        parent: Optional[Any],
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """Check that each union still has at least one member.
 
         Raises:
