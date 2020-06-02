@@ -11,7 +11,7 @@ from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, ren
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
-    SchemaNameConflictError,
+    SchemaNameConflictError, SchemaTransformError,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
 
@@ -683,7 +683,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
 
     def test_suppress_every_type(self):
-        with self.assertRaises(CascadingSuppressionError):
+        with self.assertRaises(SchemaTransformError):
             rename_schema(parse(ISS.basic_schema), {"Human": None})
 
     def test_suppress_all_union_members(self):

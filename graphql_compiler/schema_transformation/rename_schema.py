@@ -21,7 +21,7 @@ from .utils import (
     check_type_name_is_valid,
     get_copy_of_node_with_new_name,
     get_query_type_name,
-    get_scalar_names,
+    get_scalar_names, SchemaTransformError,
 )
 
 
@@ -362,7 +362,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
     ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
         if not node.fields:
-            raise CascadingSuppressionError(
+            raise SchemaTransformError(
                 f"Type renamings {self.renamings} suppressed every type in the schema so it will "
                 f"be impossible to query for anything. To fix this, check why the `renamings` "
                 f"argument of `rename_schema` mapped every type to None."
