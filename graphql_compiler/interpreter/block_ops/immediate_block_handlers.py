@@ -1,7 +1,7 @@
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Optional
 
 from ...compiler.blocks import Backtrack, CoerceType, Filter, MarkLocation, Traverse
-from ...compiler.helpers import get_only_element_from_collection
+from ...compiler.helpers import BaseLocation, get_only_element_from_collection
 from ...compiler.metadata import QueryMetadataTable
 from ..expression_ops import evaluate_expression
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
@@ -11,11 +11,15 @@ def handle_filter_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
-    current_type_name: str,
+    post_block_location: Optional[BaseLocation],  # None means global location
     block: Filter,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
-    predicate = block.predicate
+    if post_block_location is None:
+        raise AssertionError()
+
+    post_block_location_info = query_metadata_table.get_location_info(post_block_location)
+    current_type_name = post_block_location_info.type.name
 
     # TODO(predrag): Handle the "filters depending on missing optional values pass" rule.
     #                Currently, pre-lowering IR has the invariant: one @filter = one Filter block.
@@ -23,7 +27,7 @@ def handle_filter_block(
     #                missing optional value return a "ALWAYS_TRUE" special constant that causes all
     #                BinaryComposition operators except boolean logic ones to return True no matter
     #                what when encountering it.
-
+    predicate = block.predicate
     yield from (
         data_context
         for data_context, predicate_value in evaluate_expression(
@@ -38,12 +42,22 @@ def handle_traverse_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
-    current_type_name: str,
+    post_block_location: Optional[BaseLocation],  # None means global location
     block: Traverse,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
+    if post_block_location is None:
+        raise AssertionError()
+
+    # We are getting the neighbors of the parent location's vertex, and those neighbors
+    # are located at the post_block_location query location.
+    #
+    # TODO(predrag): Apply the same logic to Fold blocks, once implemented.
+    post_block_location_info = query_metadata_table.get_location_info(post_block_location)
+    parent_location_info = query_metadata_table.get_location_info(
+        post_block_location_info.parent_location)
     neighbor_data = adapter.project_neighbors(
-        data_contexts, current_type_name, block.direction, block.edge_name
+        data_contexts, parent_location_info.type.name, block.direction, block.edge_name
     )
     for data_context, neighbor_tokens in neighbor_data:
         has_neighbors = False
@@ -65,15 +79,16 @@ def handle_coerce_type_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
-    current_type_name: str,
+    post_block_location: Optional[BaseLocation],  # None means global location
     block: CoerceType,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
+    location_info = query_metadata_table.get_location_info(post_block_location)
     coercion_type = get_only_element_from_collection(block.target_class)
     return (
         data_context
         for data_context, can_coerce in adapter.can_coerce_to_type(
-            data_contexts, current_type_name, coercion_type
+            data_contexts, location_info.coerced_from_type, coercion_type
         )
         if can_coerce or data_context.current_token is None
     )
@@ -83,7 +98,7 @@ def handle_mark_location_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
-    current_type_name: str,
+    post_block_location: Optional[BaseLocation],  # None means global location
     block: MarkLocation,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
@@ -102,7 +117,7 @@ def handle_backtrack_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
-    current_type_name: str,
+    post_block_location: Optional[BaseLocation],  # None means global location
     block: Backtrack,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:

@@ -24,11 +24,11 @@ from .debugging import print_tap
 from .typedefs import DataContext, DataToken, InterpreterAdapter
 
 
-def _get_local_operation_block_locations(
+def _get_local_operation_post_block_locations(
     query_metadata_table: QueryMetadataTable,
     local_operations_blocks: List[BasicBlock]
 ) -> List[BaseLocation]:
-    """Make a parallel list containing the location where each local operation block lies."""
+    """Return a parallel list of the locations into which the block's operation moves us."""
     location_at_index: Dict[int, BaseLocation] = {}
     location_stack: List[BaseLocation] = []
     block_indexes_at_next_mark_location: List[int] = []
@@ -47,15 +47,18 @@ def _get_local_operation_block_locations(
             for index in block_indexes_at_next_mark_location:
                 location_at_index[index] = current_location
             block_indexes_at_next_mark_location = []
-        elif isinstance(block, (Traverse, Recurse, Fold, EndOptional)):
-            # Each of these blocks "happens" at the current location, even though for some of them,
-            # their effect may be to immediately thereafter change the current location.
+        elif isinstance(block, (EndOptional)):
+            # This blocks "happens" and stays at the current location,
+            # given by the preceding MarkLocation block.
             location_at_index[block_index] = location_stack[-1]
         elif isinstance(block, (Backtrack, Unfold)):
-            # Each of these blocks "happens" at the current location, and
-            # then unwinds the location stack one step.
-            location_at_index[block_index] = location_stack.pop()
-        elif isinstance(block, (QueryRoot, OutputSource, Filter, CoerceType)):
+            # Each of these blocks unwinds the location stack one step as its effect.
+            # The post-block location is therefore whatever is on the stack after the pop.
+            location_stack.pop()
+            location_at_index[block_index] = location_stack[-1]
+        elif isinstance(
+            block, (QueryRoot, Traverse, Recurse, Fold, OutputSource, Filter, CoerceType)
+        ):
             # These blocks all "happen" at the location given by the first subsequent MarkLocation.
             block_indexes_at_next_mark_location.append(block_index)
         else:
@@ -114,7 +117,7 @@ def interpret_ir(
     if not isinstance(last_block, ConstructResult):
         raise AssertionError()
 
-    local_operation_locations = _get_local_operation_block_locations(
+    local_operation_post_block_locations = _get_local_operation_post_block_locations(
         query_metadata_table, local_operations)
 
     start_class = get_only_element_from_collection(first_block.start_class)
@@ -129,7 +132,7 @@ def interpret_ir(
 
     # Process all local operation blocks after the first one (already processed above).
     for block, block_location in zip(
-        local_operations[1:], local_operation_locations[1:]
+        local_operations[1:], local_operation_post_block_locations[1:]
     ):
         current_data_contexts = generate_block_outputs(
             adapter, query_metadata_table, query_arguments,

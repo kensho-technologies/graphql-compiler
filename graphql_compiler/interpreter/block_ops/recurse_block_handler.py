@@ -2,6 +2,7 @@ from itertools import chain
 from typing import Any, Dict, Iterable, Optional
 
 from ...compiler.blocks import Recurse
+from ...compiler.helpers import BaseLocation
 from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 
@@ -72,15 +73,43 @@ def handle_recurse_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
-    current_type_name: str,
+    post_block_location: Optional[BaseLocation],  # None means global location
     block: Recurse,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
+    if post_block_location is None:
+        raise AssertionError()
+
+    if block.depth < 1:
+        raise AssertionError()
+
     data_contexts = _handle_already_inactive_tokens(data_contexts)
 
-    for current_depth in range(block.depth):
+    # In the very first level of recursion, we are getting the neighbors of
+    # the parent location's vertex, with the neighbors in question located at
+    # the post_block_location query location.
+    #
+    # That means that for the first recursion level, the "current_type_name" is
+    # the type at the parent location. For subsequent recursion levels, we are recursing
+    # from a vertex produced by the recursion's first level to its neighbors. Therefore,
+    # for each subsequent recursion level after the first, the "current_type_name" is
+    # the type at the post-block location.
+    #
+    # TODO(predrag): This is a tricky edge case. Cover this with a good set of tests.
+    post_block_location_info = query_metadata_table.get_location_info(post_block_location)
+    parent_location_info = query_metadata_table.get_location_info(
+        post_block_location_info.parent_location)
+    start_type_name = parent_location_info.type.name
+    subsequent_type_name = post_block_location_info.type.name
+
+    current_depth = 0
+    data_contexts = _iterative_recurse_handler(
+        adapter, query_arguments, start_type_name, block, data_contexts, current_depth,
+    )
+
+    for current_depth in range(1, block.depth):
         data_contexts = _iterative_recurse_handler(
-            adapter, query_arguments, current_type_name, block, data_contexts, current_depth
+            adapter, query_arguments, subsequent_type_name, block, data_contexts, current_depth
         )
 
     all_data_contexts = chain.from_iterable(
