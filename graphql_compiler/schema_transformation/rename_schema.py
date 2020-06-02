@@ -299,8 +299,8 @@ class RenameSchemaTypesVisitor(Visitor):
     def enter(
         self,
         node: Node,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> Union[ellipsis, Optional[Node]]:
@@ -343,8 +343,8 @@ class RenameQueryTypeFieldsVisitor(Visitor):
     def enter_object_type_definition(
         self,
         node: ObjectTypeDefinitionNode,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
@@ -355,8 +355,8 @@ class RenameQueryTypeFieldsVisitor(Visitor):
     def leave_object_type_definition(
         self,
         node: ObjectTypeDefinitionNode,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
@@ -373,8 +373,8 @@ class RenameQueryTypeFieldsVisitor(Visitor):
     def enter_field_definition(
         self,
         node: FieldDefinitionNode,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> Union[ellipsis, Optional[Node]]:
@@ -413,8 +413,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
     def enter_object_type_definition(
         self,
         node: ObjectTypeDefinitionNode,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
@@ -425,8 +425,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
     def leave_object_type_definition(
         self,
         node: ObjectTypeDefinitionNode,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
@@ -437,8 +437,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
     def enter_field_definition(
         self,
         node: FieldDefinitionNode,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
@@ -470,8 +470,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
     def enter_union_type_definition(
         self,
         node: UnionTypeDefinitionNode,
-        key: Optional[Any],
-        parent: Optional[Any],
+        key: Any,
+        parent: Any,
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
