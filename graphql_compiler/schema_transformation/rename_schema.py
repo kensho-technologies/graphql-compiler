@@ -450,13 +450,17 @@ class CascadingSuppressionCheckVisitor(Visitor):
         node_type = get_ast_with_non_null_and_list_stripped(node.type)
         if node_type == REMOVE:
             # Then this field depends on a type that was suppressed, which is illegal
-            # Note that we refer to the last item in ancestors, which is not the same as parent. The
-            # last item in ancestors is actually the grandparent of node, specifically the
-            # ObjectTypeDefinitionNode that has this field. We use the grandparent node instead of
-            # the parent because the parent of a FieldDefinitionNode is simply a list of
-            # FieldDefinitionNodes, which doesn't contain the name of the type containing this node
-            # (which we need for the error message).
-            type_name = ancestors[-1].name.value
+            if not ancestors:
+                raise AssertionError(
+                    f"Expected ancestors to be non-empty list when entering field definition but"
+                    f"ancestors was {ancestors} at node {node}"
+                )
+            # We use the grandparent node (ObjectTypeDefinitionNode) instead of the parent because
+            # the parent of a FieldDefinitionNode is simply a list of FieldDefinitionNodes, which
+            # doesn't contain the name of the type containing this node (which we need for the error
+            # message).
+            node_grandparent = ancestors[-1]
+            type_name = node_grandparent.name.value
             raise CascadingSuppressionError(
                 f"Type renamings {self.renamings} attempted to suppress a type, but type "
                 f"{type_name}'s field {field_name} still depends on that type. Suppressing "
