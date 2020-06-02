@@ -11,7 +11,8 @@ from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, ren
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
-    SchemaNameConflictError, SchemaTransformError,
+    SchemaNameConflictError,
+    SchemaTransformError,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
 

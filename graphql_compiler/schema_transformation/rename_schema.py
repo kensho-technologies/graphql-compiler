@@ -17,11 +17,12 @@ from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
     CascadingSuppressionError,
     SchemaNameConflictError,
+    SchemaTransformError,
     check_ast_schema_is_valid,
     check_type_name_is_valid,
     get_copy_of_node_with_new_name,
     get_query_type_name,
-    get_scalar_names, SchemaTransformError,
+    get_scalar_names,
 )
 
 
@@ -237,7 +238,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: Node) -> Union[ellipsis, Optional[Node]]:
+    def _rename_name_and_add_to_record(self, node: Node) -> Union[type(REMOVE), Optional[Node]]:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -297,13 +298,8 @@ class RenameSchemaTypesVisitor(Visitor):
             return node_with_new_name
 
     def enter(
-        self,
-        node: Node,
-        key: Any,
-        parent: Any,
-        path: List[Any],
-        ancestors: List[Any],
-    ) -> Union[ellipsis, Optional[Node]]:
+        self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any],
+    ) -> Union[type(REMOVE), Optional[Node]]:
         """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
         if node_type in self.noop_types:
@@ -377,7 +373,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         parent: Any,
         path: List[Any],
         ancestors: List[Any],
-    ) -> Union[ellipsis, Optional[Node]]:
+    ) -> Union[type(REMOVE), Optional[Node]]:
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
