@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List, Optional
+from typing import Any, Dict, Iterable, List, Optional, Tuple
 
 from ..compiler.blocks import (
     Backtrack,
@@ -21,25 +21,23 @@ from ..compiler.helpers import BaseLocation, get_only_element_from_collection
 from ..compiler.metadata import QueryMetadataTable
 from .block_ops import generate_construct_result_outputs, generate_block_outputs
 from .debugging import print_tap
-from .typedefs import GLOBAL_LOCATION_TYPE_NAME, DataContext, DataToken, InterpreterAdapter
+from .typedefs import DataContext, DataToken, InterpreterAdapter
 
 
-def _make_block_current_type_list(
+def _get_local_operation_block_locations(
     query_metadata_table: QueryMetadataTable,
-    middle_blocks: List[BasicBlock]
-) -> List[str]:
-    """Make a parallel list containing the current type name for each block."""
+    local_operations_blocks: List[BasicBlock]
+) -> List[BaseLocation]:
+    """Make a parallel list containing the location where each local operation block lies."""
     location_at_index: Dict[int, BaseLocation] = {}
     location_stack: List[BaseLocation] = []
     block_indexes_at_next_mark_location: List[int] = []
-    global_operations_index: Optional[int] = None
 
-    for block_index, block in enumerate(middle_blocks):
+    for block_index, block in enumerate(local_operations_blocks):
         if isinstance(block, GlobalOperationsStart):
-            # The blocks from this point onward are all global operations, and do not belong
-            # to any single location in the query. Therefore, they have no entries in the result.
-            global_operations_index = block_index
-            break
+            raise AssertionError(
+                f"GlobalOperationsStart found in local operations blocks: {local_operations_blocks}"
+            )
         elif isinstance(block, MarkLocation):
             current_location = block.location
             location_stack.append(current_location)
@@ -57,7 +55,7 @@ def _make_block_current_type_list(
             # Each of these blocks "happens" at the current location, and
             # then unwinds the location stack one step.
             location_at_index[block_index] = location_stack.pop()
-        elif isinstance(block, (OutputSource, Filter, CoerceType)):
+        elif isinstance(block, (QueryRoot, OutputSource, Filter, CoerceType)):
             # These blocks all "happen" at the location given by the first subsequent MarkLocation.
             block_indexes_at_next_mark_location.append(block_index)
         else:
@@ -65,36 +63,32 @@ def _make_block_current_type_list(
 
     if block_indexes_at_next_mark_location:
         raise AssertionError(
-            f"Unassigned block indexes: {block_indexes_at_next_mark_location} {middle_blocks}"
+            f"Unassigned block indexes: {block_indexes_at_next_mark_location} "
+            f"for blocks {local_operations_blocks}"
         )
 
-    if global_operations_index is None:
+    return [
+        location_at_index[i]
+        for i in range(len(local_operations_blocks))
+    ]
+
+
+def _split_out_global_operations(
+    ir_blocks: List[BasicBlock]
+) -> Tuple[List[BasicBlock], List[BasicBlock]]:
+    for block_index, block in enumerate(ir_blocks):
+        if isinstance(block, GlobalOperationsStart):
+            global_operations_index = block_index
+            break
+    else:
         raise AssertionError(
-            f"Unexpectedly, no global_operations_index found: {middle_blocks}"
+            f"Unexpectedly, did not find GlobalOperationsStart block in IR blocks: {ir_blocks}."
         )
 
-    # Create the parallel result list.
-    result: List[str] = []
-    for i in range(global_operations_index):
-        location_info = query_metadata_table.get_location_info(location_at_index[i])
-        block = middle_blocks[i]
+    local_operations = ir_blocks[:global_operations_index]
+    global_operations = ir_blocks[global_operations_index:]
 
-        current_location_type = location_info.type
-        if isinstance(block, CoerceType):
-            # Type coercions "happen" at the pre-coercion type.
-            current_location_type = location_info.coerced_from_type
-            if current_location_type is None:
-                raise AssertionError(
-                    f"Unexpectedly got {current_location_type} as the coerced-from type for "
-                    f"location {location_info} corresponding to block {block}."
-                )
-
-        result.append(current_location_type.name)
-
-    for i in range(global_operations_index, len(middle_blocks)):
-        result.append(GLOBAL_LOCATION_TYPE_NAME)
-
-    return result
+    return local_operations, global_operations
 
 
 def interpret_ir(
@@ -108,19 +102,24 @@ def interpret_ir(
     if not ir_blocks:
         raise AssertionError()
 
-    first_block = ir_blocks[0]
+    local_operations, global_operations = _split_out_global_operations(ir_blocks)
+    if not local_operations or not global_operations:
+        raise AssertionError()
+
+    first_block = local_operations[0]
     if not isinstance(first_block, QueryRoot):
         raise AssertionError()
 
-    last_block = ir_blocks[-1]
+    last_block = global_operations[-1]
     if not isinstance(last_block, ConstructResult):
         raise AssertionError()
 
-    middle_blocks = ir_blocks[1:-1]
-    current_type_list = _make_block_current_type_list(query_metadata_table, middle_blocks)
+    local_operation_locations = _get_local_operation_block_locations(
+        query_metadata_table, local_operations)
 
     start_class = get_only_element_from_collection(first_block.start_class)
 
+    # Process the first block.
     current_data_contexts: Iterable[DataContext[Any]] = (
         DataContext.make_empty_context_from_token(token)
         for token in adapter.get_tokens_of_type(start_class)
@@ -128,13 +127,24 @@ def interpret_ir(
 
     current_data_contexts = print_tap('starting contexts', current_data_contexts)
 
-    for block, current_type_name in zip(middle_blocks, current_type_list):
+    # Process all local operation blocks after the first one (already processed above).
+    for block, block_location in zip(
+        local_operations[1:], local_operation_locations[1:]
+    ):
         current_data_contexts = generate_block_outputs(
             adapter, query_metadata_table, query_arguments,
-            current_type_name, block, current_data_contexts,
+            block_location, block, current_data_contexts,
+        )
+
+    # Process all global operations except the last block, which constructs the final result.
+    for block in global_operations[:-1]:
+        current_data_contexts = generate_block_outputs(
+            adapter, query_metadata_table, query_arguments,
+            None, block, current_data_contexts,
         )
 
     current_data_contexts = print_tap('ending contexts', current_data_contexts)
 
+    # Process the final block.
     return generate_construct_result_outputs(
         adapter, query_metadata_table, query_arguments, last_block, current_data_contexts)
