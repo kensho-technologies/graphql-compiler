@@ -187,7 +187,7 @@ def _get_output_fields_at_fold_location(
     all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]],
 ) -> Set[str]:
     """Collect output field names for the specified output_fold_scope_location."""
-    # If the location does not have any outputs, return an empty set.git
+    # If the location does not have any outputs, return an empty set.
     if output_fold_scope_location.fold_path not in all_folded_fields:
         return set()
     folded_fields = set()
