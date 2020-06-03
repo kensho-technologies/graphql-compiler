@@ -471,6 +471,12 @@ class CascadingSuppressionCheckVisitor(Visitor):
             # doesn't contain the name of the type containing this node (which we need for the error
             # message).
             node_grandparent = ancestors[-1]
+            if not isinstance(node_grandparent, ObjectTypeDefinitionNode):
+                raise TypeError(
+                    f"Expected field node {node}'s grandparent node to be of type "
+                    f"ObjectTypeDefinitionNode but grandparent node was of type "
+                    f"{type(node_grandparent).__name__} instead."
+                )
             type_name = node_grandparent.name.value
             raise CascadingSuppressionError(
                 f"Type renamings {self.renamings} attempted to suppress a type, but type "
