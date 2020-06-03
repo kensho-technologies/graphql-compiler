@@ -1,8 +1,12 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
+from typing import Any, Dict, List, Tuple, Union
+
 import six
 
+from ...compiler.compiler_entities import BasicBlockT
 from ..blocks import (
+    CoerceType,
     ConstructResult,
     EndOptional,
     Filter,
@@ -22,10 +26,11 @@ from ..expressions import (
     TernaryConditional,
     TrueLiteral,
 )
-from ..helpers import validate_safe_string
+from ..helpers import FoldScopeLocation, Location, validate_safe_string
+from ..metadata import QueryMetadataTable
 
 
-def merge_consecutive_filter_clauses(ir_blocks):
+def merge_consecutive_filter_clauses(ir_blocks: List[BasicBlockT]) -> List[BasicBlockT]:
     """Merge consecutive Filter(x), Filter(y) blocks into Filter(x && y) block."""
     if not ir_blocks:
         return ir_blocks
@@ -47,14 +52,14 @@ def merge_consecutive_filter_clauses(ir_blocks):
 class OutputContextVertex(ContextField):
     """An expression referring to a vertex location for output from the global context."""
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the OutputContextVertex is correctly representable."""
         super(OutputContextVertex, self).validate()
 
         if self.location.field is not None:
             raise ValueError("Expected location at a vertex, but got: {}".format(self.location))
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this expression."""
         self.validate()
 
@@ -70,10 +75,12 @@ class OutputContextVertex(ContextField):
         return mark_name
 
 
-def lower_context_field_existence(ir_blocks, query_metadata_table):
+def lower_context_field_existence(
+    ir_blocks: List[BasicBlockT], query_metadata_table: QueryMetadataTable
+) -> List[BasicBlockT]:
     """Lower ContextFieldExistence expressions into lower-level expressions."""
 
-    def regular_visitor_fn(expression):
+    def regular_visitor_fn(expression: Any) -> Any:
         """Expression visitor function that rewrites ContextFieldExistence expressions."""
         if not isinstance(expression, ContextFieldExistence):
             return expression
@@ -86,7 +93,7 @@ def lower_context_field_existence(ir_blocks, query_metadata_table):
             "!=", ContextField(expression.location, location_type), NullLiteral
         )
 
-    def construct_result_visitor_fn(expression):
+    def construct_result_visitor_fn(expression: Any) -> Any:
         """Expression visitor function that rewrites ContextFieldExistence expressions."""
         if not isinstance(expression, ContextFieldExistence):
             return expression
@@ -111,10 +118,12 @@ def lower_context_field_existence(ir_blocks, query_metadata_table):
     return new_ir_blocks
 
 
-def short_circuit_ternary_conditionals(ir_blocks, query_metadata_table):
+def short_circuit_ternary_conditionals(
+    ir_blocks: List[BasicBlockT], query_metadata_table: QueryMetadataTable
+) -> List[BasicBlockT]:
     """If the predicate outcome in a TernaryConditional is a Literal, evaluate and simplify it."""
 
-    def visitor_fn(expression):
+    def visitor_fn(expression: Any) -> Any:
         """Simplify TernaryConditionals."""
         if isinstance(expression, TernaryConditional) and isinstance(expression.predicate, Literal):
             if isinstance(expression.predicate.value, bool):
@@ -127,7 +136,7 @@ def short_circuit_ternary_conditionals(ir_blocks, query_metadata_table):
     return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
 
 
-def optimize_boolean_expression_comparisons(ir_blocks):
+def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlockT]) -> List[BasicBlockT]:
     """Optimize comparisons of a boolean binary comparison expression against a boolean literal.
 
     Rewriting example:
@@ -143,14 +152,11 @@ def optimize_boolean_expression_comparisons(ir_blocks):
         ir_blocks: list of basic block objects
 
     Returns:
-        a new list of basic block objects, with the optimization applied
+        new list of basic block objects, with the optimization applied
     """
-    operator_inverses = {
-        "=": "!=",
-        "!=": "=",
-    }
+    operator_inverses = {"=": "!=", "!=": "="}
 
-    def visitor_fn(expression):
+    def visitor_fn(expression: Any) -> Any:
         """Expression visitor function that performs the above rewriting."""
         if not isinstance(expression, BinaryComposition):
             return expression
@@ -204,7 +210,15 @@ def optimize_boolean_expression_comparisons(ir_blocks):
     return new_ir_blocks
 
 
-def extract_folds_from_ir_blocks(ir_blocks):
+def extract_folds_from_ir_blocks(
+    ir_blocks: List[BasicBlockT],
+) -> Tuple[
+    Union[
+        Dict[FoldScopeLocation, List[BasicBlockT]],
+        Dict[FoldScopeLocation, List[Union[CoerceType, Filter, MarkLocation]]],
+    ],
+    List[BasicBlockT],
+]:
     """Extract all @fold data from the IR blocks, and cut the folded IR blocks out of the IR.
 
     Args:
@@ -249,7 +263,9 @@ def extract_folds_from_ir_blocks(ir_blocks):
     return folds, remaining_ir_blocks
 
 
-def extract_optional_location_root_info(ir_blocks):
+def extract_optional_location_root_info(
+    ir_blocks: List[BasicBlockT],
+) -> Tuple[List[Location], Dict[Location, Tuple[Location]]]:
     """Construct a mapping from locations within @optional to their correspoding optional Traverse.
 
     Args:
@@ -321,8 +337,10 @@ def extract_optional_location_root_info(ir_blocks):
 
 
 def extract_simple_optional_location_info(
-    ir_blocks, complex_optional_roots, location_to_optional_roots
-):
+    ir_blocks: List[BasicBlockT],
+    complex_optional_roots: List[Location],
+    location_to_optional_roots: Dict[Location, Tuple[Location]],
+) -> Dict:
     """Construct a map from simple optional locations to their inner location and traversed edge.
 
     Args:
@@ -378,7 +396,7 @@ def extract_simple_optional_location_info(
     return simple_optional_root_info
 
 
-def remove_end_optionals(ir_blocks):
+def remove_end_optionals(ir_blocks: List[BasicBlockT]) -> List[BasicBlockT]:
     """Return a list of IR blocks as a copy of the original, with EndOptional blocks removed."""
     new_ir_blocks = []
     for block in ir_blocks:

@@ -1,11 +1,16 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Utilities for rewriting IR to replace one set of locations with another."""
+from typing import Any, Callable, Dict
+
 import six
 
-from ..helpers import FoldScopeLocation, Location
+from ..helpers import FoldScopeLocation, LocationT
+from ..metadata import QueryMetadataTable
 
 
-def make_revisit_location_translations(query_metadata_table):
+def make_revisit_location_translations(
+    query_metadata_table: QueryMetadataTable,
+) -> Dict[Location, Location]:
     """Return a dict mapping location revisits to the location being revisited, for rewriting."""
     location_translations = dict()
 
@@ -17,7 +22,9 @@ def make_revisit_location_translations(query_metadata_table):
     return location_translations
 
 
-def translate_potential_location(location_translations, potential_location):
+def translate_potential_location(
+    location_translations: Dict[LocationT, LocationT], potential_location: LocationT
+) -> LocationT:
     """If the input is a BaseLocation object, translate it, otherwise return it as-is."""
     if isinstance(potential_location, Location):
         old_location_at_vertex = potential_location.at_vertex()
@@ -43,10 +50,10 @@ def translate_potential_location(location_translations, potential_location):
         return potential_location
 
 
-def make_location_rewriter_visitor_fn(location_translations):
+def make_location_rewriter_visitor_fn(location_translations: Dict[LocationT, LocationT]) -> Callable:
     """Return a visitor function that is able to replace locations with equivalent locations."""
 
-    def visitor_fn(expression):
+    def visitor_fn(expression: Any) -> Any:
         """Expression visitor function used to rewrite expressions with updated Location data."""
         # All CompilerEntity objects store their exact constructor input args/kwargs.
         # To minimize the chances that we forget to update a location somewhere in an expression,
