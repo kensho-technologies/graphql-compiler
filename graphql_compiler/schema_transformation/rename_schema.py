@@ -496,11 +496,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """Check that each union still has at least one member.
-
-        Raises:
-            CascadingSuppressionError if all the members of this union were suppressed.
-        """
+        """Check that each union still has at least one member."""
         union_name = node.name.value
         if not node.types:
             raise CascadingSuppressionError(
