@@ -4,13 +4,13 @@ from typing import Any, Callable, Dict
 
 import six
 
-from ..helpers import FoldScopeLocation, LocationT
+from ..helpers import FoldScopeLocation, Location, LocationT
 from ..metadata import QueryMetadataTable
 
 
 def make_revisit_location_translations(
     query_metadata_table: QueryMetadataTable,
-) -> Dict[Location, Location]:
+) -> Dict[LocationT, LocationT]:
     """Return a dict mapping location revisits to the location being revisited, for rewriting."""
     location_translations = dict()
 
