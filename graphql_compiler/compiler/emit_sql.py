@@ -154,55 +154,35 @@ def _find_tagged_parameters(expression_from_filter: Expression) -> bool:
     return has_context_fields
 
 
-def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldPath, Set[FoldScopeLocation]]:
-    """For each fold path, find folded fields (outputs and metafields used in filters).
+def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldScopeLocation, Set[str]]:
+    """For each folded location, find folded fields (outputs and metafields used in filters).
 
     Args:
         ir: internal representation and metadata of a query for which to find the folded fields.
 
     Returns:
-        Dictionary mapping a FoldPath to  a set of FoldScopeLocations with output field information.
+        Dictionary mapping a FoldScopeLocation (with no field information) to field names that
+        are outputted at that location.
     """
-    folded_fields: Dict[FoldPath, Set[FoldScopeLocation]] = {}
-    # Find outputs used for each fold path.
+    folded_fields: Dict[FoldScopeLocation, Set[str]] = {}
+    # Collect outputs that occur at FoldScopeLocations.
     for _, output_info in ir.query_metadata_table.outputs:
         if isinstance(output_info.location, FoldScopeLocation):
-            fold_path = output_info.location.fold_path
-            folded_fields.setdefault(fold_path, set()).add(output_info.location)
+            if output_info.location.field is None:
+                raise AssertionError(
+                    f"Output field was set to invalid value None for output {output_info}."
+                )
+            folded_fields.setdefault(output_info.location.at_vertex(), set()).add(
+                output_info.location.field
+            )
 
     # Add _x_count, if used as a Filter at any Location.
     for location, _ in ir.query_metadata_table.registered_locations:
         for location_filter in ir.query_metadata_table.get_filter_infos(location):
             for field in location_filter.fields:
                 if field == COUNT_META_FIELD_NAME:
-                    folded_fields.setdefault(location.fold_path, set()).add(
-                        location.navigate_to_field(field)
-                    )
+                    folded_fields.setdefault(location.at_vertex(), set()).add(field)
 
-    return folded_fields
-
-
-def _get_output_fields_at_fold_location(
-    output_fold_scope_location: FoldScopeLocation,
-    all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]],
-) -> Set[str]:
-    """Collect output field names for the specified output_fold_scope_location."""
-    # If the location does not have any outputs, return an empty set.
-    if output_fold_scope_location.fold_path not in all_folded_fields:
-        return set()
-    folded_fields = set()
-    for fold_output in all_folded_fields[output_fold_scope_location.fold_path]:
-        # Distinguish folds with the same fold path but different query paths.
-        if (fold_output.base_location, fold_output.fold_path) == (
-            output_fold_scope_location.base_location,
-            output_fold_scope_location.fold_path,
-        ):
-            if fold_output.field is None:
-                raise AssertionError(
-                    f"Received invalid fold_output {fold_output}. FoldScopeLocations in "
-                    f"all_folded_fields must have their fields set."
-                )
-            folded_fields.add(fold_output.field)
     return folded_fields
 
 
@@ -728,8 +708,8 @@ class CompilationState(object):
         self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used_outside_folds(
             sql_schema_info, ir
         )
-        # mapping fold paths to FoldScopeLocations with field information
-        self._all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]] = _find_folded_fields(ir)
+        # Mapping FoldScopeLocations (without field information) to output fields at that location.
+        self._all_folded_fields: Dict[FoldScopeLocation, Set[str]] = _find_folded_fields(ir)
 
         # Current query location state. Only mutable by calling _relocate.
         self._current_location: Optional[
@@ -891,10 +871,8 @@ class CompilationState(object):
             self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
             # Check for outputs at the current location, and mark the location as the output
             # location if any outputs exist.
-            if self._current_location.fold_path in self._all_folded_fields:
-                output_fields = _get_output_fields_at_fold_location(
-                    self._current_location, self._all_folded_fields
-                )
+            if self._current_location.at_vertex() in self._all_folded_fields:
+                output_fields = self._all_folded_fields[self._current_location.at_vertex()]
                 self._current_fold.mark_output_location_and_fields(
                     self._current_alias, self._current_location, output_fields
                 )
@@ -1092,10 +1070,8 @@ class CompilationState(object):
         self._current_fold.add_traversal(join_descriptor, outer_alias, self._current_alias)
         # Check for outputs at the fold_scope_location, and mark the location as the output
         # location if any outputs exist.
-        if fold_scope_location.fold_path in self._all_folded_fields:
-            output_fields = _get_output_fields_at_fold_location(
-                fold_scope_location, self._all_folded_fields
-            )
+        if fold_scope_location.at_vertex() in self._all_folded_fields:
+            output_fields = self._all_folded_fields[fold_scope_location.at_vertex()]
             self._current_fold.mark_output_location_and_fields(
                 self._current_alias, fold_scope_location, output_fields
             )
