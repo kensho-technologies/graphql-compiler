@@ -104,7 +104,7 @@ def rename_schema(
 def _rename_types(
     ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str, scalars: Set[str]
 ) -> Tuple[DocumentNode, Dict[str, str]]:
-    """Rename types, enums, interfaces using renamings.
+    """Rename types, enums, interfaces or suppress types using renamings.
 
     The query type will not be renamed. Scalar types, field names, enum values will not be renamed.
 
@@ -120,8 +120,8 @@ def _rename_types(
 
     Returns:
         Tuple[Document, Dict[str, str]], containing the modified version of the AST, and
-        the renamed type name to original type name map. Map contains all types, including
-        those that were not renamed.
+        the renamed type name to original type name map. Map contains all non-suppressed types,
+        including those that were not renamed.
 
     Raises:
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
@@ -137,7 +137,7 @@ def _rename_types(
 def _rename_query_type_fields(
     ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str
 ) -> DocumentNode:
-    """Rename all fields of the query type.
+    """Rename or suppress fields of the query type.
 
     The input AST will not be modified.
 
@@ -149,6 +149,9 @@ def _rename_query_type_fields(
 
     Returns:
         DocumentNode, representing the modified version of the input schema AST
+
+    Raises:
+        - InvalidTypeNameError if renamings suppressed every type
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
@@ -158,7 +161,22 @@ def _rename_query_type_fields(
 def _check_for_cascading_type_suppression(
     ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str
 ) -> DocumentNode:
-    """Check for fields with suppressed types or unions whose members were all suppressed."""
+    """Check for fields with suppressed types or unions whose members were all suppressed.
+
+    The input AST will not be modified.
+
+    Args:
+        ast: DocumentNode, the schema that we're returning a modified version of
+        renamings: Dict[str, str], mapping original field name to renamed name. If a name
+                   does not appear in the dict, it will be unchanged
+        query_type: string, name of the query type, e.g. 'RootSchemaQuery'
+
+    Returns:
+        DocumentNode, representing the modified version of the input schema AST
+
+    Raises:
+        - CascadingSuppressionError if a type suppression would require further suppressions
+    """
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
     return renamed_ast
@@ -225,7 +243,8 @@ class RenameSchemaTypesVisitor(Visitor):
 
         Args:
             renamings: Dict[str, Optional[str]], mapping from original type name to renamed type
-                       name. Any name not in the dict will be unchanged
+                       name or None (for type suppression). Any name not in the dict will be
+                       unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery), which will not
                         be renamed
             scalar_types: Set[str], set of names of all scalars used in the schema, including
@@ -324,8 +343,8 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
-            renamings: Dict[str, Optional[str]], from original field name to renamed field name. Any
-                       name not in the dict will be unchanged
+            renamings: Dict[str, Optional[str]], from original field name to renamed field name or
+                       None (for type suppression). Any name not in the dict will be unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery)
         """
         # Note that as field names and type names have been confirmed to match up, any renamed
@@ -394,14 +413,10 @@ class CascadingSuppressionCheckVisitor(Visitor):
         """Create a visitor to check that suppression does not cause an illegal state.
 
         Args:
-            renamings: Dict[str, Optional[str]], from original field name to renamed field name. Any
-                       name not in the dict will be unchanged
+            renamings: Dict[str, Optional[str]], from original field name to renamed field name or
+                       None (for type suppression). Any name not in the dict will be unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery)
         """
-        # Note that as field names and type names have been confirmed to match up, any renamed
-        # query type field already has a corresponding renamed type. If no errors, due to either
-        # invalid names or name conflicts, were raised when renaming type, no errors will occur when
-        # renaming query type fields.
         self.in_query_type = False
         self.renamings = renamings
         self.query_type = query_type
