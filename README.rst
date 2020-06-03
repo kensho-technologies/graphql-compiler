@@ -586,18 +586,17 @@ Example Use
 
     {
         Animal {
-            name @tag(tag_name: "parent_name")
+            limbs @tag(tag_name: "parent_limbs")
             out_Animal_ParentOf {
-                name @filter(op_name: "<", value: ["%parent_name"])
-                     @output(out_name: "child_name")
+                limbs @filter(op_name: "<", value: ["%parent_limbs"])
+                name @output(out_name: "child_name")
             }
         }
     }
 
-Each row returned by this query contains, in the :code:`child_name` column,
-the name of an :code:`Animal` that is the child of another :code:`Animal`, and
-has a name that is lexicographically smaller than the name of its
-parent.
+Each result returned by this query contains the name of an :code:`Animal` who is a 
+child of another animal and has fewer limbs than its parent.
+
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
