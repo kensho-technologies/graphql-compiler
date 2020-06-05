@@ -712,13 +712,8 @@ class EmitSQLTests(unittest.TestCase):
         fold_scope_location = Location(("Animal",)).navigate_to_fold("out_Animal_ParentOf")
 
         builder = emit_sql.FoldSubqueryBuilder(dialect, from_alias, "uuid")
-        builder.visit_vertex(
-            join_descriptor,
-            from_alias,
-            to_alias,
-            fold_scope_location,
-            {fold_scope_location.fold_path: {fold_scope_location.navigate_to_field("name")}},
-        )
+        builder.add_traversal(join_descriptor, from_alias, to_alias)
+        builder.mark_output_location_and_fields(to_alias, fold_scope_location, {"name"})
         subquery, output_location = builder.end_fold()
 
         expected_mssql = """

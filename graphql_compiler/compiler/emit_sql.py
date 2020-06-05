@@ -154,30 +154,34 @@ def _find_tagged_parameters(expression_from_filter: Expression) -> bool:
     return has_context_fields
 
 
-def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldPath, Set[FoldScopeLocation]]:
-    """For each fold path, find folded fields (outputs and metafields used in filters).
+def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldScopeLocation, Set[str]]:
+    """For each folded location, find folded fields (outputs and metafields used in filters).
 
     Args:
         ir: internal representation and metadata of a query for which to find the folded fields.
 
     Returns:
-        Dictionary mapping a FoldPath to  a set of FoldScopeLocations with output field information.
+        Dictionary mapping a FoldScopeLocation (with no field information) to field names that
+        are outputted at that location.
     """
-    folded_fields: Dict[FoldPath, Set[FoldScopeLocation]] = {}
-    # Find outputs used for each fold path.
+    folded_fields: Dict[FoldScopeLocation, Set[str]] = {}
+    # Collect outputs that occur at FoldScopeLocations.
     for _, output_info in ir.query_metadata_table.outputs:
         if isinstance(output_info.location, FoldScopeLocation):
-            fold_path = output_info.location.fold_path
-            folded_fields.setdefault(fold_path, set()).add(output_info.location)
+            if output_info.location.field is None:
+                raise AssertionError(
+                    f"Output field was set to invalid value None for output {output_info}."
+                )
+            folded_fields.setdefault(output_info.location.at_vertex(), set()).add(
+                output_info.location.field
+            )
 
     # Add _x_count, if used as a Filter at any Location.
     for location, _ in ir.query_metadata_table.registered_locations:
         for location_filter in ir.query_metadata_table.get_filter_infos(location):
             for field in location_filter.fields:
                 if field == COUNT_META_FIELD_NAME:
-                    folded_fields.setdefault(location.fold_path, set()).add(
-                        location.navigate_to_field(field)
-                    )
+                    folded_fields.setdefault(location.at_vertex(), set()).add(field)
 
     return folded_fields
 
@@ -369,7 +373,8 @@ class FoldSubqueryBuilder(object):
     #   3. optionally add fold scope filters
     #   4. end the fold, producing the resulting subquery
     #
-    # This life cycle is completed via calls to __init__, visit_vertex, add_filter, and end_fold.
+    # This life cycle is completed via calls to __init__, add_traversal, add_filter,
+    # mark_output_location_and_fields, and end_fold.
     #
     # The SELECT clause for the fold subquery contains OuterVertex.SOME_COLUMN, a unique
     # identifier (the primary key) for the OuterVertex determined by the edge descriptor
@@ -387,7 +392,7 @@ class FoldSubqueryBuilder(object):
     # TODO: implement filters for MSSQL
     #
     # The FROM and JOIN clauses are constructed during end_fold using info from the
-    # visit_vertex function.
+    # add_traversal function.
     #
     # The full subquery will look as follows for PostgreSQL:
     #
@@ -424,10 +429,12 @@ class FoldSubqueryBuilder(object):
                               fold. Used to set the group by as well as join the fold subquery
                               to the rest of the query.
         """
-        # Table and FoldScopeLocation containing output columns are initialized to None because
-        # the output table is unknown until one is found during visit_vertex.
+        # Table and FoldScopeLocation containing output columns, and the fields to be output
+        # are initialized to None because the output table is unknown until one is marked in
+        # mark_output_location_and_fields.
         self._output_vertex_alias: Optional[Alias] = None
         self._output_vertex_location: Optional[FoldScopeLocation] = None
+        self._output_fields: Optional[Set[str]] = None
 
         # Table for vertex immediately outside fold.
         self._outer_vertex_alias: Alias = outer_vertex_table
@@ -499,121 +506,110 @@ class FoldSubqueryBuilder(object):
                 f"PostgreSQL, dialect was set to {self._dialect.name}."
             )
 
-    def _get_fold_output_column_clause(self, fold_output_field: str) -> Label:
-        """Get the SQLAlchemy column expression corresponding to the fold output field."""
-        if fold_output_field == COUNT_META_FIELD_NAME:
-            return sqlalchemy.func.coalesce(
-                sqlalchemy.func.count(), sqlalchemy.literal_column("0")
-            ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
-        else:
-            if self._output_vertex_alias is None:
-                raise AssertionError(
-                    "Attempted to get fold output column before the output vertex was visited "
-                    f"(_output_vertex_alias is None) during fold {self}."
-                )
+    def _get_fold_outputs(self) -> List[Label]:
+        """Generate outputs for _output_fields and a key to join the subquery to the main query."""
+        if self._output_fields is None:
+            raise AssertionError(
+                "Attempted to get fold outputs while self._output_fields was set to "
+                f"None during fold {self}."
+            )
+        if self._output_vertex_alias is None:
+            raise AssertionError(
+                "Attempted to get fold output column before the output vertex was visited "
+                f"(_output_vertex_alias is None) during fold {self}."
+            )
 
-            # Get the output column.
-            output_column = self._output_vertex_alias.c[fold_output_field]
+        outputs: List[Label] = []
+        # Collect an output for each field in self._output_fields, adding to the output list.
+        for fold_output_field in self._output_fields:
 
-            # Create intermediate name for the output_column.
-            intermediate_fold_output_name = FOLD_OUTPUT_FORMAT_STRING.format(fold_output_field)
+            # _x_count uses the SQL COUNT function.
+            if fold_output_field == COUNT_META_FIELD_NAME:
+                if isinstance(self._dialect, MSDialect):
+                    raise NotImplementedError("_x_count is not implemented for MSSQL.")
+                else:
+                    x_count_column_clause = sqlalchemy.func.coalesce(
+                        sqlalchemy.func.count(), sqlalchemy.literal_column("0")
+                    ).label(FOLD_OUTPUT_FORMAT_STRING.format(COUNT_META_FIELD_NAME))
+                    outputs.append(x_count_column_clause)
 
-            # Perform aggregation appropriate for the _dialect and add aggregated output column
-            # to self._outputs.
-            if isinstance(self._dialect, MSDialect):
-                # MSSQL uses XML PATH aggregation.
-                return _get_mssql_xml_path_column(
-                    output_column, intermediate_fold_output_name, self._traversal_descriptors,
-                )
-            elif isinstance(self._dialect, PGDialect):
-                # PostgreSQL uses ARRAY_AGG.
-                return _get_array_agg_column(output_column, intermediate_fold_output_name)
+            # All non-_x_count fields use aggregation.
             else:
-                raise NotImplementedError(
-                    "Fold only supported for MSSQL and PostgreSQL, "
-                    f"dialect set to {self._dialect.name}."
-                )
+                # Get the output column.
+                output_column = self._output_vertex_alias.c[fold_output_field]
 
-        raise AssertionError(
-            "Reached end of function _get_fold_output_column_clause without returning a value "
-            f"during fold {self}. This code should be unreachable."
-        )
+                # Create intermediate name for the output_column.
+                intermediate_fold_output_name = FOLD_OUTPUT_FORMAT_STRING.format(fold_output_field)
 
-    def _get_fold_outputs(
-        self,
-        fold_scope_location: FoldScopeLocation,
-        all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]],
-    ) -> List[Label]:
-        """Generate output columns for innermost fold scope and add them to _outputs."""
-        # Find outputs for this fold in all_folded_fields and add to self._outputs.
-        if fold_scope_location.fold_path in all_folded_fields:
-            for fold_output in all_folded_fields[fold_scope_location.fold_path]:
-                # Distinguish folds with the same fold path but different query paths.
-                if (fold_output.base_location, fold_output.fold_path) == (
-                    fold_scope_location.base_location,
-                    fold_scope_location.fold_path,
-                ):
-                    if fold_output.field is None:
-                        raise AssertionError(
-                            f"Received invalid fold_output {fold_output}. FoldScopeLocations in "
-                            f"all_folded_fields must have their fields set."
+                # Perform aggregation appropriate for the _dialect and add aggregated output column
+                # to outputs.
+                if isinstance(self._dialect, MSDialect):
+                    # MSSQL uses XML PATH aggregation.
+                    outputs.append(
+                        _get_mssql_xml_path_column(
+                            output_column,
+                            intermediate_fold_output_name,
+                            self._traversal_descriptors,
                         )
-                    if fold_output.field == COUNT_META_FIELD_NAME and isinstance(
-                        self._dialect, MSDialect
-                    ):
-                        raise NotImplementedError(
-                            f"_x_count is not implemented for MSSQL. Received _x_count "
-                            f"fold_output {fold_output}."
-                        )
-                    # Get SQLAlchemy column for fold_output.
-                    column_clause = self._get_fold_output_column_clause(fold_output.field)
-                    # Append resulting column to outputs.
-                    self._outputs.append(column_clause)
+                    )
+                elif isinstance(self._dialect, PGDialect):
+                    # PostgreSQL uses ARRAY_AGG.
+                    outputs.append(
+                        _get_array_agg_column(output_column, intermediate_fold_output_name)
+                    )
+                else:
+                    raise NotImplementedError(
+                        "Fold only supported for MSSQL and PostgreSQL, "
+                        f"dialect set to {self._dialect.name}."
+                    )
 
-        # Use to join unique identifier for the fold's outer vertex to the final table.
-        self._outputs.append(self._outer_vertex_alias.c[self._outer_vertex_primary_key])
+        # Add the primary key field to the output list, which will be used to join the folded
+        # subquery to the main Selectable.
+        outputs.append(self._outer_vertex_alias.c[self._outer_vertex_primary_key])
 
         # Sort to make select order deterministic.
-        return sorted(self._outputs, key=lambda column: column.name, reverse=True)
+        return sorted(outputs, key=lambda column: column.name, reverse=True)
 
-    # TODO(bojanserafimov): This function communicates both a traversal to a new node and
-    #                       outputting information at the new node. It could be split into two
-    #                       functions that are easier to spec:
-    #                       1. traverse(self, join_descriptor)
-    #                       2. add_output(self, column_name)
-    #                       This way there is no need to define what is considered a folded
-    #                       field. It is up to the caller to expose all they will want to use.
-    def visit_vertex(
-        self,
-        join_descriptor: DirectJoinDescriptor,
-        from_table: Alias,
-        to_table: Alias,
-        current_fold_scope_location: FoldScopeLocation,
-        all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]],
+    def add_traversal(
+        self, join_descriptor: DirectJoinDescriptor, from_table: Alias, to_table: Alias,
     ) -> None:
-        """Add a new SQLFoldTraversalDescriptor and add outputs, if visiting an output vertex."""
+        """Add a new SQLFoldTraversalDescriptor."""
         if self._ended:
             raise AssertionError(
-                "Cannot visit traversed vertices after end_fold has been called."
+                "Cannot add a traversal after end_fold has been called."
                 f"Invalid state encountered during fold {self}."
             )
 
+        # Ensure that the previous traversals's from_table matches the next traversal's to_table.
+        if len(self._traversal_descriptors) > 0:
+            if self._traversal_descriptors[-1].to_table != from_table:
+                raise AssertionError(
+                    "Received invalid traversal. The previous traversal's to_table "
+                    "should match the next traversal's from_table. Previous to_table was "
+                    f"{self._traversal_descriptors[-1].to_table.description} while the current "
+                    f"from_table was {from_table.description}."
+                )
         self._traversal_descriptors.append(
             SQLFoldTraversalDescriptor(join_descriptor, from_table, to_table)
         )
 
-        # Collect outputs, if there are any at the current FoldScopeLocation.
-        if current_fold_scope_location.fold_path in all_folded_fields:
-            # Ensure that no other outputs have been found for this fold since all outputs must
-            # come from the same FoldScopeLocation.
-            if self._output_vertex_alias is not None:
-                raise AssertionError(
-                    "Cannot visit multiple output vertices in one fold. "
-                    f"Invalid state encountered during fold {self}."
-                )
-            self._output_vertex_alias = to_table
-            self._output_vertex_location = current_fold_scope_location
-            self._outputs = self._get_fold_outputs(current_fold_scope_location, all_folded_fields)
+    def mark_output_location_and_fields(
+        self, output_table: Alias, output_table_location: FoldScopeLocation, output_fields: Set[str]
+    ) -> None:
+        """Mark the location of the output vertex."""
+        if self._ended:
+            raise AssertionError(
+                "Cannot add a traversal after end_fold has been called."
+                f"Invalid state encountered during fold {self}."
+            )
+        if self._output_vertex_alias is not None:
+            raise AssertionError(
+                "Cannot visit multiple output vertices in one fold. "
+                f"Invalid state encountered during fold {self}."
+            )
+        self._output_vertex_alias = output_table
+        self._output_vertex_location = output_table_location
+        self._output_fields = output_fields
 
     def add_filter(
         self, predicate: Expression, aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias]
@@ -633,7 +629,7 @@ class FoldSubqueryBuilder(object):
         self._filters.append(sql_expression)
 
     def end_fold(self) -> Tuple[Select, FoldScopeLocation]:
-        """Return the fold subquery and the location its outputs come from."""
+        """Return the fold subquery and the location from which its outputs came."""
         if self._ended:
             raise AssertionError(
                 "Cannot call end_fold more than once. "
@@ -647,6 +643,9 @@ class FoldSubqueryBuilder(object):
             raise AssertionError(
                 f"No traversed vertices visited. Invalid state encountered during fold {self}."
             )
+
+        # Collect the outputs for the output vertex.
+        self._outputs = self._get_fold_outputs()
 
         # For now, folds with multiple outputs are not implemented in MSSQL. Each output comes
         # from its own selectable within the XML PATH statement so it is not guaranteed result order
@@ -709,8 +708,8 @@ class CompilationState(object):
         self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used_outside_folds(
             sql_schema_info, ir
         )
-        # mapping fold paths to FoldScopeLocations with field information
-        self._all_folded_fields: Dict[FoldPath, Set[FoldScopeLocation]] = _find_folded_fields(ir)
+        # Mapping FoldScopeLocations (without field information) to output fields at that location.
+        self._all_folded_fields: Dict[FoldScopeLocation, Set[str]] = _find_folded_fields(ir)
 
         # Current query location state. Only mutable by calling _relocate.
         self._current_location: Optional[
@@ -787,6 +786,15 @@ class CompilationState(object):
                 self._current_classname
             ].alias()
 
+        # If in a Fold, check for outputs, marking the location as the output location if any
+        # folded outputs exist.
+        if self._current_fold and isinstance(self._current_location, FoldScopeLocation):
+            if self._current_location.at_vertex() in self._all_folded_fields:
+                output_fields = self._all_folded_fields[self._current_location.at_vertex()]
+                self._current_fold.mark_output_location_and_fields(
+                    self._current_alias, self._current_location, output_fields
+                )
+
     # TODO merge from_column and to_column into a joindescriptor
     def _join_to_parent_location(
         self, parent_alias: Alias, from_column: str, to_column: str, optional: bool
@@ -858,7 +866,7 @@ class CompilationState(object):
 
         self._recurse_needs_cte = True
 
-        # Follow the edge, either by calling visit_vertex if in a fold or joining to the
+        # Follow the edge, either by calling add_traversal if in a fold or joining to the
         # parent location.
         previous_alias = self._current_alias
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
@@ -869,13 +877,7 @@ class CompilationState(object):
                     "Attempting to traverse inside a fold while the _current_location was not a "
                     f"FoldScopeLocation. _current_location was set to {self._current_location}."
                 )
-            self._current_fold.visit_vertex(
-                edge,
-                previous_alias,
-                self._current_alias,
-                self._current_location,
-                self._all_folded_fields,
-            )
+            self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
         else:
             self._join_to_parent_location(
                 previous_alias, edge.from_column, edge.to_column, optional
@@ -1067,13 +1069,7 @@ class CompilationState(object):
 
         # 4. Relocate to inside the fold scope and visit the first vertex.
         self._relocate(fold_scope_location)
-        self._current_fold.visit_vertex(
-            join_descriptor,
-            outer_alias,
-            self._current_alias,
-            fold_scope_location,
-            self._all_folded_fields,
-        )
+        self._current_fold.add_traversal(join_descriptor, outer_alias, self._current_alias)
 
     def unfold(self) -> None:
         """Complete the execution of a Fold Block."""
