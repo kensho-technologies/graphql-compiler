@@ -513,6 +513,12 @@ class FoldSubqueryBuilder(object):
                 "Attempted to get fold outputs while self._output_fields was set to "
                 f"None during fold {self}."
             )
+        if self._output_vertex_alias is None:
+            raise AssertionError(
+                "Attempted to get fold output column before the output vertex was visited "
+                f"(_output_vertex_alias is None) during fold {self}."
+            )
+
         outputs: List[Label] = []
         # Collect an output for each field in self._output_fields, adding to the output list.
         for fold_output_field in self._output_fields:
@@ -529,12 +535,6 @@ class FoldSubqueryBuilder(object):
 
             # All non-_x_count fields use aggregation.
             else:
-                if self._output_vertex_alias is None:
-                    raise AssertionError(
-                        "Attempted to get fold output column before the output vertex was visited "
-                        f"(_output_vertex_alias is None) during fold {self}."
-                    )
-
                 # Get the output column.
                 output_column = self._output_vertex_alias.c[fold_output_field]
 
@@ -786,6 +786,15 @@ class CompilationState(object):
                 self._current_classname
             ].alias()
 
+        # If in a Fold, check for outputs, marking the location as the output location if any
+        # folded outputs exist.
+        if self._current_fold and isinstance(self._current_location, FoldScopeLocation):
+            if self._current_location.at_vertex() in self._all_folded_fields:
+                output_fields = self._all_folded_fields[self._current_location.at_vertex()]
+                self._current_fold.mark_output_location_and_fields(
+                    self._current_alias, self._current_location, output_fields
+                )
+
     # TODO merge from_column and to_column into a joindescriptor
     def _join_to_parent_location(
         self, parent_alias: Alias, from_column: str, to_column: str, optional: bool
@@ -869,13 +878,6 @@ class CompilationState(object):
                     f"FoldScopeLocation. _current_location was set to {self._current_location}."
                 )
             self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
-            # Check for outputs at the current location, and mark the location as the output
-            # location if any outputs exist.
-            if self._current_location.at_vertex() in self._all_folded_fields:
-                output_fields = self._all_folded_fields[self._current_location.at_vertex()]
-                self._current_fold.mark_output_location_and_fields(
-                    self._current_alias, self._current_location, output_fields
-                )
         else:
             self._join_to_parent_location(
                 previous_alias, edge.from_column, edge.to_column, optional
@@ -1068,13 +1070,6 @@ class CompilationState(object):
         # 4. Relocate to inside the fold scope and visit the first vertex.
         self._relocate(fold_scope_location)
         self._current_fold.add_traversal(join_descriptor, outer_alias, self._current_alias)
-        # Check for outputs at the fold_scope_location, and mark the location as the output
-        # location if any outputs exist.
-        if fold_scope_location.at_vertex() in self._all_folded_fields:
-            output_fields = self._all_folded_fields[fold_scope_location.at_vertex()]
-            self._current_fold.mark_output_location_and_fields(
-                self._current_alias, fold_scope_location, output_fields
-            )
 
     def unfold(self) -> None:
         """Complete the execution of a Fold Block."""
