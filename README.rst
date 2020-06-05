@@ -594,9 +594,8 @@ Example Use
         }
     }
 
-Each result returned by this query contains the name of an :code:`Animal` who is a 
+Each result returned by this query contains the name of an :code:`Animal` who is a
 child of another animal and has fewer limbs than its parent.
-
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
