@@ -1,9 +1,15 @@
 from typing import Any, Dict, Iterable, Tuple, Union
 
 from ...compiler.expressions import (
-    ContextField, ContextFieldExistence, Literal, LocalField, OutputContextField, Variable,
+    ContextField,
+    ContextFieldExistence,
+    Literal,
+    LocalField,
+    OutputContextField,
+    Variable,
 )
 from ...compiler.metadata import QueryMetadataTable
+from ..hinting import construct_hints_for_location
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .typedefs import ExpressionEvaluatorFunc
 
@@ -17,6 +23,8 @@ def evaluate_local_field(
     expression: LocalField,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[Tuple[DataContext, Any]]:
+    # TODO(predrag): Add hints here.
+
     field_name = expression.field_name
     return adapter.project_property(data_contexts, current_type_name, field_name)
 
@@ -78,10 +86,7 @@ def evaluate_variable(
     data_contexts: Iterable[DataContext],
 ) -> Iterable[Tuple[DataContext, Any]]:
     variable_value = query_arguments[expression.variable_name[1:]]
-    return (
-        (data_context, variable_value)
-        for data_context in data_contexts
-    )
+    return ((data_context, variable_value) for data_context in data_contexts)
 
 
 def evaluate_literal(
@@ -93,7 +98,4 @@ def evaluate_literal(
     expression: Literal,
     data_contexts: Iterable[DataContext],
 ) -> Iterable[Tuple[DataContext, Any]]:
-    return (
-        (data_context, expression.value)
-        for data_context in data_contexts
-    )
+    return ((data_context, expression.value) for data_context in data_contexts)

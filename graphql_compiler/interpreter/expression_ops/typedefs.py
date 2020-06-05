@@ -11,7 +11,7 @@ ExpressionEvaluatorFunc = Callable[
         QueryMetadataTable,
         Dict[str, Any],
         Expression,
-        Iterable[DataContext]
+        Iterable[DataContext],
     ],
-    Iterable[Tuple[DataContext, Any]]
+    Iterable[Tuple[DataContext, Any]],
 ]

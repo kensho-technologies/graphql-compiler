@@ -4,6 +4,7 @@ from ...compiler.blocks import Backtrack, CoerceType, Filter, MarkLocation, Trav
 from ...compiler.helpers import BaseLocation, get_only_element_from_collection
 from ...compiler.metadata import QueryMetadataTable
 from ..expression_ops import evaluate_expression
+from ..hinting import construct_hints_for_location
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 
 
@@ -31,8 +32,12 @@ def handle_filter_block(
     yield from (
         data_context
         for data_context, predicate_value in evaluate_expression(
-            adapter, query_metadata_table, query_arguments,
-            current_type_name, predicate, data_contexts,
+            adapter,
+            query_metadata_table,
+            query_arguments,
+            current_type_name,
+            predicate,
+            data_contexts,
         )
         if predicate_value or data_context.current_token is None
     )
@@ -55,9 +60,18 @@ def handle_traverse_block(
     # TODO(predrag): Apply the same logic to Fold blocks, once implemented.
     post_block_location_info = query_metadata_table.get_location_info(post_block_location)
     parent_location_info = query_metadata_table.get_location_info(
-        post_block_location_info.parent_location)
+        post_block_location_info.parent_location
+    )
+
+    interpreter_hints = construct_hints_for_location(
+        query_metadata_table, query_arguments, post_block_location
+    )
+
     neighbor_data = adapter.project_neighbors(
-        data_contexts, parent_location_info.type.name, block.direction, block.edge_name
+        data_contexts,
+        parent_location_info.type.name,
+        (block.direction, block.edge_name),
+        **interpreter_hints
     )
     for data_context, neighbor_tokens in neighbor_data:
         has_neighbors = False
@@ -70,9 +84,7 @@ def handle_traverse_block(
                 )
             )
         if block.optional and not has_neighbors:
-            yield DataContext(
-                None, data_context.token_at_location, data_context.expression_stack
-            )
+            yield DataContext(None, data_context.token_at_location, data_context.expression_stack)
 
 
 def handle_coerce_type_block(
@@ -84,11 +96,16 @@ def handle_coerce_type_block(
     data_contexts: Iterable[DataContext],
 ) -> Iterable[DataContext]:
     location_info = query_metadata_table.get_location_info(post_block_location)
+
+    interpreter_hints = construct_hints_for_location(
+        query_metadata_table, query_arguments, location_info
+    )
+
     coercion_type = get_only_element_from_collection(block.target_class)
     return (
         data_context
         for data_context, can_coerce in adapter.can_coerce_to_type(
-            data_contexts, location_info.coerced_from_type, coercion_type
+            data_contexts, location_info.coerced_from_type, coercion_type, **interpreter_hints
         )
         if can_coerce or data_context.current_token is None
     )
@@ -107,9 +124,7 @@ def handle_mark_location_block(
         token_at_location = dict(data_context.token_at_location)
         token_at_location[current_location] = data_context.current_token
         yield DataContext(
-            data_context.current_token,
-            token_at_location,
-            data_context.expression_stack,
+            data_context.current_token, token_at_location, data_context.expression_stack,
         )
 
 

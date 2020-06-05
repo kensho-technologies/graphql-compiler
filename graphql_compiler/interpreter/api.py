@@ -1,4 +1,5 @@
-from typing import Any, Dict, Iterable, List, Optional, Tuple
+from itertools import chain
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from ..compiler.blocks import (
     Backtrack,
@@ -19,14 +20,14 @@ from ..compiler.compiler_entities import BasicBlock
 from ..compiler.compiler_frontend import IrAndMetadata
 from ..compiler.helpers import BaseLocation, get_only_element_from_collection
 from ..compiler.metadata import QueryMetadataTable
-from .block_ops import generate_construct_result_outputs, generate_block_outputs
+from .block_ops import generate_block_outputs, generate_construct_result_outputs
 from .debugging import print_tap
-from .typedefs import DataContext, DataToken, InterpreterAdapter
+from .hinting import construct_hints_for_location
+from .typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 
 
 def _get_local_operation_post_block_locations(
-    query_metadata_table: QueryMetadataTable,
-    local_operations_blocks: List[BasicBlock]
+    query_metadata_table: QueryMetadataTable, local_operations_blocks: List[BasicBlock]
 ) -> List[BaseLocation]:
     """Return a parallel list of the locations into which the block's operation moves us."""
     location_at_index: Dict[int, BaseLocation] = {}
@@ -70,14 +71,11 @@ def _get_local_operation_post_block_locations(
             f"for blocks {local_operations_blocks}"
         )
 
-    return [
-        location_at_index[i]
-        for i in range(len(local_operations_blocks))
-    ]
+    return [location_at_index[i] for i in range(len(local_operations_blocks))]
 
 
 def _split_out_global_operations(
-    ir_blocks: List[BasicBlock]
+    ir_blocks: List[BasicBlock],
 ) -> Tuple[List[BasicBlock], List[BasicBlock]]:
     for block_index, block in enumerate(ir_blocks):
         if isinstance(block, GlobalOperationsStart):
@@ -97,7 +95,7 @@ def _split_out_global_operations(
 def interpret_ir(
     adapter: InterpreterAdapter[DataToken],
     ir_and_metadata: IrAndMetadata,
-    query_arguments: Dict[str, Any]
+    query_arguments: Dict[str, Any],
 ) -> Iterable[Dict[str, Any]]:
     ir_blocks = ir_and_metadata.ir_blocks
     query_metadata_table = ir_and_metadata.query_metadata_table
@@ -118,36 +116,44 @@ def interpret_ir(
         raise AssertionError()
 
     local_operation_post_block_locations = _get_local_operation_post_block_locations(
-        query_metadata_table, local_operations)
-
-    start_class = get_only_element_from_collection(first_block.start_class)
-
-    # Process the first block.
-    current_data_contexts: Iterable[DataContext[Any]] = (
-        DataContext.make_empty_context_from_token(token)
-        for token in adapter.get_tokens_of_type(start_class)
+        query_metadata_table, local_operations
     )
 
-    current_data_contexts = print_tap('starting contexts', current_data_contexts)
+    # Process the first block.
+    start_class = get_only_element_from_collection(first_block.start_class)
+    root_location = query_metadata_table.root_location
+    root_location_hints = construct_hints_for_location(
+        query_metadata_table, query_arguments, root_location
+    )
+    current_data_contexts: Iterable[DataContext[Any]] = (
+        DataContext.make_empty_context_from_token(token)
+        for token in adapter.get_tokens_of_type(start_class, **root_location_hints)
+    )
+
+    current_data_contexts = print_tap("starting contexts", current_data_contexts)
 
     # Process all local operation blocks after the first one (already processed above).
     for block, block_location in zip(
         local_operations[1:], local_operation_post_block_locations[1:]
     ):
         current_data_contexts = generate_block_outputs(
-            adapter, query_metadata_table, query_arguments,
-            block_location, block, current_data_contexts,
+            adapter,
+            query_metadata_table,
+            query_arguments,
+            block_location,
+            block,
+            current_data_contexts,
         )
 
     # Process all global operations except the last block, which constructs the final result.
     for block in global_operations[:-1]:
         current_data_contexts = generate_block_outputs(
-            adapter, query_metadata_table, query_arguments,
-            None, block, current_data_contexts,
+            adapter, query_metadata_table, query_arguments, None, block, current_data_contexts,
         )
 
-    current_data_contexts = print_tap('ending contexts', current_data_contexts)
+    current_data_contexts = print_tap("ending contexts", current_data_contexts)
 
     # Process the final block.
     return generate_construct_result_outputs(
-        adapter, query_metadata_table, query_arguments, last_block, current_data_contexts)
+        adapter, query_metadata_table, query_arguments, last_block, current_data_contexts
+    )

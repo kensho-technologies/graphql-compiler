@@ -1,24 +1,29 @@
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 from pprint import pformat
-from typing import Any, Dict, Generic, Iterable, List, Optional, Tuple, TypeVar
+from typing import Any, Collection, Dict, Generic, Iterable, List, Optional, Tuple, TypeVar
+
+# TODO(predrag): In 3.8+ these should be imported from typing. Make a shim module.
+from typing_extensions import Literal, TypedDict
 
 from ..compiler.helpers import Location
+from ..compiler.metadata import FilterInfo
 from .immutable_stack import ImmutableStack, make_empty_stack
 
 
 GLOBAL_LOCATION_TYPE_NAME = "__global__"
 
 
-DataToken = TypeVar('DataToken')
+DataToken = TypeVar("DataToken")
 
 
 class DataContext(Generic[DataToken]):
 
     __slots__ = (
-        'current_token',
-        'token_at_location',
-        'expression_stack',
-        'piggyback_contexts',
+        "current_token",
+        "token_at_location",
+        "expression_stack",
+        "piggyback_contexts",
     )
 
     current_token: Optional[DataToken]
@@ -50,10 +55,10 @@ class DataContext(Generic[DataToken]):
     __str__ = __repr__
 
     @staticmethod
-    def make_empty_context_from_token(token: DataToken) -> 'DataContext':
+    def make_empty_context_from_token(token: DataToken) -> "DataContext":
         return DataContext(token, dict(), make_empty_stack())
 
-    def push_value_onto_stack(self, value: Any) -> 'DataContext':
+    def push_value_onto_stack(self, value: Any) -> "DataContext":
         self.expression_stack = self.expression_stack.push(value)
         return self  # for chaining
 
@@ -63,16 +68,16 @@ class DataContext(Generic[DataToken]):
     def pop_value_from_stack(self) -> Any:
         value, remaining_stack = self.expression_stack.pop()
         if remaining_stack is None:
-            raise AssertionError('We always start the stack with a "None" element pushed on, but '
-                                 'that element somehow got popped off. This is a bug.')
+            raise AssertionError(
+                'We always start the stack with a "None" element pushed on, but '
+                "that element somehow got popped off. This is a bug."
+            )
         self.expression_stack = remaining_stack
         return value
 
-    def get_context_for_location(self, location: Location) -> 'DataContext':
+    def get_context_for_location(self, location: Location) -> "DataContext":
         return DataContext(
-            self.token_at_location[location],
-            dict(self.token_at_location),
-            self.expression_stack,
+            self.token_at_location[location], dict(self.token_at_location), self.expression_stack,
         )
 
     def add_piggyback_context(self, piggyback: "DataContext") -> None:
@@ -106,12 +111,38 @@ class DataContext(Generic[DataToken]):
         self.current_token = self.pop_value_from_stack()
 
 
+EdgeDirection = Literal["in", "out"]
+EdgeInfo = Tuple[EdgeDirection, str]  # direction + edge name
+
+# TODO(predrag): Figure out a better type here. We need to balance between finding something
+#                easy and lightweight, and letting the user know about things like:
+#                optional edges, recursive edges, used fields/filters at the neighbor, etc.
+NeighborHint = Any
+
+
+class InterpreterHints(TypedDict):
+    """Describe all known hint types.
+
+    Values of this type are intended to be used as "**hints" syntax in adapter calls.
+    """
+
+    runtime_arg_hints: Dict[str, Any]  # the runtime arguments passed for this query
+    used_property_hints: Collection[str]  # the names of all property fields used within this scope
+    filter_hints: Collection[FilterInfo]  # info on all filters used within this scope
+    neighbor_hints: Collection[Tuple[EdgeInfo, NeighborHint]]  # info on all neighbors of this scope
+
+
 class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     @abstractmethod
     def get_tokens_of_type(
         self,
         type_name: str,
-        **hints: Dict[str, Any],
+        *,
+        runtime_arg_hints: Optional[Dict[str, Any]] = None,
+        used_property_hints: Optional[Collection[str]] = None,
+        filter_hints: Optional[Collection[FilterInfo]] = None,
+        neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
+        **hints: Any,
     ) -> Iterable[DataToken]:
         pass
 
@@ -121,7 +152,12 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         data_contexts: Iterable[DataContext[DataToken]],
         current_type_name: str,
         field_name: str,
-        **hints: Dict[str, Any],
+        *,
+        runtime_arg_hints: Optional[Dict[str, Any]] = None,
+        used_property_hints: Optional[Collection[str]] = None,
+        filter_hints: Optional[Collection[FilterInfo]] = None,
+        neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
+        **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
         pass
 
@@ -130,9 +166,13 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         self,
         data_contexts: Iterable[DataContext[DataToken]],
         current_type_name: str,
-        direction: str,
-        edge_name: str,
-        **hints: Dict[str, Any],
+        edge_info: EdgeInfo,
+        *,
+        runtime_arg_hints: Optional[Dict[str, Any]] = None,
+        used_property_hints: Optional[Collection[str]] = None,
+        filter_hints: Optional[Collection[FilterInfo]] = None,
+        neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
+        **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], Iterable[DataToken]]]:
         # If using a generator instead of a list for the Iterable[DataToken] part,
         # be careful -- generators are not closures! Make sure any state you pull into
@@ -147,6 +187,11 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         data_contexts: Iterable[DataContext[DataToken]],
         current_type_name: str,
         coerce_to_type_name: str,
-        **hints: Dict[str, Any],
+        *,
+        runtime_arg_hints: Optional[Dict[str, Any]] = None,
+        used_property_hints: Optional[Collection[str]] = None,
+        filter_hints: Optional[Collection[FilterInfo]] = None,
+        neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
+        **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
         pass

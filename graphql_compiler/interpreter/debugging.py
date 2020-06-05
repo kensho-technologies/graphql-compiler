@@ -6,6 +6,8 @@ from .typedefs import DataContext
 def print_tap(info: str, data_contexts: Iterable[DataContext]) -> Iterable[DataContext]:
     # TODO(predrag): Debug-only code. Remove before merging.
     return data_contexts
+
+
 #     print('\n')
 #     unique_id = hash(info)
 #     print(unique_id, info)
