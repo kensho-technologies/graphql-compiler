@@ -2344,17 +2344,14 @@ def filter_within_fold_scope() -> CommonTestData:  # noqa: D103
         Animal {
             name @output(out_name: "name")
             out_Animal_ParentOf @fold {
-                name @filter(op_name: "=", value: ["$desired"]) @output(out_name: "child_list")
-                description @output(out_name: "child_descriptions")
+                name @filter(op_name: "has_substring", value: ["$desired"])
+                     @output(out_name: "child_list")
             }
         }
     }"""
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "child_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
-        "child_descriptions": OutputMetadata(
-            type=GraphQLList(GraphQLString), optional=False, folded=True
-        ),
     }
     expected_input_metadata = {
         "desired": GraphQLString,

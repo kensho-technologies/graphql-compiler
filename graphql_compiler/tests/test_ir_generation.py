@@ -4171,7 +4171,7 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(base_parent_fold),
             blocks.Filter(
                 expressions.BinaryComposition(
-                    "=",
+                    "has_substring",
                     expressions.LocalField("name", GraphQLString),
                     expressions.Variable("$desired", GraphQLString),
                 )
@@ -4186,10 +4186,6 @@ class IrGenerationTests(unittest.TestCase):
                     ),
                     "child_list": expressions.FoldedContextField(
                         base_parent_fold.navigate_to_field("name"), GraphQLList(GraphQLString)
-                    ),
-                    "child_descriptions": expressions.FoldedContextField(
-                        base_parent_fold.navigate_to_field("description"),
-                        GraphQLList(GraphQLString),
                     ),
                 }
             ),

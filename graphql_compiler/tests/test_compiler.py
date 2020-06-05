@@ -6995,7 +6995,6 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = """
             SELECT
-                $Animal___1___out_Animal_ParentOf.description AS `child_descriptions`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_list`,
                 Animal___1.name AS `name`
             FROM (
@@ -7006,48 +7005,64 @@ class CompilerTests(unittest.TestCase):
                 RETURN $matches
             ) LET
                 $Animal___1___out_Animal_ParentOf =
-                    Animal___1.out("Animal_ParentOf")[(name = {desired})].asList()
+                    Animal___1.out("Animal_ParentOf")[
+                        (name LIKE ('%' + ({desired} + '%')))
+                    ].asList()
         """
         expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')
             .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
-                child_descriptions: (
-                    (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
-                        m.Animal___1.out_Animal_ParentOf
-                         .collect{entry -> entry.inV.next()}
-                         .findAll{entry -> (entry.name == $desired)}
-                         .collect{entry -> entry.description}
-                    )
-                ),
                 child_list: (
                     (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
                         m.Animal___1.out_Animal_ParentOf
                          .collect{entry -> entry.inV.next()}
-                         .findAll{entry -> (entry.name == $desired)}
+                         .findAll{entry -> entry.name.contains($desired)}
                          .collect{entry -> entry.name}
                     )
                 ),
                 name: m.Animal___1.name
             ])}
         """
-        expected_mssql = NotImplementedError
+        expected_mssql = """
+            SELECT
+                folded_subquery_1.fold_output_name AS child_list,
+                [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_3]
+                        WHERE [Animal_2].uuid = [Animal_3].parent
+                        AND ([Animal_3].name LIKE '%' + :desired + '%')
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
         expected_postgresql = """
             SELECT
-                coalesce(folded_subquery_1.fold_output_description, ARRAY[]::VARCHAR[])
-                    AS child_descriptions,
                 coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_list,
                 "Animal_1".name AS name
             FROM schema_1."Animal" AS "Animal_1"
             JOIN (
                 SELECT
                     "Animal_2".uuid AS uuid,
-                    array_agg("Animal_3".name) AS fold_output_name,
-                    array_agg("Animal_3".description) AS fold_output_description
+                    array_agg("Animal_3".name) AS fold_output_name
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_2".uuid = "Animal_3".parent
-                WHERE "Animal_3".name = %(desired)s
+                WHERE ("Animal_3".name LIKE '%%' || %(desired)s || '%%')
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
@@ -7056,14 +7071,12 @@ class CompilerTests(unittest.TestCase):
             MATCH (Animal___1:Animal)
             OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
                 WHERE (
-                  Animal__out_Animal_ParentOf___1.name = $desired
+                  Animal__out_Animal_ParentOf___1.name CONTAINS $desired
                 )
             WITH
               Animal___1 AS Animal___1,
               collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
             RETURN
-              [x IN collected_Animal__out_Animal_ParentOf___1 | x.description] AS
-                `child_descriptions`,
               [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS
                 `child_list`,
               Animal___1.name AS `name`
