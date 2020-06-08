@@ -891,8 +891,8 @@ class OrientDBParameterizedMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def test_filter_within_fold_scope(self) -> None:
-        test_data = test_input_data.filter_within_fold_scope()
+    def test_filter_and_multiple_outputs_within_fold_scope(self) -> None:
+        test_data = test_input_data.filter_and_multiple_outputs_within_fold_scope()
         sample_parameters = {"desired": "Nazgul__2"}
 
         rows = execute_graphql(self.schema, test_data, self.orientdb_client, sample_parameters)
