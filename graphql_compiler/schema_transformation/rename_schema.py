@@ -123,8 +123,8 @@ def _rename_types(
 
     Args:
         ast: Document, the schema that we're returning a modified version of
-        renamings: Dict[str, Optional[str]], mapping original type/interface/enum name to renamed name. If
-                   a name does not appear in the dict, it will be unchanged
+        renamings: Dict[str, Optional[str]], mapping original type/interface/enum name to renamed
+                   name. If a name does not appear in the dict, it will be unchanged
         query_type: str, name of the query type, e.g. 'RootSchemaQuery'
         scalars: Set[str], the set of all scalars used in the schema, including user defined
                  scalars and and used builtin scalars, excluding unused builtins
