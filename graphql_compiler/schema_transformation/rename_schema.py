@@ -36,6 +36,15 @@ RenamedSchemaDescriptor = namedtuple(
     ),
 )
 
+# AST visitor functions can return a number of different things, such as returning a Node (to update
+# that node) or returning REMOVE (to remove the node). In the current GraphQL-core version
+# (>=3,<3.1), REMOVE is set to the singleton object Ellipsis. However, returning Ellipsis prevents
+# us from type-hinting functions with anything more specific than Any. For more information, see:
+# https://github.com/kensho-technologies/graphql-compiler/pull/834#discussion_r434622400
+# and the issue opened with GraphQL-core here:
+# https://github.com/graphql-python/graphql-core/issues/96
+VisitorReturnType = Union[Node, Any]
+
 
 def rename_schema(
     ast: DocumentNode, renamings: Dict[str, Optional[str]]
@@ -259,7 +268,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: Node) -> Union[type(REMOVE), Optional[Node]]:
+    def _rename_name_and_add_to_record(self, node: Node) -> VisitorReturnType:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -320,7 +329,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
     def enter(
         self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any],
-    ) -> Union[type(REMOVE), Optional[Node]]:
+    ) -> VisitorReturnType:
         """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
         if node_type in self.noop_types:
@@ -394,7 +403,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         parent: Any,
         path: List[Any],
         ancestors: List[Any],
-    ) -> Union[type(REMOVE), Optional[Node]]:
+    ) -> VisitorReturnType:
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
