@@ -1,10 +1,13 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
+    EnumTypeDefinitionNode,
     FieldDefinitionNode,
+    InterfaceTypeDefinitionNode,
+    NamedTypeNode,
     Node,
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
@@ -246,6 +249,13 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
+    type_hint_rename_types = Union[
+        EnumTypeDefinitionNode,
+        InterfaceTypeDefinitionNode,
+        NamedTypeNode,
+        ObjectTypeDefinitionNode,
+        UnionTypeDefinitionNode,
+    ]
 
     def __init__(
         self, renamings: Dict[str, Optional[str]], query_type: str, scalar_types: Set[str]
@@ -268,7 +278,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: Node) -> VisitorReturnType:
+    def _rename_name_and_add_to_record(self, node: type_hint_rename_types) -> VisitorReturnType:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -337,7 +347,9 @@ class RenameSchemaTypesVisitor(Visitor):
             return None
         elif node_type in self.rename_types:
             # Rename node, put name pair into record
-            renamed_node = self._rename_name_and_add_to_record(node)
+            renamed_node = self._rename_name_and_add_to_record(
+                cast(RenameSchemaTypesVisitor.type_hint_rename_types, node)
+            )
             if renamed_node is node:  # Name unchanged, continue traversal
                 return None
             else:
