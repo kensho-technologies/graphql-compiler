@@ -7096,20 +7096,20 @@ class CompilerTests(unittest.TestCase):
         test_data = test_input_data.filter_and_multiple_outputs_within_fold_scope()
 
         expected_match = """
-                    SELECT
-                        $Animal___1___out_Animal_ParentOf.description AS `child_descriptions`,
-                        $Animal___1___out_Animal_ParentOf.name AS `child_list`,
-                        Animal___1.name AS `name`
-                    FROM (
-                        MATCH {{
-                            class: Animal,
-                            as: Animal___1
-                        }}
-                        RETURN $matches
-                    ) LET
-                        $Animal___1___out_Animal_ParentOf =
-                            Animal___1.out("Animal_ParentOf")[(name = {desired})].asList()
-                """
+            SELECT
+                $Animal___1___out_Animal_ParentOf.description AS `child_descriptions`,
+                $Animal___1___out_Animal_ParentOf.name AS `child_list`,
+                Animal___1.name AS `name`
+            FROM (
+                MATCH {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            ) LET
+                $Animal___1___out_Animal_ParentOf =
+                    Animal___1.out("Animal_ParentOf")[(name = {desired})].asList()
+        """
         expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')

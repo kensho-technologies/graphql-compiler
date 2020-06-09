@@ -2367,14 +2367,14 @@ def filter_within_fold_scope() -> CommonTestData:  # noqa: D103
 
 def filter_and_multiple_outputs_within_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
-            Animal {
-                name @output(out_name: "name")
-                out_Animal_ParentOf @fold {
-                    name @filter(op_name: "=", value: ["$desired"]) @output(out_name: "child_list")
-                    description @output(out_name: "child_descriptions")
-                }
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @fold {
+                name @filter(op_name: "=", value: ["$desired"]) @output(out_name: "child_list")
+                description @output(out_name: "child_descriptions")
             }
-        }"""
+        }
+    }"""
     expected_output_metadata = {
         "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "child_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
