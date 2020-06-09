@@ -329,7 +329,15 @@ with runtime parameter
       "name": "Charles"
     }
 
-would output an empty list because the :code:`Person_Knows` edge from
+would output
+
+.. code:: python
+
+    [
+        { name: 'Betty' },
+    ]
+
+because the :code:`Person_Knows` edge from
 :code:`Albert` to :code:`Betty` satisfies the :code:`@optional` directive, but
 :code:`Betty` doesn't match the filter checking for a node with name
 :code:`Charles`.
@@ -339,12 +347,14 @@ the output would be
 
 .. code:: python
 
-    {
-      name: 'Albert'
-    }
+    [
+        { name: 'Albert' },
+        { name: 'Betty' },
+    ]
 
 because no such edge can satisfy the :code:`@optional` directive, and no
-filtering happens.
+filtering happens. In both examples, :code:`Betty` is always returned
+because :code:`Betty` does not have any outgoing :code:`Person_Knows` edges.
 
 @output
 ~~~~~~~
