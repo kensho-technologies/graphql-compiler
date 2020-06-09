@@ -4171,6 +4171,44 @@ class IrGenerationTests(unittest.TestCase):
             blocks.Fold(base_parent_fold),
             blocks.Filter(
                 expressions.BinaryComposition(
+                    "has_substring",
+                    expressions.LocalField("name", GraphQLString),
+                    expressions.Variable("$desired", GraphQLString),
+                )
+            ),
+            blocks.MarkLocation(base_parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "child_list": expressions.FoldedContextField(
+                        base_parent_fold.navigate_to_field("name"), GraphQLList(GraphQLString)
+                    ),
+                }
+            ),
+        ]
+        expected_location_types = {
+            base_location: "Animal",
+            base_parent_fold: "Animal",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_filter_and_multiple_outputs_within_fold_scope(self):
+        test_data = test_input_data.filter_and_multiple_outputs_within_fold_scope()
+
+        base_location = helpers.Location(("Animal",))
+        base_parent_fold = base_location.navigate_to_fold("out_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Animal"}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(base_parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
                     "=",
                     expressions.LocalField("name", GraphQLString),
                     expressions.Variable("$desired", GraphQLString),

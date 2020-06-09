@@ -6995,7 +6995,6 @@ class CompilerTests(unittest.TestCase):
 
         expected_match = """
             SELECT
-                $Animal___1___out_Animal_ParentOf.description AS `child_descriptions`,
                 $Animal___1___out_Animal_ParentOf.name AS `child_list`,
                 Animal___1.name AS `name`
             FROM (
@@ -7006,8 +7005,111 @@ class CompilerTests(unittest.TestCase):
                 RETURN $matches
             ) LET
                 $Animal___1___out_Animal_ParentOf =
-                    Animal___1.out("Animal_ParentOf")[(name = {desired})].asList()
+                    Animal___1.out("Animal_ParentOf")[
+                        (name LIKE ('%' + ({desired} + '%')))
+                    ].asList()
         """
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                child_list: (
+                    (m.Animal___1.out_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.out_Animal_ParentOf
+                         .collect{entry -> entry.inV.next()}
+                         .findAll{entry -> entry.name.contains($desired)}
+                         .collect{entry -> entry.name}
+                    )
+                ),
+                name: m.Animal___1.name
+            ])}
+        """
+        expected_mssql = """
+            SELECT
+                folded_subquery_1.fold_output_name AS child_list,
+                [Animal_1].name AS name
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_3]
+                        WHERE [Animal_2].uuid = [Animal_3].parent
+                        AND ([Animal_3].name LIKE '%' + :desired + '%')
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
+        expected_postgresql = """
+            SELECT
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[]) AS child_list,
+                "Animal_1".name AS name
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_2".uuid = "Animal_3".parent
+                WHERE ("Animal_3".name LIKE '%%' || %(desired)s || '%%')
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)-[:Animal_ParentOf]->(Animal__out_Animal_ParentOf___1:Animal)
+                WHERE (
+                  Animal__out_Animal_ParentOf___1.name CONTAINS $desired
+                )
+            WITH
+              Animal___1 AS Animal___1,
+              collect(Animal__out_Animal_ParentOf___1) AS collected_Animal__out_Animal_ParentOf___1
+            RETURN
+              [x IN collected_Animal__out_Animal_ParentOf___1 | x.name] AS
+                `child_list`,
+              Animal___1.name AS `name`
+        """
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
+    def test_filter_and_multiple_outputs_within_fold_scope(self):
+        test_data = test_input_data.filter_and_multiple_outputs_within_fold_scope()
+
+        expected_match = """
+                    SELECT
+                        $Animal___1___out_Animal_ParentOf.description AS `child_descriptions`,
+                        $Animal___1___out_Animal_ParentOf.name AS `child_list`,
+                        Animal___1.name AS `name`
+                    FROM (
+                        MATCH {{
+                            class: Animal,
+                            as: Animal___1
+                        }}
+                        RETURN $matches
+                    ) LET
+                        $Animal___1___out_Animal_ParentOf =
+                            Animal___1.out("Animal_ParentOf")[(name = {desired})].asList()
+                """
         expected_gremlin = """
             g.V('@class', 'Animal')
             .as('Animal___1')

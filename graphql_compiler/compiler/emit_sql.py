@@ -280,6 +280,7 @@ def _get_mssql_xml_path_column(
     output_column: Column,
     intermediate_fold_output_name: str,
     traversals: List[SQLFoldTraversalDescriptor],
+    filters: List[BinaryExpression],
 ) -> Label:
     """Select the MSSQL XML PATH aggregation of the fold output field, labeled as requested.
 
@@ -293,6 +294,7 @@ def _get_mssql_xml_path_column(
     JOIN ... ON ...
     WHERE
         FirstTraversedVertex.primary_key = SecondTraversedVertex.foreign_key
+    AND ...
     FOR XML PATH ('')
 
     - ENCODE is shorthand for a function composition which replaces '~' (null),
@@ -309,6 +311,8 @@ def _get_mssql_xml_path_column(
     - The WHERE predicate may have primary_key and foreign_key reversed depending on the
     direction of the edge of the first traversal.
 
+    - If any filters are passed, they will be added to the WHERE clause with AND.
+
     - Undoing the encoding above, as well as the XML reference entity encoding performed
     by the XML PATH statement, is deferred to post-processing when the list is retrieved
     from the string representation produced by the subquery. See post_process_mssql_folds
@@ -321,6 +325,7 @@ def _get_mssql_xml_path_column(
         traversals: traversals performed within the fold. The earliest (first in the list) traversal
                     is performed as a part of the WHERE clause. All other traversals will be JOINed
                     to the FROM clause.
+        filters: filters performed within the fold, which will be applied in the WHERE clause.
 
     Returns:
         Selectable for XML PATH aggregation subquery.
@@ -357,9 +362,14 @@ def _get_mssql_xml_path_column(
         join_clause = _construct_traversal_joins(traversals)
         select_statement = select_statement.select_from(join_clause)
 
+    # Combine all predicates used in WHERE statement (earliest traversal and any filters).
+    all_filters = [predicate_expression] + filters
+
     # Coalesce to represent empty arrays as '' and return the XML PATH aggregated data with label.
     return func.COALESCE(
-        select_statement.where(predicate_expression).suffix_with("FOR XML PATH ('')").as_scalar(),
+        select_statement.where(sqlalchemy.and_(*all_filters))
+        .suffix_with("FOR XML PATH ('')")
+        .as_scalar(),
         expression.literal_column("''"),
     ).label(intermediate_fold_output_name)
 
@@ -389,7 +399,6 @@ class FoldSubqueryBuilder(object):
     # The GROUP BY clause is produced during initialization.
     #
     # If a filter occurs on any vertex field inside the fold, a WHERE clause will also be produced.
-    # TODO: implement filters for MSSQL
     #
     # The FROM and JOIN clauses are constructed during end_fold using info from the
     # add_traversal function.
@@ -487,17 +496,13 @@ class FoldSubqueryBuilder(object):
 
     def _construct_fold_subquery(self, subquery_from_clause: Join) -> Select:
         """Combine all parts of the fold object to produce the complete fold subquery."""
-        select_statement = (
-            sqlalchemy.select(self._outputs)
-            .select_from(subquery_from_clause)
-            .where(sqlalchemy.and_(*self._filters))
-        )
+        select_statement = sqlalchemy.select(self._outputs).select_from(subquery_from_clause)
 
         if isinstance(self._dialect, MSDialect):
-            # mssql doesn't rely on a group by
+            # MSSQL doesn't rely on a GROUP BY or WHERE.
             return select_statement
         elif isinstance(self._dialect, PGDialect):
-            return select_statement.group_by(
+            return select_statement.where(sqlalchemy.and_(*self._filters)).group_by(
                 self._outer_vertex_alias.c[self._outer_vertex_primary_key]
             )
         else:
@@ -550,6 +555,7 @@ class FoldSubqueryBuilder(object):
                             output_column,
                             intermediate_fold_output_name,
                             self._traversal_descriptors,
+                            self._filters,
                         )
                     )
                 elif isinstance(self._dialect, PGDialect):
@@ -619,10 +625,6 @@ class FoldSubqueryBuilder(object):
             raise AssertionError(
                 "Cannot add a filter after end_fold has been called. Invalid "
                 f"state encountered during fold {self}."
-            )
-        if isinstance(self._dialect, MSDialect):
-            raise NotImplementedError(
-                "Filtering on fields inside a fold is not implemented for MSSQL yet."
             )
         # Filters are applied to output vertices, thus current_alias=self.output_vertex_alias.
         sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
