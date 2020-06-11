@@ -95,6 +95,9 @@ def rename_schema(
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
 
+    # Check for fields or unions that depend on types that were suppressed
+    ast = _check_for_cascading_type_suppression(ast, renamings, query_type)
+
     # Rename types, interfaces, enums
     ast, reverse_name_map = _rename_types(ast, renamings, query_type, scalars)
     reverse_name_map_changed_names_only = {
@@ -105,9 +108,6 @@ def rename_schema(
 
     # Rename query type fields
     ast = _rename_query_type_fields(ast, renamings, query_type)
-
-    # Check for fields or unions that depend on types that were suppressed
-    ast = _check_for_cascading_type_suppression(ast, renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=ast,
         schema=build_ast_schema(ast),
@@ -193,6 +193,26 @@ def _check_for_cascading_type_suppression(
     """
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
+    if visitor.fields_to_suppress or visitor.union_types_to_suppress:
+        error_message_components = [f"Type renamings {renamings} suppressed types that require "
+                                    f"further suppressions to produce a valid renamed schema.\n\n"]
+        if visitor.fields_to_suppress:
+            error_message_components.append(f"There exists at least one field that depend on types that would be suppressed:\n")
+            for object_type in visitor.fields_to_suppress:
+                error_message_components.append(f"Object type {object_type} contains ")
+                error_message_components += [f"field {field} of suppressed type {visitor.fields_to_suppress[object_type][field]}, " for field in visitor.fields_to_suppress[object_type]]
+                error_message_components.append("\n")
+            error_message_components.append("\nField suppression hasn't been implemented yet, but when it is, you can fix this problem by suppressing the fields described here.")
+        if visitor.union_types_to_suppress:
+            error_message_components.append(f"There exists at least one union that would have all of its member types suppressed:\n")
+            for union_type in visitor.union_types_to_suppress:
+                error_message_components.append(f"Union type {union_type} has no non-suppressed members: ")
+                error_message_components += [get_ast_with_non_null_and_list_stripped(union_member).name.value for union_member in union_type.types]
+                error_message_components.append("\n")
+            error_message_components.append(f"\nTo fix this, you can suppress the union as well by adding `union_type: None` to the `renamings` argument of `rename_schema`, for each value of union_type described here. Note that "
+                                            f"adding suppressions may lead to other types, fields, unions, etc. requiring "
+                                            f"suppression so you may need to iterate on this before getting a legal schema.")
+        raise CascadingSuppressionError("".join(error_message_components))
     return renamed_ast
 
 
@@ -440,9 +460,13 @@ class CascadingSuppressionCheckVisitor(Visitor):
                        None (for type suppression). Any name not in the dict will be unchanged
             query_type: str, name of the query type (e.g. RootSchemaQuery)
         """
-        self.in_query_type = False
         self.renamings = renamings
         self.query_type = query_type
+        self.current_type = None
+        # Maps a type T to a dict which maps a field F belonging to T to the field's type T'
+        self.fields_to_suppress: Dict[str, Dict[str, str]] = {}
+        # Record any unions to suppress because all their types were suppressed
+        self.union_types_to_suppress: List[UnionTypeDefinitionNode] = []
 
     def enter_object_type_definition(
         self,
@@ -453,8 +477,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         ancestors: List[Any],
     ) -> None:
         """If the node's name matches the query type, record that we entered the query type."""
-        if node.name.value == self.query_type:
-            self.in_query_type = True
+        self.current_type = node.name.value
 
     def leave_object_type_definition(
         self,
@@ -465,8 +488,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         ancestors: List[Any],
     ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
-        if node.name.value == self.query_type:
-            self.in_query_type = False
+        self.current_type = None
 
     def enter_field_definition(
         self,
@@ -477,38 +499,54 @@ class CascadingSuppressionCheckVisitor(Visitor):
         ancestors: List[Any],
     ) -> None:
         """If not at query type, check that no field depends on a type that was suppressed."""
-        if self.in_query_type:
+        if self.current_type == self.query_type:
             return None
         # At a field of a type that is not the query type
         field_name = node.name.value
-        node_type = get_ast_with_non_null_and_list_stripped(node.type)
-        if node_type == REMOVE:
-            # Then this field depends on a type that was suppressed, which is illegal
-            if not ancestors:
-                raise AssertionError(
-                    f"Expected ancestors to be non-empty list when entering field definition but"
-                    f"ancestors was {ancestors} at node {node}"
-                )
-            # We use the grandparent node (ObjectTypeDefinitionNode) instead of the parent because
-            # the parent of a FieldDefinitionNode is simply a list of FieldDefinitionNodes, which
-            # doesn't contain the name of the type containing this node (which we need for the error
-            # message).
-            node_grandparent = ancestors[-1]
-            if not isinstance(node_grandparent, ObjectTypeDefinitionNode):
-                raise TypeError(
-                    f"Expected field node {node}'s grandparent node to be of type "
-                    f"ObjectTypeDefinitionNode but grandparent node was of type "
-                    f"{type(node_grandparent).__name__} instead."
-                )
-            type_name = node_grandparent.name.value
-            raise CascadingSuppressionError(
-                f"Type renamings {self.renamings} attempted to suppress a type, but type "
-                f"{type_name}'s field {field_name} still depends on that type. Suppressing "
-                f"individual fields hasn't been implemented yet, but when it is, you can fix "
-                f"this error by suppressing the field as well. Note that adding suppressions "
-                f"may lead to other types, fields, unions, etc. requiring suppression so you "
-                f"may need to iterate on this before getting a legal schema."
+        field_type = get_ast_with_non_null_and_list_stripped(node.type).name.value
+        if self.renamings.get(field_type, field_type):
+            return None
+        # Reaching this point means this field is of a type to be suppressed.
+        if self.current_type is None:
+            raise AssertionError(
+                f"Entered a field not in any ObjectTypeDefinition scope because "
+                f"self.current_type is None"
             )
+        if self.current_type == field_type:
+            # Then node corresponds to a field belonging to type T that is also of type T.
+            # Therefore, we don't need to explicitly suppress the field as well and this should not
+            # raise errors.
+            return None
+        if self.current_type not in self.fields_to_suppress:
+            self.fields_to_suppress[self.current_type] = {}
+        self.fields_to_suppress[self.current_type][field_name] = field_type
+        # if node_type == REMOVE:
+        #     # Then this field depends on a type that was suppressed, which is illegal
+        #     if not ancestors:
+        #         raise AssertionError(
+        #             f"Expected ancestors to be non-empty list when entering field definition but"
+        #             f"ancestors was {ancestors} at node {node}"
+        #         )
+        #     # We use the grandparent node (ObjectTypeDefinitionNode) instead of the parent because
+        #     # the parent of a FieldDefinitionNode is simply a list of FieldDefinitionNodes, which
+        #     # doesn't contain the name of the type containing this node (which we need for the error
+        #     # message).
+        #     node_grandparent = ancestors[-1]
+        #     if not isinstance(node_grandparent, ObjectTypeDefinitionNode):
+        #         raise TypeError(
+        #             f"Expected field node {node}'s grandparent node to be of type "
+        #             f"ObjectTypeDefinitionNode but grandparent node was of type "
+        #             f"{type(node_grandparent).__name__} instead."
+        #         )
+        #     type_name = node_grandparent.name.value
+        #     raise CascadingSuppressionError(
+        #         f"Type renamings {self.renamings} attempted to suppress a type, but type "
+        #         f"{type_name}'s field {field_name} still depends on that type. Suppressing "
+        #         f"individual fields hasn't been implemented yet, but when it is, you can fix "
+        #         f"this error by suppressing the field as well. Note that adding suppressions "
+        #         f"may lead to other types, fields, unions, etc. requiring suppression so you "
+        #         f"may need to iterate on this before getting a legal schema."
+        #     )
         return None
 
     def enter_union_type_definition(
@@ -521,11 +559,14 @@ class CascadingSuppressionCheckVisitor(Visitor):
     ) -> None:
         """Check that each union still has at least one member."""
         union_name = node.name.value
-        if not node.types:
-            raise CascadingSuppressionError(
-                f"Type renamings {self.renamings} suppressed all types belonging to the union "
-                f"{union_name}. To fix this, you can suppress the union as well by adding "
-                f"`{union_name}: None` to the `renamings` argument of `rename_schema`. Note that "
-                f"adding suppressions may lead to other types, fields, unions, etc. requiring "
-                f"suppression so you may need to iterate on this before getting a legal schema."
-            )
+        # Check if al the union members are suppressed.
+        for union_member in node.types:
+            union_member_type = get_ast_with_non_null_and_list_stripped(union_member).name.value
+            if self.renamings.get(union_member_type, union_member_type):
+                # Then at least one member of the union is not suppressed, so there is no cascading
+                # suppression error concern.
+                return None
+        if self.renamings.get(union_name):
+            # If the union is also suppressed, then nothing needs to happen here
+            return None
+        self.union_types_to_suppress.append(node)
