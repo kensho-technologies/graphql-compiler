@@ -1,7 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
+from typing import Union, Any, Dict, Optional, Set, Tuple, List
 
-from graphql import build_ast_schema
+from graphql import build_ast_schema, Node, DocumentNode, ObjectTypeDefinitionNode, \
+    FieldDefinitionNode
 from graphql.language.visitor import Visitor, visit
 import six
 
@@ -26,7 +28,7 @@ RenamedSchemaDescriptor = namedtuple(
 )
 
 
-def rename_schema(ast, renamings):
+def rename_schema(ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; types and query type fields are renamed using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
@@ -82,7 +84,7 @@ def rename_schema(ast, renamings):
     )
 
 
-def _rename_types(ast, renamings, query_type, scalars):
+def _rename_types(ast: DocumentNode, renamings: Dict[str, str], query_type: str, scalars: Set[str]) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename types, enums, interfaces using renamings.
 
     The query type will not be renamed. Scalar types, field names, enum values will not be renamed.
@@ -113,7 +115,7 @@ def _rename_types(ast, renamings, query_type, scalars):
     return renamed_ast, visitor.reverse_name_map
 
 
-def _rename_query_type_fields(ast, renamings, query_type):
+def _rename_query_type_fields(ast: DocumentNode, renamings: Dict[str, str], query_type: str) -> DocumentNode:
     """Rename all fields of the query type.
 
     The input AST will not be modified.
@@ -186,7 +188,9 @@ class RenameSchemaTypesVisitor(Visitor):
         }
     )
 
-    def __init__(self, renamings, query_type, scalar_types):
+    def __init__(
+            self, renamings: Dict[str, str], query_type: str, scalar_types: Set[str]
+    ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
         Args:
@@ -198,13 +202,13 @@ class RenameSchemaTypesVisitor(Visitor):
                           all user defined scalars and any builtin scalars that were used
         """
         self.renamings = renamings
-        self.reverse_name_map = {}  # Dict[str, str], from renamed type name to original type name
+        self.reverse_name_map: Dict[str, str] = {}  # from renamed type name to original type name
         # reverse_name_map contains all types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node):
+    def _rename_name_and_add_to_record(self, node: Node) -> Optional[Node]:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -257,7 +261,9 @@ class RenameSchemaTypesVisitor(Visitor):
             node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
 
-    def enter(self, node, key, parent, path, ancestors):
+    def enter(
+        self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any],
+    ) -> Optional[Node]:
         """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
         if node_type in self.noop_types:
@@ -276,7 +282,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
-    def __init__(self, renamings, query_type):
+    def __init__(self, renamings: Dict[str, str], query_type: str) -> None:
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
@@ -292,17 +298,38 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         self.renamings = renamings
         self.query_type = query_type
 
-    def enter_object_type_definition(self, node, *args):
+    def enter_object_type_definition(
+            self,
+            node: ObjectTypeDefinitionNode,
+            key: Any,
+            parent: Any,
+            path: List[Any],
+            ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_object_type_definition(self, node, key, parent, path, ancestors):
+    def leave_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node, *args):
+    def enter_field_definition(
+            self,
+            node: FieldDefinitionNode,
+            key: Any,
+            parent: Any,
+            path: List[Any],
+            ancestors: List[Any],
+    ) -> Optional[Node]:
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
