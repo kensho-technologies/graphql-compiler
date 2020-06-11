@@ -37,12 +37,12 @@ def rename_schema(ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchema
     belonging to the root/query type will never be renamed.
 
     Args:
-        ast: Document, representing a valid schema that does not contain extensions, input
-             object definitions, mutations, or subscriptions, whose fields of the query type share
-             the same name as the types they query. Not modified by this function
-        renamings: Dict[str, str], mapping original type/field names to renamed type/field names.
-                   Type or query type field names that do not appear in the dict will be unchanged.
-                   Any dict-like object that implements get(key, [default]) may also be used
+        ast: Represents a valid schema that does not contain extensions, input object definitions,
+             mutations, or subscriptions, whose fields of the query type share the same name as the
+             types they query. Not modified by this function
+        renamings: Maps original type/field names to renamed type/field names. Type or query type
+                   field names that do not appear in the dict will be unchanged. Any dict-like
+                   object that implements get(key, [default]) may also be used
 
     Returns:
         RenamedSchemaDescriptor, a namedtuple that contains the AST of the renamed schema, and the
@@ -92,17 +92,16 @@ def _rename_types(ast: DocumentNode, renamings: Dict[str, str], query_type: str,
     The input AST will not be modified.
 
     Args:
-        ast: Document, the schema that we're returning a modified version of
-        renamings: Dict[str, str], mapping original type/interface/enum name to renamed name. If
-                   a name does not appear in the dict, it will be unchanged
-        query_type: str, name of the query type, e.g. 'RootSchemaQuery'
-        scalars: Set[str], the set of all scalars used in the schema, including user defined
-                 scalars and and used builtin scalars, excluding unused builtins
+        ast: The schema that we're returning a modified version of
+        renamings: Maps original type/interface/enum name to renamed name. Any name not in the dict
+                   will be unchanged
+        query_type: Name of the query type, e.g. 'RootSchemaQuery'
+        scalars: The set of all scalars used in the schema, including user defined scalars and
+                 used builtin scalars, excluding unused builtins
 
     Returns:
-        Tuple[Document, Dict[str, str]], containing the modified version of the AST, and
-        the renamed type name to original type name map. Map contains all types, including
-        those that were not renamed.
+        Tuple containing the modified version of the AST, and the renamed type name to original type
+        name map. Map contains all types, including those that were not renamed.
 
     Raises:
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
@@ -121,13 +120,13 @@ def _rename_query_type_fields(ast: DocumentNode, renamings: Dict[str, str], quer
     The input AST will not be modified.
 
     Args:
-        ast: DocumentNode, the schema that we're returning a modified version of
-        renamings: Dict[str, str], mapping original field name to renamed name. If a name
-                   does not appear in the dict, it will be unchanged
-        query_type: string, name of the query type, e.g. 'RootSchemaQuery'
+        ast: The schema that we're returning a modified version of
+        renamings: Maps original query type field name to renamed name. Any name not in the dict
+                   will be unchanged
+        query_type: Name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
-        DocumentNode, representing the modified version of the input schema AST
+        Modified version of the input schema AST
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
@@ -194,12 +193,11 @@ class RenameSchemaTypesVisitor(Visitor):
         """Create a visitor for renaming types in a schema AST.
 
         Args:
-            renamings: Dict[str, str], mapping from original type name to renamed type name.
-                       Any name not in the dict will be unchanged
-            query_type: str, name of the query type (e.g. RootSchemaQuery), which will not
-                        be renamed
-            scalar_types: Set[str], set of names of all scalars used in the schema, including
-                          all user defined scalars and any builtin scalars that were used
+            renamings: Maps original type name to renamed name. Any name not in the dict will be
+                       unchanged
+            query_type: Name of the query type (e.g. RootSchemaQuery), which will not be renamed
+            scalar_types: The set of all scalars used in the schema, including all user defined
+                          scalars and any builtin scalars that were used
         """
         self.renamings = renamings
         self.reverse_name_map: Dict[str, str] = {}  # from renamed type name to original type name
@@ -208,7 +206,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: Node) -> Optional[Node]:
+    def _rename_name_and_add_to_record(self, node: Node) -> Node:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -286,9 +284,9 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
-            renamings: Dict[str, str], from original field name to renamed field name. Any
-                       name not in the dict will be unchanged
-            query_type: str, name of the query type (e.g. RootSchemaQuery)
+            renamings: Maps original field name to renamed field name. Any name not in the dict will
+                       be unchanged
+            query_type: Name of the query type (e.g. RootSchemaQuery)
         """
         # Note that as field names and type names have been confirmed to match up, any renamed
         # field already has a corresponding renamed type. If no errors, due to either invalid
