@@ -4,11 +4,14 @@ from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
+    EnumTypeDefinitionNode,
     FieldDefinitionNode,
+    InterfaceTypeDefinitionNode,
+    NamedTypeNode,
     Node,
     ObjectTypeDefinitionNode,
-    build_ast_schema, EnumTypeDefinitionNode, InterfaceTypeDefinitionNode, NamedTypeNode,
     UnionTypeDefinitionNode,
+    build_ast_schema,
 )
 from graphql.language.visitor import Visitor, visit
 import six
@@ -352,3 +355,4 @@ class RenameQueryTypeFieldsVisitor(Visitor):
             else:  # Make copy of node with the changed name, return the copy
                 field_node_with_new_name = get_copy_of_node_with_new_name(node, new_field_name)
                 return field_node_with_new_name
+        return None
