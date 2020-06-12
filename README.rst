@@ -1775,7 +1775,7 @@ resembling the following:
 
 Due to limitations in the underlying query language, :code:`gremlin` will by
 default produce at most one result for each of the starting locations in
-the query. The above Gr aphQL query started at the type :code:`S`, so each
+the query. The above GraphQL query started at the type :code:`S`, so each
 :code:`s_name` in the returned result list is therefore distinct.
 Furthermore, there is no guarantee (and no way to know ahead of time)
 whether :code:`x` or :code:`y` will be returned as the :code:`t_name` value in each
@@ -1995,7 +1995,7 @@ users to define **macros** -- type-safe rules for programmatic query rewriting
 that transform user-provided queries on the *desired* data model into
 queries on the *actual* data model in the underlying data systems.
 
-When macros are defined, the compiler loads them into a `macro registry <Macro registry>`_ -- a
+When macros are defined, the compiler loads them into a `macro registry <#macro-registry>`_ -- a
 data structure that tracks all currently available macros, the resulting GraphQL schema
 (accounting for macros), and any additional metadata needed by the compiler.
 The compiler then leverages this registry to expand queries that rely on macros,
@@ -2017,7 +2017,7 @@ though there are some key differences:
   seamlessly with all databases and even on schemas stitched together from multiple databases.
   In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
-Currently, the compiler supports one type of macro: `macro edges <Macro edges>`_, which allow
+Currently, the compiler supports one type of macro: `macro edges <#macro-edges>`_, which allow
 the creation of "virtual" edges computed from existing ones.
 More types of macros are coming in the future.
 
