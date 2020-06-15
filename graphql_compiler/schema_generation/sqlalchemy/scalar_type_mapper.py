@@ -213,8 +213,11 @@ def _deduce_graphql_type_for_oracle_number_type(number_type: TypeEngine) -> Grap
     if number_type.scale > 0:
         # This number type has decimal places. It has to be either a decimal or a float.
         if number_type.precision >= 15:
-            # This number type can hold more digits than a 64-bit float would support.
-            # Therefore, it can only be properly represented as a decimal data type.
+            # This number type can hold more digits than a 64-bit float would support:
+            # a 64-bit float has a 53-bit mantissa, but 2^53 - 1 < 10^16 i.e. not all 15-digit
+            # integers are representable as a 64-bit float without loss of precision.
+            # Therefore, this data can only be properly represented as a Decimal,
+            # the arbitrary-precision numeric data type.
             return GraphQLDecimal
         else:
             return GraphQLFloat
@@ -226,8 +229,9 @@ def _deduce_graphql_type_for_oracle_number_type(number_type: TypeEngine) -> Grap
         significant_figures = number_type.precision
 
     if significant_figures >= 19:
-        # This number can hold more significant figures than a signed 64-bit integer could hold.
-        # The best type for it is the decimal type.
+        # This number can hold more significant figures than a signed 64-bit integer could hold,
+        # since 2^63 - 1 < 10^19 i.e. not all 19-digit integers are representable in 64 signed bits.
+        # The best type for it is the Decimal type, the arbitrary-precision numeric data type.
         return GraphQLDecimal
     else:
         return GraphQLInt
