@@ -86,7 +86,15 @@ with runtime parameter
       "name": "Charles"
     }
 
-would output an empty list because the :code:`Person_Knows` edge from
+would output
+
+.. code:: python
+
+    [
+        { name: 'Betty' },
+    ]
+
+because the :code:`Person_Knows` edge from
 :code:`Albert` to :code:`Betty` satisfies the :code:`@optional` directive, but
 :code:`Betty` doesn't match the filter checking for a node with name
 :code:`Charles`.
@@ -96,12 +104,14 @@ the output would be
 
 .. code:: python
 
-    {
-      name: 'Albert'
-    }
+    [
+        { name: 'Albert' },
+        { name: 'Betty' },
+    ]
 
 because no such edge can satisfy the :code:`@optional` directive, and no
-filtering happens.
+filtering happens. In both examples, :code:`Betty` is always returned
+because :code:`Betty` does not have any outgoing :code:`Person_Knows` edges.
 
 @output
 -------
@@ -699,7 +709,7 @@ only a partial result list resembling the following:
 
 Due to limitations in the underlying query language, :code:`gremlin` will by
 default produce at most one result for each of the starting locations in
-the query. The above Gr aphQL query started at the type :code:`S`, so each
+the query. The above GraphQL query started at the type :code:`S`, so each
 :code:`s_name` in the returned result list is therefore distinct.
 Furthermore, there is no guarantee (and no way to know ahead of time)
 whether :code:`x` or :code:`y` will be returned as the :code:`t_name` value in each
