@@ -37,7 +37,7 @@ RenamedSchemaDescriptor = namedtuple(
 )
 
 
-def rename_schema(ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchemaDescriptor:
+def rename_schema(schema_ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; types and query type fields are renamed using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
@@ -46,9 +46,9 @@ def rename_schema(ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchema
     belonging to the root/query type will never be renamed.
 
     Args:
-        ast: Represents a valid schema that does not contain extensions, input object definitions,
-             mutations, or subscriptions, whose fields of the query type share the same name as the
-             types they query. Not modified by this function
+        schema_ast: Represents a valid schema that does not contain extensions, input object
+                    definitions, mutations, or subscriptions, whose fields of the query type share
+                    the same name as the types they query. Not modified by this function
         renamings: Maps original type/field names to renamed type/field names. Type or query type
                    field names that do not appear in the dict will be unchanged. Any dict-like
                    object that implements get(key, [default]) may also be used
@@ -70,14 +70,14 @@ def rename_schema(ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchema
         - SchemaNameConflictError if there are conflicts between the renamed types or fields
     """
     # Check input schema satisfies various structural requirements
-    check_ast_schema_is_valid(ast)
+    check_ast_schema_is_valid(schema_ast)
 
-    schema = build_ast_schema(ast)
+    schema = build_ast_schema(schema_ast)
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
 
     # Rename types, interfaces, enums
-    ast, reverse_name_map = _rename_types(ast, renamings, query_type, scalars)
+    schema_ast, reverse_name_map = _rename_types(schema_ast, renamings, query_type, scalars)
     reverse_name_map_changed_names_only = {
         renamed_name: original_name
         for renamed_name, original_name in six.iteritems(reverse_name_map)
@@ -85,25 +85,25 @@ def rename_schema(ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchema
     }
 
     # Rename query type fields
-    ast = _rename_query_type_fields(ast, renamings, query_type)
+    schema_ast = _rename_query_type_fields(schema_ast, renamings, query_type)
     return RenamedSchemaDescriptor(
-        schema_ast=ast,
-        schema=build_ast_schema(ast),
+        schema_ast=schema_ast,
+        schema=build_ast_schema(schema_ast),
         reverse_name_map=reverse_name_map_changed_names_only,
     )
 
 
 def _rename_types(
-    ast: DocumentNode, renamings: Dict[str, str], query_type: str, scalars: Set[str]
+    schema_ast: DocumentNode, renamings: Dict[str, str], query_type: str, scalars: Set[str]
 ) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename types, enums, interfaces using renamings.
 
     The query type will not be renamed. Scalar types, field names, enum values will not be renamed.
 
-    The input AST will not be modified.
+    The input schema AST will not be modified.
 
     Args:
-        ast: The schema that we're returning a modified version of
+        schema_ast: The schema that we're returning a modified version of
         renamings: Maps original type/interface/enum name to renamed name. Any name not in the dict
                    will be unchanged
         query_type: Name of the query type, e.g. 'RootSchemaQuery'
@@ -111,8 +111,8 @@ def _rename_types(
                  used builtin scalars, excluding unused builtins
 
     Returns:
-        Tuple containing the modified version of the AST, and the renamed type name to original type
-        name map. Map contains all types, including those that were not renamed.
+        Tuple containing the modified version of the schema AST, and the renamed type name to
+        original type name map. Map contains all types, including those that were not renamed.
 
     Raises:
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
@@ -120,20 +120,20 @@ def _rename_types(
         - SchemaNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
-    renamed_ast = visit(ast, visitor)
+    renamed_schema_ast = visit(schema_ast, visitor)
 
-    return renamed_ast, visitor.reverse_name_map
+    return renamed_schema_ast, visitor.reverse_name_map
 
 
 def _rename_query_type_fields(
-    ast: DocumentNode, renamings: Dict[str, str], query_type: str
+    schema_ast: DocumentNode, renamings: Dict[str, str], query_type: str
 ) -> DocumentNode:
     """Rename all fields of the query type.
 
-    The input AST will not be modified.
+    The input schema AST will not be modified.
 
     Args:
-        ast: The schema that we're returning a modified version of
+        schema_ast: The schema that we're returning a modified version of
         renamings: Maps original query type field name to renamed name. Any name not in the dict
                    will be unchanged
         query_type: Name of the query type, e.g. 'RootSchemaQuery'
@@ -142,8 +142,8 @@ def _rename_query_type_fields(
         Modified version of the input schema AST
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
-    renamed_ast = visit(ast, visitor)
-    return renamed_ast
+    renamed_schema_ast = visit(schema_ast, visitor)
+    return renamed_schema_ast
 
 
 class RenameSchemaTypesVisitor(Visitor):
