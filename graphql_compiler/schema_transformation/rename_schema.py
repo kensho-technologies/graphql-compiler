@@ -103,12 +103,12 @@ def _rename_types(
     The input schema AST will not be modified.
 
     Args:
-        schema_ast: the schema that we're returning a modified version of
+        schema_ast: schema that we're returning a modified version of
         renamings: maps original type/interface/enum name to renamed name. Any name not in the dict
                    will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        scalars: the set of all scalars used in the schema, including user defined scalars and
-                 used builtin scalars, excluding unused builtins
+        scalars: set of all scalars used in the schema, including user defined scalars and used
+                 builtin scalars, excluding unused builtins
 
     Returns:
         Tuple containing the modified version of the schema AST, and the renamed type name to
@@ -133,7 +133,7 @@ def _rename_query_type_fields(
     The input schema AST will not be modified.
 
     Args:
-        schema_ast: the schema that we're returning a modified version of
+        schema_ast: schema that we're returning a modified version of
         renamings: maps original query type field name to renamed name. Any name not in the dict
                    will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
@@ -214,8 +214,8 @@ class RenameSchemaTypesVisitor(Visitor):
             renamings: maps original type name to renamed name. Any name not in the dict will be
                        unchanged
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
-            scalar_types: the set of all scalars used in the schema, including all user defined
-                          scalars and any builtin scalars that were used
+            scalar_types: set of all scalars used in the schema, including all user defined scalars
+                          and any builtin scalars that were used
         """
         self.renamings = renamings
         self.reverse_name_map: Dict[str, str] = {}  # from renamed type name to original type name
@@ -232,7 +232,7 @@ class RenameSchemaTypesVisitor(Visitor):
         The input node will not be modified. reverse_name_map may be modified.
 
         Args:
-            node: an object representing an AST component, containing a .name attribute
+            node: object representing an AST component, containing a .name attribute
                   corresponding to an AST node of type NameNode.
 
         Returns:
