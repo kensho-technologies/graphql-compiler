@@ -190,15 +190,6 @@ class RenameSchemaTypesVisitor(Visitor):
             "ScalarTypeExtensionNode",
         }
     )
-    rename_types = frozenset(
-        {
-            "EnumTypeDefinitionNode",
-            "InterfaceTypeDefinitionNode",
-            "NamedTypeNode",
-            "ObjectTypeDefinitionNode",
-            "UnionTypeDefinitionNode",
-        }
-    )
     RenameTypes = Union[
         EnumTypeDefinitionNode,
         InterfaceTypeDefinitionNode,
@@ -206,19 +197,11 @@ class RenameSchemaTypesVisitor(Visitor):
         ObjectTypeDefinitionNode,
         UnionTypeDefinitionNode,
     ]
-    if not TYPE_CHECKING:
-        # Unfortunately, the current version of mypy (version >=0.750,<1) doesn't allow us to do
-        # introspection for Unions. Its maintainers recently merged a PR that allows for this, but
-        # the changes are more recent than the latest mypy release. PR here:
-        # https://github.com/python/mypy/pull/8779
-        RenameTypes_names = frozenset(cls.__name__ for cls in get_args(RenameTypes))
-        if RenameTypes_names != rename_types:
-            raise AssertionError(
-                f"RenameTypes and rename_types don't contain the same "
-                f"types. RenameTypes is "
-                f"{RenameTypes_names} and rename_types is "
-                f"{rename_types}"
-            )
+    # Unfortunately, the current version of mypy (version >=0.750,<1) doesn't allow us to do
+    # introspection for Unions. Its maintainers recently merged a PR
+    # (https://github.com/python/mypy/pull/8779) that allows for this, but the changes are more
+    # recent than the latest mypy release. For now, we have mypy ignore this code
+    rename_types = frozenset(cls.__name__ for cls in get_args(RenameTypes))  # type: ignore
 
     def __init__(self, renamings: Dict[str, str], query_type: str, scalar_types: Set[str]) -> None:
         """Create a visitor for renaming types in a schema AST.
