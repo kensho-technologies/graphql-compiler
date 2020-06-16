@@ -211,9 +211,7 @@ class RenameSchemaTypesVisitor(Visitor):
         # introspection for Unions. Its maintainers recently merged a PR that allows for this, but
         # the changes are more recent than the latest mypy release. PR here:
         # https://github.com/python/mypy/pull/8779
-        RenameTypes_names = frozenset(
-            cls.__name__ for cls in get_args(RenameTypes)
-        )
+        RenameTypes_names = frozenset(cls.__name__ for cls in get_args(RenameTypes))
         if RenameTypes_names != rename_types:
             raise AssertionError(
                 f"RenameTypes and rename_types don't contain the same "
