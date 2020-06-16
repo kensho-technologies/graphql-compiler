@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union, cast, get_args
 
 from graphql import (
     DocumentNode,
@@ -206,6 +206,21 @@ class RenameSchemaTypesVisitor(Visitor):
         ObjectTypeDefinitionNode,
         UnionTypeDefinitionNode,
     ]
+    if not TYPE_CHECKING:
+        # Unfortunately, the current version of mypy (version >=0.750,<1) doesn't allow us to do
+        # introspection for Unions. Its maintainers recently merged a PR that allows for this, but
+        # the changes are more recent than the latest mypy release. PR here:
+        # https://github.com/python/mypy/pull/8779
+        type_hint_rename_types_names = frozenset(
+            cls.__name__ for cls in get_args(type_hint_rename_types)
+        )
+        if type_hint_rename_types_names != rename_types:
+            raise AssertionError(
+                f"type_hint_rename_types and rename_types don't contain the same "
+                f"types. type_hint_rename_types is "
+                f"{type_hint_rename_types_names} and rename_types is "
+                f"{rename_types}"
+            )
 
     def __init__(self, renamings: Dict[str, str], query_type: str, scalar_types: Set[str]) -> None:
         """Create a visitor for renaming types in a schema AST.
