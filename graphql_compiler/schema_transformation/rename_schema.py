@@ -199,7 +199,7 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
-    type_hint_rename_types = Union[
+    RenameTypes = Union[
         EnumTypeDefinitionNode,
         InterfaceTypeDefinitionNode,
         NamedTypeNode,
@@ -211,14 +211,14 @@ class RenameSchemaTypesVisitor(Visitor):
         # introspection for Unions. Its maintainers recently merged a PR that allows for this, but
         # the changes are more recent than the latest mypy release. PR here:
         # https://github.com/python/mypy/pull/8779
-        type_hint_rename_types_names = frozenset(
-            cls.__name__ for cls in get_args(type_hint_rename_types)
+        RenameTypes_names = frozenset(
+            cls.__name__ for cls in get_args(RenameTypes)
         )
-        if type_hint_rename_types_names != rename_types:
+        if RenameTypes_names != rename_types:
             raise AssertionError(
-                f"type_hint_rename_types and rename_types don't contain the same "
-                f"types. type_hint_rename_types is "
-                f"{type_hint_rename_types_names} and rename_types is "
+                f"RenameTypes and rename_types don't contain the same "
+                f"types. RenameTypes is "
+                f"{RenameTypes_names} and rename_types is "
                 f"{rename_types}"
             )
 
@@ -239,7 +239,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: type_hint_rename_types) -> Node:
+    def _rename_name_and_add_to_record(self, node: RenameTypes) -> Node:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -301,7 +301,7 @@ class RenameSchemaTypesVisitor(Visitor):
         elif node_type in self.rename_types:
             # Rename node, put name pair into record
             renamed_node = self._rename_name_and_add_to_record(
-                cast(RenameSchemaTypesVisitor.type_hint_rename_types, node)
+                cast(RenameSchemaTypesVisitor.RenameTypes, node)
             )
             if renamed_node is node:  # Name unchanged, continue traversal
                 return None
