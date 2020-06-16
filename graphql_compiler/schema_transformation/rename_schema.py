@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Tuple, Union, cast, get_args
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast, get_args
 
 from graphql import (
     DocumentNode,
