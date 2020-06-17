@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -37,7 +37,9 @@ RenamedSchemaDescriptor = namedtuple(
 )
 
 
-def rename_schema(schema_ast: DocumentNode, renamings: Dict[str, str]) -> RenamedSchemaDescriptor:
+def rename_schema(
+    schema_ast: DocumentNode, renamings: Mapping[str, str]
+) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; types and query type fields are renamed using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
@@ -94,7 +96,7 @@ def rename_schema(schema_ast: DocumentNode, renamings: Dict[str, str]) -> Rename
 
 
 def _rename_types(
-    schema_ast: DocumentNode, renamings: Dict[str, str], query_type: str, scalars: Set[str]
+    schema_ast: DocumentNode, renamings: Mapping[str, str], query_type: str, scalars: Set[str]
 ) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename types, enums, interfaces using renamings.
 
@@ -126,7 +128,7 @@ def _rename_types(
 
 
 def _rename_query_type_fields(
-    schema_ast: DocumentNode, renamings: Dict[str, str], query_type: str
+    schema_ast: DocumentNode, renamings: Mapping[str, str], query_type: str
 ) -> DocumentNode:
     """Rename all fields of the query type.
 
@@ -217,7 +219,9 @@ class RenameSchemaTypesVisitor(Visitor):
         UnionTypeDefinitionNode,
     ]
 
-    def __init__(self, renamings: Dict[str, str], query_type: str, scalar_types: Set[str]) -> None:
+    def __init__(
+        self, renamings: Mapping[str, str], query_type: str, scalar_types: Set[str]
+    ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
         Args:
@@ -308,7 +312,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
-    def __init__(self, renamings: Dict[str, str], query_type: str) -> None:
+    def __init__(self, renamings: Mapping[str, str], query_type: str) -> None:
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
