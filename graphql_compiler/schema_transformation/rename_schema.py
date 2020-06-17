@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast, get_args
+from typing import Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -190,6 +190,25 @@ class RenameSchemaTypesVisitor(Visitor):
             "ScalarTypeExtensionNode",
         }
     )
+    # rename_types must be a set of strings corresponding to the names of the classes in
+    # RenameTypes. The duplication exists because introspection for Unions via typing.get_args()
+    # doesn't exist until Python 3.8. In Python 3.8, this would be a valid way to define
+    # rename_types:
+    # rename_types = frozenset(cls.__name__ for cls in get_args(RenameTypes))  # type: ignore
+    # Note: even with Python 3.8, the mypy version at the time of writing (version 0.770) doesn't
+    # allow for introspection for Unions. mypy's maintainers recently merged a PR
+    # (https://github.com/python/mypy/pull/8779) that permits this line of code, but did so after
+    # the mypy 0.770 release. If we do end up removing the duplication at a later point but not
+    # update the mypy version, we'd need to ignore it (as shown in the in-line comment).
+    rename_types = frozenset(
+        {
+            "EnumTypeDefinitionNode",
+            "InterfaceTypeDefinitionNode",
+            "NamedTypeNode",
+            "ObjectTypeDefinitionNode",
+            "UnionTypeDefinitionNode",
+        }
+    )
     RenameTypes = Union[
         EnumTypeDefinitionNode,
         InterfaceTypeDefinitionNode,
@@ -197,11 +216,6 @@ class RenameSchemaTypesVisitor(Visitor):
         ObjectTypeDefinitionNode,
         UnionTypeDefinitionNode,
     ]
-    # Unfortunately, the current version of mypy (version >=0.750,<1) doesn't allow us to do
-    # introspection for Unions. Its maintainers recently merged a PR
-    # (https://github.com/python/mypy/pull/8779) that allows for this, but the changes are more
-    # recent than the latest mypy release. For now, we have mypy ignore this code
-    rename_types = frozenset(cls.__name__ for cls in get_args(RenameTypes))  # type: ignore
 
     def __init__(self, renamings: Dict[str, str], query_type: str, scalar_types: Set[str]) -> None:
         """Create a visitor for renaming types in a schema AST.
