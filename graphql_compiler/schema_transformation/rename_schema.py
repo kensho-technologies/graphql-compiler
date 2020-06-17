@@ -37,6 +37,23 @@ RenamedSchemaDescriptor = namedtuple(
 )
 
 
+# Union of classes of nodes to be renamed by an instance of RenameSchemaTypesVisitor. Note that
+# RenameSchemaTypesVisitor also has a class attribute rename_types which parallels the classes here.
+# This duplication is necessary due to language and linter constraints-- see the comment in the
+# RenameSchemaTypesVisitor class for more information.
+# Unfortunately, RenameTypes itself has to be a module attribute instead of a class attribute
+# because a bug in flake8 produces a linting error if RenameTypes is a class attribute and we type
+# hint the return value of the RenameSchemaTypesVisitor's _rename_name_and_add_to_record() method as
+# RenameTypes. More on this here: https://github.com/PyCQA/pyflakes/issues/441
+RenameTypes = Union[
+    EnumTypeDefinitionNode,
+    InterfaceTypeDefinitionNode,
+    NamedTypeNode,
+    ObjectTypeDefinitionNode,
+    UnionTypeDefinitionNode,
+]
+
+
 def rename_schema(
     schema_ast: DocumentNode, renamings: Mapping[str, str]
 ) -> RenamedSchemaDescriptor:
@@ -211,13 +228,6 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
-    RenameTypes = Union[
-        EnumTypeDefinitionNode,
-        InterfaceTypeDefinitionNode,
-        NamedTypeNode,
-        ObjectTypeDefinitionNode,
-        UnionTypeDefinitionNode,
-    ]
 
     def __init__(
         self, renamings: Mapping[str, str], query_type: str, scalar_types: Set[str]
@@ -299,9 +309,7 @@ class RenameSchemaTypesVisitor(Visitor):
             return None
         elif node_type in self.rename_types:
             # Rename node, put name pair into record
-            renamed_node = self._rename_name_and_add_to_record(
-                cast(RenameSchemaTypesVisitor.RenameTypes, node)
-            )
+            renamed_node = self._rename_name_and_add_to_record(cast(RenameTypes, node))
             if renamed_node is node:  # Name unchanged, continue traversal
                 return None
             else:  # Name changed, return new node, `visit` will make shallow copies along path
