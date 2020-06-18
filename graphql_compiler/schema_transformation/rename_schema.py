@@ -194,24 +194,42 @@ def _check_for_cascading_type_suppression(
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
     renamed_ast = visit(ast, visitor)
     if visitor.fields_to_suppress or visitor.union_types_to_suppress:
-        error_message_components = [f"Type renamings {renamings} suppressed types that require "
-                                    f"further suppressions to produce a valid renamed schema.\n\n"]
+        error_message_components = [
+            f"Type renamings {renamings} suppressed types that require "
+            f"further suppressions to produce a valid renamed schema.\n\n"
+        ]
         if visitor.fields_to_suppress:
-            error_message_components.append(f"There exists at least one field that depend on types that would be suppressed:\n")
+            error_message_components.append(
+                f"There exists at least one field that depend on types that would be suppressed:\n"
+            )
             for object_type in visitor.fields_to_suppress:
                 error_message_components.append(f"Object type {object_type} contains ")
-                error_message_components += [f"field {field} of suppressed type {visitor.fields_to_suppress[object_type][field]}, " for field in visitor.fields_to_suppress[object_type]]
+                error_message_components += [
+                    f"field {field} of suppressed type {visitor.fields_to_suppress[object_type][field]}, "
+                    for field in visitor.fields_to_suppress[object_type]
+                ]
                 error_message_components.append("\n")
-            error_message_components.append("\nField suppression hasn't been implemented yet, but when it is, you can fix this problem by suppressing the fields described here.")
+            error_message_components.append(
+                "\nField suppression hasn't been implemented yet, but when it is, you can fix this problem by suppressing the fields described here."
+            )
         if visitor.union_types_to_suppress:
-            error_message_components.append(f"There exists at least one union that would have all of its member types suppressed:\n")
+            error_message_components.append(
+                f"There exists at least one union that would have all of its member types suppressed:\n"
+            )
             for union_type in visitor.union_types_to_suppress:
-                error_message_components.append(f"Union type {union_type} has no non-suppressed members: ")
-                error_message_components += [get_ast_with_non_null_and_list_stripped(union_member).name.value for union_member in union_type.types]
+                error_message_components.append(
+                    f"Union type {union_type} has no non-suppressed members: "
+                )
+                error_message_components += [
+                    get_ast_with_non_null_and_list_stripped(union_member).name.value
+                    for union_member in union_type.types
+                ]
                 error_message_components.append("\n")
-            error_message_components.append(f"\nTo fix this, you can suppress the union as well by adding `union_type: None` to the `renamings` argument of `rename_schema`, for each value of union_type described here. Note that "
-                                            f"adding suppressions may lead to other types, fields, unions, etc. requiring "
-                                            f"suppression so you may need to iterate on this before getting a legal schema.")
+            error_message_components.append(
+                f"\nTo fix this, you can suppress the union as well by adding `union_type: None` to the `renamings` argument of `rename_schema`, for each value of union_type described here. Note that "
+                f"adding suppressions may lead to other types, fields, unions, etc. requiring "
+                f"suppression so you may need to iterate on this before getting a legal schema."
+            )
         raise CascadingSuppressionError("".join(error_message_components))
     return renamed_ast
 
