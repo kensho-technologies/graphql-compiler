@@ -96,7 +96,7 @@ def rename_schema(
     scalars = get_scalar_names(schema)
 
     # Check for fields or unions that depend on types that were suppressed
-    ast = _check_for_cascading_type_suppression(ast, renamings, query_type)
+    _check_for_cascading_type_suppression(ast, renamings, query_type)
 
     # Rename types, interfaces, enums
     ast, reverse_name_map = _rename_types(ast, renamings, query_type, scalars)
@@ -174,7 +174,7 @@ def _rename_query_type_fields(
 
 def _check_for_cascading_type_suppression(
     ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str
-) -> DocumentNode:
+) -> None:
     """Check for fields with suppressed types or unions whose members were all suppressed.
 
     The input AST will not be modified.
@@ -185,14 +185,11 @@ def _check_for_cascading_type_suppression(
                    does not appear in the dict, it will be unchanged
         query_type: str, name of the query type, e.g. 'RootSchemaQuery'
 
-    Returns:
-        DocumentNode, representing the modified version of the input schema AST
-
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
     """
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
-    renamed_ast = visit(ast, visitor)
+    visit(ast, visitor)
     if visitor.fields_to_suppress or visitor.union_types_to_suppress:
         error_message_components = [
             f"Type renamings {renamings} suppressed types that require "
@@ -231,7 +228,6 @@ def _check_for_cascading_type_suppression(
                 f"suppression so you may need to iterate on this before getting a legal schema."
             )
         raise CascadingSuppressionError("".join(error_message_components))
-    return renamed_ast
 
 
 class RenameSchemaTypesVisitor(Visitor):
