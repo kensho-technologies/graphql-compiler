@@ -293,11 +293,16 @@ class InputSchemaStrings(object):
           height: Height
         }
 
+        type Dog {
+          nickname: String
+        }
+
         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         type SchemaQuery {
           Human: Human
           Giraffe: Giraffe
+          Dog: Dog
         }
     """
     )
