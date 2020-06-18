@@ -240,76 +240,80 @@ class TestRenameSchema(unittest.TestCase):
             {"NewKid": "Kid", "NewCharacter": "Character"}, renamed_schema.reverse_name_map
         )
 
-    def test_suppress_interface_implementation(self):
-        renamed_schema = rename_schema(parse(ISS.various_types_schema), {"Giraffe": None})
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
+    # def test_suppress_interface_implementation(self):
+    #     renamed_schema = rename_schema(parse(ISS.various_types_schema), {"Giraffe": None})
+    #     renamed_schema_string = dedent(
+    #         """\
+    #         schema {
+    #           query: SchemaQuery
+    #         }
+    #
+    #         scalar Date
+    #
+    #         enum Height {
+    #           TALL
+    #           SHORT
+    #         }
+    #
+    #         interface Character {
+    #           id: String
+    #         }
+    #
+    #         type Human implements Character {
+    #           id: String
+    #           name: String
+    #           birthday: Date
+    #         }
+    #
+    #         type Dog {
+    #           nickname: String
+    #         }
+    #
+    #         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+    #
+    #         type SchemaQuery {
+    #           Human: Human
+    #           Dog: Dog
+    #         }
+    #     """
+    #     )
+    #     self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+    #     self.assertEqual({}, renamed_schema.reverse_name_map)
 
-            scalar Date
-
-            enum Height {
-              TALL
-              SHORT
-            }
-
-            interface Character {
-              id: String
-            }
-
-            type Human implements Character {
-              id: String
-              name: String
-              birthday: Date
-            }
-
-            type Dog {
-              nickname: String
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type SchemaQuery {
-              Human: Human
-              Dog: Dog
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({}, renamed_schema.reverse_name_map)
-
-    def test_suppress_interface_and_all_implementations(self):
-        renamed_schema = rename_schema(
-            parse(ISS.various_types_schema), {"Giraffe": None, "Character": None, "Human": None}
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            scalar Date
-
-            enum Height {
-              TALL
-              SHORT
-            }
-
-            type Dog {
-              nickname: String
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type SchemaQuery {
-              Dog: Dog
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({}, renamed_schema.reverse_name_map)
+    # def test_suppress_all_implementations_but_not_interface(self):
+    #     renamed_schema = rename_schema(
+    #         parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}
+    #     )
+    #     renamed_schema_string = dedent(
+    #         """\
+    #         schema {
+    #           query: SchemaQuery
+    #         }
+    #
+    #         scalar Date
+    #
+    #         enum Height {
+    #           TALL
+    #           SHORT
+    #         }
+    #
+    #         interface Character {
+    #           id: String
+    #         }
+    #
+    #         type Dog {
+    #           nickname: String
+    #         }
+    #
+    #         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+    #
+    #         type SchemaQuery {
+    #           Dog: Dog
+    #         }
+    #     """
+    #     )
+    #     self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+    #     self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_suppress_interface_but_not_implementations(self):
         renamed_schema = rename_schema(parse(ISS.various_types_schema), {"Character": None})
@@ -354,6 +358,37 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(
             {}, renamed_schema.reverse_name_map,
         )
+
+    def test_suppress_interface_and_all_implementations(self):
+        renamed_schema = rename_schema(
+            parse(ISS.various_types_schema), {"Giraffe": None, "Character": None, "Human": None}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type SchemaQuery {
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_multiple_interfaces_rename(self):
         renamed_schema = rename_schema(
