@@ -105,7 +105,7 @@ def handle_coerce_type_block(
     return (
         data_context
         for data_context, can_coerce in adapter.can_coerce_to_type(
-            data_contexts, location_info.coerced_from_type, coercion_type, **interpreter_hints
+            data_contexts, location_info.coerced_from_type.name, coercion_type, **interpreter_hints
         )
         if can_coerce or data_context.current_token is None
     )
