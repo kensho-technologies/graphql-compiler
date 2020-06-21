@@ -98,7 +98,7 @@ def handle_coerce_type_block(
     location_info = query_metadata_table.get_location_info(post_block_location)
 
     interpreter_hints = construct_hints_for_location(
-        query_metadata_table, query_arguments, location_info
+        query_metadata_table, query_arguments, post_block_location,
     )
 
     coercion_type = get_only_element_from_collection(block.target_class)
