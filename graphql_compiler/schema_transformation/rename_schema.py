@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -52,6 +52,7 @@ RenameTypes = Union[
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
 ]
+RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
 
 
 def rename_schema(
@@ -248,7 +249,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: RenameTypes) -> RenameTypes:
+    def _rename_name_and_add_to_record(self, node: RenameTypesT) -> RenameTypesT:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
