@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Tuple, TypeVar, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -114,7 +114,10 @@ def rename_schema(
 
 
 def _rename_types(
-    schema_ast: DocumentNode, renamings: Mapping[str, str], query_type: str, scalars: Set[str]
+    schema_ast: DocumentNode,
+    renamings: Mapping[str, str],
+    query_type: str,
+    scalars: AbstractSet[str],
 ) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename types, enums, interfaces using renamings.
 
@@ -231,7 +234,7 @@ class RenameSchemaTypesVisitor(Visitor):
     )
 
     def __init__(
-        self, renamings: Mapping[str, str], query_type: str, scalar_types: Set[str]
+        self, renamings: Mapping[str, str], query_type: str, scalar_types: AbstractSet[str]
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
