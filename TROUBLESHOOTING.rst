@@ -114,7 +114,7 @@ The solution is to install MySQL:
 
 ::
 
-   sudo apt-get install python3.6-dev libmysqlclient-dev
+   sudo apt-get install python3.8-dev libmysqlclient-dev
 
 after which
 
@@ -144,5 +144,4 @@ can be resolved on Ubuntu by running:
 
 .. bash::
 
-    # Please modify command to match the version of python you use for development.
     sudo apt-get install python3.8-dev
