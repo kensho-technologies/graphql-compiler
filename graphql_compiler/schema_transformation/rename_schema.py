@@ -380,4 +380,5 @@ class RenameQueryTypeFieldsVisitor(Visitor):
             else:  # Make copy of node with the changed name, return the copy
                 field_node_with_new_name = get_copy_of_node_with_new_name(node, new_field_name)
                 return field_node_with_new_name
+
         return None
