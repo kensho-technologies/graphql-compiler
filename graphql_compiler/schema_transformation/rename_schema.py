@@ -159,7 +159,7 @@ def _rename_query_type_fields(
         query_type: name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
-        Modified version of the input schema AST
+        modified version of the input schema AST
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
     renamed_schema_ast = visit(schema_ast, visitor)
