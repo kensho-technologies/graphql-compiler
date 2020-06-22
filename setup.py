@@ -63,7 +63,7 @@ setup(
         "sqlalchemy>=1.3.0,<2",
         "cached-property>=1.5.1,<2",
     ],
-    extras_require={':python_version<"3.7"': ["dataclasses>=0.6"],},
+    extras_require={':python_version<"3.7"': ["dataclasses>=0.7"]},
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Topic :: Database :: Front-Ends",

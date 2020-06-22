@@ -4,9 +4,18 @@ Contributing
 Thank you for taking the time to contribute to this project!
 
 To get started, make sure that you have :code:`pipenv`, :code:`docker` and
-:code:`docker-compose` installed on your computer. Please make sure
-you have Python 3.8+ installed locally. If you do not already have it installed,
+:code:`docker-compose` installed on your computer.
+
+Although GraphQL compiler supports multiple Python 3.6+ versions,
+we have chosen to use Python 3.8 for development. If you do not already have it installed,
 consider doing so using `pyenv <https://github.com/pyenv/pyenv>`__.
+
+If developing on Linux, please also ensure that your Python installation includes header files.
+The command to install Python header files should look something like this,
+depending on chosen flavor of Linux.
+.. ::
+
+    sudo apt-get install python3.8-dev
 
 Database Driver Installations
 -----------------------------
