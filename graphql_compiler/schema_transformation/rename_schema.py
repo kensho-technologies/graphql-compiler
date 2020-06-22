@@ -144,7 +144,6 @@ def _rename_types(
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
     renamed_schema_ast = visit(schema_ast, visitor)
-
     return renamed_schema_ast, visitor.reverse_name_map
 
 
