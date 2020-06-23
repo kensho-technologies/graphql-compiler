@@ -8,7 +8,12 @@ from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
 from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
-from ...schema_transformation.utils import InvalidTypeNameError, SchemaNameConflictError
+from ...schema_transformation.utils import (
+    CascadingSuppressionError,
+    InvalidTypeNameError,
+    SchemaNameConflictError,
+    SchemaTransformError,
+)
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -54,10 +59,62 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
 
-    def test_original_unmodified(self):
+    def test_original_unmodified_rename(self):
         original_ast = parse(ISS.basic_schema)
         rename_schema(original_ast, {"Human": "NewHuman"})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
+
+    def test_original_unmodified_suppress(self):
+        original_ast = parse(ISS.multiple_objects_schema)
+        rename_schema(original_ast, {"Human": None})
+        self.assertEqual(original_ast, parse(ISS.multiple_objects_schema))
+
+    def test_basic_suppress(self):
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Droid {
+              id: String
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Droid: Droid
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_multiple_type_suppress(self):
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": None}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_swap_rename(self):
         renamed_schema = rename_schema(
@@ -183,6 +240,156 @@ class TestRenameSchema(unittest.TestCase):
             {"NewKid": "Kid", "NewCharacter": "Character"}, renamed_schema.reverse_name_map
         )
 
+    # def test_suppress_interface_implementation(self):
+    #     renamed_schema = rename_schema(parse(ISS.various_types_schema), {"Giraffe": None})
+    #     renamed_schema_string = dedent(
+    #         """\
+    #         schema {
+    #           query: SchemaQuery
+    #         }
+    #
+    #         scalar Date
+    #
+    #         enum Height {
+    #           TALL
+    #           SHORT
+    #         }
+    #
+    #         interface Character {
+    #           id: String
+    #         }
+    #
+    #         type Human implements Character {
+    #           id: String
+    #           name: String
+    #           birthday: Date
+    #         }
+    #
+    #         type Dog {
+    #           nickname: String
+    #         }
+    #
+    #         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+    #
+    #         type SchemaQuery {
+    #           Human: Human
+    #           Dog: Dog
+    #         }
+    #     """
+    #     )
+    #     self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+    #     self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    # def test_suppress_all_implementations_but_not_interface(self):
+    #     renamed_schema = rename_schema(
+    #         parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}
+    #     )
+    #     renamed_schema_string = dedent(
+    #         """\
+    #         schema {
+    #           query: SchemaQuery
+    #         }
+    #
+    #         scalar Date
+    #
+    #         enum Height {
+    #           TALL
+    #           SHORT
+    #         }
+    #
+    #         interface Character {
+    #           id: String
+    #         }
+    #
+    #         type Dog {
+    #           nickname: String
+    #         }
+    #
+    #         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+    #
+    #         type SchemaQuery {
+    #           Dog: Dog
+    #         }
+    #     """
+    #     )
+    #     self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+    #     self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_suppress_interface_but_not_implementations(self):
+        renamed_schema = rename_schema(parse(ISS.various_types_schema), {"Character": None})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            type Human {
+              id: String
+              name: String
+              birthday: Date
+            }
+
+            type Giraffe {
+              id: String
+              height: Height
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type SchemaQuery {
+              Human: Human
+              Giraffe: Giraffe
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {}, renamed_schema.reverse_name_map,
+        )
+
+    def test_suppress_interface_and_all_implementations(self):
+        renamed_schema = rename_schema(
+            parse(ISS.various_types_schema), {"Giraffe": None, "Character": None, "Human": None}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type SchemaQuery {
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
     def test_multiple_interfaces_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_interfaces_schema),
@@ -279,6 +486,59 @@ class TestRenameSchema(unittest.TestCase):
             renamed_schema.reverse_name_map,
         )
 
+    def test_entire_union_suppress(self):
+        renamed_schema = rename_schema(
+            parse(ISS.union_schema), {"HumanOrDroid": None, "Droid": "NewDroid"}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Human {
+              id: String
+            }
+
+            type NewDroid {
+              id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+              NewDroid: NewDroid
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {"NewDroid": "Droid"}, renamed_schema.reverse_name_map,
+        )
+
+    def test_union_member_suppress(self):
+        renamed_schema = rename_schema(parse(ISS.union_schema), {"Droid": None})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Human {
+              id: String
+            }
+
+            union HumanOrDroid = Human
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(
+            {}, renamed_schema.reverse_name_map,
+        )
+
     def test_list_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
@@ -340,13 +600,38 @@ class TestRenameSchema(unittest.TestCase):
               friend: NewDog!
             }
 
+            type Cat {
+              id: String
+            }
+
             type SchemaQuery {
               NewDog: NewDog!
+              Cat: Cat
             }
         """
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
+
+    def test_non_null_suppress(self):
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": None})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Cat {
+              id: String
+            }
+
+            type SchemaQuery {
+              Cat: Cat
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_directive_rename(self):
         renamed_schema = rename_schema(
@@ -553,6 +838,28 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(InvalidTypeNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
 
+    def test_suppress_every_type(self):
+        with self.assertRaises(SchemaTransformError):
+            rename_schema(parse(ISS.basic_schema), {"Human": None})
+
+    def test_suppress_all_union_members(self):
+        with self.assertRaises(CascadingSuppressionError):
+            # Can't use ISS.union_schema here because suppressing all the members of the union would
+            # mean suppressing every type in general, which means we couldn't be sure that
+            # suppressing every member of a union specifically was raising the
+            # CascadingSuppressionError.
+            rename_schema(parse(ISS.extended_union_schema), {"Human": None, "Droid": None})
+
+    def test_field_still_depends_on_suppressed_type(self):
+        with self.assertRaises(CascadingSuppressionError):
+            rename_schema(
+                parse(ISS.multiple_fields_schema), {"Dog": None}
+            )  # a field in Human is of type Dog.
+
+    def test_field_in_list_still_depends_on_suppressed_type(self):
+        with self.assertRaises(CascadingSuppressionError):
+            rename_schema(parse(ISS.list_schema), {"Height": None})
+
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
             def get(self, key, default=None):
@@ -587,11 +894,16 @@ class TestRenameSchema(unittest.TestCase):
               height: NewHeight
             }
 
+            type NewDog {
+              nickname: String
+            }
+
             directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type SchemaQuery {
               NewHuman: NewHuman
               NewGiraffe: NewGiraffe
+              NewDog: NewDog
             }
         """
         )
@@ -602,6 +914,7 @@ class TestRenameSchema(unittest.TestCase):
                 "NewGiraffe": "Giraffe",
                 "NewHeight": "Height",
                 "NewHuman": "Human",
+                "NewDog": "Dog",
             },
             renamed_schema.reverse_name_map,
         )
