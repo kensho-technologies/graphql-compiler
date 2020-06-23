@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Tuple, TypeVar, Union, cast
+from typing import AbstractSet, Any, Dict, List, Mapping, Tuple, TypeVar, Union, cast, Optional
 
 from graphql import (
     DocumentNode,
@@ -13,7 +13,7 @@ from graphql import (
     UnionTypeDefinitionNode,
     build_ast_schema,
 )
-from graphql.language.visitor import IDLE, Visitor, visit
+from graphql.language.visitor import IDLE, Visitor, visit, REMOVE
 import six
 
 from .utils import (
@@ -22,9 +22,9 @@ from .utils import (
     check_type_name_is_valid,
     get_copy_of_node_with_new_name,
     get_query_type_name,
-    get_scalar_names,
+    get_scalar_names, CascadingSuppressionError, SchemaTransformError,
 )
-
+from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 
 RenamedSchemaDescriptor = namedtuple(
     "RenamedSchemaDescriptor",
@@ -67,22 +67,26 @@ VisitorReturnType = Union[Node, Any]
 
 
 def rename_schema(
-    schema_ast: DocumentNode, renamings: Mapping[str, str]
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
 ) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; types and query type fields are renamed using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
-    appears in renamings will be renamed to the corresponding value. Any such names that do not
-    appear in renamings will be unchanged. Scalars, directives, enum values, and fields not
-    belonging to the root/query type will never be renamed.
+    appears in renamings will be renamed to the corresponding value if the value is not None. If the
+    value is None, it will be suppressed in the renamed schema and queries will not be able to
+    access it.
+
+    Any such names that do not appear in renamings will be unchanged.
+
+    Scalars, directives, enum values, and fields not belonging to the root/query type will never be
 
     Args:
         schema_ast: represents a valid schema that does not contain extensions, input object
                     definitions, mutations, or subscriptions, whose fields of the query type share
                     the same name as the types they query. Not modified by this function
-        renamings: maps original type/field names to renamed type/field names. Type or query type
-                   field names that do not appear in the dict will be unchanged. Any dict-like
-                   object that implements get(key, [default]) may also be used
+        renamings: maps original type/field names to renamed type/field names or None.
+                   Type or query type field names that do not appear in the dict will be unchanged.
+                   Any dict-like object that implements get(key, [default]) may also be used
 
     Returns:
         RenamedSchemaDescriptor, a namedtuple that contains the AST of the renamed schema, and the
@@ -107,6 +111,9 @@ def rename_schema(
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
 
+    # Check for fields or unions that depend on types that were suppressed
+    _check_for_cascading_type_suppression(schema_ast, renamings, query_type)
+
     # Rename types, interfaces, enums
     schema_ast, reverse_name_map = _rename_types(schema_ast, renamings, query_type, scalars)
     reverse_name_map_changed_names_only = {
@@ -126,7 +133,7 @@ def rename_schema(
 
 def _rename_types(
     schema_ast: DocumentNode,
-    renamings: Mapping[str, str],
+    renamings: Mapping[str, Optional[str]],
     query_type: str,
     scalars: AbstractSet[str],
 ) -> Tuple[DocumentNode, Dict[str, str]]:
@@ -146,7 +153,8 @@ def _rename_types(
 
     Returns:
         Tuple containing the modified version of the schema AST, and the renamed type name to
-        original type name map. Map contains all types, including those that were not renamed.
+        original type name map. Map contains all non-suppressed types, including those that were not
+        renamed.
 
     Raises:
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
@@ -159,7 +167,7 @@ def _rename_types(
 
 
 def _rename_query_type_fields(
-    schema_ast: DocumentNode, renamings: Mapping[str, str], query_type: str
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> DocumentNode:
     """Rename all fields of the query type.
 
@@ -173,10 +181,68 @@ def _rename_query_type_fields(
 
     Returns:
         modified version of the input schema AST
+
+    Raises:
+        - SchemaTransformError if renamings suppressed every type
     """
     visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
     renamed_schema_ast = visit(schema_ast, visitor)
     return renamed_schema_ast
+
+
+def _check_for_cascading_type_suppression(
+    ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str
+) -> None:
+    """Check for fields with suppressed types or unions whose members were all suppressed.
+    The input AST will not be modified.
+    Args:
+        ast: DocumentNode, the schema that we're returning a modified version of
+        renamings: Dict[str, Optional[str]], mapping original field name to renamed name. If a name
+                   does not appear in the dict, it will be unchanged
+        query_type: str, name of the query type, e.g. 'RootSchemaQuery'
+    Raises:
+        - CascadingSuppressionError if a type suppression would require further suppressions
+    """
+    visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
+    visit(ast, visitor)
+    if visitor.fields_to_suppress or visitor.union_types_to_suppress:
+        error_message_components = [
+            f"Type renamings {renamings} suppressed types that require "
+            f"further suppressions to produce a valid renamed schema.\n\n"
+        ]
+        if visitor.fields_to_suppress:
+            error_message_components.append(
+                f"There exists at least one field that depend on types that would be suppressed:\n"
+            )
+            for object_type in visitor.fields_to_suppress:
+                error_message_components.append(f"Object type {object_type} contains ")
+                error_message_components += [
+                    f"field {field} of suppressed type {visitor.fields_to_suppress[object_type][field]}, "
+                    for field in visitor.fields_to_suppress[object_type]
+                ]
+                error_message_components.append("\n")
+            error_message_components.append(
+                "\nField suppression hasn't been implemented yet, but when it is, you can fix this problem by suppressing the fields described here."
+            )
+        if visitor.union_types_to_suppress:
+            error_message_components.append(
+                f"There exists at least one union that would have all of its member types suppressed:\n"
+            )
+            for union_type in visitor.union_types_to_suppress:
+                error_message_components.append(
+                    f"Union type {union_type} has no non-suppressed members: "
+                )
+                error_message_components += [
+                    get_ast_with_non_null_and_list_stripped(union_member).name.value
+                    for union_member in union_type.types
+                ]
+                error_message_components.append("\n")
+            error_message_components.append(
+                f"\nTo fix this, you can suppress the union as well by adding `union_type: None` to the `renamings` argument of `rename_schema`, for each value of union_type described here. Note that "
+                f"adding suppressions may lead to other types, fields, unions, etc. requiring "
+                f"suppression so you may need to iterate on this before getting a legal schema."
+            )
+        raise CascadingSuppressionError("".join(error_message_components))
 
 
 class RenameSchemaTypesVisitor(Visitor):
@@ -244,20 +310,20 @@ class RenameSchemaTypesVisitor(Visitor):
     )
 
     def __init__(
-        self, renamings: Mapping[str, str], query_type: str, scalar_types: AbstractSet[str]
+        self, renamings: Mapping[str, Optional[str]], query_type: str, scalar_types: AbstractSet[str]
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
         Args:
-            renamings: maps original type name to renamed name. Any name not in the dict will be
-                       unchanged
+            renamings: maps original type name to renamed name or None (for type suppression). Any
+                       name not in the dict will be unchanged
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
             scalar_types: set of all scalars used in the schema, including all user defined scalars
                           and any builtin scalars that were used
         """
         self.renamings = renamings
-        self.reverse_name_map: Dict[str, str] = {}  # from renamed type name to original type name
-        # reverse_name_map contains all types, including those that were unchanged
+        self.reverse_name_map: Dict[str, str] = {}  # From renamed type name to original type name
+        # reverse_name_map contains all non-suppressed types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
@@ -274,8 +340,7 @@ class RenameSchemaTypesVisitor(Visitor):
                   corresponding to an AST node of type NameNode.
 
         Returns:
-            Node object, identical to the input node, except with possibly a new name. If the
-            name was not changed, the returned object is the exact same object as the input
+            Node object or REMOVE. REMOVE is a special return value defined by the GraphQL library. A visitor function returns REMOVE to delete the node it's currently at. This function returns REMOVE to suppress types. If the current node is not to be suppressed, it returns a Node object identical to the input node, except with possibly a new name. If the name was not changed, the returned object is the exact same object as the input
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
@@ -288,6 +353,9 @@ class RenameSchemaTypesVisitor(Visitor):
             return node
 
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
+        if new_name_string is None:
+            # Suppress the type
+            return REMOVE
         check_type_name_is_valid(new_name_string)
 
         if (
@@ -326,7 +394,9 @@ class RenameSchemaTypesVisitor(Visitor):
             renamed_node = self._rename_name_and_add_to_record(cast(RenameTypes, node))
             if renamed_node is node:  # Name unchanged, continue traversal
                 return IDLE
-            else:  # Name changed, return new node, `visit` will make shallow copies along path
+            else:
+                # Name changed or suppressed, return new node, `visit` will make shallow copies
+                # along path
                 return renamed_node
         else:
             # All Node types should've been taken care of, this line should never be reached
@@ -334,17 +404,17 @@ class RenameSchemaTypesVisitor(Visitor):
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
-    def __init__(self, renamings: Mapping[str, str], query_type: str) -> None:
+    def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
-            renamings: maps original field name to renamed field name. Any name not in the dict will
-                       be unchanged
+            renamings: maps original field name to renamed field name or (for type suppression). Any
+                       name not in the dict will be unchanged
             query_type: name of the query type (e.g. RootSchemaQuery)
         """
         # Note that as field names and type names have been confirmed to match up, any renamed
-        # field already has a corresponding renamed type. If no errors, due to either invalid
-        # names or name conflicts, were raised when renaming type, no errors will occur when
+        # query type field already has a corresponding renamed type. If no errors, due to either
+        # invalid names or name conflicts, were raised when renaming type, no errors will occur when
         # renaming query type fields.
         self.in_query_type = False
         self.renamings = renamings
@@ -371,6 +441,12 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         ancestors: List[Any],
     ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
+        if not node.fields:
+            raise SchemaTransformError(
+                f"Type renamings {self.renamings} suppressed every type in the schema so it will "
+                f"be impossible to query for anything. To fix this, check why the `renamings` "
+                f"argument of `rename_schema` mapped every type to None."
+            )
         if node.name.value == self.query_type:
             self.in_query_type = False
 
@@ -388,8 +464,104 @@ class RenameQueryTypeFieldsVisitor(Visitor):
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
             if new_field_name == field_name:
                 return IDLE
+            if new_field_name is None:
+                # Suppress the type
+                return REMOVE
             else:  # Make copy of node with the changed name, return the copy
                 field_node_with_new_name = get_copy_of_node_with_new_name(node, new_field_name)
                 return field_node_with_new_name
 
         return IDLE
+
+
+class CascadingSuppressionCheckVisitor(Visitor):
+    def __init__(self, renamings: Dict[str, Optional[str]], query_type: str) -> None:
+        """Create a visitor to check that suppression does not cause an illegal state.
+        Args:
+            renamings: Dict[str, Optional[str]], from original field name to renamed field name or
+                       None (for type suppression). Any name not in the dict will be unchanged
+            query_type: str, name of the query type (e.g. RootSchemaQuery)
+        """
+        self.renamings = renamings
+        self.query_type = query_type
+        self.current_type = None
+        # Maps a type T to a dict which maps a field F belonging to T to the field's type T'
+        self.fields_to_suppress: Dict[str, Dict[str, str]] = {}
+        # Record any unions to suppress because all their types were suppressed
+        self.union_types_to_suppress: List[UnionTypeDefinitionNode] = []
+
+    def enter_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
+        """If the node's name matches the query type, record that we entered the query type."""
+        self.current_type = node.name.value
+
+    def leave_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
+        """If the node's name matches the query type, record that we left the query type."""
+        self.current_type = None
+
+    def enter_field_definition(
+        self,
+        node: FieldDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
+        """If not at query type, check that no field depends on a type that was suppressed."""
+        if self.current_type == self.query_type:
+            return None
+        # At a field of a type that is not the query type
+        field_name = node.name.value
+        field_type = get_ast_with_non_null_and_list_stripped(node.type).name.value
+        if self.renamings.get(field_type, field_type):
+            return None
+        # Reaching this point means this field is of a type to be suppressed.
+        if self.current_type is None:
+            raise AssertionError(
+                f"Entered a field not in any ObjectTypeDefinition scope because "
+                f"self.current_type is None"
+            )
+        if self.current_type == field_type:
+            # Then node corresponds to a field belonging to type T that is also of type T.
+            # Therefore, we don't need to explicitly suppress the field as well and this should not
+            # raise errors.
+            return None
+        if self.current_type not in self.fields_to_suppress:
+            self.fields_to_suppress[self.current_type] = {}
+        self.fields_to_suppress[self.current_type][field_name] = field_type
+        return None
+
+    def enter_union_type_definition(
+        self,
+        node: UnionTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
+        """Check that each union still has at least one member."""
+        union_name = node.name.value
+        # Check if al the union members are suppressed.
+        for union_member in node.types:
+            union_member_type = get_ast_with_non_null_and_list_stripped(union_member).name.value
+            if self.renamings.get(union_member_type, union_member_type):
+                # Then at least one member of the union is not suppressed, so there is no cascading
+                # suppression error concern.
+                return None
+        if self.renamings.get(union_name):
+            # If the union is also suppressed, then nothing needs to happen here
+            return None
+        self.union_types_to_suppress.append(node)
