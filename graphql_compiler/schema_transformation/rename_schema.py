@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Tuple, TypeVar, Union, cast
+from typing import AbstractSet, Any, Dict, List, Mapping, Tuple, TypeVar, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -13,7 +13,7 @@ from graphql import (
     UnionTypeDefinitionNode,
     build_ast_schema,
 )
-from graphql.language.visitor import Visitor, visit
+from graphql.language.visitor import IDLE, Visitor, visit
 import six
 
 from .utils import (
@@ -53,6 +53,17 @@ RenameTypes = Union[
     UnionTypeDefinitionNode,
 ]
 RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
+# AST visitor functions can return a number of different things, such as returning a Node (to update
+# that node) or returning a special value defined in graphql.visitor such as REMOVE (to remove the
+# node) and IDLE (to do nothing with the node). In the current GraphQL-core version (>=3,<3.1),
+# REMOVE is set to the singleton object Ellipsis and IDLE is set to None. However, because these
+# special values' underlying definitions can change, we can't type-hint functions returning a
+# special value with anything more specific than Any. For more information, see:
+# https://github.com/kensho-technologies/graphql-compiler/pull/834#discussion_r434622400
+# We can update this type hint when a future GraphQL-core release organizes these special return
+# values into an enum.
+# https://github.com/graphql-python/graphql-core/issues/96
+VisitorReturnType = Union[Node, Any]
 
 
 def rename_schema(
@@ -304,17 +315,17 @@ class RenameSchemaTypesVisitor(Visitor):
 
     def enter(
         self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any],
-    ) -> Optional[Node]:
+    ) -> VisitorReturnType:
         """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
         if node_type in self.noop_types:
             # Do nothing, continue traversal
-            return None
+            return IDLE
         elif node_type in self.rename_types:
             # Rename node, put name pair into record
             renamed_node = self._rename_name_and_add_to_record(cast(RenameTypes, node))
             if renamed_node is node:  # Name unchanged, continue traversal
-                return None
+                return IDLE
             else:  # Name changed, return new node, `visit` will make shallow copies along path
                 return renamed_node
         else:
@@ -370,15 +381,15 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         parent: Any,
         path: List[Any],
         ancestors: List[Any],
-    ) -> Optional[Node]:
+    ) -> VisitorReturnType:
         """If inside the query type, rename field and add the name pair to reverse_field_map."""
         if self.in_query_type:
             field_name = node.name.value
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
             if new_field_name == field_name:
-                return None
+                return IDLE
             else:  # Make copy of node with the changed name, return the copy
                 field_node_with_new_name = get_copy_of_node_with_new_name(node, new_field_name)
                 return field_node_with_new_name
 
-        return None
+        return IDLE
