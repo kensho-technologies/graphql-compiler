@@ -211,31 +211,6 @@ class TestRenameSchema(unittest.TestCase):
             {"NewDroid": "Droid", "NewHeight": "Height"}, renamed_schema.reverse_name_map
         )
 
-    def test_enum_suppress(self):
-        renamed_schema = rename_schema(parse(ISS.extra_enum_schema), {"Size": None})
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Droid {
-              height: Height
-            }
-
-            type SchemaQuery {
-              Droid: Droid
-            }
-
-            enum Height {
-              TALL
-              SHORT
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({}, renamed_schema.reverse_name_map)
-
     def test_interface_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.interface_schema), {"Kid": "NewKid", "Character": "NewCharacter"}
