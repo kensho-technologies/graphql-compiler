@@ -240,6 +240,26 @@ class TestRenameSchema(unittest.TestCase):
             {"NewKid": "Kid", "NewCharacter": "Character"}, renamed_schema.reverse_name_map
         )
 
+    def test_suppress_interface_implementation(self):
+        with self.assertRaises(NotImplementedError):
+            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None})
+
+    def test_suppress_all_implementations_but_not_interface(self):
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}
+            )
+
+    def test_suppress_interface_but_not_implementations(self):
+        with self.assertRaises(NotImplementedError):
+            rename_schema(parse(ISS.various_types_schema), {"Character": None})
+
+    def test_suppress_interface_and_all_implementations(self):
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.various_types_schema), {"Giraffe": None, "Character": None, "Human": None}
+            )
+
     def test_multiple_interfaces_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.multiple_interfaces_schema),
@@ -744,11 +764,16 @@ class TestRenameSchema(unittest.TestCase):
               height: NewHeight
             }
 
+            type NewDog {
+              nickname: String
+            }
+
             directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
             type SchemaQuery {
               NewHuman: NewHuman
               NewGiraffe: NewGiraffe
+              NewDog: NewDog
             }
         """
         )
@@ -759,6 +784,7 @@ class TestRenameSchema(unittest.TestCase):
                 "NewGiraffe": "Giraffe",
                 "NewHeight": "Height",
                 "NewHuman": "Human",
+                "NewDog": "Dog",
             },
             renamed_schema.reverse_name_map,
         )
