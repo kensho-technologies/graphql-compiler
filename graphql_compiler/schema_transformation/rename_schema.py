@@ -191,7 +191,7 @@ def _rename_query_type_fields(
 
 
 def _check_for_cascading_type_suppression(
-    ast: DocumentNode, renamings: Dict[str, Optional[str]], query_type: str
+    ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> None:
     """Check for fields with suppressed types or unions whose members were all suppressed.
     The input AST will not be modified.
@@ -475,7 +475,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
 
 
 class CascadingSuppressionCheckVisitor(Visitor):
-    def __init__(self, renamings: Dict[str, Optional[str]], query_type: str) -> None:
+    def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
         Args:
             renamings: Dict[str, Optional[str]], from original field name to renamed field name or
