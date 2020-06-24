@@ -111,7 +111,6 @@ def rename_schema(
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
 
-    # Check for fields or unions that depend on types that were suppressed
     _validate_renamings(schema_ast, renamings, query_type)
 
     # Rename types, interfaces, enums
