@@ -211,6 +211,10 @@ class TestRenameSchema(unittest.TestCase):
             {"NewDroid": "Droid", "NewHeight": "Height"}, renamed_schema.reverse_name_map
         )
 
+    def test_enum_suppression(self):
+        with self.assertRaises(NotImplementedError):
+            rename_schema(parse(ISS.multiple_enums_schema), {"Size": None})
+
     def test_interface_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.interface_schema), {"Kid": "NewKid", "Character": "NewCharacter"}
