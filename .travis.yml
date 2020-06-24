@@ -1,7 +1,7 @@
 # In addition to building PRs, build pushes to the following branches and tag names.
 branches:
   only:
-  - master
+  - main
   - /^v\d+\.\d+(\.\d+)?(-\S*)?$/  # tagged commits with new release versions
 
 language: python

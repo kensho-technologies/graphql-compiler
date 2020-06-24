@@ -12,8 +12,8 @@ shopt -s globstar nullglob
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 current_branch=$(git rev-parse --abbrev-ref HEAD)
-if [[ "$current_branch" != 'master' ]]; then
-    echo "Cannot make a release from a branch that is not master. Current branch: $current_branch"
+if [[ "$current_branch" != 'main' ]]; then
+    echo "Cannot make a release from a branch that is not 'main'. Current branch: $current_branch"
     exit 1
 fi
 

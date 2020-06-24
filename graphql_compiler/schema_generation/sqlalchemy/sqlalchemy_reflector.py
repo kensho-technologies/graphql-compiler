@@ -16,8 +16,8 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
     This function mutates the metadata object.
 
     Args:
-        engine: SQLAlchemy Engine, engine connected to a SQL server. It must connected to the master
-                database in the SQL Server.
+        engine: SQLAlchemy Engine, engine connected to a SQL server. It must connected to
+                the primary database in the SQL Server deployment, not a replica.
         metadata: MetaData object to reflect the metadata of the SQL Server to.
         schema: string in the format <databaseName>.<schemaName> specifying the schema
                 to reflect into the metadata.
