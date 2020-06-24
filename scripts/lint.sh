@@ -45,7 +45,7 @@ lintable_locations="."
 pylint_lintable_locations="**/*.py *.py"
 if [ "$diff_only" -eq 1 ] ; then
     # Quotes don't need to be escaped because they nest with $( ).
-    lintable_locations="$(git diff --name-only master... | grep ".*\.py$")"
+    lintable_locations="$(git diff --name-only main... | grep ".*\.py$")"
     pylint_lintable_locations="$lintable_locations"
 fi
 
