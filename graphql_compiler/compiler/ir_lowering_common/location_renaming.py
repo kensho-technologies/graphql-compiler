@@ -1,10 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Utilities for rewriting IR to replace one set of locations with another."""
-from typing import Any, Callable, Dict
+from typing import Any, Callable, Dict, Type
 
 import six
 
-from ..helpers import FoldScopeLocation, Location, LocationT
+from ..helpers import FoldScopeLocation, BaseLocation, Location, LocationT
 from ..metadata import QueryMetadataTable
 
 
@@ -23,8 +23,8 @@ def make_revisit_location_translations(
 
 
 def translate_potential_location(
-    location_translations: Dict[LocationT, LocationT], potential_location: LocationT
-) -> LocationT:
+    location_translations: Dict[Type[BaseLocation], Type[BaseLocation]], potential_location: Type[BaseLocation]
+) -> Type[BaseLocation]:
     """If the input is a BaseLocation object, translate it, otherwise return it as-is."""
     if isinstance(potential_location, Location):
         old_location_at_vertex = potential_location.at_vertex()
@@ -50,7 +50,9 @@ def translate_potential_location(
         return potential_location
 
 
-def make_location_rewriter_visitor_fn(location_translations: Dict[LocationT, LocationT]) -> Callable:
+def make_location_rewriter_visitor_fn(
+    location_translations: Dict[Type[BaseLocation], Type[BaseLocation]]
+) -> Callable:
     """Return a visitor function that is able to replace locations with equivalent locations."""
 
     def visitor_fn(expression: Any) -> Any:

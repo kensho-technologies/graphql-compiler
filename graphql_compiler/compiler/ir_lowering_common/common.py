@@ -1,14 +1,16 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, List, Set, Tuple
+from typing_extensions import TypedDict
 
 import six
 
 from ...compiler.compiler_entities import BasicBlockT
 from ..blocks import (
-    CoerceType,
+    BasicBlock,
     ConstructResult,
     EndOptional,
+    Expression,
     Filter,
     Fold,
     MarkLocation,
@@ -26,11 +28,11 @@ from ..expressions import (
     TernaryConditional,
     TrueLiteral,
 )
-from ..helpers import FoldScopeLocation, Location, validate_safe_string
+from ..helpers import BaseLocation, FoldScopeLocation, LocationT, validate_safe_string
 from ..metadata import QueryMetadataTable
 
 
-def merge_consecutive_filter_clauses(ir_blocks: List[BasicBlockT]) -> List[BasicBlockT]:
+def merge_consecutive_filter_clauses(ir_blocks: List[BasicBlock]) -> List[BasicBlock]:
     """Merge consecutive Filter(x), Filter(y) blocks into Filter(x && y) block."""
     if not ir_blocks:
         return ir_blocks
@@ -76,8 +78,8 @@ class OutputContextVertex(ContextField):
 
 
 def lower_context_field_existence(
-    ir_blocks: List[BasicBlockT], query_metadata_table: QueryMetadataTable
-) -> List[BasicBlockT]:
+    ir_blocks: List[BasicBlock], query_metadata_table: QueryMetadataTable
+) -> List[BasicBlock]:
     """Lower ContextFieldExistence expressions into lower-level expressions."""
 
     def regular_visitor_fn(expression: Any) -> Any:
@@ -136,7 +138,7 @@ def short_circuit_ternary_conditionals(
     return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]
 
 
-def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlockT]) -> List[BasicBlockT]:
+def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlock]) -> List[BasicBlock]:
     """Optimize comparisons of a boolean binary comparison expression against a boolean literal.
 
     Rewriting example:
@@ -156,7 +158,7 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlockT]) -> Lis
     """
     operator_inverses = {"=": "!=", "!=": "="}
 
-    def visitor_fn(expression: Any) -> Any:
+    def visitor_fn(expression: Expression) -> Any:
         """Expression visitor function that performs the above rewriting."""
         if not isinstance(expression, BinaryComposition):
             return expression
@@ -211,13 +213,10 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlockT]) -> Lis
 
 
 def extract_folds_from_ir_blocks(
-    ir_blocks: List[BasicBlockT],
+    ir_blocks: List[BasicBlock],
 ) -> Tuple[
-    Union[
-        Dict[FoldScopeLocation, List[BasicBlockT]],
-        Dict[FoldScopeLocation, List[Union[CoerceType, Filter, MarkLocation]]],
-    ],
-    List[BasicBlockT],
+    Dict[FoldScopeLocation, List[BasicBlock]],
+    List[BasicBlock],
 ]:
     """Extract all @fold data from the IR blocks, and cut the folded IR blocks out of the IR.
 
@@ -231,8 +230,8 @@ def extract_folds_from_ir_blocks(
         - remaining_ir_blocks: list of IR blocks that were not part of a Fold-Unfold section.
     """
     folds = dict()
-    remaining_ir_blocks = []
-    current_folded_blocks = []
+    remaining_ir_blocks: List[BasicBlock] = []
+    current_folded_blocks: List[BasicBlock] = []
     in_fold_location = None
 
     for block in ir_blocks:
@@ -264,8 +263,8 @@ def extract_folds_from_ir_blocks(
 
 
 def extract_optional_location_root_info(
-    ir_blocks: List[BasicBlockT],
-) -> Tuple[List[Location], Dict[Location, Tuple[Location]]]:
+    ir_blocks: List[BasicBlock],
+) -> Tuple[List[BaseLocation], Dict[BaseLocation, Tuple[BaseLocation, ...]]]:
     """Construct a mapping from locations within @optional to their correspoding optional Traverse.
 
     Args:
@@ -288,8 +287,8 @@ def extract_optional_location_root_info(
     # - in_optional_root_locations: all the optional root locations
     # - encountered_traverse_within_optional: whether the optional is complex or not
     # in order that they appear on the path from the root to that location.
-    in_optional_root_locations = []
-    encountered_traverse_within_optional = []
+    in_optional_root_locations: List[BaseLocation] = []
+    encountered_traverse_within_optional: List[bool] = []
 
     # Blocks within folded scopes should not be taken into account in this function.
     _, non_folded_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
@@ -336,11 +335,20 @@ def extract_optional_location_root_info(
     return complex_optional_roots, location_to_optional_roots
 
 
+SimpleOptionalLocationInfo = TypedDict(
+    "SimpleOptionalLocationInfo",
+    {
+        "inner_location": BaseLocation,
+        "edge_field": str,
+    }
+)
+
+
 def extract_simple_optional_location_info(
-    ir_blocks: List[BasicBlockT],
-    complex_optional_roots: List[Location],
-    location_to_optional_roots: Dict[Location, Tuple[Location]],
-) -> Dict:
+    ir_blocks: List[BasicBlock],
+    complex_optional_roots: List[BaseLocation],
+    location_to_optional_roots: Dict[BaseLocation, Tuple[BaseLocation, ...]],
+) -> Dict[BaseLocation, SimpleOptionalLocationInfo]:
     """Construct a map from simple optional locations to their inner location and traversed edge.
 
     Args:
@@ -387,7 +395,7 @@ def extract_simple_optional_location_info(
                 # The current optional Traverse is "simple"
                 # i.e. it does not contain any Traverses within.
                 inner_location = simple_optional_root_to_inner_location[preceding_location]
-                simple_optional_info_dict = {
+                simple_optional_info_dict: SimpleOptionalLocationInfo = {
                     "inner_location": inner_location,
                     "edge_field": current_block.get_field_name(),
                 }
