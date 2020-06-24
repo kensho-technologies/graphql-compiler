@@ -68,6 +68,32 @@ class InputSchemaStrings(object):
     """
     )
 
+    extra_enum_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Droid {
+          height: Height
+        }
+
+        type SchemaQuery {
+          Droid: Droid
+        }
+
+        enum Height {
+          TALL
+          SHORT
+        }
+
+        enum Size {
+          BIG
+          SMALL
+        }
+    """
+    )
+
     interface_schema = dedent(
         """\
         schema {
@@ -293,16 +319,11 @@ class InputSchemaStrings(object):
           height: Height
         }
 
-        type Dog {
-          nickname: String
-        }
-
         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         type SchemaQuery {
           Human: Human
           Giraffe: Giraffe
-          Dog: Dog
         }
     """
     )
