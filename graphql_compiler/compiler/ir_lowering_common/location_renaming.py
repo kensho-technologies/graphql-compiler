@@ -4,6 +4,7 @@ from typing import Any, Callable, Dict, Type
 
 import six
 
+from ..compiler_entities import Expression
 from ..helpers import FoldScopeLocation, BaseLocation, Location, LocationT
 from ..metadata import QueryMetadataTable
 
@@ -52,7 +53,7 @@ def translate_potential_location(
 
 def make_location_rewriter_visitor_fn(
     location_translations: Dict[Type[BaseLocation], Type[BaseLocation]]
-) -> Callable:
+) -> Callable[[Expression], Expression]:
     """Return a visitor function that is able to replace locations with equivalent locations."""
 
     def visitor_fn(expression: Any) -> Any:
