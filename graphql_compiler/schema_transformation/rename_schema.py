@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Tuple, TypeVar, Union, cast, Optional
+from typing import AbstractSet, Any, Dict, List, Mapping, Tuple, TypeVar, Union, cast, Optional, Set
 
 from graphql import (
     DocumentNode,
@@ -112,7 +112,7 @@ def rename_schema(
     scalars = get_scalar_names(schema)
 
     # Check for fields or unions that depend on types that were suppressed
-    _check_for_cascading_type_suppression(schema_ast, renamings, query_type)
+    _validate_renamings(schema_ast, renamings, query_type)
 
     # Rename types, interfaces, enums
     schema_ast, reverse_name_map = _rename_types(schema_ast, renamings, query_type, scalars)
@@ -190,21 +190,54 @@ def _rename_query_type_fields(
     return renamed_schema_ast
 
 
-def _check_for_cascading_type_suppression(
-    ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+def _validate_renamings(
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> None:
-    """Check for fields with suppressed types or unions whose members were all suppressed.
+    """Validates the renamings argument before attempting to rename the schema.
+
+    Check for fields with suppressed types or unions whose members were all suppressed. Also, check
+    that renamings does not attempt to suppress enums or interfaces because that functionality
+    hasn't been implemented yet.
+
     The input AST will not be modified.
+
     Args:
-        ast: DocumentNode, the schema that we're returning a modified version of
-        renamings: Dict[str, Optional[str]], mapping original field name to renamed name. If a name
+        schema_ast: schema that we're returning a modified version of
+        renamings: maps original field name to renamed name. If a name
                    does not appear in the dict, it will be unchanged
-        query_type: str, name of the query type, e.g. 'RootSchemaQuery'
+        query_type: name of the query type, e.g. 'RootSchemaQuery'
+
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
+        - NotImplementedError if renamings attempts to suppress an enum or an interface
     """
+    _check_for_cascading_type_suppression(schema_ast, renamings, query_type)
+    _ensure_no_unsupported_suppression(schema_ast, renamings, query_type)
+
+
+def _ensure_no_unsupported_suppression(schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+    """Check that renamings does not attempt to suppress enums or interfaces"""
+    visitor = SuppressionNotImplementedVisitor(renamings, query_type)
+    visit(schema_ast, visitor)
+    if not visitor.attempted_enum_suppressions and not visitor.attempted_interface_suppressions:
+        return
+    # Otherwise, attempted to suppress something we shouldn't suppress.
+    error_message_components = [
+        f"Type renamings {renamings} attempted to suppress parts of the schema for which "
+        f"suppression is not implemented yet, but is intended to be renamed."
+    ]
+    if visitor.attempted_enum_suppressions:
+        error_message_components.append(f"Type renamings mapped these schema enums to None: {visitor.attempted_enum_suppressions}, attempting to suppress them. However, schema renaming has not implemented enum suppression yet.")
+    if visitor.attempted_interface_suppressions:
+        error_message_components.append(f"Type renamings mapped these schema interfaces to None: {visitor.attempted_interface_suppressions}, attempting to suppress them. However, schema renaming has not implemented enum suppression yet.")
+    error_message_components.append(f"To avoid these suppressions, remove the mappings from the renamings argument.")
+    raise NotImplementedError(" ".join(error_message_components))
+
+
+def _check_for_cascading_type_suppression(schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+    """Check for fields with suppressed types or unions whose members were all suppressed."""
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
-    visit(ast, visitor)
+    visit(schema_ast, visitor)
     if visitor.fields_to_suppress or visitor.union_types_to_suppress:
         error_message_components = [
             f"Type renamings {renamings} suppressed types that require "
@@ -565,3 +598,42 @@ class CascadingSuppressionCheckVisitor(Visitor):
             # If the union is also suppressed, then nothing needs to happen here
             return None
         self.union_types_to_suppress.append(node)
+
+
+class SuppressionNotImplementedVisitor(Visitor):
+    def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+        """Create a visitor to check that renamings does not attempt to suppress enums/interfaces
+
+        Args:
+            renamings: from original field name to renamed field name or None (for type
+                       suppression). Any name not in the dict will be unchanged
+            query_type: name of the query type (e.g. RootSchemaQuery)
+        """
+        self.renamings = renamings
+        self.query_type = query_type
+        self.attempted_enum_suppressions: Set = set()
+        self.attempted_interface_suppressions: Set = set()
+
+    def enter_enum_type_definition(
+        self,
+        node: EnumTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
+        enum_name = node.name.value
+        if self.renamings.get(enum_name, enum_name) is None:
+            self.attempted_enum_suppressions.add(enum_name)
+
+    def enter_interface_type_definition(
+        self,
+        node: InterfaceTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
+        interface_name = node.name.value
+        if self.renamings.get(interface_name, interface_name) is None:
+            self.attempted_interface_suppressions.add(interface_name)
