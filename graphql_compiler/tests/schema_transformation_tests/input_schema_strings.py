@@ -68,32 +68,6 @@ class InputSchemaStrings(object):
     """
     )
 
-    extra_enum_schema = dedent(
-        """\
-        schema {
-          query: SchemaQuery
-        }
-
-        type Droid {
-          height: Height
-        }
-
-        type SchemaQuery {
-          Droid: Droid
-        }
-
-        enum Height {
-          TALL
-          SHORT
-        }
-
-        enum Size {
-          BIG
-          SMALL
-        }
-    """
-    )
-
     interface_schema = dedent(
         """\
         schema {
