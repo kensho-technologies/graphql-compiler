@@ -2,6 +2,7 @@
 from collections import OrderedDict, namedtuple
 from copy import copy
 
+from graphql import TypeInfo, TypeInfoVisitor, Visitor, validate, visit
 from graphql.language.ast import (
     ArgumentNode,
     DirectiveNode,
@@ -15,7 +16,6 @@ from graphql.language.ast import (
     SelectionSetNode,
     StringValueNode,
 )
-from graphql import TypeInfo, TypeInfoVisitor, Visitor, validate, visit
 import six
 
 from ..ast_manipulation import get_only_query_definition
