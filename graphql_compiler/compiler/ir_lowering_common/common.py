@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple, Union
 from typing_extensions import TypedDict
 
 import six
@@ -110,7 +110,7 @@ def lower_context_field_existence(
 
     new_ir_blocks = []
     for block in ir_blocks:
-        new_block = None
+        new_block: BasicBlock
         if isinstance(block, ConstructResult):
             new_block = block.visit_and_update_expressions(construct_result_visitor_fn)
         else:
@@ -158,7 +158,7 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlock]) -> List
     """
     operator_inverses = {"=": "!=", "!=": "="}
 
-    def visitor_fn(expression: Expression) -> Any:
+    def visitor_fn(expression: Expression) -> Expression:
         """Expression visitor function that performs the above rewriting."""
         if not isinstance(expression, BinaryComposition):
             return expression
@@ -181,15 +181,22 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlock]) -> List
         else:
             return expression
 
-        expression_to_rewrite = None
+        expression_to_rewrite: Optional[BinaryComposition] = None
+        # N.B. the type checks in the last 2 elif statements are disabled because of the following:
+        # ```
+        # Incompatible types in assignment (expression has type "Expression", variable has type
+        # "Optional[BinaryComposition]")
+        # ```
+        # However, given the logic, we know that `right_is_binary_composition` is even more
+        # specifically that the right is BinaryComposition, not a basic Expression
         if expression.left == identity_literal and right_is_binary_composition:
             return expression.right
         elif expression.right == identity_literal and left_is_binary_composition:
             return expression.left
         elif expression.left == inverse_literal and right_is_binary_composition:
-            expression_to_rewrite = expression.right
+            expression_to_rewrite = expression.right  # type: ignore
         elif expression.right == inverse_literal and left_is_binary_composition:
-            expression_to_rewrite = expression.left
+            expression_to_rewrite = expression.left  # type: ignore
 
         if expression_to_rewrite is None:
             # We couldn't find anything to rewrite, return the expression as-is.
