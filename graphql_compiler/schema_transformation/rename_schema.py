@@ -217,48 +217,6 @@ def _validate_renamings(
     _ensure_no_unsupported_suppression(schema_ast, renamings, query_type)
 
 
-def _ensure_no_unsupported_suppression(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
-) -> None:
-    """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
-    visitor = SuppressionNotImplementedVisitor(renamings, query_type)
-    visit(schema_ast, visitor)
-    if (
-        not visitor.unsupported_enum_suppressions
-        and not visitor.unsupported_interface_suppressions
-        and not visitor.unsupported_interface_implementation_suppressions
-    ):
-        return
-    # Otherwise, attempted to suppress something we shouldn't suppress.
-    error_message_components = [
-        f"Type renamings {renamings} attempted to suppress parts of the schema for which "
-        f"suppression is not implemented yet, but is intended to be renamed."
-    ]
-    if visitor.unsupported_enum_suppressions:
-        error_message_components.append(
-            f"Type renamings mapped these schema enums to None: "
-            f"{visitor.unsupported_enum_suppressions}, attempting to suppress them. However, "
-            f"schema renaming has not implemented enum suppression yet."
-        )
-    if visitor.unsupported_interface_suppressions:
-        error_message_components.append(
-            f"Type renamings mapped these schema interfaces to None: "
-            f"{visitor.unsupported_interface_suppressions}, attempting to suppress them. However, "
-            f"schema renaming has not implemented interface suppression yet."
-        )
-    if visitor.unsupported_interface_implementation_suppressions:
-        error_message_components.append(
-            f"Type renamings mapped these object types to None: "
-            f"{visitor.unsupported_interface_implementation_suppressions}, attempting to suppress "
-            f"them. Normally, this would be fine. However, these types each implement at least one "
-            f"interface and schema renaming has not implemented this particular suppression yet."
-        )
-    error_message_components.append(
-        f"To avoid these suppressions, remove the mappings from the renamings argument."
-    )
-    raise NotImplementedError("\n".join(error_message_components))
-
-
 def _check_for_cascading_type_suppression(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> None:
@@ -307,6 +265,48 @@ def _check_for_cascading_type_suppression(
                 f"getting a legal schema."
             )
         raise CascadingSuppressionError("".join(error_message_components))
+
+
+def _ensure_no_unsupported_suppression(
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+) -> None:
+    """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
+    visitor = SuppressionNotImplementedVisitor(renamings, query_type)
+    visit(schema_ast, visitor)
+    if (
+        not visitor.unsupported_enum_suppressions
+        and not visitor.unsupported_interface_suppressions
+        and not visitor.unsupported_interface_implementation_suppressions
+    ):
+        return
+    # Otherwise, attempted to suppress something we shouldn't suppress.
+    error_message_components = [
+        f"Type renamings {renamings} attempted to suppress parts of the schema for which "
+        f"suppression is not implemented yet, but is intended to be renamed."
+    ]
+    if visitor.unsupported_enum_suppressions:
+        error_message_components.append(
+            f"Type renamings mapped these schema enums to None: "
+            f"{visitor.unsupported_enum_suppressions}, attempting to suppress them. However, "
+            f"schema renaming has not implemented enum suppression yet."
+        )
+    if visitor.unsupported_interface_suppressions:
+        error_message_components.append(
+            f"Type renamings mapped these schema interfaces to None: "
+            f"{visitor.unsupported_interface_suppressions}, attempting to suppress them. However, "
+            f"schema renaming has not implemented interface suppression yet."
+        )
+    if visitor.unsupported_interface_implementation_suppressions:
+        error_message_components.append(
+            f"Type renamings mapped these object types to None: "
+            f"{visitor.unsupported_interface_implementation_suppressions}, attempting to suppress "
+            f"them. Normally, this would be fine. However, these types each implement at least one "
+            f"interface and schema renaming has not implemented this particular suppression yet."
+        )
+    error_message_components.append(
+        f"To avoid these suppressions, remove the mappings from the renamings argument."
+    )
+    raise NotImplementedError("\n".join(error_message_components))
 
 
 class RenameSchemaTypesVisitor(Visitor):
