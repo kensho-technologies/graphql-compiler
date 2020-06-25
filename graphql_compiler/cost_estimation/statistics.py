@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 import datetime
+import math
 from typing import Any, Optional
 
 import six
@@ -172,6 +173,8 @@ class LocalStatistics(Statistics):
         self._vertex_edge_vertex_counts = vertex_edge_vertex_counts
         self._distinct_field_values_counts = distinct_field_values_counts
         self._field_quantiles = field_quantiles
+        self._sampled_value_counts = {}  # TODO initialize
+        self._sample_ratio = 1000  # TODO initialize
 
     def get_class_count(self, class_name):
         """See base class."""
@@ -196,7 +199,18 @@ class LocalStatistics(Statistics):
 
     def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[int]:
         """See base class."""
-        # TODO(bojanserafimov): There's currently no way to supply value counts, so we return
-        #                       None (unknown). Once this is implemented, make sure to test
-        #                       behavior that depends on it: estimation of "=" filter selectivity.
-        return None
+        field_sampled_value_counts = self._sampled_value_counts.get(vertex_name, {}).get(field_name)
+        if field_sampled_value_counts is None:
+            return None
+
+        sampled_value_count = field_sampled_value_counts.get(value)
+        if sampled_value_count:
+            return sampled_value_count * self._sample_ratio
+        else:
+            # We want to minimize the error ratio: max(true_value/estimate, estimate/true_value).
+            # By rule of 3 (https://en.wikipedia.org/wiki/Rule_of_three_(statistics)), we have 95%
+            # confidence that the true value count is less than (3 * self._sample_ratio). So we have
+            # 95% confidence that the error ratio is at most math.sqrt(3 * self._sample_ratio). Some
+            # intuition: with a sample ratio of 1000 the error ratio bound evaluates to about
+            # sqrt(3000) = 55.
+            return math.sqrt(3 * self._sample_ratio)
