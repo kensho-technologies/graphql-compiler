@@ -164,7 +164,7 @@ def _get_query_interval_of_integer_inequality_filter(
 
 
 # TODO(bojanserafimov): This function can be simplified, as len(filter_fields) is always 1.
-def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_fields):
+def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_info, parameters):
     """Calculate the selectivity of equality filter(s) at a given location.
 
     Using the available unique indexes and/or the distinct_field_values_count statistic, this
@@ -174,7 +174,8 @@ def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_
     Args:
         schema_info: QueryPlanningSchemaInfo
         location_name: string, type of the location being filtered
-        filter_fields: tuple of str, listing all the fields being filtered over
+        filter_info: FilterInfo describing an equality filter
+        parameters: dict, the runtime parameters
 
     Returns:
         Selectivity object, the selectivity of an specific equality filter at a given location.
@@ -182,21 +183,32 @@ def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_
     all_selectivities = []
 
     unique_indexes = schema_info.schema_graph.get_unique_indexes_for_class(location_name)
-    if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
+    if _are_filter_fields_uniquely_indexed(filter_info.fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
         all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
+    elif len(filter_info.fields) == 1:
+        filter_field = filter_info.fields[0]
+        filter_value = None
+        if len(filter_info.args) == 1:
+            filter_arg = filter_info.args[0]
+            if is_runtime_parameter(filter_arg):
+                filter_value = parameters[get_parameter_name(filter_arg)]
 
-    for field_name in filter_fields:
-        statistics_result = schema_info.statistics.get_distinct_field_values_count(
-            location_name, field_name
+        value_count = schema_info.statistics.get_value_count(
+            location_name, filter_field, filter_value
+        )
+        distinct_field_values_count = schema_info.statistics.get_distinct_field_values_count(
+            location_name, filter_field
         )
 
-        if statistics_result is not None:
+        if value_count is not None:
+            all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=value_count))
+        elif distinct_field_values_count is not None:
             # Assumption: all distinct field values are distributed evenly among vertex instances,
             # so each distinct value occurs
             # (# of current location vertex instances) / (# of distinct field values) times.
             all_selectivities.append(
-                Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / statistics_result)
+                Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / distinct_field_values_count)
             )
 
     result_selectivity = _combine_filter_selectivities(all_selectivities)
@@ -408,7 +420,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 #                       by the inequality filters.
                 collection = parameters[get_parameter_name(filter_info.args[0])]
                 selectivity_per_entry_in_collection = _estimate_filter_selectivity_of_equality(
-                    schema_info, location_name, filter_info.fields
+                    schema_info, location_name, filter_info, parameters
                 )
 
                 # Assumption: the selectivity is proportional to the number of entries in
@@ -437,7 +449,7 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 # TODO(bojanserafimov): Check if the filter value is in the interval selected
                 #                       by the inequality filters.
                 selectivity = _estimate_filter_selectivity_of_equality(
-                    schema_info, location_name, filter_info.fields
+                    schema_info, location_name, filter_info, parameters
                 )
                 selectivity_at_field = _combine_filter_selectivities(
                     [selectivity_at_field, selectivity]

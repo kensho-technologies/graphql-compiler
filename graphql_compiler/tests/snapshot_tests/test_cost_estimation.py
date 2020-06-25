@@ -1086,7 +1086,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         classname = "Animal"
 
         empty_statistics = LocalStatistics(dict())
-        params: Dict[str, Any] = {}
+        params: Dict[str, Any] = {
+            "description": "big animal",
+            "birthday": datetime(2019, 3, 1),
+        }
 
         # If we '='-filter on a property that isn't an index, with no distinct-field-values-count
         # statistics, return a fractional selectivity of 1.

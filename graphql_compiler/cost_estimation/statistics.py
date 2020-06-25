@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 import datetime
+from typing import Any, Optional
 
 import six
 
@@ -97,6 +98,20 @@ class Statistics(object):
         """
         return None
 
+    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[int]:
+        """Return the estimated number of times the given value appears in the database.
+
+        Args:
+            vertex_name: vertex on which the field is defined
+            field_name: field for which the value stands
+            value: value to be counted
+
+        Returns:
+            An estimate on how often this value currently appears in the given field, or None
+            if unkwnown.
+        """
+        return None
+
 
 class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
@@ -178,3 +193,10 @@ class LocalStatistics(Statistics):
         """See base class."""
         statistic_key = (vertex_name, field_name)
         return self._field_quantiles.get(statistic_key)
+
+    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[int]:
+        """See base class."""
+        # TODO(bojanserafimov): There's currently no way to supply value counts, so we return
+        #                       None (unknown). Once this is implemented, make sure to test
+        #                       behavior that depends on it: estimation of "=" filter selectivity.
+        return None
