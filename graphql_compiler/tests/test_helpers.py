@@ -4,7 +4,7 @@ from collections import namedtuple
 from inspect import getmembers, isfunction
 from pprint import pformat
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
