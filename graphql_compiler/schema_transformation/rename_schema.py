@@ -618,7 +618,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
     ) -> None:
         """Check that each union still has at least one member."""
         union_name = node.name.value
-        # Check if al the union members are suppressed.
+        # Check if all the union members are suppressed.
         for union_member in node.types:
             union_member_type = get_ast_with_non_null_and_list_stripped(union_member).name.value
             if self.renamings.get(union_member_type, union_member_type):
