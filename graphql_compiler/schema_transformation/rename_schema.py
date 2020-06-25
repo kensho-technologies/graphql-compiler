@@ -247,8 +247,7 @@ def _check_for_cascading_type_suppression(
                     f"Union type {union_type} has no non-suppressed members: "
                 )
                 error_message_components += [
-                    union_member.name.value
-                    for union_member in union_type.types
+                    union_member.name.value for union_member in union_type.types
                 ]
             error_message_components.append(
                 "To fix this, you can suppress the union as well by adding `union_type: None` to "
