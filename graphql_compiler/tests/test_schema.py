@@ -7,7 +7,7 @@ import re
 import unittest
 
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
-from graphql.utilities.schema_printer import print_schema
+from graphql.utilities import print_schema
 import pytz
 import six
 

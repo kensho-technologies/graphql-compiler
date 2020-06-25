@@ -2,7 +2,7 @@
 import unittest
 
 from graphql.type import GraphQLList
-from graphql.utilities.schema_printer import print_schema
+from graphql.utilities import print_schema
 from graphql.validation import validate
 
 from ..ast_manipulation import safe_parse_graphql

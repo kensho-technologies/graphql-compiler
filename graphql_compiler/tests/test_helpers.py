@@ -83,8 +83,8 @@ SCHEMA_TEXT = """
 
     directive @recurse(
         \"\"\"
-        Recurse up to this many times on this edge. A depth of 1 produces the current
-        vertex and its immediate neighbors along the given edge.
+        Recurse up to this many times on this edge. A depth of 1 produces the current \
+vertex and its immediate neighbors along the given edge.
         \"\"\"
         depth: Int!
     ) on FIELD

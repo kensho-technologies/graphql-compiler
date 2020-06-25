@@ -11,7 +11,7 @@ from graphql.type import (
     GraphQLObjectType,
     GraphQLScalarType,
 )
-from graphql.utilities.schema_printer import print_schema
+from graphql.utilities import print_schema
 from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table

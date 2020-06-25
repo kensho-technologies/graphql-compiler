@@ -57,7 +57,7 @@ setup(
     install_requires=[  # Make sure to keep in sync with Pipfile requirements.
         "arrow>=0.15.0,<1",
         "funcy>=1.7.3,<2",
-        "graphql-core>=3,<3.1",
+        "graphql-core>=3.1,<3.2",
         "pytz>=2017.2",
         "six>=1.10.0",
         "sqlalchemy>=1.3.0,<2",
