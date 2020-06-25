@@ -84,7 +84,7 @@ teardown. These can be optionally skipped during development by running:
 
 .. code:: bash
 
-   pytest -m 'no-slow'
+   pytest -m 'not slow'
 
 If you run into any issues, please consult the :ref:`troubleshooting guide <troubleshooting>`.
 If you encounter and resolve an issue that is not already part of the

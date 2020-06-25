@@ -11,7 +11,7 @@ from graphql.type import (
     GraphQLObjectType,
     GraphQLScalarType,
 )
-from graphql.utilities.schema_printer import print_schema
+from graphql.utilities import print_schema
 from parameterized import parameterized
 import pytest
 from sqlalchemy import Column, Integer, MetaData, String, Table
@@ -25,8 +25,13 @@ from ...schema_generation.sqlalchemy.sqlalchemy_reflector import (
     get_first_column_in_table,
 )
 from ...tests import test_backend
-from ...tests.test_helpers import generate_schema, generate_schema_graph
-from ..test_helpers import SCHEMA_TEXT, compare_ignoring_whitespace, get_schema
+from ..test_helpers import (
+    SCHEMA_TEXT,
+    compare_schema_texts_order_independently,
+    generate_schema,
+    generate_schema_graph,
+    get_schema,
+)
 from .integration_backend_config import (
     MATCH_BACKENDS,
     NEO4J_BACKENDS,
@@ -712,7 +717,7 @@ class IntegrationTests(TestCase):
             class_to_field_type_overrides=class_to_field_type_overrides,
             hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME},
         )
-        compare_ignoring_whitespace(self, SCHEMA_TEXT, print_schema(schema), None)
+        compare_schema_texts_order_independently(self, SCHEMA_TEXT, print_schema(schema))
 
     @integration_fixtures
     def test_override_field_types(self) -> None:

@@ -168,13 +168,6 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _assert_not_equal_fingerprints(self, schema_text1, schema_text2)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Type extension information is lost when a schema is print and parsed. "
-            "See https://github.com/graphql/graphql-js/issues/2386"
-        ),
-    )
     def test_field_equivalency_with_type_extension(self):
         schema_text1 = """
             type Object {
@@ -192,13 +185,6 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _assert_equal_fingerprints(self, schema_text1, schema_text2)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Type extension information is lost when a schema is print and parsed. "
-            "See https://github.com/graphql/graphql-js/issues/2386"
-        ),
-    )
     def test_interface_equivalency_with_type_extension(self):
         schema_text1 = """
             type Object {
@@ -216,13 +202,6 @@ class SchemaFingerprintTests(unittest.TestCase):
         """
         _assert_equal_fingerprints(self, schema_text1, schema_text2)
 
-    @pytest.mark.xfail(
-        strict=True,
-        reason=(
-            "Type extension information is lost when a schema is print and parsed. "
-            "See https://github.com/graphql/graphql-js/issues/2386"
-        ),
-    )
     def test_different_type_extensions(self):
         schema_text1 = """
             type Object {

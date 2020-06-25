@@ -14,8 +14,7 @@ from graphql.language.ast import (
 )
 from graphql.language.printer import print_ast
 from graphql.pyutils import FrozenList
-from graphql.utilities.build_ast_schema import build_ast_schema
-from graphql.utilities.schema_printer import print_schema
+from graphql.utilities import build_ast_schema, print_schema
 import six
 
 from ..ast_manipulation import safe_parse_graphql
