@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
+from textwrap import dedent
 
 from graphql import build_ast_schema
 from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
@@ -13,8 +14,6 @@ import six
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..exceptions import GraphQLError, GraphQLValidationError
 from ..schema import FilterDirective, OptionalDirective, OutputDirective
-# Copyright 2019-present Kensho Technologies, LLC.
-from textwrap import dedent
 
 
 class SchemaTransformError(GraphQLError):

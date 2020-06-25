@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Tuple, TypeVar, Union, cast, Optional, Set
+from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -13,18 +13,21 @@ from graphql import (
     UnionTypeDefinitionNode,
     build_ast_schema,
 )
-from graphql.language.visitor import IDLE, Visitor, visit, REMOVE
+from graphql.language.visitor import IDLE, REMOVE, Visitor, visit
 import six
 
+from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
+    CascadingSuppressionError,
     SchemaNameConflictError,
+    SchemaTransformError,
     check_ast_schema_is_valid,
     check_type_name_is_valid,
     get_copy_of_node_with_new_name,
     get_query_type_name,
-    get_scalar_names, CascadingSuppressionError, SchemaTransformError,
+    get_scalar_names,
 )
-from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
+
 
 RenamedSchemaDescriptor = namedtuple(
     "RenamedSchemaDescriptor",
@@ -214,11 +217,17 @@ def _validate_renamings(
     _ensure_no_unsupported_suppression(schema_ast, renamings, query_type)
 
 
-def _ensure_no_unsupported_suppression(schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+def _ensure_no_unsupported_suppression(
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+) -> None:
     """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
     visitor = SuppressionNotImplementedVisitor(renamings, query_type)
     visit(schema_ast, visitor)
-    if not visitor.unsupported_enum_suppressions and not visitor.unsupported_interface_suppressions and not visitor.unsupported_interface_implementation_suppressions:
+    if (
+        not visitor.unsupported_enum_suppressions
+        and not visitor.unsupported_interface_suppressions
+        and not visitor.unsupported_interface_implementation_suppressions
+    ):
         return
     # Otherwise, attempted to suppress something we shouldn't suppress.
     error_message_components = [
@@ -226,16 +235,33 @@ def _ensure_no_unsupported_suppression(schema_ast: DocumentNode, renamings: Mapp
         f"suppression is not implemented yet, but is intended to be renamed."
     ]
     if visitor.unsupported_enum_suppressions:
-        error_message_components.append(f"Type renamings mapped these schema enums to None: {visitor.unsupported_enum_suppressions}, attempting to suppress them. However, schema renaming has not implemented enum suppression yet.")
+        error_message_components.append(
+            f"Type renamings mapped these schema enums to None: "
+            f"{visitor.unsupported_enum_suppressions}, attempting to suppress them. However, "
+            f"schema renaming has not implemented enum suppression yet."
+        )
     if visitor.unsupported_interface_suppressions:
-        error_message_components.append(f"Type renamings mapped these schema interfaces to None: {visitor.unsupported_interface_suppressions}, attempting to suppress them. However, schema renaming has not implemented enum suppression yet.")
+        error_message_components.append(
+            f"Type renamings mapped these schema interfaces to None: "
+            f"{visitor.unsupported_interface_suppressions}, attempting to suppress them. However, "
+            f"schema renaming has not implemented interface suppression yet."
+        )
     if visitor.unsupported_interface_implementation_suppressions:
-        error_message_components.append(f"Type renamings mapped these object types to None: {visitor.unsupported_interface_implementation_suppressions}, attempting to suppress them. Normally, this would be fine. However, these types each implement at least one interface and schema renaming has not implemented this particular suppression yet.")
-    error_message_components.append(f"To avoid these suppressions, remove the mappings from the renamings argument.")
+        error_message_components.append(
+            f"Type renamings mapped these object types to None: "
+            f"{visitor.unsupported_interface_implementation_suppressions}, attempting to suppress "
+            f"them. Normally, this would be fine. However, these types each implement at least one "
+            f"interface and schema renaming has not implemented this particular suppression yet."
+        )
+    error_message_components.append(
+        f"To avoid these suppressions, remove the mappings from the renamings argument."
+    )
     raise NotImplementedError("\n".join(error_message_components))
 
 
-def _check_for_cascading_type_suppression(schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+def _check_for_cascading_type_suppression(
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+) -> None:
     """Check for fields with suppressed types or unions whose members were all suppressed."""
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
     visit(schema_ast, visitor)
@@ -256,11 +282,13 @@ def _check_for_cascading_type_suppression(schema_ast: DocumentNode, renamings: M
                 ]
                 error_message_components.append("\n")
             error_message_components.append(
-                "\nField suppression hasn't been implemented yet, but when it is, you can fix this problem by suppressing the fields described here."
+                "\nField suppression hasn't been implemented yet, but when it is, you can fix this "
+                "problem by suppressing the fields described here."
             )
         if visitor.union_types_to_suppress:
             error_message_components.append(
-                f"There exists at least one union that would have all of its member types suppressed:\n"
+                f"There exists at least one union that would have all of its member types "
+                f"suppressed:\n"
             )
             for union_type in visitor.union_types_to_suppress:
                 error_message_components.append(
@@ -272,9 +300,11 @@ def _check_for_cascading_type_suppression(schema_ast: DocumentNode, renamings: M
                 ]
                 error_message_components.append("\n")
             error_message_components.append(
-                f"\nTo fix this, you can suppress the union as well by adding `union_type: None` to the `renamings` argument of `rename_schema`, for each value of union_type described here. Note that "
-                f"adding suppressions may lead to other types, fields, unions, etc. requiring "
-                f"suppression so you may need to iterate on this before getting a legal schema."
+                f"\nTo fix this, you can suppress the union as well by adding `union_type: None` "
+                f"to the `renamings` argument of `rename_schema`, for each value of union_type "
+                f"described here. Note that adding suppressions may lead to other types, fields, "
+                f"unions, etc. requiring suppression so you may need to iterate on this before "
+                f"getting a legal schema."
             )
         raise CascadingSuppressionError("".join(error_message_components))
 
@@ -344,7 +374,10 @@ class RenameSchemaTypesVisitor(Visitor):
     )
 
     def __init__(
-        self, renamings: Mapping[str, Optional[str]], query_type: str, scalar_types: AbstractSet[str]
+        self,
+        renamings: Mapping[str, Optional[str]],
+        query_type: str,
+        scalar_types: AbstractSet[str],
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
