@@ -1153,6 +1153,11 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+        # TODO(bojanserafimov): Test with:
+        # - value_count stats on the datetime value from the = filter
+        # - value_count stats on the datetime field, but not on the value used in the filter
+        # - both distinct_field_values_count and value_count statistics available
+
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_in_collection_filter_selectivity(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
