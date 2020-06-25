@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
-from textwrap import dedent
 
 from graphql import build_ast_schema
 from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
@@ -60,6 +59,7 @@ class InvalidCrossSchemaEdgeError(SchemaTransformError):
 
 class CascadingSuppressionError(SchemaTransformError):
     """Raised if existing suppressions would require further suppressions.
+
     This may be raised during schema renaming if it suppresses all the fields of a type but not the
     type itself, if it suppresses all the members of a union but not the union itself, or if it
     suppresses a type but fails to suppress all fields that depend on that type.

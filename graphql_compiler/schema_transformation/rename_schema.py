@@ -195,7 +195,7 @@ def _rename_query_type_fields(
 def _validate_renamings(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> None:
-    """Validates the renamings argument before attempting to rename the schema.
+    """Validate the renamings argument before attempting to rename the schema.
 
     Check for fields with suppressed types or unions whose members were all suppressed. Also,
     confirm renamings contains no enums, interfaces, or interface implementation suppressions
@@ -247,15 +247,15 @@ def _check_for_cascading_type_suppression(
                     f"Union type {union_type} has no non-suppressed members: "
                 )
                 error_message_components += [
-                    get_ast_with_non_null_and_list_stripped(union_member).name.value
+                    union_member.name.value
                     for union_member in union_type.types
                 ]
             error_message_components.append(
-                f"To fix this, you can suppress the union as well by adding `union_type: None` "
-                f"to the `renamings` argument of `rename_schema`, for each value of `union_type` "
-                f"described here. Note that adding suppressions may lead to other types, fields, "
-                f"unions, etc. requiring suppression so you may need to iterate on this before "
-                f"getting a legal schema."
+                "To fix this, you can suppress the union as well by adding `union_type: None` to "
+                "the `renamings` argument of `rename_schema`, for each value of `union_type` "
+                "described here. Note that adding suppressions may lead to other types, fields, "
+                "unions, etc. requiring suppression so you may need to iterate on this before "
+                "getting a legal schema."
             )
         raise CascadingSuppressionError("\n".join(error_message_components))
 
@@ -297,7 +297,7 @@ def _ensure_no_unsupported_suppression(
             f"interface and schema renaming has not implemented this particular suppression yet."
         )
     error_message_components.append(
-        f"To avoid these suppressions, remove the mappings from the renamings argument."
+        "To avoid these suppressions, remove the mappings from the renamings argument."
     )
     raise NotImplementedError("\n".join(error_message_components))
 
@@ -400,7 +400,11 @@ class RenameSchemaTypesVisitor(Visitor):
                   corresponding to an AST node of type NameNode.
 
         Returns:
-            Node object or REMOVE. REMOVE is a special return value defined by the GraphQL library. A visitor function returns REMOVE to delete the node it's currently at. This function returns REMOVE to suppress types. If the current node is not to be suppressed, it returns a Node object identical to the input node, except with possibly a new name. If the name was not changed, the returned object is the exact same object as the input
+            Node object or REMOVE. A visitor function returns REMOVE (a special return value defined
+            by the GraphQL library) to delete the node it's currently at. This function returns
+            REMOVE to suppress types. If the current node is not to be suppressed, it returns a Node
+            object identical to the input node, except with possibly a new name. If the name was not
+            changed, the returned object is the exact same object as the input
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
@@ -537,6 +541,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
 class CascadingSuppressionCheckVisitor(Visitor):
     def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
+
         Args:
             renamings: Dict[str, Optional[str]], from original field name to renamed field name or
                        None (for type suppression). Any name not in the dict will be unchanged
@@ -544,7 +549,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         """
         self.renamings = renamings
         self.query_type = query_type
-        self.current_type = None
+        self.current_type: Optional[str] = None
         # Maps a type T to a dict which maps a field F belonging to T to the field's type T'
         self.fields_to_suppress: Dict[str, Dict[str, str]] = {}
         # Record any unions to suppress because all their types were suppressed
@@ -591,8 +596,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
         # Reaching this point means this field is of a type to be suppressed.
         if self.current_type is None:
             raise AssertionError(
-                f"Entered a field not in any ObjectTypeDefinition scope because "
-                f"self.current_type is None"
+                "Entered a field not in any ObjectTypeDefinition scope because "
+                "self.current_type is None"
             )
         if self.current_type == field_type:
             # Then node corresponds to a field belonging to type T that is also of type T.
@@ -629,7 +634,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
 
 class SuppressionNotImplementedVisitor(Visitor):
     def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
-        """Create a visitor to check that renamings does not attempt to suppress enums/interfaces
+        """Confirm renamings does not attempt to suppress enum/interface/interface implementation.
 
         Args:
             renamings: from original field name to renamed field name or None (for type
@@ -650,6 +655,7 @@ class SuppressionNotImplementedVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
+        """If renamings has enum suppression, record it for error message."""
         enum_name = node.name.value
         if self.renamings.get(enum_name, enum_name) is None:
             self.unsupported_enum_suppressions.add(enum_name)
@@ -662,6 +668,7 @@ class SuppressionNotImplementedVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
+        """If renamings has interface suppression, record it for error message."""
         interface_name = node.name.value
         if self.renamings.get(interface_name, interface_name) is None:
             self.unsupported_interface_suppressions.add(interface_name)
@@ -674,6 +681,7 @@ class SuppressionNotImplementedVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
+        """If renamings has interface implementation suppression, record it for error message."""
         if not node.interfaces:
             return
         if self.renamings.get(node.name.value, node.name.value) is None:
