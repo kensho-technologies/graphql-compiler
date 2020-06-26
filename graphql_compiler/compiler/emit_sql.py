@@ -26,6 +26,7 @@ from .compiler_entities import BasicBlock
 from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
 from .helpers import (
+    get_vertex_path,
     BaseLocation,
     FoldPath,
     FoldScopeLocation,
@@ -88,52 +89,42 @@ def _find_columns_used_outside_folds(
 
     # Find filters used
     for location, _ in ir.query_metadata_table.registered_locations:
-        if isinstance(location, FoldScopeLocation):
-            continue
         for filter_info in ir.query_metadata_table.get_filter_infos(location):
             for field in filter_info.fields:
-                used_columns.setdefault(location.query_path, set()).add(field)
+                used_columns.setdefault(get_vertex_path(location), set()).add(field)
 
     # Find foreign keys used
     for location, location_info in ir.query_metadata_table.registered_locations:
         for child_location in ir.query_metadata_table.get_child_locations(location):
-            if isinstance(child_location, FoldScopeLocation):
-                continue
-            edge_direction, edge_name = get_edge_direction_and_name(child_location.query_path[-1])
+            edge_direction, edge_name = get_edge_direction_and_name(get_vertex_path(child_location)[-1])
             vertex_field_name = f"{edge_direction}_{edge_name}"
             edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
-            used_columns.setdefault(location.query_path, set()).add(edge.from_column)
-            used_columns.setdefault(child_location.query_path, set()).add(edge.to_column)
+            used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
+            used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.to_column)
 
             # A recurse implies an outgoing foreign key usage
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
-                used_columns.setdefault(child_location.query_path, set()).add(edge.from_column)
+                used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.from_column)
 
     # Find outputs used
     for _, output_info in ir.query_metadata_table.outputs:
-        if isinstance(output_info.location, FoldScopeLocation):
-            continue
-        query_path = output_info.location.query_path
+        query_path = get_vertex_path(output_info.location)
         used_columns.setdefault(query_path, set()).add(output_info.location.field)
 
     # Find tags used
     for _, output_info in ir.query_metadata_table.tags:
-        if isinstance(output_info.location, FoldScopeLocation):
-            continue
-        query_path = output_info.location.query_path
+        query_path = get_vertex_path(output_info.location)
         used_columns.setdefault(query_path, set()).add(output_info.location.field)
 
     # Columns used in the base case of CTE recursions should be made available from parent scope
     for location, _ in ir.query_metadata_table.registered_locations:
-        if isinstance(location, FoldScopeLocation):
-            continue
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
             traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
-            used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
-                used_columns[location.query_path + (traversal,)]
+            used_columns[get_vertex_path(location)] = used_columns.get(get_vertex_path(location), set()).union(
+                used_columns[get_vertex_path(location) + (traversal,)]
             )
-            used_columns[location.query_path].add(edge.from_column)
+            used_columns[get_vertex_path(location)].add(edge.from_column)
 
     return used_columns
 
@@ -935,17 +926,21 @@ class CompilationState(object):
         Returns:
             name of the single-column primary key
         """
-        if self._current_alias is None or not self._current_alias.primary_key:
+
+        primary_keys = self._sql_schema_info.vertex_name_to_table[self._current_classname].alias().primary_key
+
+        if not primary_keys:
             raise AssertionError(
                 f"The table for vertex {self._current_classname} has no primary key specified. "
                 f"This information is required to emit a {directive_name} directive."
             )
-        if len(self._current_alias.primary_key) > 1:
+        if len(primary_keys) > 1:
             raise NotImplementedError(
                 f"The table for vertex {self._current_classname} has a composite primary key "
                 f"{self._current_alias.primary_key}. The SQL backend does not support "
                 f"{directive_name} on tables with composite primary keys."
             )
+
         return str(self._current_alias.primary_key[0].name)
 
     def recurse(self, vertex_field: str, depth: int) -> None:
@@ -1007,6 +1002,9 @@ class CompilationState(object):
         # Instead of joining to the current _from_clause, we make this alias the _from_clause.
         # If the existing _from_clause had any information in it, then the _current_alias would
         # be a cte that contains all that information.
+        # TODO(bojanserafimov): If the existing _from_clause had no filters or traversals, but
+        #                       had an output, the output needs to be moved into the cte or
+        #                       we need to join to the _from_clause.
         self._from_clause = self._current_alias
 
     def start_global_operations(self) -> None:

@@ -5423,6 +5423,74 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
+    def test_fold_after_recurse(self):
+        test_data = test_input_data.fold_after_recurse()
+
+        expected_postgresql = SKIP_TEST
+        expected_mssql = """
+        WITH anon_1(lives_in, parent, uuid, __cte_key, __cte_depth) AS (
+            SELECT
+                [Animal_1].lives_in AS lives_in,
+                [Animal_1].parent AS parent,
+                [Animal_1].uuid AS uuid,
+                [Animal_1].uuid AS __cte_key,
+                0 AS __cte_depth
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+            UNION ALL
+            SELECT
+                [Animal_2].lives_in AS lives_in,
+                [Animal_2].parent AS parent,
+                [Animal_2].uuid AS uuid,
+                anon_1.__cte_key AS __cte_key,
+                anon_1.__cte_depth + 1 AS __cte_depth
+            FROM
+                anon_1 JOIN db_1.schema_1.[Animal] AS [Animal_2]
+                    ON anon_1.uuid = [Animal_2].parent
+            WHERE
+                anon_1.__cte_depth < 3
+        )
+        SELECT
+            [Animal_1].name AS animal_name,
+            folded_subquery_1.fold_output_name AS homes_list
+        FROM
+            db_1.schema_1.[Animal] AS [Animal_1],
+            anon_1 JOIN (
+                SELECT
+                    anon_2.uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Location_1].name, '^', '^e'),
+                                    '~',
+                                    '^n'),
+                                '|',
+                                '^d'),
+                            '~')
+                        FROM
+                            db_1.schema_1.[Location] AS [Location_1]
+                        WHERE
+                            anon_2.lives_in = [Location_1].uuid FOR XML PATH ('')),
+                   '') AS fold_output_name
+                FROM anon_1 AS anon_2
+            ) AS folded_subquery_1
+                ON anon_1.uuid = folded_subquery_1.uuid
+        """
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_cypher = SKIP_TEST
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
     def test_fold_on_two_output_variables(self):
         test_data = test_input_data.fold_on_two_output_variables()
 
