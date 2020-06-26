@@ -402,7 +402,9 @@ class RenameSchemaTypesVisitor(Visitor):
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
 
-    def _rename_name_and_add_to_record(self, node: RenameTypesT) -> RenameTypesT:
+    def _rename_or_suppress_or_ignore_name_and_add_to_record(
+        self, node: RenameTypesT
+    ) -> RenameTypesT:
         """Change the name of the input node if necessary, add the name pair to reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -428,7 +430,7 @@ class RenameSchemaTypesVisitor(Visitor):
         name_string = node.name.value
 
         if name_string == self.query_type or name_string in self.scalar_types:
-            return node
+            return IDLE
 
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
         if new_name_string is None:
@@ -454,7 +456,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
         self.reverse_name_map[new_name_string] = name_string
         if new_name_string == name_string:
-            return node
+            return IDLE
         else:  # Make copy of node with the changed name, return the copy
             node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
@@ -468,14 +470,11 @@ class RenameSchemaTypesVisitor(Visitor):
             # Do nothing, continue traversal
             return IDLE
         elif node_type in self.rename_types:
-            # Rename node, put name pair into record
-            renamed_node = self._rename_name_and_add_to_record(cast(RenameTypes, node))
-            if renamed_node is node:  # Name unchanged, continue traversal
-                return IDLE
-            else:
-                # Name changed or suppressed, return new node, `visit` will make shallow copies
-                # along path
-                return renamed_node
+            # Process the node by either renaming, suppressing, or not doing anything with it
+            # (depending on what renamings specifies)
+            return self._rename_or_suppress_or_ignore_name_and_add_to_record(
+                cast(RenameTypes, node)
+            )
         else:
             # All Node types should've been taken care of, this line should never be reached
             raise AssertionError('Unreachable code reached. Missed type: "{}"'.format(node_type))
