@@ -600,12 +600,12 @@ class CascadingSuppressionCheckVisitor(Visitor):
     ) -> None:
         """If not at query type, check that no field depends on a type that was suppressed."""
         if self.current_type == self.query_type:
-            return None
+            return IDLE
         # At a field of a type that is not the query type
         field_name = node.name.value
         field_type = get_ast_with_non_null_and_list_stripped(node.type).name.value
         if self.renamings.get(field_type, field_type):
-            return None
+            return IDLE
         # Reaching this point means this field is of a type to be suppressed.
         if self.current_type is None:
             raise AssertionError(
@@ -616,11 +616,11 @@ class CascadingSuppressionCheckVisitor(Visitor):
             # Then node corresponds to a field belonging to type T that is also of type T.
             # Therefore, we don't need to explicitly suppress the field as well and this should not
             # raise errors.
-            return None
+            return IDLE
         if self.current_type not in self.fields_to_suppress:
             self.fields_to_suppress[self.current_type] = {}
         self.fields_to_suppress[self.current_type][field_name] = field_type
-        return None
+        return IDLE
 
     def enter_union_type_definition(
         self,
@@ -646,10 +646,10 @@ class CascadingSuppressionCheckVisitor(Visitor):
             if self.renamings.get(union_member_type, union_member_type):
                 # Then at least one member of the union is not suppressed, so there is no cascading
                 # suppression error concern.
-                return None
+                return IDLE
         if self.renamings.get(union_name):
             # If the union is also suppressed, then nothing needs to happen here
-            return None
+            return IDLE
         self.union_types_to_suppress.append(node)
 
 
