@@ -46,8 +46,9 @@ RenamedSchemaDescriptor = namedtuple(
 # RenameSchemaTypesVisitor class for more information.
 # Unfortunately, RenameTypes itself has to be a module attribute instead of a class attribute
 # because a bug in flake8 produces a linting error if RenameTypes is a class attribute and we type
-# hint the return value of the RenameSchemaTypesVisitor's _rename_name_and_add_to_record() method as
-# RenameTypes. More on this here: https://github.com/PyCQA/pyflakes/issues/441
+# hint the return value of the RenameSchemaTypesVisitor's
+# _rename_or_suppress_or_ignore_name_and_add_to_record() method as RenameTypes. More on this here:
+# https://github.com/PyCQA/pyflakes/issues/441
 # Any is a catch-all because REMOVE is set to the singleton object Ellipsis- see VisitorReturnType's
 # comment.
 RenameTypes = Union[
@@ -405,7 +406,7 @@ class RenameSchemaTypesVisitor(Visitor):
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
     ) -> RenameTypesT:
-        """Change the name of the input node if necessary, add the name pair to reverse_name_map.
+        """Specify input node change based on renamings. If node renamed, update reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
 
@@ -416,11 +417,11 @@ class RenameSchemaTypesVisitor(Visitor):
                   corresponding to an AST node of type NameNode.
 
         Returns:
-            Node object or REMOVE. A visitor function returns REMOVE (a special return value defined
-            by the GraphQL library) to delete the node it's currently at. This function returns
-            REMOVE to suppress types. If the current node is not to be suppressed, it returns a Node
-            object identical to the input node, except with possibly a new name. If the name was not
-            changed, the returned object is the exact same object as the input
+            Node object, REMOVE, or IDLE. The GraphQL library defines special return values REMOVE
+            and IDLE to delete or do nothing with the node a visitor is currently at. If the current
+            node is to be renamed, this function returns a Node object identical to the input node
+            except with a new name. If it is to be suppressed, this function returns REMOVE. If
+            neither of these are the case, this function returns IDLE.
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
