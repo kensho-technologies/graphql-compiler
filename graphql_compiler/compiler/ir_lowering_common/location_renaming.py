@@ -5,7 +5,7 @@ from typing import Any, Callable, Dict, Type
 import six
 
 from ..compiler_entities import Expression
-from ..helpers import FoldScopeLocation, BaseLocation, Location, LocationT
+from ..helpers import BaseLocation, FoldScopeLocation, Location, LocationT
 from ..metadata import QueryMetadataTable
 
 
@@ -24,7 +24,8 @@ def make_revisit_location_translations(
 
 
 def translate_potential_location(
-    location_translations: Dict[Type[BaseLocation], Type[BaseLocation]], potential_location: Type[BaseLocation]
+    location_translations: Dict[Type[BaseLocation], Type[BaseLocation]],
+    potential_location: Type[BaseLocation],
 ) -> Type[BaseLocation]:
     """If the input is a BaseLocation object, translate it, otherwise return it as-is."""
     if isinstance(potential_location, Location):

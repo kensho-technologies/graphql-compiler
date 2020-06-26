@@ -1,9 +1,9 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
-from typing_extensions import TypedDict
+from typing import Any, Dict, List, Optional, Tuple, cast
 
 import six
+from typing_extensions import TypedDict
 
 from ...compiler.compiler_entities import BasicBlockT
 from ..blocks import (
@@ -28,7 +28,7 @@ from ..expressions import (
     TernaryConditional,
     TrueLiteral,
 )
-from ..helpers import BaseLocation, FoldScopeLocation, LocationT, validate_safe_string
+from ..helpers import BaseLocation, FoldScopeLocation, validate_safe_string
 from ..metadata import QueryMetadataTable
 
 
@@ -194,9 +194,9 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlock]) -> List
         elif expression.right == identity_literal and left_is_binary_composition:
             return expression.left
         elif expression.left == inverse_literal and right_is_binary_composition:
-            expression_to_rewrite = expression.right  # type: ignore
+            expression_to_rewrite = cast(BinaryComposition, expression.right)
         elif expression.right == inverse_literal and left_is_binary_composition:
-            expression_to_rewrite = expression.left  # type: ignore
+            expression_to_rewrite = cast(BinaryComposition, expression.left)
 
         if expression_to_rewrite is None:
             # We couldn't find anything to rewrite, return the expression as-is.
@@ -222,8 +222,7 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlock]) -> List
 def extract_folds_from_ir_blocks(
     ir_blocks: List[BasicBlock],
 ) -> Tuple[
-    Dict[FoldScopeLocation, List[BasicBlock]],
-    List[BasicBlock],
+    Dict[FoldScopeLocation, List[BasicBlock]], List[BasicBlock],
 ]:
     """Extract all @fold data from the IR blocks, and cut the folded IR blocks out of the IR.
 
@@ -343,11 +342,7 @@ def extract_optional_location_root_info(
 
 
 SimpleOptionalLocationInfo = TypedDict(
-    "SimpleOptionalLocationInfo",
-    {
-        "inner_location": BaseLocation,
-        "edge_field": str,
-    }
+    "SimpleOptionalLocationInfo", {"inner_location": BaseLocation, "edge_field": str,}
 )
 
 
