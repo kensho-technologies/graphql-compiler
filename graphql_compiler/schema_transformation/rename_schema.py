@@ -85,6 +85,7 @@ def rename_schema(
     Any such names that do not appear in renamings will be unchanged.
 
     Scalars, directives, enum values, and fields not belonging to the root/query type will never be
+    renamed.
 
     Args:
         schema_ast: represents a valid schema that does not contain extensions, input object
@@ -485,7 +486,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
-            renamings: maps original field name to renamed field name or (for type suppression). Any
+            renamings: maps original field name to renamed field name or None (for type suppression). Any
                        name not in the dict will be unchanged
             query_type: name of the query type (e.g. RootSchemaQuery)
         """
