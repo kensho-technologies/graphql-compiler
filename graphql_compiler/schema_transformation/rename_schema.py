@@ -556,9 +556,9 @@ class CascadingSuppressionCheckVisitor(Visitor):
         """Create a visitor to check that suppression does not cause an illegal state.
 
         Args:
-            renamings: Dict[str, Optional[str]], from original field name to renamed field name or
-                       None (for type suppression). Any name not in the dict will be unchanged
-            query_type: str, name of the query type (e.g. RootSchemaQuery)
+            renamings: maps original type name to renamed name or None (for type suppression). Any
+                       name not in the dict will be unchanged
+            query_type: name of the query type (e.g. RootSchemaQuery)
         """
         self.renamings = renamings
         self.query_type = query_type
