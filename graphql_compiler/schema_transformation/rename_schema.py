@@ -1,6 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-"""
-Implement renaming and suppressing parts of the schema.
+"""Implement renaming and suppressing parts of the schema.
 
 Currently you can perform 1-1 renaming of types, unions, enums, and interfaces. You can also
 suppress types that don't implement an interface and suppress unions.
@@ -110,11 +109,14 @@ def rename_schema(
                    Any dict-like object that implements get(key, [default]) may also be used
 
     Returns:
-        RenamedSchemaDescriptor, a namedtuple that contains the AST of the renamed schema, and the
-        map of renamed type/field names to original names. Only renamed names will be included
-        in the map.
+        RenamedSchemaDescriptor containing the AST of the renamed schema, and the map of renamed
+        type/field names to original names. Only renamed names will be included in the map.
 
     Raises:
+        - CascadingSuppressionError if a type suppression would require further suppressions
+        - SchemaTransformError if renaming suppressed every type
+        - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
+          implementing an interface
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
           to rename a type to an invalid name. A name is considered invalid if it does not consist
           of alphanumeric characters and underscores, if it starts with a numeric character, or
@@ -172,7 +174,8 @@ def _validate_renamings(
 
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
-        - NotImplementedError if renamings attempts to suppress an enum or an interface
+        - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
+          implementing an interface
     """
     _check_for_cascading_type_suppression(schema_ast, renamings, query_type)
     _ensure_no_unsupported_suppression(schema_ast, renamings, query_type)
@@ -499,8 +502,8 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
-            renamings: maps original field name to renamed field name or None (for type suppression). Any
-                       name not in the dict will be unchanged
+            renamings: maps original field name to renamed field name or None (for type
+                       suppression). Any name not in the dict will be unchanged
             query_type: name of the query type (e.g. RootSchemaQuery)
         """
         # Note that as field names and type names have been confirmed to match up, any renamed
