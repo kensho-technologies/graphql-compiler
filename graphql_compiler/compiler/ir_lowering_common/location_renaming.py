@@ -24,9 +24,9 @@ def make_revisit_location_translations(
 
 
 def translate_potential_location(
-    location_translations: Dict[Type[BaseLocation], Type[BaseLocation]],
-    potential_location: Type[BaseLocation],
-) -> Type[BaseLocation]:
+    location_translations: Dict[Location, Location],
+    potential_location: LocationT,
+) -> LocationT:
     """If the input is a BaseLocation object, translate it, otherwise return it as-is."""
     if isinstance(potential_location, Location):
         old_location_at_vertex = potential_location.at_vertex()
@@ -53,11 +53,11 @@ def translate_potential_location(
 
 
 def make_location_rewriter_visitor_fn(
-    location_translations: Dict[Type[BaseLocation], Type[BaseLocation]]
-) -> Callable[[Expression], Expression]:
+    location_translations: Dict[Location, Location]
+) -> Callable[[ExpressionT], ExpressionT]:
     """Return a visitor function that is able to replace locations with equivalent locations."""
 
-    def visitor_fn(expression: Any) -> Any:
+    def visitor_fn(expression: ExpressionT) -> ExpressionT:
         """Expression visitor function used to rewrite expressions with updated Location data."""
         # All CompilerEntity objects store their exact constructor input args/kwargs.
         # To minimize the chances that we forget to update a location somewhere in an expression,

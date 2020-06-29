@@ -82,7 +82,7 @@ def lower_context_field_existence(
 ) -> List[BasicBlock]:
     """Lower ContextFieldExistence expressions into lower-level expressions."""
 
-    def regular_visitor_fn(expression: Any) -> Any:
+    def regular_visitor_fn(expression: Expression) -> Expression:
         """Expression visitor function that rewrites ContextFieldExistence expressions."""
         if not isinstance(expression, ContextFieldExistence):
             return expression
@@ -125,7 +125,7 @@ def short_circuit_ternary_conditionals(
 ) -> List[BasicBlockT]:
     """If the predicate outcome in a TernaryConditional is a Literal, evaluate and simplify it."""
 
-    def visitor_fn(expression: Any) -> Any:
+    def visitor_fn(expression: Expression) -> Expression:
         """Simplify TernaryConditionals."""
         if isinstance(expression, TernaryConditional) and isinstance(expression.predicate, Literal):
             if isinstance(expression.predicate.value, bool):
