@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Language-independent IR lowering and optimization functions."""
-from typing import Any, Dict, List, Optional, Tuple, cast
+from typing import Any, Dict, List, Optional, Tuple
 
 import six
 from typing_extensions import TypedDict
@@ -186,13 +186,6 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlock]) -> List
             return expression
 
         expression_to_rewrite: Optional[BinaryComposition] = None
-        # N.B. cast statements occur in the last 2 elif statements because of the following:
-        # ```
-        # Incompatible types in assignment (expression has type "Expression", variable has type
-        # "Optional[BinaryComposition]")
-        # ```
-        # Given the logic at the time of writing this comment, we know that
-        # `right_is_binary_composition` says that right is BinaryComposition, not just Expression
         if expression.left == identity_literal and right_is_binary_composition:
             return expression.right
         elif expression.right == identity_literal and left_is_binary_composition:
