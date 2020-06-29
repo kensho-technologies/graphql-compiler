@@ -85,6 +85,16 @@ def _find_used_columns(
     sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata
 ) -> Dict[VertexPath, Set[str]]:
     """For each query path, find which of its columns would be used in the resulting query."""
+    # TODO(bojanserafimov): The IR only talks about fields, and the query builder that emits
+    #                       sql interprets them as columns in some complicated way. This function
+    #                       spec implicitly depends on the implementation of the sql emitter in
+    #                       this module, as it tries to predict what columns it will use.
+    #
+    #                       It would be much cleaner to go the other way: To define here what
+    #                       the field->column conversion strategy is, specify what columns are
+    #                       considered "used", and put the burden on the query builder to respect
+    #                       that: to expose all "used" columns when encapsulating with subqueries
+    #                       or CTEs, and only ask for "used" columns from those encapsulations.
     used_columns: Dict[VertexPath, Set[str]] = {}
 
     # Find filters used
