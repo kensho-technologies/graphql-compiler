@@ -109,6 +109,25 @@ class CostEstimationTests(unittest.TestCase):
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_traverse_zero_edge_case(self) -> None:
+        """Ensure we correctly estimate cardinality over edges."""
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        test_data = test_input_data.traverse_and_output()
+
+        count_data = {
+            "Animal": 0,
+            "Animal_ParentOf": 0,
+        }
+        statistics = LocalStatistics(count_data)
+
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, test_data.graphql_input, dict()
+        )
+        expected_cardinality_estimate = 0.0
+
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_fragment(self) -> None:
         """Ensure we correctly adjust for fragments."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
