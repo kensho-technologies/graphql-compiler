@@ -104,9 +104,8 @@ def rename_schema(
         schema_ast: represents a valid schema that does not contain extensions, input object
                     definitions, mutations, or subscriptions, whose fields of the query type share
                     the same name as the types they query. Not modified by this function
-        renamings: maps original type/field names to renamed type/field names or None.
-                   Type or query type field names that do not appear in the dict will be unchanged.
-                   Any dict-like object that implements get(key, [default]) may also be used
+        renamings: maps original type name to renamed name or None (for type suppression). Any
+                   name not in the dict will be unchanged
 
     Returns:
         RenamedSchemaDescriptor containing the AST of the renamed schema, and the map of renamed
@@ -168,8 +167,8 @@ def _validate_renamings(
 
     Args:
         schema_ast: schema that we're returning a modified version of
-        renamings: maps original field name to renamed name. If a name
-                   does not appear in the dict, it will be unchanged
+        renamings: maps original type name to renamed name or None (for type suppression). Any name
+                   not in the dict will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
 
     Raises:
@@ -288,8 +287,8 @@ def _rename_and_suppress_types(
 
     Args:
         schema_ast: schema that we're returning a modified version of
-        renamings: maps original type/interface/enum name to renamed name. Any name not in the dict
-                   will be unchanged
+        renamings: maps original type name to renamed name or None (for type suppression). Any
+                   name not in the dict will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         scalars: set of all scalars used in the schema, including user defined scalars and used
                  builtin scalars, excluding unused builtins
@@ -318,8 +317,8 @@ def _rename_and_suppress_query_type_fields(
 
     Args:
         schema_ast: schema that we're returning a modified version of
-        renamings: maps original query type field name to renamed name. Any name not in the dict
-                   will be unchanged
+        renamings: maps original type name to renamed name or None (for type suppression). Any name
+                   not in the dict will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
@@ -502,8 +501,8 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """Create a visitor for renaming fields of the query type in a schema AST.
 
         Args:
-            renamings: maps original field name to renamed field name or None (for type
-                       suppression). Any name not in the dict will be unchanged
+            renamings: maps original type name to renamed name or None (for type suppression). Any
+                       name not in the dict will be unchanged
             query_type: name of the query type (e.g. RootSchemaQuery)
         """
         # Note that as field names and type names have been confirmed to match up, any renamed
