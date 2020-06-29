@@ -5424,6 +5424,11 @@ class CompilerTests(unittest.TestCase):
         )
 
     def test_fold_after_recurse(self):
+        # This is a regression test, checking that:
+        # - the fold subquery picks the right column of the recursive cte to join to
+        # - the recursive CTE exposes the columns needed to perform the folded traverse
+        #
+        # Testing in any of the SQL backends is sufficient.
         test_data = test_input_data.fold_after_recurse()
 
         expected_postgresql = SKIP_TEST

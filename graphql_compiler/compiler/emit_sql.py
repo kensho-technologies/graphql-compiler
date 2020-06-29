@@ -81,7 +81,7 @@ def _traverse_and_validate_blocks(ir: IrAndMetadata) -> Iterator[BasicBlock]:
         yield block
 
 
-def _find_columns_used(
+def _find_used_columns(
     sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata
 ) -> Dict[VertexPath, Set[str]]:
     """For each query path, find which of its columns would be used in the resulting query."""
@@ -702,7 +702,7 @@ class CompilationState(object):
         # Immutable metadata
         self._sql_schema_info: SQLAlchemySchemaInfo = sql_schema_info
         self._ir: IrAndMetadata = ir
-        self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used(sql_schema_info, ir)
+        self._used_columns: Dict[VertexPath, Set[str]] = _find_used_columns(sql_schema_info, ir)
         # Mapping FoldScopeLocations (without field information) to output fields at that location.
         self._all_folded_fields: Dict[FoldScopeLocation, Set[str]] = _find_folded_fields(ir)
 
