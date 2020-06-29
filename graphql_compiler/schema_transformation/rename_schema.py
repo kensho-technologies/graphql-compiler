@@ -661,7 +661,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
                 # Then at least one member of the union is not suppressed, so there is no cascading
                 # suppression error concern.
                 return IDLE
-        if self.renamings.get(union_name):
+        if self.renamings.get(union_name, union_name) is None:
             # If the union is also suppressed, then nothing needs to happen here
             return IDLE
         self.union_types_to_suppress.append(node)
