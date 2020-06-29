@@ -231,10 +231,9 @@ def _estimate_edges_to_children_per_parent(
 
     # Anticipate division by zero
     if parent_location_counts == 0:
-        # This implies that edge_counts is also 0. The reason we don't assert that is that
-        # we can't expect statistics to be collected at the same time, so raising an error
-        # is too aggressive.
-        return 0
+        # This implies that edge_counts is also 0. However, asserting that edge_counts is 0 is
+        # too aggressive because we can't expect all statistics to be collected at the same time.
+        return 0.0
 
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division
