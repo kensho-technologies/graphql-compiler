@@ -61,15 +61,12 @@ RenamedSchemaDescriptor = namedtuple(
 # hint the return value of the RenameSchemaTypesVisitor's
 # _rename_or_suppress_or_ignore_name_and_add_to_record() method as RenameTypes. More on this here:
 # https://github.com/PyCQA/pyflakes/issues/441
-# Any is a catch-all because REMOVE is set to the singleton object Ellipsis- see VisitorReturnType's
-# comment.
 RenameTypes = Union[
     EnumTypeDefinitionNode,
     InterfaceTypeDefinitionNode,
     NamedTypeNode,
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
-    Any,
 ]
 RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
 # AST visitor functions can return a number of different things, such as returning a Node (to update
@@ -420,7 +417,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
-    ) -> RenameTypesT:
+    ) -> Union[RenameTypesT, Any]:
         """Specify input node change based on renamings. If node renamed, update reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -436,7 +433,9 @@ class RenameSchemaTypesVisitor(Visitor):
             and IDLE to delete or do nothing with the node a visitor is currently at. If the current
             node is to be renamed, this function returns a Node object identical to the input node
             except with a new name. If it is to be suppressed, this function returns REMOVE. If
-            neither of these are the case, this function returns IDLE.
+            neither of these are the case, this function returns IDLE. Note that the return type
+            hint Any is a catch-all because REMOVE is set to the singleton object Ellipsis- see
+            VisitorReturnType's comment.
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
