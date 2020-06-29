@@ -188,7 +188,7 @@ def _check_for_cascading_type_suppression(
     visit(schema_ast, visitor)
     if visitor.fields_to_suppress or visitor.union_types_to_suppress:
         error_message_components = [
-            f"Type renamings {renamings} would require further suppressions to produce a valid"
+            f"Type renamings {renamings} would require further suppressions to produce a valid "
             f"renamed schema."
         ]
         if visitor.fields_to_suppress:
