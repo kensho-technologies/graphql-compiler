@@ -229,6 +229,13 @@ def _estimate_edges_to_children_per_parent(
     # Count the number of parents, over which we assume the edges are uniformly distributed.
     parent_location_counts = schema_info.statistics.get_class_count(parent_name_from_location)
 
+    # Anticipate division by zero
+    if parent_location_counts == 0:
+        # This implies that edge_counts is also 0. The reason we don't assert that is that
+        # we can't expect statistics to be collected at the same time, so raising an error
+        # is too aggressive.
+        return 0
+
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division
     #
