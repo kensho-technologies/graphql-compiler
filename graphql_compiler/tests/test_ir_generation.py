@@ -3543,6 +3543,7 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_fold_after_traverse(self):
         test_data = test_input_data.fold_after_traverse()
 

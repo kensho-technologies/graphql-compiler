@@ -713,10 +713,12 @@ def _compare_location_and_fold_scope_location(
 
 
 def get_vertex_path(location: BaseLocation) -> VertexPath:
+    """Return a path leading to the vertex. The field component of the location is ignored."""
     if isinstance(location, Location):
         return location.query_path
     elif isinstance(location, FoldScopeLocation):
         return location.base_location.query_path + tuple(
-            f"{direction}_{edge_name}"
-            for direction, edge_name in location.fold_path
+            f"{direction}_{edge_name}" for direction, edge_name in location.fold_path
         )
+    else:
+        raise AssertionError(f"Unknown type {type(location)}: {location}")

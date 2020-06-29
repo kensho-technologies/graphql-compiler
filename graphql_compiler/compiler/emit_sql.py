@@ -26,13 +26,13 @@ from .compiler_entities import BasicBlock
 from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
 from .helpers import (
-    get_vertex_path,
     BaseLocation,
     FoldPath,
     FoldScopeLocation,
     Location,
     QueryPath,
     get_edge_direction_and_name,
+    get_vertex_path,
 )
 from .metadata import LocationInfo
 
@@ -81,10 +81,10 @@ def _traverse_and_validate_blocks(ir: IrAndMetadata) -> Iterator[BasicBlock]:
         yield block
 
 
-def _find_columns_used_outside_folds(
+def _find_columns_used(
     sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata
 ) -> Dict[VertexPath, Set[str]]:
-    """For each query path outside of a fold output, find which columns are used."""
+    """For each query path, find which of its columns would be used in the resulting query."""
     used_columns: Dict[VertexPath, Set[str]] = {}
 
     # Find filters used
@@ -96,7 +96,9 @@ def _find_columns_used_outside_folds(
     # Find foreign keys used
     for location, location_info in ir.query_metadata_table.registered_locations:
         for child_location in ir.query_metadata_table.get_child_locations(location):
-            edge_direction, edge_name = get_edge_direction_and_name(get_vertex_path(child_location)[-1])
+            edge_direction, edge_name = get_edge_direction_and_name(
+                get_vertex_path(child_location)[-1]
+            )
             vertex_field_name = f"{edge_direction}_{edge_name}"
             edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
             used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
@@ -105,7 +107,9 @@ def _find_columns_used_outside_folds(
             # A recurse implies an outgoing foreign key usage
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
-                used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.from_column)
+                used_columns.setdefault(get_vertex_path(child_location), set()).add(
+                    edge.from_column
+                )
 
     # Find outputs used
     for _, output_info in ir.query_metadata_table.outputs:
@@ -121,9 +125,9 @@ def _find_columns_used_outside_folds(
     for location, _ in ir.query_metadata_table.registered_locations:
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
             traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
-            used_columns[get_vertex_path(location)] = used_columns.get(get_vertex_path(location), set()).union(
-                used_columns[get_vertex_path(location) + (traversal,)]
-            )
+            used_columns[get_vertex_path(location)] = used_columns.get(
+                get_vertex_path(location), set()
+            ).union(used_columns[get_vertex_path(location) + (traversal,)])
             used_columns[get_vertex_path(location)].add(edge.from_column)
 
     return used_columns
@@ -698,9 +702,7 @@ class CompilationState(object):
         # Immutable metadata
         self._sql_schema_info: SQLAlchemySchemaInfo = sql_schema_info
         self._ir: IrAndMetadata = ir
-        self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used_outside_folds(
-            sql_schema_info, ir
-        )
+        self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used(sql_schema_info, ir)
         # Mapping FoldScopeLocations (without field information) to output fields at that location.
         self._all_folded_fields: Dict[FoldScopeLocation, Set[str]] = _find_folded_fields(ir)
 
@@ -926,8 +928,9 @@ class CompilationState(object):
         Returns:
             name of the single-column primary key
         """
-
-        primary_keys = self._sql_schema_info.vertex_name_to_table[self._current_classname].alias().primary_key
+        primary_keys = (
+            self._sql_schema_info.vertex_name_to_table[self._current_classname].alias().primary_key
+        )
 
         if not primary_keys:
             raise AssertionError(
@@ -937,11 +940,11 @@ class CompilationState(object):
         if len(primary_keys) > 1:
             raise NotImplementedError(
                 f"The table for vertex {self._current_classname} has a composite primary key "
-                f"{self._current_alias.primary_key}. The SQL backend does not support "
+                f"{primary_keys}. The SQL backend does not support "
                 f"{directive_name} on tables with composite primary keys."
             )
 
-        return str(self._current_alias.primary_key[0].name)
+        return str(primary_keys[0].name)
 
     def recurse(self, vertex_field: str, depth: int) -> None:
         """Execute a Recurse Block."""
