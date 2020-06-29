@@ -163,8 +163,12 @@ def optimize_boolean_expression_comparisons(ir_blocks: List[BasicBlock]) -> List
         if not isinstance(expression, BinaryComposition):
             return expression
 
-        left_is_binary_composition: Optional[BinaryComposition] = expression.left if isinstance(expression.left, BinaryComposition) else None
-        right_is_binary_composition: Optional[BinaryComposition] = expression.right if isinstance(expression.right, BinaryComposition) else None
+        left_is_binary_composition: Optional[BinaryComposition] = expression.left if isinstance(
+            expression.left, BinaryComposition
+        ) else None
+        right_is_binary_composition: Optional[BinaryComposition] = expression.right if isinstance(
+            expression.right, BinaryComposition
+        ) else None
 
         if not left_is_binary_composition and not right_is_binary_composition:
             # Nothing to rewrite, return the expression as-is.

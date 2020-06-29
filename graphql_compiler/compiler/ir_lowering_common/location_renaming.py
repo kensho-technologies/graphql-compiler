@@ -1,12 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Utilities for rewriting IR to replace one set of locations with another."""
-from typing import Any, Callable, Dict, Type
+from typing import Callable, Dict
 
 import six
 
+from ...compiler.expressions import ExpressionT
 from ..helpers import FoldScopeLocation, Location, LocationT
 from ..metadata import QueryMetadataTable
-from ...compiler.expressions import ExpressionT
 
 
 def make_revisit_location_translations(
@@ -24,8 +24,7 @@ def make_revisit_location_translations(
 
 
 def translate_potential_location(
-    location_translations: Dict[Location, Location],
-    potential_location: LocationT,
+    location_translations: Dict[Location, Location], potential_location: LocationT,
 ) -> LocationT:
     """If the input is a BaseLocation object, translate it, otherwise return it as-is."""
     if isinstance(potential_location, Location):
