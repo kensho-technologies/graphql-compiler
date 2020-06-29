@@ -1,4 +1,17 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+"""
+Implement renaming and suppressing parts of the schema.
+
+Currently you can perform 1-1 renaming of types, unions, enums, and interfaces. You can also
+suppress types that don't implement an interface and suppress unions.
+
+Operations that are not yet supported but will be implemented:
+Suppressions for fields, enums, interfaces, and types that implement interfaces.
+1-1 and 1-many renamings for fields and enum values.
+
+If you suppress all member types in a union, you must also suppress the union. If you suppress a
+type, you must also suppress any fields of that type (when field suppression is implemented).
+"""
 from collections import namedtuple
 from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
 
