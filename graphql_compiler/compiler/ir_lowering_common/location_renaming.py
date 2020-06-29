@@ -4,9 +4,9 @@ from typing import Any, Callable, Dict, Type
 
 import six
 
-from ..compiler_entities import Expression
-from ..helpers import BaseLocation, FoldScopeLocation, Location, LocationT
+from ..helpers import FoldScopeLocation, Location, LocationT
 from ..metadata import QueryMetadataTable
+from ...compiler.expressions import ExpressionT
 
 
 def make_revisit_location_translations(
