@@ -62,7 +62,7 @@ class CascadingSuppressionError(SchemaTransformError):
 
     This may be raised during schema renaming if it suppresses all the fields of a type but not the
     type itself, if it suppresses all the members of a union but not the union itself, or if it
-    suppresses a type but fails to suppress all fields that depend on that type.
+    suppresses a type X but there still exists a different type Y that has fields of type X.
     The error message will suggest fixing this illegal state by describing further suppressions, but
     adding these suppressions may lead to other types, unions, fields, etc. needing suppressions of
     their own. Most real-world schemas wouldn't have these cascading situations, and if they do,

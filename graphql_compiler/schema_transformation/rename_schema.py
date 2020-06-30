@@ -8,8 +8,11 @@ Operations that are not yet supported but will be implemented:
 Suppressions for fields, enums, interfaces, and types that implement interfaces.
 1-1 and 1-many renamings for fields and enum values.
 
-If you suppress all member types in a union, you must also suppress the union. If you suppress a
-type, you must also suppress any fields of that type (when field suppression is implemented).
+If you suppress all member types in a union, you must also suppress the union.
+
+If you suppress a type X, no other type Y may have fields of type X (this requires field suppression
+which hasn't been implemented yet). However, if type X has a field of that type X, it is legal to
+suppress type X without explicitly suppressing that particular field.
 """
 from collections import namedtuple
 from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
