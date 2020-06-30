@@ -163,7 +163,9 @@ def _validate_renamings(
     The input AST will not be modified.
 
     Args:
-        schema_ast: schema that we're returning a modified version of
+        schema_ast: represents a valid schema that does not contain extensions, input object
+                    definitions, mutations, or subscriptions, whose fields of the query type share
+                    the same name as the types they query. Not modified by this function
         renamings: maps original type name to renamed name or None (for type suppression). Any name
                    not in the dict will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
