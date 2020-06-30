@@ -163,7 +163,12 @@ def _get_query_interval_of_integer_inequality_filter(
     return query_interval
 
 
-def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_info, parameters):
+def _estimate_filter_selectivity_of_equality(
+    schema_info: QueryPlanningSchemaInfo,
+    location_name: str,
+    filter_info: FilterInfo,
+    parameters: Dict[str, Any],
+):
     """Calculate the selectivity of equality filter(s) at a given location.
 
     Using the available unique indexes and/or the distinct_field_values_count statistic, this

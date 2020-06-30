@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 import datetime
 import math
-from typing import Any, Optional, Dict
+from typing import Any, Dict, Optional
 
 import six
 
@@ -21,7 +21,6 @@ class SamplingSummary:
 
     # The number_of_rows / number_of_samples ratio
     sample_ratio: int
-
 
 
 @six.python_2_unicode_compatible
@@ -236,5 +235,5 @@ class LocalStatistics(Statistics):
             # confidence that the true value count is less than (3 * sample_ratio). So we have
             # 95% confidence that the error ratio is at most math.sqrt(3 * sample_ratio). Some
             # intuition: with a sample ratio of 1000 the error ratio bound evaluates to about
-            # sqrt(3000) = 55.
-            return math.sqrt(3 * class_sampling_summary.sample_ratio)
+            # sqrt(3000) ~= 55.
+            return max(1, round(math.sqrt(3 * class_sampling_summary.sample_ratio)))

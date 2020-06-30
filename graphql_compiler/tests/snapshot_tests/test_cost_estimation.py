@@ -2,7 +2,6 @@
 from datetime import date, datetime
 from typing import Any, Dict, List
 import unittest
-import math
 
 import pytest
 import pytz
@@ -24,7 +23,7 @@ from ...cost_estimation.int_value_conversion import (
     swap_uuid_prefix_and_suffix,
 )
 from ...cost_estimation.interval import Interval, intersect_int_intervals
-from ...cost_estimation.statistics import LocalStatistics, Statistics, SamplingSummary
+from ...cost_estimation.statistics import LocalStatistics, SamplingSummary, Statistics
 from ...global_utils import QueryStringWithParameters
 from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -1161,14 +1160,11 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
                 "Animal": SamplingSummary(
                     class_name="Animal",
                     value_counts={
-                        "birthday": {
-                            datetime(2019, 3, 1): 100,
-                            datetime(2019, 4, 6): 80,
-                        }
+                        "birthday": {datetime(2019, 3, 1): 100, datetime(2019, 4, 6): 80,}
                     },
                     sample_ratio=1000,
                 )
-            }
+            },
         )
         nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
         selectivity = _make_schema_info_and_get_filter_selectivity(
@@ -1190,14 +1186,11 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
                 "Animal": SamplingSummary(
                     class_name="Animal",
                     value_counts={
-                        "birthday": {
-                            datetime(2019, 3, 1): 100,
-                            datetime(2019, 4, 6): 80,
-                        }
+                        "birthday": {datetime(2019, 3, 1): 100, datetime(2019, 4, 6): 80,}
                     },
                     sample_ratio=1000,
                 )
-            }
+            },
         )
         nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
         selectivity = _make_schema_info_and_get_filter_selectivity(
@@ -1207,9 +1200,9 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             {"birthday": datetime(2020, 9, 7)},
             classname,
         )
-        # This is a white-box snapshot test asserting that the rule of 3 is followed to
-        # estimate the count of uncommon values. See get_value_count in statistics.py for justification.
-        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=math.sqrt(3 * 1000))
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=55)
         self.assertEqual(expected_selectivity, selectivity)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
