@@ -1240,7 +1240,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertEqual(expected_selectivity, selectivity)
 
         statistics_with_distinct_birthday_values_data = LocalStatistics(
-            dict(), distinct_birthday_values_data
+            dict(), distinct_field_values_counts=distinct_birthday_values_data
         )
         # If we use an in_collection-filter with 4 elements on a property that is not uniquely
         # indexed, but has 3 distinct values, return a fractional selectivity of 1.0.
@@ -1248,7 +1248,14 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph,
             statistics_with_distinct_birthday_values_data,
             nonunique_filter,
-            nonunique_params,
+            {
+                "birthday_collection": [
+                    date(2017, 3, 22),
+                    date(1999, 12, 31),
+                    date(2317, 3, 22),
+                    date(1399, 12, 31),
+                ]
+            },
             classname,
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)

@@ -177,9 +177,9 @@ def _estimate_filter_selectivity_of_equality(
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        location_name: string, type of the location being filtered
-        filter_info: FilterInfo describing an equality filter
-        parameters: dict, the runtime parameters
+        location_name: type name of the location being filtered
+        filter_info: description of the equality filter
+        parameters: the runtime parameters
 
     Returns:
         Selectivity object, the selectivity of an specific equality filter at a given location.

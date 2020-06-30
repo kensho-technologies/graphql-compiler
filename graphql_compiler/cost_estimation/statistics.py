@@ -3,7 +3,7 @@ from abc import ABCMeta, abstractmethod
 from dataclasses import dataclass
 import datetime
 import math
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 import six
 
@@ -135,11 +135,12 @@ class LocalStatistics(Statistics):
 
     def __init__(
         self,
-        class_counts,
-        vertex_edge_vertex_counts=None,
-        distinct_field_values_counts=None,
-        field_quantiles=None,
-        sampling_summaries=None,
+        class_counts: Dict[str, int],
+        *,
+        vertex_edge_vertex_counts: Optional[Dict[Tuple[str, str, str], int]] = None,
+        distinct_field_values_counts: Optional[Dict[Tuple[str, str], int]] = None,
+        field_quantiles: Optional[Dict[Tuple[str, str], List[Any]]] = None,
+        sampling_summaries: Optional[Dict[str, SamplingSummary]] = None,
     ):
         """Initialize statistics with the given data.
 
