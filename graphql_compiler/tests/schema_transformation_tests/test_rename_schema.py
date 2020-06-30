@@ -250,9 +250,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_suppress_all_implementations_but_not_interface(self):
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}
-            )
+            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None, "Human": None})
 
     def test_suppress_interface_but_not_implementations(self):
         with self.assertRaises(NotImplementedError):
@@ -729,6 +727,26 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(
                 parse(ISS.multiple_fields_schema), {"Dog": None}
             )  # a field in Human is of type Dog.
+
+    def test_field_of_suppressed_type_in_suppressed_type(self):
+        renamed_schema = rename_schema(parse(ISS.recursive_field_schema), {"Human": None})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type SchemaQuery {
+              Dog: Dog
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_field_in_list_still_depends_on_suppressed_type(self):
         with self.assertRaises(CascadingSuppressionError):

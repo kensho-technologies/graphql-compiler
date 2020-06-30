@@ -458,3 +458,25 @@ class InputSchemaStrings(object):
         }
     """
     )
+
+    recursive_field_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Human  {
+          friend: Human
+          name: String
+        }
+
+        type Dog {
+          nickname: String
+        }
+
+        type SchemaQuery {
+          Human: Human
+          Dog: Dog
+        }
+    """
+    )
