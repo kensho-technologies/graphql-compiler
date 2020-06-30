@@ -8,7 +8,11 @@ from typing import Any, Dict, List, Set
 
 import six
 
-from ..compiler.helpers import get_parameter_name, is_runtime_parameter
+from ..compiler.helpers import (
+    get_only_element_from_collection,
+    get_parameter_name,
+    is_runtime_parameter,
+)
 from ..compiler.metadata import FilterInfo
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .helpers import is_uuid4_type
@@ -184,42 +188,42 @@ def _estimate_filter_selectivity_of_equality(
     Returns:
         Selectivity object, the selectivity of an specific equality filter at a given location.
     """
-    all_selectivities = []
+    if len(filter_info.fields) != 1:
+        return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
+    filter_field = filter_info.fields[0]
 
+    # If the field is uniquely indexed, value count statistics are unnecessary
     unique_indexes = schema_info.schema_graph.get_unique_indexes_for_class(location_name)
     if _are_filter_fields_uniquely_indexed(filter_info.fields, unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
-        all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
-    elif len(filter_info.fields) == 1:
-        filter_field = filter_info.fields[0]
-        filter_value = None
-        if len(filter_info.args) == 1:
-            filter_arg = filter_info.args[0]
-            if is_runtime_parameter(filter_arg):
-                filter_value = parameters[get_parameter_name(filter_arg)]
+        return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
 
-        value_count = None
-        if filter_value is not None:
-            value_count = schema_info.statistics.get_value_count(
-                location_name, filter_field, filter_value
-            )
+    # Get filter value if it is known compile-time
+    filter_value = None
+    filter_arg = get_only_element_from_collection(filter_info.args)
+    if is_runtime_parameter(filter_arg):
+        filter_value = parameters[get_parameter_name(filter_arg)]
 
-        distinct_field_values_count = schema_info.statistics.get_distinct_field_values_count(
-            location_name, filter_field
+    # Get all relevant statistics
+    value_count = None
+    if filter_value is not None:
+        value_count = schema_info.statistics.get_value_count(
+            location_name, filter_field, filter_value
         )
+    distinct_field_values_count = schema_info.statistics.get_distinct_field_values_count(
+        location_name, filter_field
+    )
 
-        if value_count is not None:
-            all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=value_count))
-        elif distinct_field_values_count is not None:
-            # Assumption: all distinct field values are distributed evenly among vertex instances,
-            # so each distinct value occurs
-            # (# of current location vertex instances) / (# of distinct field values) times.
-            all_selectivities.append(
-                Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / distinct_field_values_count)
-            )
-
-    result_selectivity = _combine_filter_selectivities(all_selectivities)
-    return result_selectivity
+    # Combine statistics to compute selectivity
+    if value_count is not None:
+        return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=value_count)
+    elif distinct_field_values_count is not None:
+        # Assumption: all distinct field values are distributed evenly among vertex instances,
+        # so each distinct value occurs
+        # (# of current location vertex instances) / (# of distinct field values) times.
+        return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / distinct_field_values_count)
+    else:
+        return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
 
 
 def _combine_filter_selectivities(selectivities):
