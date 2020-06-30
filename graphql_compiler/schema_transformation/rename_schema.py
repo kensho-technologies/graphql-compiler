@@ -596,7 +596,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """If the node's name matches the query type, record that we entered the query type."""
+        """Record the current type that the visitor is traversing."""
         self.current_type = node.name.value
 
     def leave_object_type_definition(
@@ -607,7 +607,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """If the node's name matches the query type, record that we left the query type."""
+        """Finish traversing the current type node."""
         self.current_type = None
 
     def enter_field_definition(
@@ -618,7 +618,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """If not at query type, check that no field depends on a type that was suppressed."""
+        """Check that no type Y contains a field of type X, where X is suppressed."""
         if self.current_type == self.query_type:
             return IDLE
         # At a field of a type that is not the query type
@@ -650,7 +650,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """Check that each union still has at least one member."""
+        """Check that each union still has at least one non-suppressed member."""
         union_name = node.name.value
         if node.types is None:
             # This shouldn't happen, but the GraphQL core library type-hints the field as
