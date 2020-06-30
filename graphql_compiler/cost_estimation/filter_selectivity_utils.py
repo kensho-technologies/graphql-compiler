@@ -198,9 +198,12 @@ def _estimate_filter_selectivity_of_equality(
             if is_runtime_parameter(filter_arg):
                 filter_value = parameters[get_parameter_name(filter_arg)]
 
-        value_count = schema_info.statistics.get_value_count(
-            location_name, filter_field, filter_value
-        )
+        value_count = None
+        if filter_value is not None:
+            value_count = schema_info.statistics.get_value_count(
+                location_name, filter_field, filter_value
+            )
+
         distinct_field_values_count = schema_info.statistics.get_distinct_field_values_count(
             location_name, filter_field
         )
