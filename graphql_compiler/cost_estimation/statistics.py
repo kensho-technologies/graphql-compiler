@@ -233,8 +233,8 @@ class LocalStatistics(Statistics):
         else:
             # We want to minimize the error ratio: max(true_value/estimate, estimate/true_value).
             # By rule of 3 (https://en.wikipedia.org/wiki/Rule_of_three_(statistics)), we have 95%
-            # confidence that the true value count is less than (3 * self._sample_ratio). So we have
-            # 95% confidence that the error ratio is at most math.sqrt(3 * self._sample_ratio). Some
+            # confidence that the true value count is less than (3 * sample_ratio). So we have
+            # 95% confidence that the error ratio is at most math.sqrt(3 * sample_ratio). Some
             # intuition: with a sample ratio of 1000 the error ratio bound evaluates to about
             # sqrt(3000) = 55.
             return math.sqrt(3 * class_sampling_summary.sample_ratio)

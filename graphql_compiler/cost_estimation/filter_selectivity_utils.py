@@ -163,7 +163,6 @@ def _get_query_interval_of_integer_inequality_filter(
     return query_interval
 
 
-# TODO(bojanserafimov): This function can be simplified, as len(filter_fields) is always 1.
 def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_info, parameters):
     """Calculate the selectivity of equality filter(s) at a given location.
 
