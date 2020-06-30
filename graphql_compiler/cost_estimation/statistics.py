@@ -133,6 +133,13 @@ class Statistics(object):
 class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
 
+    # See __init__ docstring for definitions.
+    _class_counts: Dict[str, int]
+    _vertex_edge_vertex_counts: Dict[Tuple[str, str, str], int]
+    _distinct_field_values_counts: Dict[Tuple[str, str], int]
+    _field_quantiles: Dict[Tuple[str, str], List[Any]]
+    _sampling_summaries: Dict[str, SamplingSummary]
+
     def __init__(
         self,
         class_counts: Dict[str, int],
