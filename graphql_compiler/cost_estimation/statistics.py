@@ -1,10 +1,27 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
 import datetime
 import math
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 
 import six
+
+
+@dataclass
+class SamplingSummary:
+    """Results extracted from sampling a random rowset that are relevant for statistics."""
+
+    # The class this summary describes
+    class_name: str
+
+    # Mapping field_name -> field_value -> observed_count for all field names and observed
+    # field values on this class.
+    value_counts: Dict[str, Dict[Any, int]]
+
+    # The number_of_rows / number_of_samples ratio
+    sample_ratio: int
+
 
 
 @six.python_2_unicode_compatible
@@ -123,6 +140,7 @@ class LocalStatistics(Statistics):
         vertex_edge_vertex_counts=None,
         distinct_field_values_counts=None,
         field_quantiles=None,
+        sampling_summaries=None,
     ):
         """Initialize statistics with the given data.
 
@@ -144,6 +162,7 @@ class LocalStatistics(Statistics):
                              element is a value greater than or equal to i/N of all present
                              values. The number N can be different for each entry. N has to be at
                              least 2 for every entry present in the dict.
+            sampling_summaries: dict, class_name: str -> SamplingSummary
             TODO(bojanserafimov): Enforce a canonical representation for quantile values. Datetimes
                                   should be in utc, decimals should have type float, etc.
         """
@@ -153,6 +172,8 @@ class LocalStatistics(Statistics):
             distinct_field_values_counts = dict()
         if field_quantiles is None:
             field_quantiles = dict()
+        if sampling_summaries is None:
+            sampling_summaries = dict()
 
         # Validate arguments
         for (vertex_name, field_name), quantile_list in six.iteritems(field_quantiles):
@@ -173,8 +194,7 @@ class LocalStatistics(Statistics):
         self._vertex_edge_vertex_counts = vertex_edge_vertex_counts
         self._distinct_field_values_counts = distinct_field_values_counts
         self._field_quantiles = field_quantiles
-        self._sampled_value_counts = {}  # TODO initialize
-        self._sample_ratio = 1000  # TODO initialize
+        self._sampling_summaries = sampling_summaries
 
     def get_class_count(self, class_name):
         """See base class."""
@@ -199,13 +219,17 @@ class LocalStatistics(Statistics):
 
     def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[int]:
         """See base class."""
-        field_sampled_value_counts = self._sampled_value_counts.get(vertex_name, {}).get(field_name)
+        class_sampling_summary = self._sampling_summaries.get(vertex_name)
+        if class_sampling_summary is None:
+            return None
+
+        field_sampled_value_counts = class_sampling_summary.value_counts.get(field_name)
         if field_sampled_value_counts is None:
             return None
 
         sampled_value_count = field_sampled_value_counts.get(value)
         if sampled_value_count:
-            return sampled_value_count * self._sample_ratio
+            return sampled_value_count * class_sampling_summary.sample_ratio
         else:
             # We want to minimize the error ratio: max(true_value/estimate, estimate/true_value).
             # By rule of 3 (https://en.wikipedia.org/wiki/Rule_of_three_(statistics)), we have 95%
@@ -213,4 +237,4 @@ class LocalStatistics(Statistics):
             # 95% confidence that the error ratio is at most math.sqrt(3 * self._sample_ratio). Some
             # intuition: with a sample ratio of 1000 the error ratio bound evaluates to about
             # sqrt(3000) = 55.
-            return math.sqrt(3 * self._sample_ratio)
+            return math.sqrt(3 * class_sampling_summary.sample_ratio)
