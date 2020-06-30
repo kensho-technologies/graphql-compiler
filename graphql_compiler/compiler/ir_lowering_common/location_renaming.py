@@ -1,17 +1,22 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Utilities for rewriting IR to replace one set of locations with another."""
-from typing import Callable, Dict
+from typing import Callable, Dict, TypeVar
 
 import six
 
 from ...compiler.expressions import ExpressionT
-from ..helpers import FoldScopeLocation, Location, LocationT
+from ..helpers import FoldScopeLocation, Location
 from ..metadata import QueryMetadataTable
+
+
+# This type exists in order to reduce the scope of what is allowed to be translated
+# since LocationT was not sufficiently specific.
+TranslatedLocationT = TypeVar("TranslatedLocationT", Location, FoldScopeLocation)
 
 
 def make_revisit_location_translations(
     query_metadata_table: QueryMetadataTable,
-) -> Dict[LocationT, LocationT]:
+) -> Dict[Location, Location]:
     """Return a dict mapping location revisits to the location being revisited, for rewriting."""
     location_translations = dict()
 
@@ -24,8 +29,8 @@ def make_revisit_location_translations(
 
 
 def translate_potential_location(
-    location_translations: Dict[Location, Location], potential_location: LocationT,
-) -> LocationT:
+    location_translations: Dict[Location, Location], potential_location: TranslatedLocationT,
+) -> TranslatedLocationT:
     """If the input is a BaseLocation object, translate it, otherwise return it as-is."""
     if isinstance(potential_location, Location):
         old_location_at_vertex = potential_location.at_vertex()
