@@ -216,6 +216,10 @@ def _estimate_filter_selectivity_of_equality(
 
     # Combine statistics to compute selectivity
     if value_count is not None:
+        # TODO(bojanserafimov): If we have value_count statistics for the field, but we conclude
+        #                       that this is not one of the common values, we use the rule of 3
+        #                       (see statistics.get_value_count). The distinct_value_count stats
+        #                       could provide additional precision case if available.
         return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=value_count)
     elif distinct_field_values_count is not None:
         # Assumption: all distinct field values are distributed evenly among vertex instances,
