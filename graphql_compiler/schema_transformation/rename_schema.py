@@ -202,7 +202,6 @@ def rename_schema(
         if renamed_name != original_name
     }
 
-    # Rename and suppress query type fields
     schema_ast = _rename_and_suppress_query_type_fields(schema_ast, renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=schema_ast,
