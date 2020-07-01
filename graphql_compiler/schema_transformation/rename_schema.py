@@ -165,7 +165,7 @@ def rename_schema(
 
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
-        - SchemaTransformError if renaming suppressed every type. Note that this is a superclass of
+        - SchemaTransformError if renamings suppressed every type. Note that this is a superclass of
           CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
           SchemaNameConflictError, so handling exceptions of type SchemaTransformError will also
           catch all of its subclasses. This will change after the error classes are modified so that
