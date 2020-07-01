@@ -47,7 +47,7 @@ its fields) removed. If "Dog" also appeared as a field in the schema's root type
 removed there as well.
 
 Operations that are already supported:
-- 1-1 renaming of types, unions, enums, and interfaces.
+- 1-1 renaming of object types, unions, enums, and interfaces.
 - Suppressing types that don't implement an interface.
 - Suppressing unions.
 
@@ -55,11 +55,12 @@ Operations that are not yet supported but will be implemented:
 - Suppressions for fields, enums, enum values, interfaces, and types that implement interfaces.
 - 1-1 and 1-many renamings for fields and enum values.
 
-Renaming constraints
+Renaming constraints:
 - If you suppress all member types in a union, you must also suppress the union.
-- If you suppress a type X, no other type Y may keep fields of type X (requires field suppression
-  which hasn't been implemented yet). However, if type X has a field of that type X, it is legal to
-  suppress type X without explicitly suppressing that particular field.
+- If you suppress a type X, no other type Y may keep fields of type X (those fields must be
+  suppressed, which requires field suppression which hasn't been implemented yet). However, if type
+  X has a field of that type X, it is legal to suppress type X without explicitly suppressing that
+  particular field.
 - You may not suppress all types in the schema's root type.
 - All names must be valid GraphQL names.
 - Names may not conflict with each other. For instance, you may not rename both "Foo" and "Bar" to
@@ -235,7 +236,7 @@ def _validate_renamings(
           implementing an interface
     """
     _check_for_cascading_type_suppression(schema_ast, renamings, query_type)
-    _ensure_no_unsupported_suppression(schema_ast, renamings, query_type)
+    _ensure_no_unsupported_suppression(schema_ast, renamings)
 
 
 def _check_for_cascading_type_suppression(
@@ -290,10 +291,10 @@ def _check_for_cascading_type_suppression(
 
 
 def _ensure_no_unsupported_suppression(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
 ) -> None:
     """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
-    visitor = SuppressionNotImplementedVisitor(renamings, query_type)
+    visitor = SuppressionNotImplementedVisitor(renamings)
     visit(schema_ast, visitor)
     if (
         not visitor.unsupported_enum_suppressions
@@ -731,16 +732,14 @@ class CascadingSuppressionCheckVisitor(Visitor):
 
 
 class SuppressionNotImplementedVisitor(Visitor):
-    def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+    def __init__(self, renamings: Mapping[str, Optional[str]]) -> None:
         """Confirm renamings does not attempt to suppress enum/interface/interface implementation.
 
         Args:
             renamings: from original field name to renamed field name or None (for type
                        suppression). Any name not in the dict will be unchanged
-            query_type: name of the query type (e.g. RootSchemaQuery)
         """
         self.renamings = renamings
-        self.query_type = query_type
         self.unsupported_enum_suppressions: Set[str] = set()
         self.unsupported_interface_suppressions: Set[str] = set()
         self.unsupported_interface_implementation_suppressions: Set[str] = set()
@@ -783,5 +782,5 @@ class SuppressionNotImplementedVisitor(Visitor):
         if not node.interfaces:
             return
         if self.renamings.get(node.name.value, node.name.value) is None:
-            # suppressing interface implementations isn't supported yet.
+            # Suppressing interface implementations isn't supported yet.
             self.unsupported_interface_implementation_suppressions.add(node.name.value)
