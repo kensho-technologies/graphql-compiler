@@ -127,9 +127,9 @@ def _find_used_columns(
         used_columns.setdefault(query_path, set()).add(output_info.location.field)
 
     # Find tags used
-    for _, output_info in ir.query_metadata_table.tags:
-        query_path = get_vertex_path(output_info.location)
-        used_columns.setdefault(query_path, set()).add(output_info.location.field)
+    for _, tag_info in ir.query_metadata_table.tags:
+        query_path = get_vertex_path(tag_info.location)
+        used_columns.setdefault(query_path, set()).add(tag_info.location.field)
 
     # Columns used in the base case of CTE recursions should be made available from parent scope
     for location, _ in ir.query_metadata_table.registered_locations:
@@ -181,12 +181,14 @@ def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldScopeLocation, Set[str]]:
                 output_info.location.field
             )
 
-    # Add _x_count, if used as a Filter at any Location.
+    # Add _x_count, if used as a Filter anywhere. It is only allowed to appear within
+    # scopes marked @fold, so we ignore locations that are not FoldScopeLocation.
     for location, _ in ir.query_metadata_table.registered_locations:
-        for location_filter in ir.query_metadata_table.get_filter_infos(location):
-            for field in location_filter.fields:
-                if field == COUNT_META_FIELD_NAME:
-                    folded_fields.setdefault(location.at_vertex(), set()).add(field)
+        if isinstance(location, FoldScopeLocation):
+            for location_filter in ir.query_metadata_table.get_filter_infos(location):
+                for field in location_filter.fields:
+                    if field == COUNT_META_FIELD_NAME:
+                        folded_fields.setdefault(location.at_vertex(), set()).add(field)
 
     return folded_fields
 
@@ -845,6 +847,12 @@ class CompilationState(object):
     @property
     def _current_location_info(self) -> LocationInfo:
         """Get the LocationInfo of the current location in the query."""
+        if self._current_location is None:
+            raise AssertionError(
+                "Attempting to get LocationInfo with a current location of None. "
+                "This is a bug -- it should never happen!"
+            )
+
         return self._ir.query_metadata_table.get_location_info(self._current_location)
 
     @property

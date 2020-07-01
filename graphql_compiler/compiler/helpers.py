@@ -334,6 +334,11 @@ class BaseLocation(object):
         raise NotImplementedError()
 
     @abstractmethod
+    def at_vertex(self: LocationT) -> LocationT:
+        """Get the BaseLocation ignoring its field component."""
+        raise NotImplementedError()
+
+    @abstractmethod
     def navigate_to_subpath(self: LocationT, child: str) -> LocationT:
         """Return a new BaseLocation after a traversal to the specified child location."""
         raise NotImplementedError()
@@ -483,7 +488,7 @@ class Location(BaseLocation):
         mark_name = "__".join(self.query_path) + "___" + six.text_type(self.visit_counter)
         return (mark_name, self.field)
 
-    def is_revisited_at(self, other_location: "Location") -> bool:
+    def is_revisited_at(self, other_location: BaseLocation) -> bool:
         """Return True if other_location is a revisit of this location, and False otherwise."""
         # Note that FoldScopeLocation objects cannot revisit Location objects, or each other.
         return (
