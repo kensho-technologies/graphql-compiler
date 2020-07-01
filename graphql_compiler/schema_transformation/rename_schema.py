@@ -491,12 +491,12 @@ class RenameSchemaTypesVisitor(Visitor):
 
         Returns:
             Node object, REMOVE, or IDLE. The GraphQL library defines special return values REMOVE
-            and IDLE to delete or do nothing with the node a visitor is currently at. If the current
-            node is to be renamed, this function returns a Node object identical to the input node
-            except with a new name. If it is to be suppressed, this function returns REMOVE. If
-            neither of these are the case, this function returns IDLE. Note that the return type
-            hint Any is a catch-all because REMOVE is set to the singleton object Ellipsis- see
-            VisitorReturnType's comment.
+            and IDLE to delete or do nothing with the node a visitor is currently at, respectively.
+            If the current node is to be renamed, this function returns a Node object identical to
+            the input node except with a new name. If it is to be suppressed, this function returns
+            REMOVE. If neither of these are the case, this function returns IDLE. Note that the
+            return type hint Any is a catch-all because REMOVE is set to the singleton object
+            Ellipsis- see VisitorReturnType's comment.
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
@@ -564,11 +564,12 @@ class RenameQueryTypeFieldsVisitor(Visitor):
             renamings: maps original type name to renamed name or None (for type suppression). Any
                        name not in the dict will be unchanged
             query_type: name of the query type (e.g. RootSchemaQuery)
+
+        Raises:
+            - SchemaTransformError if every field in the query type was suppressed
         """
         # Note that as field names and type names have been confirmed to match up, any renamed
-        # query type field already has a corresponding renamed type. If no errors, due to either
-        # invalid names or name conflicts, were raised when renaming type, no errors will occur when
-        # renaming query type fields.
+        # query type field already has a corresponding renamed type.
         self.in_query_type = False
         self.renamings = renamings
         self.query_type = query_type
