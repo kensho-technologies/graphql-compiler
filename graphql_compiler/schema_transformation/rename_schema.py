@@ -280,11 +280,11 @@ def _check_for_cascading_type_suppression(
                     union_member.name.value for union_member in union_type.types
                 ]
             error_message_components.append(
-                "To fix this, you can suppress the union as well by adding `union_type: None` to "
-                "the `renamings` argument of `rename_schema`, for each value of `union_type` "
-                "described here. Note that adding suppressions may lead to other types, fields, "
-                "unions, etc. requiring suppression so you may need to iterate on this before "
-                "getting a legal schema."
+                "To fix this, you can suppress the union as well by adding union_type: None to the "
+                "renamings argument when renaming types, for each value of union_type described "
+                "here. Note that adding suppressions may lead to other types, fields, etc. "
+                "requiring suppression so you may need to iterate on this before getting a legal "
+                "schema."
             )
         raise CascadingSuppressionError("\n".join(error_message_components))
 
