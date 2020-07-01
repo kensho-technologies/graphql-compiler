@@ -1,18 +1,70 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-"""Implement renaming and suppressing parts of the schema.
+"""Implement renaming and suppressing parts of a GraphQL schema.
 
-Currently you can perform 1-1 renaming of types, unions, enums, and interfaces. You can also
-suppress types that don't implement an interface and suppress unions.
+There are two ways to rename a part of a schema: 1-1 renaming and 1-many renaming.
+
+1-1 renaming replaces the name of a type, field, or enum value in the schema. For instance, given
+the following part of a schema:
+  type Dog {
+    name: String
+  }
+  type Human {
+    pet: Dog
+  }
+1-1 renaming "Dog" to "NewDog" on a schema containing this object type (but not containing a
+type named "NewDog") would produce a schema almost identical to the original schema except
+with the NewDog object type replacing Dog everywhere it appears.
+  type NewDog {
+    name: String
+  }
+  type Human {
+    pet: NewDog
+  }
+If "Dog" also appeared as a field in the schema's root type, it would be renamed to "NewDog" there
+as well.
+
+1-many renaming is an operation intended for fields in an object type and enum values only, in which
+the same field or enum value is mapped to multiple names. For instance, given the following type in
+a schema:
+  type Dog {
+    name: String
+  }
+1-many renaming the "Dog" type's "name" field to "name" and "secondname" would produce a schema
+almost identical to the original schema except with both fields representing the same underlying
+data.
+  type Dog {
+    name: String
+    secondname: String
+  }
+
+Suppressing part of the schema removes it altogether. For instance, given the following part of a
+schema:
+  type Dog {
+    name: String
+  }
+suppressing "Dog" would produce an otherwise-identical schema but with that type (and therefore all
+its fields) removed. If "Dog" also appeared as a field in the schema's root type, it would be
+removed there as well.
+
+Operations that are already supported:
+- 1-1 renaming of types, unions, enums, and interfaces.
+- Suppressing types that don't implement an interface.
+- Suppressing unions.
 
 Operations that are not yet supported but will be implemented:
-Suppressions for fields, enums, interfaces, and types that implement interfaces.
-1-1 and 1-many renamings for fields and enum values.
+- Suppressions for fields, enums, enum values, interfaces, and types that implement interfaces.
+- 1-1 and 1-many renamings for fields and enum values.
 
-If you suppress all member types in a union, you must also suppress the union.
-
-If you suppress a type X, no other type Y may have fields of type X (this requires field suppression
-which hasn't been implemented yet). However, if type X has a field of that type X, it is legal to
-suppress type X without explicitly suppressing that particular field.
+Renaming constraints
+- If you suppress all member types in a union, you must also suppress the union.
+- If you suppress a type X, no other type Y may keep fields of type X (requires field suppression
+  which hasn't been implemented yet). However, if type X has a field of that type X, it is legal to
+  suppress type X without explicitly suppressing that particular field.
+- You may not suppress all types in the schema's root type.
+- All names must be valid GraphQL names.
+- Names may not conflict with each other. For instance, you may not rename both "Foo" and "Bar" to
+  "Baz". You also may not rename anything to "Baz" if a type "Baz" already exists and is not also
+  being renamed or suppressed.
 """
 from collections import namedtuple
 from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
