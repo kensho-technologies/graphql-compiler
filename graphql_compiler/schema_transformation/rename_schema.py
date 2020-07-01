@@ -781,6 +781,7 @@ class SuppressionNotImplementedVisitor(Visitor):
         """If renamings has interface implementation suppression, record it for error message."""
         if not node.interfaces:
             return
-        if self.renamings.get(node.name.value, node.name.value) is None:
+        object_name = node.name.value
+        if self.renamings.get(object_name, object_name) is None:
             # Suppressing interface implementations isn't supported yet.
-            self.unsupported_interface_implementation_suppressions.add(node.name.value)
+            self.unsupported_interface_implementation_suppressions.add(object_name)
