@@ -170,8 +170,9 @@ class LocalStatistics(Statistics):
                              values. The number N can be different for each entry. N has to be at
                              least 2 for every entry present in the dict.
             sampling_summaries: dict, class_name: str -> SamplingSummary
-            TODO(bojanserafimov): Enforce a canonical representation for quantile values. Datetimes
-                                  should be in utc, decimals should have type float, etc.
+            TODO(bojanserafimov): Enforce a canonical representation for quantile values and
+                                  sampling summaries. Datetimes should be in utc, decimals should
+                                  have type float, etc.
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
