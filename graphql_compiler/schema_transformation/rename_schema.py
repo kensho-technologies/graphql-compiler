@@ -149,8 +149,8 @@ def rename_schema(
 
     Any such names that do not appear in renamings will be unchanged.
 
-    Scalars, directives, enum values, and fields not belonging to the root/query type will never be
-    renamed.
+    Scalars and directives not belonging to the root/query type will never be renamed. In addition,
+    some operations have not been implemented yet (see module-level docstring for more details).
 
     Args:
         schema_ast: represents a valid schema that does not contain extensions, input object
@@ -170,7 +170,7 @@ def rename_schema(
           SchemaNameConflictError, so handling exceptions of type SchemaTransformError will also
           catch all of its subclasses. This will change after the error classes are modified so that
           errors can be fixed programmatically, at which point it will make sense for the user to
-          attempt to treat different errors differently.
+          attempt to treat different errors differently
         - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
           implementing an interface
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
