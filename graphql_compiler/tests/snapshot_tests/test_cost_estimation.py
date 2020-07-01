@@ -1239,7 +1239,6 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=2.0 / 3.0)
         self.assertEqual(expected_selectivity, selectivity)
-        return  # XXX
 
         statistics_with_distinct_birthday_values_data = LocalStatistics(
             dict(), distinct_field_values_counts=distinct_birthday_values_data

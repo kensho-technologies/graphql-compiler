@@ -189,7 +189,8 @@ def _estimate_filter_selectivity_of_in_collection(
     unique_indexes = schema_info.schema_graph.get_unique_indexes_for_class(location_name)
     if _are_filter_fields_uniquely_indexed((filter_field,), unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
-        return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
+        num_entries = 1 if collection is None else len(collection)
+        return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=num_entries)
 
     # Get all relevant statistics
     collection_value_counts = None
