@@ -21,9 +21,10 @@ def make_revisit_location_translations(
     location_translations = dict()
 
     for location, _ in query_metadata_table.registered_locations:
-        location_being_revisited = query_metadata_table.get_revisit_origin(location)
-        if location_being_revisited != location:
-            location_translations[location] = location_being_revisited
+        if isinstance(location, Location):
+            location_being_revisited = query_metadata_table.get_revisit_origin(location)
+            if location_being_revisited != location:
+                location_translations[location] = location_being_revisited
 
     return location_translations
 
