@@ -41,7 +41,7 @@ from ..schema_generation.orientdb.utils import (
     ORIENTDB_SCHEMA_RECORDS_QUERY,
 )
 from ..schema_generation.schema_graph import SchemaGraph
-
+from functools import lru_cache
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
@@ -559,16 +559,16 @@ def compare_ignoring_whitespace(
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
 
 
+_ast = parse(SCHEMA_TEXT)
+_schema = build_ast_schema(_ast)
 def get_schema() -> GraphQLSchema:
     """Get a schema object for testing."""
-    ast = parse(SCHEMA_TEXT)
-    schema = build_ast_schema(ast)
-    return schema
+    return _schema
 
 
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
-    schema = get_schema()
+    schema = build_ast_schema(parse(SCHEMA_TEXT))
     type_equivalence_hints: Dict[
         Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
     ] = {}
@@ -590,7 +590,7 @@ def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
             type_equivalence_hints[key_type] = value_type
     return type_equivalence_hints
 
-
+@lru_cache()
 def get_common_schema_info() -> CommonSchemaInfo:
     """Get the default CommonSchemaInfo used for testing."""
     return CommonSchemaInfo(get_schema(), get_type_equivalence_hints())
@@ -598,7 +598,7 @@ def get_common_schema_info() -> CommonSchemaInfo:
 
 def _get_schema_without_list_valued_property_fields() -> GraphQLSchema:
     """Get the default testing schema, skipping any list-valued property fields it has."""
-    schema = get_schema()
+    schema = build_ast_schema(parse(SCHEMA_TEXT))
 
     types_with_fields = (GraphQLInterfaceType, GraphQLObjectType)
     for type_name, graphql_type in six.iteritems(schema.type_map):
@@ -614,7 +614,7 @@ def _get_schema_without_list_valued_property_fields() -> GraphQLSchema:
 
     return schema
 
-
+@lru_cache()
 def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
     """Get a SQLAlchemySchemaInfo for testing."""
     # We don't support list-valued property fields in SQL for now.
