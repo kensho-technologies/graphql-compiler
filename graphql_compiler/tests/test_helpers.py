@@ -568,7 +568,7 @@ def get_schema() -> GraphQLSchema:
 
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
-    schema = build_ast_schema(parse(SCHEMA_TEXT))
+    schema = get_schema()
     type_equivalence_hints: Dict[
         Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
     ] = {}
