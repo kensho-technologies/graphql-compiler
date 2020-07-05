@@ -148,7 +148,7 @@ type MyType {
             print_schema(lexicographic_sort_schema(get_schema()))
         )
 
-    def test_schema_is_deep_copyable(self):
+    def test_deep_copy_comparison(self):
         graphql_schema = get_schema()
         graphql_schema_copy = deepcopy(graphql_schema)
         self.assertEqual(
