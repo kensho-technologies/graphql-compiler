@@ -41,6 +41,7 @@ from ..schema_generation.orientdb.utils import (
     ORIENTDB_SCHEMA_RECORDS_QUERY,
 )
 from ..schema_generation.schema_graph import SchemaGraph
+
 from functools import lru_cache
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
@@ -559,11 +560,12 @@ def compare_ignoring_whitespace(
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
 
 
-_ast = parse(SCHEMA_TEXT)
-_schema = build_ast_schema(_ast)
+@lru_cache()
 def get_schema() -> GraphQLSchema:
     """Get a schema object for testing."""
-    return _schema
+    ast = parse(SCHEMA_TEXT)
+    schema = build_ast_schema(ast)
+    return schema
 
 
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
@@ -590,6 +592,7 @@ def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
             type_equivalence_hints[key_type] = value_type
     return type_equivalence_hints
 
+
 @lru_cache()
 def get_common_schema_info() -> CommonSchemaInfo:
     """Get the default CommonSchemaInfo used for testing."""
@@ -613,6 +616,7 @@ def _get_schema_without_list_valued_property_fields() -> GraphQLSchema:
                     graphql_type.fields.pop(field_to_pop)
 
     return schema
+
 
 @lru_cache()
 def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
