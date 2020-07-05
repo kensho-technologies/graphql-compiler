@@ -7,12 +7,13 @@ import re
 import unittest
 
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
-from graphql.utilities import print_schema
+from graphql.utilities import print_schema, lexicographic_sort_schema
 import pytz
 import six
 
 from .. import schema
 from .test_helpers import get_schema
+from copy import deepcopy
 
 
 class SchemaTests(unittest.TestCase):
@@ -140,3 +141,17 @@ type MyType {
             "    ", "  "
         )  # 2 space indentation instead of 4 spaces
         self.assertIn(expected_type_definition, printed_schema)
+
+    def test_normal_schema_comparison(self):
+        self.assertEqual(
+            print_schema(lexicographic_sort_schema(get_schema())),
+            print_schema(lexicographic_sort_schema(get_schema()))
+        )
+
+    def test_schema_is_deep_copyable(self):
+        graphql_schema = get_schema()
+        graphql_schema_copy = deepcopy(graphql_schema)
+        self.assertEqual(
+            print_schema(lexicographic_sort_schema(graphql_schema)),
+            print_schema(lexicographic_sort_schema(graphql_schema_copy))
+        )
