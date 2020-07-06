@@ -9,7 +9,7 @@ import sys
 from . import pretty_print_graphql
 
 
-def main():
+def main() -> None:
     """Read a GraphQL query from standard input, and output it pretty-printed to standard output."""
     query = " ".join(sys.stdin.readlines())
 

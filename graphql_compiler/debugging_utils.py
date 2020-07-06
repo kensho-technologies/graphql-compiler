@@ -4,13 +4,13 @@ import re
 import six
 
 
-def remove_custom_formatting(query):
+def remove_custom_formatting(query: str) -> str:
     """Prepare the query string for pretty-printing by removing all unusual formatting."""
     query = re.sub("[\n ]+", " ", query)
     return query.replace("( ", "(").replace(" )", ")")
 
 
-def pretty_print_gremlin(gremlin):
+def pretty_print_gremlin(gremlin: str) -> str:
     """Return a human-readable representation of a gremlin command string."""
     gremlin = remove_custom_formatting(gremlin)
     too_many_parts = re.split(r"([)}]|scatter)[ ]?\.", gremlin)
@@ -48,7 +48,7 @@ def pretty_print_gremlin(gremlin):
     return "\n".join(output).strip()
 
 
-def pretty_print_match(match, parameterized=True):
+def pretty_print_match(match: str, parameterized: bool = True) -> str:
     """Return a human-readable representation of a parameterized MATCH query string."""
     left_curly = "{{" if parameterized else "{"
     right_curly = "}}" if parameterized else "}"
