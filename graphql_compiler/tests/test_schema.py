@@ -149,8 +149,24 @@ type MyType {
         )
 
     def test_deep_copy_comparison(self):
-        graphql_schema = get_schema()
+        SCHEMA_TEXT = """
+            schema {
+                query: RootSchemaQuery
+            }
+
+            type Animal {
+                uuid: ID
+            }
+
+            type RootSchemaQuery {
+                Animal: [Animal]
+            }
+        """
+        from .copy_copy import deepcopy
+        from graphql import build_schema add -
+        graphql_schema = build_schema(SCHEMA_TEXT)
         graphql_schema_copy = deepcopy(graphql_schema)
+
         self.assertEqual(
             print_schema(lexicographic_sort_schema(graphql_schema)),
             print_schema(lexicographic_sort_schema(graphql_schema_copy))
