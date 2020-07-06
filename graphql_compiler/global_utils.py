@@ -1,8 +1,8 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
-from typing import Any, Dict, NamedTuple, Set, Tuple
+from typing import Any, Dict, NamedTuple, Set, Tuple, TypeVar
 
-from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull
+from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull, GraphQLType
 import six
 
 
@@ -33,7 +33,11 @@ class ASTWithParameters:
     parameters: Dict[str, Any]
 
 
-def merge_non_overlapping_dicts(merge_target, new_data):
+KT = TypeVar("KT")
+VT = TypeVar("VT")
+
+
+def merge_non_overlapping_dicts(merge_target: Dict[KT, VT], new_data: Dict[KT, VT]) -> Dict[KT, VT]:
     """Produce the merged result of two dicts that are supposed to not overlap."""
     result = dict(merge_target)
 
@@ -49,7 +53,7 @@ def merge_non_overlapping_dicts(merge_target, new_data):
     return result
 
 
-def is_same_type(left, right):
+def is_same_type(left: GraphQLType, right: GraphQLType) -> bool:
     """Determine if two GraphQL types are the same type."""
     if isinstance(left, GraphQLNamedType) and isinstance(right, GraphQLNamedType):
         return left.__class__ is right.__class__ and left.name == right.name
