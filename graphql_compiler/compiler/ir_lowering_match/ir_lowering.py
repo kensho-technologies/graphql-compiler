@@ -8,16 +8,22 @@ to generate directly from this Expression object. An output-language-aware IR lo
 us to convert this Expression into other Expressions, using data already present in the IR,
 to simplify the final code generation step.
 """
+from typing import Dict, List, Optional, Set
+
 import six
 
-from ..blocks import Backtrack, CoerceType, MarkLocation, QueryRoot
+from ..blocks import Backtrack, CoerceType, Filter, MarkLocation, QueryRoot
+from ..compiler_entities import BasicBlock, Expression
 from ..expressions import BinaryComposition, FalseLiteral, Literal, TernaryConditional, TrueLiteral
+from ..helpers import Location
 from ..ir_lowering_common.location_renaming import (
     make_location_rewriter_visitor_fn,
     make_revisit_location_translations,
     translate_potential_location,
 )
-from .utils import convert_coerce_type_to_instanceof_filter
+from ..match_query import MatchQuery, MatchStep
+from ..metadata import QueryMetadataTable
+from .utils import CompoundMatchQuery, convert_coerce_type_to_instanceof_filter
 
 
 ##################################
@@ -25,10 +31,12 @@ from .utils import convert_coerce_type_to_instanceof_filter
 ##################################
 
 
-def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
+def rewrite_binary_composition_inside_ternary_conditional(
+    ir_blocks: List[BasicBlock],
+) -> List[BasicBlock]:
     """Rewrite BinaryConditional expressions in the true/false values of TernaryConditionals."""
 
-    def visitor_fn(expression):
+    def visitor_fn(expression: Expression) -> Expression:
         """Expression visitor function."""
         # MATCH queries do not allow BinaryComposition inside a TernaryConditional's true/false
         # value blocks, since OrientDB cannot produce boolean values for comparisons inside them.
@@ -92,20 +100,20 @@ def rewrite_binary_composition_inside_ternary_conditional(ir_blocks):
     return new_ir_blocks
 
 
-def _prepend_wildcard(expression):
+def _prepend_wildcard(expression: Expression) -> BinaryComposition:
     """Prepend an SQL-MATCH wildcard to an expression."""
     return BinaryComposition("+", Literal("%"), expression)
 
 
-def _append_wildcard(expression):
+def _append_wildcard(expression: Expression) -> BinaryComposition:
     """Append an SQL-MATCH wildcard to an expression."""
     return BinaryComposition("+", expression, Literal("%"))
 
 
-def lower_string_operators(ir_blocks):
+def lower_string_operators(ir_blocks: List[BasicBlock]) -> List[BasicBlock]:
     """Lower Filters with "has_substring", "starts_with", or "ends_with" operation into MATCH."""
 
-    def visitor_fn(expression):
+    def visitor_fn(expression: Expression) -> Expression:
         if not isinstance(expression, BinaryComposition):
             return expression
         elif expression.operator == "has_substring":
@@ -144,12 +152,12 @@ def lower_string_operators(ir_blocks):
     return new_ir_blocks
 
 
-def truncate_repeated_single_step_traversals(match_query):
+def truncate_repeated_single_step_traversals(match_query: MatchQuery) -> MatchQuery:
     """Truncate one-step traversals that overlap a previous traversal location."""
     # Such traversals frequently happen as side-effects of the lowering process
     # of Backtrack blocks, and needlessly complicate the executed queries.
-    new_match_traversals = []
-    visited_locations = set()
+    new_match_traversals: List[List[MatchStep]] = []
+    visited_locations: Set[Location] = set()
 
     for current_match_traversal in match_query.match_traversals:
         ignore_traversal = False
@@ -177,7 +185,9 @@ def truncate_repeated_single_step_traversals(match_query):
     return match_query._replace(match_traversals=new_match_traversals)
 
 
-def lower_backtrack_blocks(match_query, query_metadata_table):
+def lower_backtrack_blocks(
+    match_query: MatchQuery, query_metadata_table: QueryMetadataTable
+) -> MatchQuery:
     """Lower Backtrack blocks into (QueryRoot, MarkLocation) pairs of blocks."""
     # The lowering works as follows:
     #   1. Upon seeing a Backtrack block, end the current traversal (if non-empty).
@@ -186,12 +196,12 @@ def lower_backtrack_blocks(match_query, query_metadata_table):
     #      as equivalent to the location where the Backtrack pointed.
     #   4. Rewrite all expressions that reference such revisit locations, making them refer to
     #      the revisit origin location instead.
-    new_match_traversals = []
+    new_match_traversals: List[List[MatchStep]] = []
 
-    locations_needing_translation = set()
+    locations_needing_translation: Set[Location] = set()
 
     for current_match_traversal in match_query.match_traversals:
-        new_traversal = []
+        new_traversal: List[MatchStep] = []
         for step in current_match_traversal:
             if not isinstance(step.root_block, Backtrack):
                 new_traversal.append(step)
@@ -242,21 +252,29 @@ def lower_backtrack_blocks(match_query, query_metadata_table):
     return _translate_equivalent_locations(new_match_query, location_translations)
 
 
-def _translate_equivalent_locations(match_query, location_translations):
+def _translate_equivalent_locations(
+    match_query: MatchQuery, location_translations: Dict[Location, Location]
+) -> MatchQuery:
     """Translate Location objects into their equivalent locations, based on the given dict."""
-    new_match_traversals = []
+    new_match_traversals: List[List[MatchStep]] = []
 
     visitor_fn = make_location_rewriter_visitor_fn(location_translations)
 
     # Rewrite the Locations in the steps of each MATCH traversal.
     for current_match_traversal in match_query.match_traversals:
-        new_traversal = []
+        new_traversal: List[MatchStep] = []
         for step in current_match_traversal:
             new_step = step
 
             # If the root_block is a Backtrack, translate its Location if necessary.
             if isinstance(new_step.root_block, Backtrack):
                 old_location = new_step.root_block.location
+                if not isinstance(old_location, Location):
+                    raise AssertionError(
+                        f"Expected old_location to be of Location type, but got {old_location} "
+                        f"instead. This is a bug."
+                    )
+
                 if old_location in location_translations:
                     new_location = location_translations[old_location]
                     new_step = new_step._replace(root_block=Backtrack(new_location))
@@ -264,6 +282,12 @@ def _translate_equivalent_locations(match_query, location_translations):
             # If the as_block exists, translate its Location if necessary.
             if new_step.as_block is not None:
                 old_location = new_step.as_block.location
+                if not isinstance(old_location, Location):
+                    raise AssertionError(
+                        f"Expected old_location to be of Location type, but got {old_location} "
+                        f"instead. This is a bug."
+                    )
+
                 if old_location in location_translations:
                     new_location = location_translations[old_location]
                     new_step = new_step._replace(as_block=MarkLocation(new_location))
@@ -287,21 +311,23 @@ def _translate_equivalent_locations(match_query, location_translations):
     new_output_block = match_query.output_block.visit_and_update_expressions(visitor_fn)
 
     # Rewrite the Locations in the global where block.
-    new_where_block = None
+    new_global_where_block: Optional[Filter] = None
     if match_query.where_block is not None:
-        new_where_block = match_query.where_block.visit_and_update_expressions(visitor_fn)
+        new_global_where_block = match_query.where_block.visit_and_update_expressions(visitor_fn)
 
     return match_query._replace(
         match_traversals=new_match_traversals,
         folds=new_folds,
         output_block=new_output_block,
-        where_block=new_where_block,
+        where_block=new_global_where_block,
     )
 
 
-def lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks):
+def lower_folded_coerce_types_into_filter_blocks(
+    folded_ir_blocks: List[BasicBlock],
+) -> List[BasicBlock]:
     """Lower CoerceType blocks into "INSTANCEOF" Filter blocks. Indended for folded IR blocks."""
-    new_folded_ir_blocks = []
+    new_folded_ir_blocks: List[BasicBlock] = []
     for block in folded_ir_blocks:
         if isinstance(block, CoerceType):
             new_block = convert_coerce_type_to_instanceof_filter(block)
@@ -313,16 +339,18 @@ def lower_folded_coerce_types_into_filter_blocks(folded_ir_blocks):
     return new_folded_ir_blocks
 
 
-def remove_backtrack_blocks_from_fold(folded_ir_blocks):
+def remove_backtrack_blocks_from_fold(folded_ir_blocks: List[BasicBlock]) -> List[BasicBlock]:
     """Return a list of IR blocks with all Backtrack blocks removed."""
-    new_folded_ir_blocks = []
+    new_folded_ir_blocks: List[BasicBlock] = []
     for block in folded_ir_blocks:
         if not isinstance(block, Backtrack):
             new_folded_ir_blocks.append(block)
     return new_folded_ir_blocks
 
 
-def truncate_repeated_single_step_traversals_in_sub_queries(compound_match_query):
+def truncate_repeated_single_step_traversals_in_sub_queries(
+    compound_match_query: CompoundMatchQuery,
+) -> CompoundMatchQuery:
     """For each sub-query, remove one-step traversals that overlap a previous traversal location."""
     lowered_match_queries = []
     for match_query in compound_match_query.match_queries:
