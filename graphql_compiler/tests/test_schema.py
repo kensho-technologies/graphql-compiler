@@ -157,7 +157,7 @@ type MyType {
 
             type Animal {
                 uuid: ID
-            }Gra
+            }
 
             type RootSchemaQuery {
                 Animal: [Animal]

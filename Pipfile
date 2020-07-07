@@ -28,6 +28,8 @@ pylint = ">=2.4.4,<2.5"
 pytest = ">=5.1.3,<6"
 pytest-cov = ">=2.6.1,<3"
 snapshottest = ">=0.5.1,<1"
+# TODO: add dependency on https://github.com/dropbox/sqlalchemy-stubs and corresponding mypy plugin
+#       when we can make everything type-check correctly with it.
 
 # Documentation requirements. Keep in sync with docs/requirements.txt.
 # Read the Docs doesn't support pipfiles: https://github.com/readthedocs/readthedocs.org/issues/3181
