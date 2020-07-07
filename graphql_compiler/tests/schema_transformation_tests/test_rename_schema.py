@@ -149,7 +149,9 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({"Human": "Droid", "Droid": "Human"}, renamed_schema.reverse_name_map)
 
     def test_rename_into_suppressed(self):
-        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None, "Droid": "Human"})
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": "Human"}
+        )
         renamed_schema_string = dedent(
             """\
             schema {
