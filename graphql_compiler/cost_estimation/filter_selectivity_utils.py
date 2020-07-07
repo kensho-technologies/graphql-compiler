@@ -4,7 +4,7 @@ from __future__ import division
 import bisect
 from collections import namedtuple
 import sys
-from typing import Any, Dict, List, Optional, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 import six
 
@@ -342,22 +342,26 @@ def get_integer_interval_for_filters_on_field(
     return interval
 
 
-def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
+def get_selectivity_of_filters_at_vertex(
+    schema_info: QueryPlanningSchemaInfo,
+    filter_infos: Iterable[FilterInfo],
+    parameters: Dict[str, Any],
+    location_name: str,
+) -> Selectivity:
     """Get the combined selectivity of all filters at the vertex.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        filter_infos: list of FilterInfos, filters on the location being filtered
-        parameters: dict, parameters with which query will be executed
-        location_name: string, type of the location being filtered
-        counts: float, result count that we're adjusting for filters
+        filter_infos: filters on the location being filtered
+        parameters: parameters with which query will be executed
+        location_name: type name of the location being filtered
 
     Returns:
         Selectivity object
     """
     # Group filters by field
     # TODO this is already computed in QueryPlanningAnalysis.single_field_filters
-    single_field_filters = {}
+    single_field_filters: Dict[str, Set[FilterInfo]] = {}
     for filter_info in filter_infos:
         if len(filter_info.fields) == 0:
             raise AssertionError("Got filter on 0 fields {} {}".format(filter_info, location_name))
@@ -384,10 +388,16 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 # uuid4 fields are uniformly distributed, so we simply divide the fraction of
                 # the domain queried with the size of the domain.
                 domain_interval = Interval[int](MIN_UUID_INT, MAX_UUID_INT)
+                domain_size = measure_int_interval(domain_interval)
+                if domain_size is None:
+                    raise AssertionError(f"Expected domain {domain_interval} to have a size.")
+
                 interval = intersect_int_intervals(interval, domain_interval)
-                fraction_of_domain_queried = float(
-                    measure_int_interval(interval)
-                ) / measure_int_interval(domain_interval)
+                interval_size = measure_int_interval(interval)
+                if interval_size is None:
+                    raise AssertionError(f"Expected interval {interval} to have a size.")
+
+                fraction_of_domain_queried = float(interval_size) / domain_size
                 selectivity = Selectivity(
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried
                 )
