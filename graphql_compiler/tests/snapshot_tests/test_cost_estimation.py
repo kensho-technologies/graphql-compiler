@@ -31,6 +31,14 @@ from ...schema_generation.schema_graph import SchemaGraph
 from ..test_helpers import generate_schema_graph
 
 
+def _intersect_and_check_int_intervals(test_case, interval_a, interval_b):
+    """Run intersect_int_intervals and assert commutativity."""
+    result_1 = intersect_int_intervals(interval_a, interval_b)
+    result_2 = intersect_int_intervals(interval_b, interval_a)
+    test_case.assertEqual(result_1, result_2)
+    return result_1
+
+
 def _make_schema_info_and_estimate_cardinality(
     schema_graph: SchemaGraph, statistics: Statistics, graphql_input: str, args: Dict[str, Any]
 ) -> float:
@@ -97,6 +105,25 @@ class CostEstimationTests(unittest.TestCase):
         # For each Animal, there are on average 5.0 / 3.0 Animal_ParentOf edges, so we expect
         # 3.0 * (5.0 / 3.0) results.
         expected_cardinality_estimate = 5.0
+
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_traverse_zero_edge_case(self) -> None:
+        """Ensure we correctly estimate cardinality over edges."""
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        test_data = test_input_data.traverse_and_output()
+
+        count_data = {
+            "Animal": 0,
+            "Animal_ParentOf": 0,
+        }
+        statistics = LocalStatistics(count_data)
+
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, test_data.graphql_input, dict()
+        )
+        expected_cardinality_estimate = 0.0
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
@@ -1018,6 +1045,7 @@ def _make_schema_info_and_get_filter_selectivity(
     )
 
 
+@pytest.mark.slow
 class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_combine_filter_selectivities(self) -> None:
         """Test filter combination function."""
@@ -1470,6 +1498,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
 # which pylint does not recognize as a class member.
 # pylint: disable=no-member
+@pytest.mark.slow
 class IntegerIntervalTests(unittest.TestCase):
     """Test methods that create IntegerIntervals."""
 
@@ -1490,49 +1519,49 @@ class IntegerIntervalTests(unittest.TestCase):
         interval_b = Interval[int](2, 4)
 
         expected_intersection = Interval[int](2, 3)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](4, 6)
         interval_b = Interval[int](2, 4)
 
         expected_intersection = Interval[int](4, 4)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](4, 6)
         interval_b = Interval[int](4, 6)
 
         expected_intersection = Interval[int](4, 6)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](0, None)
         interval_b = Interval[int](4, 6)
 
         expected_intersection = Interval[int](4, 6)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](0, None)
         interval_b = Interval[int](None, 6)
 
         expected_intersection = Interval[int](0, 6)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](None, None)
         interval_b = Interval[int](None, 6)
 
         expected_intersection = Interval[int](None, 6)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](None, None)
         interval_b = Interval[int](None, None)
 
         expected_intersection = Interval[int](None, None)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
     def test_disjoint_intervals(self) -> None:
@@ -1541,21 +1570,21 @@ class IntegerIntervalTests(unittest.TestCase):
         interval_b = Interval[int](5, 7)
 
         expected_intersection = Interval[int](1, 0)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](8, 10)
         interval_b = Interval[int](5, 7)
 
         expected_intersection = Interval[int](1, 0)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
         interval_a = Interval[int](0, 0)
         interval_b = Interval[int](1, 1)
 
         expected_intersection = Interval[int](1, 0)
-        received_intersection = intersect_int_intervals(interval_a, interval_b)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")

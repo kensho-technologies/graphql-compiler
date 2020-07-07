@@ -329,7 +329,15 @@ with runtime parameter
       "name": "Charles"
     }
 
-would output an empty list because the :code:`Person_Knows` edge from
+would output
+
+.. code:: python
+
+    [
+        { name: 'Betty' },
+    ]
+
+because the :code:`Person_Knows` edge from
 :code:`Albert` to :code:`Betty` satisfies the :code:`@optional` directive, but
 :code:`Betty` doesn't match the filter checking for a node with name
 :code:`Charles`.
@@ -339,12 +347,14 @@ the output would be
 
 .. code:: python
 
-    {
-      name: 'Albert'
-    }
+    [
+        { name: 'Albert' },
+        { name: 'Betty' },
+    ]
 
 because no such edge can satisfy the :code:`@optional` directive, and no
-filtering happens.
+filtering happens. In both examples, :code:`Betty` is always returned
+because :code:`Betty` does not have any outgoing :code:`Person_Knows` edges.
 
 @output
 ~~~~~~~
@@ -586,18 +596,16 @@ Example Use
 
     {
         Animal {
-            name @tag(tag_name: "parent_name")
+            limbs @tag(tag_name: "parent_limbs")
             out_Animal_ParentOf {
-                name @filter(op_name: "<", value: ["%parent_name"])
-                     @output(out_name: "child_name")
+                limbs @filter(op_name: "<", value: ["%parent_limbs"])
+                name @output(out_name: "child_name")
             }
         }
     }
 
-Each row returned by this query contains, in the :code:`child_name` column,
-the name of an :code:`Animal` that is the child of another :code:`Animal`, and
-has a name that is lexicographically smaller than the name of its
-parent.
+Each result returned by this query contains the name of an :code:`Animal` who is a
+child of another animal and has fewer limbs than its parent.
 
 Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1767,7 +1775,7 @@ resembling the following:
 
 Due to limitations in the underlying query language, :code:`gremlin` will by
 default produce at most one result for each of the starting locations in
-the query. The above Gr aphQL query started at the type :code:`S`, so each
+the query. The above GraphQL query started at the type :code:`S`, so each
 :code:`s_name` in the returned result list is therefore distinct.
 Furthermore, there is no guarantee (and no way to know ahead of time)
 whether :code:`x` or :code:`y` will be returned as the :code:`t_name` value in each
@@ -1987,7 +1995,7 @@ users to define **macros** -- type-safe rules for programmatic query rewriting
 that transform user-provided queries on the *desired* data model into
 queries on the *actual* data model in the underlying data systems.
 
-When macros are defined, the compiler loads them into a `macro registry <Macro registry>`_ -- a
+When macros are defined, the compiler loads them into a `macro registry <#macro-registry>`_ -- a
 data structure that tracks all currently available macros, the resulting GraphQL schema
 (accounting for macros), and any additional metadata needed by the compiler.
 The compiler then leverages this registry to expand queries that rely on macros,
@@ -2009,7 +2017,7 @@ though there are some key differences:
   seamlessly with all databases and even on schemas stitched together from multiple databases.
   In contrast, not all databases support SQL-like :code:`VIEW` functionality.
 
-Currently, the compiler supports one type of macro: `macro edges <Macro edges>`_, which allow
+Currently, the compiler supports one type of macro: `macro edges <#macro-edges>`_, which allow
 the creation of "virtual" edges computed from existing ones.
 More types of macros are coming in the future.
 
@@ -2684,9 +2692,9 @@ language governing permissions and limitations under the License.
 Copyright 2017-present Kensho Technologies, LLC. The present date is
 determined by the timestamp of the most recent commit in the repository.
 
-.. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=master
+.. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=main
    :target: https://travis-ci.org/kensho-technologies/graphql-compiler
-.. |Coverage Status| image:: https://codecov.io/gh/kensho-technologies/graphql-compiler/branch/master/graph/badge.svg
+.. |Coverage Status| image:: https://codecov.io/gh/kensho-technologies/graphql-compiler/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/kensho-technologies/graphql-compiler
 .. |License| image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
    :target: https://opensource.org/licenses/Apache-2.0

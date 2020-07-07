@@ -908,6 +908,58 @@ def simple_recurse() -> CommonTestData:  # noqa: D103
     )
 
 
+def recurse_with_new_output_inside_recursion_and_filter_at_root() -> CommonTestData:  # noqa: D103
+    # The filter on the root location will make SQL emit a cte at the base. Since
+    # the color field is used in the base case of the recursive cte, the root cte
+    # needs to select it. If this is not implemented correctly, emit_sql would raise
+    # unexpected errors.
+    graphql_input = """{
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_ParentOf @recurse(depth: 1) {
+                name @output(out_name: "relation_name")
+                color @output(out_name: "animal_color")
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "animal_color": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "relation_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+    }
+    expected_input_metadata = {
+        "animal_name": GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
+def filter_then_recurse() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+        Animal {
+            name @filter(op_name: "=", value: ["$animal_name"])
+            out_Animal_ParentOf @recurse(depth: 1) {
+                name @output(out_name: "relation_name")
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "relation_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+    }
+    expected_input_metadata = {"animal_name": GraphQLString}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def traverse_then_recurse() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
@@ -1793,6 +1845,31 @@ def fold_on_many_to_one_edge() -> CommonTestData:  # noqa: D103
     )
 
 
+def fold_after_recurse() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @recurse(depth: 3) {
+                out_Animal_LivesIn @fold {
+                    name @output(out_name: "homes_list")
+                }
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "homes_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+    }
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def fold_same_edge_type_in_different_locations() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
@@ -2288,6 +2365,32 @@ def no_op_coercion_with_eligible_subpath() -> CommonTestData:  # noqa: D103
 
 
 def filter_within_fold_scope() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+        Animal {
+            name @output(out_name: "name")
+            out_Animal_ParentOf @fold {
+                name @filter(op_name: "has_substring", value: ["$desired"])
+                     @output(out_name: "child_list")
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "child_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+    }
+    expected_input_metadata = {
+        "desired": GraphQLString,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
+def filter_and_multiple_outputs_within_fold_scope() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
             name @output(out_name: "name")

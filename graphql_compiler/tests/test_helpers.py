@@ -4,7 +4,7 @@ from collections import namedtuple
 from inspect import getmembers, isfunction
 from pprint import pformat
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
@@ -45,7 +45,7 @@ from ..schema_generation.schema_graph import SchemaGraph
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
-WHITESPACE_PATTERN = re.compile(u"[\t\n ]*", flags=re.UNICODE)
+WHITESPACE_PATTERN = re.compile("[\t\n ]*", flags=re.UNICODE)
 
 # flag to indicate a test component should be skipped
 SKIP_TEST = "SKIP"
@@ -83,8 +83,8 @@ SCHEMA_TEXT = """
 
     directive @recurse(
         \"\"\"
-        Recurse up to this many times on this edge. A depth of 1 produces the current
-        vertex and its immediate neighbors along the given edge.
+        Recurse up to this many times on this edge. A depth of 1 produces the current \
+vertex and its immediate neighbors along the given edge.
         \"\"\"
         depth: Int!
     ) on FIELD
@@ -139,10 +139,10 @@ SCHEMA_TEXT = """
     scalar Date
 
     \"\"\"
-    The `DateTime` scalar type represents timezone-aware second-accuracy
+    The `DateTime` scalar type represents timezone-naive second-accuracy
     timestamps.Values are serialized following the ISO-8601 datetime format
-    specification, for example "2017-03-21T12:34:56+00:00". All of these fields must
-    be included, including the seconds and the time zone, and the format followed
+    specification, for example "2017-03-21T12:34:56". All of these fields must
+    be included, including the seconds, and the format followed
     exactly, or the behavior is undefined.
     \"\"\"
     scalar DateTime
@@ -454,7 +454,7 @@ def get_function_names_from_module(module):
 def get_test_function_names_from_class(test_class):
     """Return a set of test function names present in a given TestCase class."""
     if not issubclass(test_class, TestCase):
-        raise AssertionError(u"Received non-test class {} as input.".format(test_class))
+        raise AssertionError("Received non-test class {} as input.".format(test_class))
     member_dict = test_class.__dict__
     return {
         member
@@ -465,7 +465,7 @@ def get_test_function_names_from_class(test_class):
 
 def transform(emitted_output: str) -> str:
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
-    return WHITESPACE_PATTERN.sub(u"", emitted_output)
+    return WHITESPACE_PATTERN.sub("", emitted_output)
 
 
 def _get_mismatch_message(
@@ -474,7 +474,7 @@ def _get_mismatch_message(
     """Create a well-formated error message indicating that two lists of blocks are mismatched."""
     pretty_expected = pformat(expected_blocks)
     pretty_received = pformat(received_blocks)
-    return u"{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
+    return "{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
 
 
 def compare_ir_blocks(
@@ -484,7 +484,7 @@ def compare_ir_blocks(
     mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
 
     if len(expected_blocks) != len(received_blocks):
-        test_case.fail(u"Not the same number of blocks:\n\n" u"{}".format(mismatch_message))
+        test_case.fail("Not the same number of blocks:\n\n{}".format(mismatch_message))
 
     for i in six.moves.xrange(len(expected_blocks)):
         expected = expected_blocks[i]
@@ -492,8 +492,8 @@ def compare_ir_blocks(
         test_case.assertEqual(
             expected,
             received,
-            msg=u"Blocks at position {} were different: {} vs {}\n\n"
-            u"{}".format(i, expected, received, mismatch_message),
+            msg="Blocks at position {} were different: {} vs {}\n\n"
+            "{}".format(i, expected, received, mismatch_message),
         )
 
 
@@ -548,15 +548,27 @@ def compare_input_metadata(
 
         test_case.assertTrue(
             is_same_type(expected_value, received_value),
-            msg=u"{} != {}".format(str(expected_value), str(received_value)),
+            msg="{} != {}".format(str(expected_value), str(received_value)),
         )
 
 
 def compare_ignoring_whitespace(
-    test_case: Any, expected: str, received: str, msg: Optional[str]
+    test_case: TestCase, expected: str, received: str, msg: Optional[str]
 ) -> None:
     """Compare expected and received code, ignoring whitespace, with the given failure message."""
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
+
+
+def compare_schema_texts_order_independently(
+    test_case: TestCase, expected_schema_text: str, received_schema_text: str,
+) -> None:
+    """Compare expected and received schema texts, ignoring order of definitions."""
+    expected_schema_blocks = expected_schema_text.split("\n\n")
+    received_schema_blocks = expected_schema_text.split("\n\n")
+
+    # This is the preferred order-independent comparison method in Python:
+    # https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertCountEqual
+    test_case.assertCountEqual(expected_schema_blocks, received_schema_blocks)
 
 
 def get_schema() -> GraphQLSchema:
@@ -647,7 +659,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
         "BirthEvent": sqlalchemy.Table(
             "BirthEvent",
             sqlalchemy_metadata,
-            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column("uuid", uuid_type, primary_key=True),
             sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False),
@@ -829,7 +841,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
     elif dialect == "mssql":
         sqlalchemy_compiler_dialect = mssql.dialect()
     else:
-        raise AssertionError(u"Unrecognized dialect {}".format(dialect))
+        raise AssertionError("Unrecognized dialect {}".format(dialect))
     return make_sqlalchemy_schema_info(
         schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors
     )

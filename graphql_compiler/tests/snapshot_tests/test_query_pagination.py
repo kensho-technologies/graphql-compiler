@@ -5,7 +5,6 @@ import unittest
 
 from graphql import print_ast
 import pytest
-import pytz
 
 from .. import test_input_data
 from ...ast_manipulation import safe_parse_graphql
@@ -16,6 +15,7 @@ from ...global_utils import ASTWithParameters, QueryStringWithParameters
 from ...query_pagination import paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
+    MissingClassCount,
     PaginationAdvisory,
     PaginationPlan,
     VertexPartitionPlan,
@@ -711,7 +711,7 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertEqual(expected_remainder_query.parameters, remainder[0].parameters)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def test_pagination_datetime_existing_tz_aware_filter(self):
+    def test_pagination_existing_datetime_filter(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
@@ -743,7 +743,7 @@ class QueryPaginationTests(unittest.TestCase):
                 event_date @filter(op_name: ">=", value: ["$date_lower"])
             }
         }""",
-            {"date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc)},
+            {"date_lower": datetime.datetime(2050, 1, 1, 0, 0)},
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 100)
@@ -762,7 +762,7 @@ class QueryPaginationTests(unittest.TestCase):
                 }
             }""",
             {
-                "date_lower": datetime.datetime(2050, 1, 1, 0, 0, tzinfo=pytz.utc),
+                "date_lower": datetime.datetime(2050, 1, 1, 0, 0),
                 "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
             },
         )
@@ -1654,3 +1654,119 @@ class QueryPaginationTests(unittest.TestCase):
                         for arg_name, arg_type in test_data.expected_input_metadata.items()
                     }
                     paginate_query(schema_info, QueryStringWithParameters(query, args), 10)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_missing_vertex_class_count(self) -> None:
+        """Ensure a basic pagination query is handled correctly."""
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @output(out_name: "animal")
+            }
+        }""",
+            {},
+        )
+
+        # No class counts provided
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        first_page_and_remainder, advisories = paginate_query(schema_info, query, 1)
+        self.assertTrue(first_page_and_remainder.remainder == tuple())
+        self.assertEqual(advisories, (MissingClassCount("Animal"),))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_missing_non_root_vertex_class_count(self) -> None:
+        """Ensure a basic pagination query is handled correctly."""
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                out_Animal_LivesIn {
+                    name @output(out_name: "animal")
+                }
+            }
+        }""",
+            {},
+        )
+
+        # No counts for Location
+        count_data = {
+            "Animal": 1000,
+            "Animal_LivesIn": 1000,
+        }
+
+        statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        first_page_and_remainder, advisories = paginate_query(schema_info, query, 1)
+        self.assertTrue(first_page_and_remainder.remainder == tuple())
+        self.assertEqual(advisories, (MissingClassCount("Location"),))
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_missing_edge_class_count(self) -> None:
+        """Ensure a basic pagination query is handled correctly."""
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                out_Animal_LivesIn {
+                    name @output(out_name: "animal")
+                }
+            }
+        }""",
+            {},
+        )
+
+        # No counts for Animal_LivesIn
+        count_data = {
+            "Animal": 1000,
+            "Location": 10000,
+        }
+
+        statistics = LocalStatistics(count_data)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        first_page_and_remainder, advisories = paginate_query(schema_info, query, 1)
+        self.assertTrue(first_page_and_remainder.remainder == tuple())
+        self.assertEqual(advisories, (MissingClassCount("Animal_LivesIn"),))

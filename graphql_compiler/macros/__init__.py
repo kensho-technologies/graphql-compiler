@@ -14,8 +14,7 @@ from graphql.language.ast import (
 )
 from graphql.language.printer import print_ast
 from graphql.pyutils import FrozenList
-from graphql.utilities.build_ast_schema import build_ast_schema
-from graphql.utilities.schema_printer import print_schema
+from graphql.utilities import build_ast_schema, print_schema
 import six
 
 from ..ast_manipulation import safe_parse_graphql
@@ -274,7 +273,7 @@ def perform_macro_expansion(macro_registry, schema_with_macros, graphql_with_mac
     validation_errors = validate_schema_and_query_ast(schema_with_macros, query_ast)
     if validation_errors:
         raise GraphQLValidationError(
-            u"The provided GraphQL input does not validate: {} {}".format(
+            "The provided GraphQL input does not validate: {} {}".format(
                 graphql_with_macro, validation_errors
             )
         )

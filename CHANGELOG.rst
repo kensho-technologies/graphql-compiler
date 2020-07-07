@@ -4,6 +4,15 @@ Changelog
 Current development version
 ---------------------------
 
+v2.0.0 (upcoming release)
+-------------------------
+
+- **BREAKING** Change the :code:`GraphQLDateTime` scalar type from being timezone-aware to
+  being timezone-naive to follow the usual database convention of naming the timezone-naive
+  type "datetime" and avoid confusion after we've added both timezone-aware and timezone-naive
+  types.
+  `#827 <https://github.com/kensho-technologies/graphql-compiler/pull/827>`__
+
 v1.11.0
 -------
 

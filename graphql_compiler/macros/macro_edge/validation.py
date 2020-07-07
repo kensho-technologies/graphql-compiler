@@ -22,7 +22,7 @@ from ...ast_manipulation import (
 from ...compiler.compiler_frontend import ast_to_ir
 from ...compiler.helpers import get_only_element_from_collection
 from ...exceptions import GraphQLInvalidMacroError
-from ...query_formatting.common import ensure_arguments_are_provided
+from ...query_formatting.common import validate_arguments
 from ...schema import VERTEX_FIELD_PREFIXES, FoldDirective, OptionalDirective, is_vertex_field_name
 from .ast_rewriting import remove_directives_from_ast
 from .ast_traversal import get_directives_for_ast, get_type_at_macro_edge_target
@@ -42,14 +42,14 @@ def _validate_query_definition(ast):
     if ast.directives:
         directive_names = [directive.name.value for directive in ast.directives]
         raise GraphQLInvalidMacroError(
-            u"Unexpectedly found directives at the top level of the GraphQL input. "
-            u"This is not supported. Directives: {}".format(directive_names)
+            "Unexpectedly found directives at the top level of the GraphQL input. "
+            "This is not supported. Directives: {}".format(directive_names)
         )
 
     if ast.variable_definitions:
         raise GraphQLInvalidMacroError(
-            u"Unexpectedly found variable definitions at the top level of the GraphQL input. "
-            u"This is not supported. Variable definitions: {}".format(ast.variable_definitions)
+            "Unexpectedly found variable definitions at the top level of the GraphQL input. "
+            "This is not supported. Variable definitions: {}".format(ast.variable_definitions)
         )
 
 
@@ -59,9 +59,7 @@ def _validate_ast_with_builtin_graphql_validation(schema, ast):
 
     validation_errors = validate(schema_with_macro_edge_directives, ast)
     if validation_errors:
-        raise GraphQLInvalidMacroError(
-            u"Macro edge failed validation: {}".format(validation_errors)
-        )
+        raise GraphQLInvalidMacroError("Macro edge failed validation: {}".format(validation_errors))
 
 
 def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro_directives):
@@ -70,14 +68,14 @@ def _validate_that_macro_edge_definition_and_target_directives_appear_once(macro
         macro_data = macro_directives.get(directive_name, None)
         if not macro_data:
             raise GraphQLInvalidMacroError(
-                u'Required macro edge directive "@{}" was not found anywhere within the supplied '
-                u"macro edge definition GraphQL.".format(directive_name)
+                'Required macro edge directive "@{}" was not found anywhere within the supplied '
+                "macro edge definition GraphQL.".format(directive_name)
             )
 
         if len(macro_data) > 1:
             raise GraphQLInvalidMacroError(
-                u'Required macro edge directive "@{}" was unexpectedly present more than once in '
-                u"the supplied macro edge definition GraphQL. It was found {} times.".format(
+                'Required macro edge directive "@{}" was unexpectedly present more than once in '
+                "the supplied macro edge definition GraphQL. It was found {} times.".format(
                     directive_name, len(macro_data)
                 )
             )
@@ -107,7 +105,7 @@ def _validate_non_required_macro_definition_directives(
         name = directive.name.value
         if name not in DIRECTIVES_ALLOWED_IN_MACRO_EDGE_DEFINITION:
             raise GraphQLInvalidMacroError(
-                u"Unexpected directive name found: {} {}".format(name, directive)
+                "Unexpected directive name found: {} {}".format(name, directive)
             )
 
         if name == OptionalDirective.name:
@@ -117,20 +115,20 @@ def _validate_non_required_macro_definition_directives(
         elif name == MacroEdgeTargetDirective.name:
             if inside_optional_scope:
                 raise GraphQLInvalidMacroError(
-                    u"The @macro_edge_target cannot be inside an @optional scope."
+                    "The @macro_edge_target cannot be inside an @optional scope."
                 )
             if OptionalDirective.name in names_of_directives_at_ast:
                 raise GraphQLInvalidMacroError(
-                    u"The @macro_edge_target cannot be placed at a field marked @optional."
+                    "The @macro_edge_target cannot be placed at a field marked @optional."
                 )
 
             if inside_fold_scope:
                 raise GraphQLInvalidMacroError(
-                    u"The @macro_edge_target cannot be inside a @fold scope."
+                    "The @macro_edge_target cannot be inside a @fold scope."
                 )
             if FoldDirective.name in names_of_directives_at_ast:
                 raise GraphQLInvalidMacroError(
-                    u"The @macro_edge_target cannot be placed at a field marked @fold."
+                    "The @macro_edge_target cannot be placed at a field marked @fold."
                 )
 
             # Check that the target doesn't begin with a coercion. This also implicitly
@@ -139,9 +137,9 @@ def _validate_non_required_macro_definition_directives(
             for selection in ast.selection_set.selections:
                 if isinstance(selection, InlineFragmentNode):
                     raise GraphQLInvalidMacroError(
-                        u"The @macro_edge_target cannot begin directly"
-                        u"with a coercion. Please put the directive on"
-                        u"the coercion block itself."
+                        "The @macro_edge_target cannot begin directly"
+                        "with a coercion. Please put the directive on"
+                        "the coercion block itself."
                     )
 
     if isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
@@ -153,7 +151,7 @@ def _validate_non_required_macro_definition_directives(
                     inside_fold_scope=subselection_inside_fold_scope,
                 )
     else:
-        raise AssertionError(u"Unexpected AST type received: {} {}".format(type(ast), ast))
+        raise AssertionError("Unexpected AST type received: {} {}".format(type(ast), ast))
 
 
 def _validate_that_macro_edge_definition_is_only_top_level_field_directive(ast, macro_defn_ast):
@@ -166,15 +164,15 @@ def _validate_that_macro_edge_definition_is_only_top_level_field_directive(ast, 
     ]
     if unexpected_directives:
         raise GraphQLInvalidMacroError(
-            u"Found unexpected directives at the top level of the macro definition GraphQL: "
-            u"{}".format(unexpected_directives)
+            "Found unexpected directives at the top level of the macro definition GraphQL: "
+            "{}".format(unexpected_directives)
         )
 
     if ast is not macro_defn_ast:
         raise GraphQLInvalidMacroError(
-            u'Expected to find the "@{}" directive at the top level of the macro definition '
-            u'GraphQL (on the "{}" field), but instead found it on the "{}" field. This is '
-            u"not allowed.".format(
+            'Expected to find the "@{}" directive at the top level of the macro definition '
+            'GraphQL (on the "{}" field), but instead found it on the "{}" field. This is '
+            "not allowed.".format(
                 MacroEdgeDefinitionDirective.name,
                 get_human_friendly_ast_field_name(ast),
                 get_human_friendly_ast_field_name(macro_defn_ast),
@@ -187,8 +185,8 @@ def _find_subclass_with_field_name(schema, subclass_sets, parent_class_name, fie
     subclasses = subclass_sets[parent_class_name]
     if parent_class_name not in subclasses:
         raise AssertionError(
-            u"Found a class that is not a subclass of itself, this means that the "
-            u"subclass_sets value is incorrectly constructed: {} {} {}".format(
+            "Found a class that is not a subclass of itself, this means that the "
+            "subclass_sets value is incorrectly constructed: {} {} {}".format(
                 parent_class_name, subclasses, subclass_sets
             )
         )
@@ -208,8 +206,8 @@ def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, 
     # The macro edge must be a valid edge name.
     if not is_vertex_field_name(macro_edge_name):
         raise GraphQLInvalidMacroError(
-            u'The provided macro edge name "{}" is not valid, since it does not start with '
-            u"the expected prefixes for vertex fields: {}".format(
+            'The provided macro edge name "{}" is not valid, since it does not start with '
+            "the expected prefixes for vertex fields: {}".format(
                 macro_edge_name, list(VERTEX_FIELD_PREFIXES)
             )
         )
@@ -220,17 +218,17 @@ def _validate_macro_edge_name_for_class_name(schema, subclass_sets, class_name, 
         schema, subclass_sets, class_name, macro_edge_name
     )
     if conflicting_subclass_name is not None:
-        extra_error_text = u""
+        extra_error_text = ""
         if conflicting_subclass_name != class_name:
             extra_error_text = (
-                u"{} is a subclass of {}, which is where you attempted to "
-                u"define a macro edge".format(conflicting_subclass_name, class_name)
+                "{} is a subclass of {}, which is where you attempted to "
+                "define a macro edge".format(conflicting_subclass_name, class_name)
             )
         raise GraphQLInvalidMacroError(
-            u'The provided macro edge name "{edge_name}" has the same name as '
-            u'an existing field on the "{subclass_name}" GraphQL type or interface. '
-            u"{extra_error_text}"
-            u"This is not allowed, please choose a different name.".format(
+            'The provided macro edge name "{edge_name}" has the same name as '
+            'an existing field on the "{subclass_name}" GraphQL type or interface. '
+            "{extra_error_text}"
+            "This is not allowed, please choose a different name.".format(
                 edge_name=macro_edge_name,
                 subclass_name=conflicting_subclass_name,
                 extra_error_text=extra_error_text,
@@ -249,19 +247,19 @@ def _validate_reversed_macro_edge(schema, subclass_sets, reverse_start_class_nam
         schema, subclass_sets, reverse_start_class_name, reversed_macro_edge_name
     )
     if conflicting_subclass_name is not None:
-        extra_error_text = u""
+        extra_error_text = ""
         if conflicting_subclass_name != reverse_start_class_name:
             extra_error_text = (
-                u"{} is a subclass of {}, which is where your "
-                u"macro edge definition points to. ".format(
+                "{} is a subclass of {}, which is where your "
+                "macro edge definition points to. ".format(
                     conflicting_subclass_name, reverse_start_class_name
                 )
             )
         raise GraphQLInvalidMacroError(
-            u'The provided macro edge name "{edge_name}" is invalid: if the edge direction were '
-            u'reversed, it would conflict with an existing field on the "{subclass_name}" GraphQL '
-            u"type or interface. {extra_error_text}"
-            u"This is not allowed, please choose a different name.".format(
+            'The provided macro edge name "{edge_name}" is invalid: if the edge direction were '
+            'reversed, it would conflict with an existing field on the "{subclass_name}" GraphQL '
+            "type or interface. {extra_error_text}"
+            "This is not allowed, please choose a different name.".format(
                 edge_name=macro_edge_name,
                 subclass_name=conflicting_subclass_name,
                 extra_error_text=extra_error_text,
@@ -370,7 +368,7 @@ def get_and_validate_macro_edge_info(
         _get_minimal_query_ast_from_macro_ast(ast),
         type_equivalence_hints=type_equivalence_hints,
     )
-    ensure_arguments_are_provided(input_metadata, macro_edge_args)
+    validate_arguments(input_metadata, macro_edge_args)
 
     _validate_that_macro_edge_definition_is_only_top_level_field_directive(
         get_only_selection_from_ast(ast, GraphQLInvalidMacroError), macro_defn_ast

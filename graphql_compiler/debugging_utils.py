@@ -4,13 +4,13 @@ import re
 import six
 
 
-def remove_custom_formatting(query):
+def remove_custom_formatting(query: str) -> str:
     """Prepare the query string for pretty-printing by removing all unusual formatting."""
     query = re.sub("[\n ]+", " ", query)
     return query.replace("( ", "(").replace(" )", ")")
 
 
-def pretty_print_gremlin(gremlin):
+def pretty_print_gremlin(gremlin: str) -> str:
     """Return a human-readable representation of a gremlin command string."""
     gremlin = remove_custom_formatting(gremlin)
     too_many_parts = re.split(r"([)}]|scatter)[ ]?\.", gremlin)
@@ -41,14 +41,14 @@ def pretty_print_gremlin(gremlin):
         elif current_part.startswith(".back") or current_part.startswith(".optional"):
             indentation -= indentation_increment
             if indentation < 0:
-                raise AssertionError(u"Indentation became negative: {}".format(indentation))
+                raise AssertionError("Indentation became negative: {}".format(indentation))
 
         output.append((" " * indentation) + current_part)
 
     return "\n".join(output).strip()
 
 
-def pretty_print_match(match, parameterized=True):
+def pretty_print_match(match: str, parameterized: bool = True) -> str:
     """Return a human-readable representation of a parameterized MATCH query string."""
     left_curly = "{{" if parameterized else "{"
     right_curly = "}}" if parameterized else "}"
@@ -64,16 +64,16 @@ def pretty_print_match(match, parameterized=True):
         if current_part == left_curly:
             if inside_braces:
                 raise AssertionError(
-                    u"Found open-braces pair while already inside braces: "
-                    u"{} {} {}".format(current_index, parts, match)
+                    "Found open-braces pair while already inside braces: "
+                    "{} {} {}".format(current_index, parts, match)
                 )
             inside_braces = True
             output.append(current_part + "\n")
         elif current_part == right_curly:
             if not inside_braces:
                 raise AssertionError(
-                    u"Found close-braces pair while not inside braces: "
-                    u"{} {} {}".format(current_index, parts, match)
+                    "Found close-braces pair while not inside braces: "
+                    "{} {} {}".format(current_index, parts, match)
                 )
             inside_braces = False
             output.append(current_part)

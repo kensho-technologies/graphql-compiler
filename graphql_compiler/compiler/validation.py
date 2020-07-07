@@ -55,9 +55,9 @@ def validate_schema_and_query_ast(schema, query_ast):
         ]
     )
 
-    # This directive is supported and ignored by the compiler, since it is meant as an indication
-    # to the user that a field should not be used.
-    supported_default_directive = frozenset(
+    # The following directives are supported and ignored by the compiler,
+    # since they are meant to communicate user-facing information.
+    supported_default_directives = frozenset(
         [
             frozenset(
                 [
@@ -65,7 +65,8 @@ def validate_schema_and_query_ast(schema, query_ast):
                     frozenset([DirectiveLocation.FIELD_DEFINITION, DirectiveLocation.ENUM_VALUE]),
                     frozenset(["reason"]),
                 ]
-            )
+            ),
+            frozenset(["specifiedBy", frozenset([DirectiveLocation.SCALAR]), frozenset(["url"]),]),
         ]
     )
 
@@ -97,8 +98,8 @@ def validate_schema_and_query_ast(schema, query_ast):
     missing_directives = expected_directives - actual_directives
     if missing_directives:
         missing_message = (
-            u"The following directives were missing from the "
-            u"provided schema: {}".format(missing_directives)
+            "The following directives were missing from the "
+            "provided schema: {}".format(missing_directives)
         )
         core_graphql_errors.append(missing_message)
 
@@ -111,12 +112,12 @@ def validate_schema_and_query_ast(schema, query_ast):
         actual_directives
         - expected_directives
         - unsupported_default_directives
-        - supported_default_directive
+        - supported_default_directives
     )
     if extra_directives:
         extra_message = (
-            u"The following directives were supplied in the given schema, but are not "
-            u"not supported by the GraphQL compiler: {}".format(extra_directives)
+            "The following directives were supplied in the given schema, but are not "
+            "not supported by the GraphQL compiler: {}".format(extra_directives)
         )
         core_graphql_errors.append(extra_message)
 

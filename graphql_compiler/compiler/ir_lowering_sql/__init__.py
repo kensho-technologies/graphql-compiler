@@ -67,14 +67,14 @@ class ContextColumn(expressions.Expression):
         """Validate that the ContextColumn is correctly representable."""
         if not isinstance(self._vertex_query_path, tuple):
             raise AssertionError(
-                u"vertex_query_path was expected to be a tuple, but was {}: {}".format(
+                "vertex_query_path was expected to be a tuple, but was {}: {}".format(
                     type(self._vertex_query_path), self._vertex_query_path
                 )
             )
 
         if not isinstance(self._column_name, six.string_types):
             raise AssertionError(
-                u"column_name was expected to be a string, but was {}: {}".format(
+                "column_name was expected to be a string, but was {}: {}".format(
                     type(self._column_name), self._column_name
                 )
             )
@@ -82,22 +82,22 @@ class ContextColumn(expressions.Expression):
     def to_match(self):
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"ContextColumns are not used during the query emission process "
-            u"in MATCH, so this is a bug. This function should not be called."
+            "ContextColumns are not used during the query emission process "
+            "in MATCH, so this is a bug. This function should not be called."
         )
 
     def to_gremlin(self):
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"ContextColumns are not used during the query emission process "
-            u"in Gremlin, so this is a bug. This function should not be called."
+            "ContextColumns are not used during the query emission process "
+            "in Gremlin, so this is a bug. This function should not be called."
         )
 
     def to_cypher(self):
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"ContextColumns are not used during the query emission process "
-            u"in cypher, so this is a bug. This function should not be called."
+            "ContextColumns are not used during the query emission process "
+            "in cypher, so this is a bug. This function should not be called."
         )
 
     def to_sql(self, dialect, aliases, current_alias):
@@ -117,7 +117,7 @@ def _lower_sql_context_field_existence(schema_info, ir_blocks, query_metadata_ta
 
         query_path = expression.location.query_path
         return expressions.BinaryComposition(
-            u"!=", ContextColumn(query_path, non_null_columns[query_path]), expressions.NullLiteral
+            "!=", ContextColumn(query_path, non_null_columns[query_path]), expressions.NullLiteral
         )
 
     return [block.visit_and_update_expressions(visitor_fn) for block in ir_blocks]

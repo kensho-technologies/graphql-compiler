@@ -216,16 +216,16 @@ def _get_fields(ast):
                 # then we have to change the Location naming scheme to reflect the repetitions
                 # and disambiguate between Recurse and Traverse visits to a Location.
                 raise GraphQLCompilationError(
-                    u"Encountered repeated property field: {}. If you "
-                    u"are attempting to specify multiple directives on a "
-                    u"single property field, one way to do so is to "
-                    u"place all of them adjacent to the property field "
-                    u"as follows: propertyField @directive1 @directive2 "
-                    u"...".format(name)
+                    "Encountered repeated property field: {}. If you "
+                    "are attempting to specify multiple directives on a "
+                    "single property field, one way to do so is to "
+                    "place all of them adjacent to the property field "
+                    "as follows: propertyField @directive1 @directive2 "
+                    "...".format(name)
                 )
             if switched_to_vertices:
                 raise GraphQLCompilationError(
-                    u"Encountered property field {} " u"after vertex fields!".format(name)
+                    "Encountered property field {} after vertex fields!".format(name)
                 )
             property_fields.append(field_ast)
 
@@ -251,7 +251,7 @@ def _get_inline_fragment(ast):
 
     if len(fragments) > 1:
         raise GraphQLCompilationError(
-            u"Cannot compile GraphQL with more than one fragment in " u"a given selection set."
+            "Cannot compile GraphQL with more than one fragment in a given selection set."
         )
 
     return fragments[0]
@@ -284,9 +284,9 @@ def _process_output_source_directive(
     output_source_directive = local_unique_directives.get("output_source", None)
     if output_source_directive:
         if has_encountered_output_source(context):
-            raise GraphQLCompilationError(u"Cannot have more than one output source!")
+            raise GraphQLCompilationError("Cannot have more than one output source!")
         if is_in_optional_scope(context):
-            raise GraphQLCompilationError(u"Cannot have the output source in an optional block!")
+            raise GraphQLCompilationError("Cannot have the output source in an optional block!")
         set_output_source_data(context, location)
         return blocks.OutputSource()
     else:
@@ -305,21 +305,21 @@ def _process_tag_directive(context, current_schema_type, location, tag_directive
     """
     if is_in_fold_scope(context):
         raise GraphQLCompilationError(
-            u"Tagging values within a @fold vertex field is "
-            u"not allowed! Location: {}".format(location)
+            "Tagging values within a @fold vertex field is "
+            "not allowed! Location: {}".format(location)
         )
 
     if location.field == COUNT_META_FIELD_NAME:
         raise GraphQLCompilationError(
-            u"Tags are prohibited within @fold, but unexpectedly found use of "
-            u"a tag on the {} meta field that is only allowed within a @fold!"
-            u"Location: {}".format(COUNT_META_FIELD_NAME, location)
+            "Tags are prohibited within @fold, but unexpectedly found use of "
+            "a tag on the {} meta field that is only allowed within a @fold!"
+            "Location: {}".format(COUNT_META_FIELD_NAME, location)
         )
 
     # Schema validation has ensured that the fields below exist.
     tag_name = tag_directive.arguments[0].value.value
     if context["metadata"].get_tag_info(tag_name) is not None:
-        raise GraphQLCompilationError(u"Cannot reuse tag name: {}".format(tag_name))
+        raise GraphQLCompilationError("Cannot reuse tag name: {}".format(tag_name))
     validate_safe_string(tag_name)
     context["metadata"].record_tag_info(
         tag_name,
@@ -353,9 +353,9 @@ def _compile_property_ast(
         # Verify that uses of this field are within a @fold scope.
         if not is_in_fold_scope(context):
             raise GraphQLCompilationError(
-                u'Cannot use the "{}" meta field when not within a @fold '
-                u"vertex field, as counting elements only makes sense "
-                u"in a fold. Location: {}".format(COUNT_META_FIELD_NAME, location)
+                'Cannot use the "{}" meta field when not within a @fold '
+                "vertex field, as counting elements only makes sense "
+                "in a fold. Location: {}".format(COUNT_META_FIELD_NAME, location)
             )
 
     # step P-2: Process @output directives.
@@ -364,7 +364,7 @@ def _compile_property_ast(
         # Schema validation has ensured that the fields below exist.
         output_name = output_directive.arguments[0].value.value
         if context["metadata"].get_output_info(output_name):
-            raise GraphQLCompilationError(u"Cannot reuse output name: {}".format(output_name))
+            raise GraphQLCompilationError("Cannot reuse output name: {}".format(output_name))
         validate_output_name(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
@@ -388,14 +388,14 @@ def _get_recurse_directive_depth(field_name, field_directives):
 
     if optional_directive:
         raise GraphQLCompilationError(
-            u"Found both @optional and @recurse on " u"the same vertex field: {}".format(field_name)
+            "Found both @optional and @recurse on the same vertex field: {}".format(field_name)
         )
 
     recurse_args = get_uniquely_named_objects_by_name(recurse_directive.arguments)
     recurse_depth = int(recurse_args["depth"].value.value)
     if recurse_depth < 1:
         raise GraphQLCompilationError(
-            u"Found recurse directive with disallowed depth: " u"{}".format(recurse_depth)
+            "Found recurse directive with disallowed depth: {}".format(recurse_depth)
         )
 
     return recurse_depth
@@ -432,12 +432,12 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
 
     if not any((current_scope_is_allowed, is_implemented_interface)):
         raise GraphQLCompilationError(
-            u"Edges expanded with a @recurse directive must either "
-            u"be of the same type as their enclosing scope, a supertype "
-            u"of the enclosing scope, or be of an interface type that is "
-            u"implemented by the type of their enclosing scope. "
-            u"Enclosing scope type: {}, edge type: "
-            u"{}".format(current_schema_type, field_schema_type)
+            "Edges expanded with a @recurse directive must either "
+            "be of the same type as their enclosing scope, a supertype "
+            "of the enclosing scope, or be of an interface type that is "
+            "implemented by the type of their enclosing scope. "
+            "Enclosing scope type: {}, edge type: "
+            "{}".format(current_schema_type, field_schema_type)
         )
 
 
@@ -479,7 +479,7 @@ def _compile_vertex_ast(
         if tag_directive:
             if get_local_filter_directives(field_ast, property_schema_type, None):
                 raise GraphQLCompilationError(
-                    u"Cannot filter and tag the same field {}".format(inner_location)
+                    "Cannot filter and tag the same field {}".format(inner_location)
                 )
             _process_tag_directive(context, property_schema_type, inner_location, tag_directive)
 
@@ -684,9 +684,9 @@ def _validate_fold_has_outputs_or_count_filter(
             return True
 
     raise GraphQLCompilationError(
-        u"Found a @fold scope that has no effect on the query. "
-        u"Each @fold scope must either perform filtering, or contain at "
-        u"least one field marked for output. Fold location: {}".format(fold_scope_location)
+        "Found a @fold scope that has no effect on the query. "
+        "Each @fold scope must either perform filtering, or contain at "
+        "least one field marked for output. Fold location: {}".format(fold_scope_location)
     )
 
 
@@ -765,23 +765,23 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     fields_exist = vertex_fields or property_fields
     if fragment_exists and fields_exist:
         raise GraphQLCompilationError(
-            u"Cannot compile GraphQL that has inline fragment and "
-            u"selected fields in the same selection. Please move the "
-            u"selected fields inside the inline fragment."
+            "Cannot compile GraphQL that has inline fragment and "
+            "selected fields in the same selection. Please move the "
+            "selected fields inside the inline fragment."
         )
 
     if location.field is not None:  # we're at a property field
         # sanity-check: cannot have an inline fragment at a property field
         if fragment_exists:
             raise AssertionError(
-                u"Found inline fragment at a property field: " u"{} {}".format(location, fragment)
+                "Found inline fragment at a property field: {} {}".format(location, fragment)
             )
 
         # sanity-check: locations at properties don't have their own property locations
         if len(property_fields) > 0:
             raise AssertionError(
-                u"Found property fields on a property field: "
-                u"{} {}".format(location, property_fields)
+                "Found property fields on a property field: "
+                "{} {}".format(location, property_fields)
             )
 
     # step 1: apply local filter, if any
@@ -859,9 +859,9 @@ def _validate_all_tags_are_used(metadata):
     unused_tags = tag_names - filter_arg_names
     if unused_tags:
         raise GraphQLCompilationError(
-            u"This GraphQL query contains @tag directives whose values "
-            u"are not used: {}. This is not allowed. Please either use "
-            u"them in a filter or remove them entirely.".format(unused_tags)
+            "This GraphQL query contains @tag directives whose values "
+            "are not used: {}. This is not allowed. Please either use "
+            "them in a filter or remove them entirely.".format(unused_tags)
         )
 
 
@@ -889,7 +889,7 @@ def _validate_and_create_output_metadata(
         output_info.location, FoldScopeLocation
     ):
         raise AssertionError(
-            u"Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
+            "Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
         )
     # Ensure folded outputs have valid type.
     if isinstance(output_info.location, FoldScopeLocation):
@@ -898,8 +898,8 @@ def _validate_and_create_output_metadata(
             output_info.type, GraphQLInt
         ):
             raise AssertionError(
-                u"Invalid output: received {} with type {}, but {} must always be of "
-                u"type GraphQLInt".format(
+                "Invalid output: received {} with type {}, but {} must always be of "
+                "type GraphQLInt".format(
                     COUNT_META_FIELD_NAME, output_info.type, COUNT_META_FIELD_NAME
                 )
             )
@@ -908,9 +908,9 @@ def _validate_and_create_output_metadata(
             output_info.type, GraphQLList
         ):
             raise AssertionError(
-                u"Invalid output: non-{} folded output must have type "
-                u"GraphQLList. Received type {} for folded output "
-                u"{}.".format(COUNT_META_FIELD_NAME, output_info.type, output_name)
+                "Invalid output: non-{} folded output must have type "
+                "GraphQLList. Received type {} for folded output "
+                "{}.".format(COUNT_META_FIELD_NAME, output_info.type, output_name)
             )
 
     return OutputMetadata(
@@ -990,10 +990,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
             "type_from": base_start_type,
         }
         raise GraphQLCompilationError(
-            u"Found inline fragment coercing to type {coerce_to}, "
-            u"immediately inside query root asking for type {type_from}. "
-            u"This is a contrived pattern -- you should simply start "
-            u"your query at {coerce_to}.".format(**msg_args)
+            "Found inline fragment coercing to type {coerce_to}, "
+            "immediately inside query root asking for type {type_from}. "
+            "This is a contrived pattern -- you should simply start "
+            "your query at {coerce_to}.".format(**msg_args)
         )
 
     # Ensure the GraphQL query root doesn't have any vertex directives
@@ -1046,8 +1046,8 @@ def _compile_output_step(query_metadata_table):
     """
     if next(query_metadata_table.outputs, None) is None:
         raise GraphQLCompilationError(
-            u"No fields were selected for output! Please mark at least "
-            u"one field with the @output directive."
+            "No fields were selected for output! Please mark at least "
+            "one field with the @output directive."
         )
 
     output_fields = {}
@@ -1062,7 +1062,7 @@ def _compile_output_step(query_metadata_table):
         if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(
-                    u"Unreachable state reached, optional in fold: " u"{}".format(output_info)
+                    "Unreachable state reached, optional in fold: {}".format(output_info)
                 )
 
             if location.field == COUNT_META_FIELD_NAME:
@@ -1129,7 +1129,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
     """
     validation_errors = validate_schema_and_query_ast(schema, ast)
     if validation_errors:
-        raise GraphQLValidationError(u"String does not validate: {}".format(validation_errors))
+        raise GraphQLValidationError("String does not validate: {}".format(validation_errors))
 
     base_ast = get_only_query_definition(ast, GraphQLValidationError)
     return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)

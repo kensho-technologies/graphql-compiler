@@ -6,7 +6,7 @@ from graphql.language.printer import print_ast
 from ..cost_estimation.analysis import QueryPlanningAnalysis, analyze_query_string
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
-from .pagination_planning import PaginationAdvisory, get_pagination_plan
+from .pagination_planning import MissingClassCount, PaginationAdvisory, get_pagination_plan
 from .parameter_generator import generate_parameters_for_vertex_partition
 from .query_parameterizer import generate_parameterized_queries
 from .typedefs import PageAndRemainder
@@ -82,11 +82,20 @@ def paginate_query_ast(
     remainder_queries: Tuple[ASTWithParameters, ...] = tuple()
     advisories: Tuple[PaginationAdvisory, ...] = tuple()
 
-    # Split the query if we should and we can
-    result_size = query_analysis.cardinality_estimate
-    num_pages = _estimate_number_of_pages(
-        query_analysis.query_string_with_parameters, result_size, page_size
-    )
+    # See if we can and should split the query
+    num_pages = 1
+    if query_analysis.classes_with_missing_counts:
+        advisories += tuple(
+            MissingClassCount(class_name)
+            for class_name in query_analysis.classes_with_missing_counts
+        )
+    else:
+        result_size = query_analysis.cardinality_estimate
+        num_pages = _estimate_number_of_pages(
+            query_analysis.query_string_with_parameters, result_size, page_size
+        )
+
+    # Split the query if we can and should
     if num_pages > 1:
         pagination_plan, advisories = get_pagination_plan(query_analysis, num_pages)
         if len(pagination_plan.vertex_partitions) == 0:

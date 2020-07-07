@@ -37,7 +37,7 @@ def _create_species_eats_statement(from_name, to_name):
     elif to_name in FOOD_LIST:
         to_class = "Food"
     else:
-        raise AssertionError(u"Invalid name for Species_Eats endpoint: {}".format(to_name))
+        raise AssertionError("Invalid name for Species_Eats endpoint: {}".format(to_name))
     return create_edge_statement("Species_Eats", "Species", from_name, to_class, to_name)
 
 

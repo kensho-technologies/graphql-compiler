@@ -38,6 +38,8 @@ def get_integration_data():
         "A4": "cfc6e625-8594-0927-468f-f53d864a7a54",
         "S1": "c2c14d8b-0e13-4e64-be63-c86704161850",
         "S2": "35d33f6a-14ab-4b5c-a797-ee9ab817c1fb",
+        "B1": "cfc6e625-8594-0927-468f-f53d864a7a55",
+        "B2": "cfc6e625-8594-0927-468f-f53d864a7a56",
     }
     vertex_values = {
         "Animal": (
@@ -70,6 +72,18 @@ def get_integration_data():
             {"uuid": uuids["S1"], "name": "Species 1",},
             {"uuid": uuids["S2"], "name": "Species 2",},
         ),
+        "BirthEvent": (
+            {
+                "uuid": uuids["B1"],
+                "name": "birth_event_1",
+                "event_date": datetime.datetime(2000, 1, 1, 1, 1, 1),
+            },
+            {
+                "uuid": uuids["B2"],
+                "name": "birth_event_2",
+                "event_date": datetime.datetime(2000, 1, 1, 1, 1, 2),
+            },
+        ),
     }
     edge_values = {
         "Entity_Related": ({"from_uuid": uuids["S1"], "to_uuid": uuids["S2"],},),
@@ -86,7 +100,7 @@ def get_integration_data():
     for vertex_name, values in six.iteritems(vertex_values):
         for value in values:
             if value["uuid"] in uuid_to_class_name:
-                raise AssertionError(u"Duplicate uuid found {}".format(value["uuid"]))
+                raise AssertionError("Duplicate uuid found {}".format(value["uuid"]))
             uuid_to_class_name[value["uuid"]] = vertex_name
 
     return vertex_values, edge_values, uuid_to_class_name
@@ -103,10 +117,10 @@ def generate_orient_snapshot_data(client):
 def _validate_name(name):
     """Check conservatively for allowed vertex and field names."""
     if not isinstance(name, six.string_types):
-        raise AssertionError(u"Expected string name. Received {}".format(name))
+        raise AssertionError("Expected string name. Received {}".format(name))
     allowed_characters = string.ascii_uppercase + string.ascii_lowercase + string.digits + "_"
     if any(c not in allowed_characters for c in str(name)):
-        raise AssertionError(u"Name {} contains disallowed characters".format(name))
+        raise AssertionError("Name {} contains disallowed characters".format(name))
 
 
 def _write_orient_equality(field_name, field_value):
@@ -116,18 +130,18 @@ def _write_orient_equality(field_name, field_value):
         allowed_characters = string.ascii_uppercase + string.ascii_lowercase + string.digits + "-_ "
         if any(c not in allowed_characters for c in str(field_value)):
             raise AssertionError(
-                u"String value {} contains disallowed characters".format(field_value)
+                "String value {} contains disallowed characters".format(field_value)
             )
     elif isinstance(field_value, (six.integer_types, float, datetime.date)):
         pass
     else:
         raise NotImplementedError(
-            u"Value validation for type {} is not implemented".format(type(field_value))
+            "Value validation for type {} is not implemented".format(type(field_value))
         )
 
     field_value_representation = repr(field_value)
     if isinstance(field_value, datetime.date):
-        field_value_representation = 'DATE("' + field_value.isoformat() + ' 00:00:00")'
+        field_value_representation = 'DATE("' + field_value.strftime("%Y-%m-%d %H:%M:%S") + '")'
     template = "{} = {}"
     return template.format(field_name, field_value_representation)
 
@@ -316,8 +330,8 @@ def generate_sql_integration_data(sql_test_backends):
             is_to_uuid = join_descriptor.to_column == "uuid"
             if is_from_uuid == is_to_uuid:
                 raise NotImplementedError(
-                    u"Exactly one of the join columns was expected to"
-                    u"be uuid. found {}".format(join_descriptor)
+                    "Exactly one of the join columns was expected to"
+                    "be uuid. found {}".format(join_descriptor)
                 )
 
             if is_from_uuid:
@@ -326,9 +340,9 @@ def generate_sql_integration_data(sql_test_backends):
                 )
                 if join_descriptor.to_column in existing_foreign_key_values:
                     raise NotImplementedError(
-                        u"The SQL backend does not support many-to-many "
-                        u"edges. Found multiple edges of class {} from "
-                        u"vertex {}.".format(edge_name, edge_value["to_uuid"])
+                        "The SQL backend does not support many-to-many "
+                        "edges. Found multiple edges of class {} from "
+                        "vertex {}.".format(edge_name, edge_value["to_uuid"])
                     )
                 existing_foreign_key_values[join_descriptor.to_column] = edge_value["from_uuid"]
             elif is_to_uuid:
@@ -337,9 +351,9 @@ def generate_sql_integration_data(sql_test_backends):
                 )
                 if join_descriptor.from_column in existing_foreign_key_values:
                     raise NotImplementedError(
-                        u"The SQL backend does not support many-to-many "
-                        u"edges. Found multiple edges of class {} to "
-                        u"vertex {}.".format(edge_name, edge_value["to_uuid"])
+                        "The SQL backend does not support many-to-many "
+                        "edges. Found multiple edges of class {} to "
+                        "vertex {}.".format(edge_name, edge_value["to_uuid"])
                     )
                 existing_foreign_key_values[join_descriptor.from_column] = edge_value["to_uuid"]
 

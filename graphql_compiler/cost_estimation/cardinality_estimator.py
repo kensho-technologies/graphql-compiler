@@ -69,7 +69,7 @@ def _get_last_edge_direction_and_name_to_location(location):
     elif isinstance(location, FoldScopeLocation):
         edge_direction, edge_name = location.fold_path[-1]
     else:
-        raise AssertionError(u"Unexpected location encountered: {}".format(location))
+        raise AssertionError("Unexpected location encountered: {}".format(location))
     return edge_direction, edge_name
 
 
@@ -85,8 +85,8 @@ def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_lo
         child_base_class_name = edge_element.base_out_connection
     else:
         raise AssertionError(
-            u"Expected edge direction to be either inbound or outbound."
-            u"Found: edge {} with direction {}".format(edge_name, edge_direction)
+            "Expected edge direction to be either inbound or outbound."
+            "Found: edge {} with direction {}".format(edge_name, edge_direction)
         )
     return parent_base_class_name, child_base_class_name
 
@@ -131,8 +131,8 @@ def _query_statistics_for_vertex_edge_vertex_count(
         inbound_vertex_name = child_name_from_location
     else:
         raise AssertionError(
-            u"Expected edge direction to be either inbound or outbound."
-            u"Found: edge {} with direction {}".format(edge_name, edge_direction)
+            "Expected edge direction to be either inbound or outbound."
+            "Found: edge {} with direction {}".format(edge_name, edge_direction)
         )
 
     query_result = statistics.get_vertex_edge_vertex_count(
@@ -228,6 +228,12 @@ def _estimate_edges_to_children_per_parent(
     parent_name_from_location = query_metadata.get_location_info(parent_location).type.name
     # Count the number of parents, over which we assume the edges are uniformly distributed.
     parent_location_counts = schema_info.statistics.get_class_count(parent_name_from_location)
+
+    # Anticipate division by zero
+    if parent_location_counts == 0:
+        # This implies that edge_counts is also 0. However, asserting that edge_counts is 0 is
+        # too aggressive because we can't expect all statistics to be collected at the same time.
+        return 0.0
 
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division

@@ -98,7 +98,7 @@ class SchemaGraph(object):
     def get_element_by_class_name_or_raise(self, class_name):
         """Return the SchemaElement for the specified class name, asserting that it exists."""
         if class_name not in self._elements:
-            raise InvalidClassError(u"Class does not exist: {}".format(class_name))
+            raise InvalidClassError("Class does not exist: {}".format(class_name))
 
         return self._elements[class_name]
 
@@ -107,7 +107,7 @@ class SchemaGraph(object):
         schema_element = self.get_element_by_class_name_or_raise(vertex_classname)
 
         if not schema_element.is_vertex:
-            raise InvalidClassError(u"Non-vertex class provided: {}".format(vertex_classname))
+            raise InvalidClassError("Non-vertex class provided: {}".format(vertex_classname))
 
         return schema_element
 
@@ -116,7 +116,7 @@ class SchemaGraph(object):
         schema_element = self.get_element_by_class_name_or_raise(edge_classname)
 
         if not schema_element.is_edge:
-            raise InvalidClassError(u"Non-edge class provided: {}".format(edge_classname))
+            raise InvalidClassError("Non-edge class provided: {}".format(edge_classname))
 
         return schema_element
 
@@ -177,7 +177,7 @@ class SchemaGraph(object):
 
         if element.abstract:
             raise InvalidClassError(
-                u"Expected a non-abstract vertex class, but {} is abstract".format(vertex_classname)
+                "Expected a non-abstract vertex class, but {} is abstract".format(vertex_classname)
             )
 
     def validate_is_non_abstract_edge_type(self, edge_classname):
@@ -186,7 +186,7 @@ class SchemaGraph(object):
 
         if element.abstract:
             raise InvalidClassError(
-                u"Expected a non-abstract vertex class, but {} is abstract".format(edge_classname)
+                "Expected a non-abstract vertex class, but {} is abstract".format(edge_classname)
             )
 
     def validate_properties_exist(self, classname, property_names):
@@ -198,8 +198,8 @@ class SchemaGraph(object):
         non_existent_properties = requested_properties - available_properties
         if non_existent_properties:
             raise InvalidPropertyError(
-                u'Class "{}" does not have definitions for properties "{}": '
-                u"{}".format(classname, non_existent_properties, property_names)
+                'Class "{}" does not have definitions for properties "{}": '
+                "{}".format(classname, non_existent_properties, property_names)
             )
 
     @property
@@ -353,7 +353,7 @@ class SchemaElement(object):
         if self._print_kwargs:
             printed_args.append("{kwargs}")
 
-        template = u"{cls_name}(" + u", ".join(printed_args) + u")"
+        template = "{cls_name}(" + ", ".join(printed_args) + ")"
         return template.format(
             cls_name=type(self).__name__, args=self._print_args, kwargs=self._print_kwargs
         )
@@ -430,8 +430,8 @@ def _validate_non_abstract_edge_has_defined_base_connections(
     """Validate that the non-abstract edge has its in/out base connections defined."""
     if not (base_in_connection and base_out_connection):
         raise IllegalSchemaStateError(
-            u"Found a non-abstract edge class with undefined or illegal "
-            u"in/out base_connection: {} {} {}".format(
+            "Found a non-abstract edge class with undefined or illegal "
+            "in/out base_connection: {} {} {}".format(
                 class_name, base_in_connection, base_out_connection
             )
         )
@@ -447,8 +447,8 @@ def _validate_property_names(class_name, properties):
         )
         if is_illegal_name:
             raise IllegalSchemaStateError(
-                u'Class "{}" has a property with an illegal name: '
-                u"{}".format(class_name, property_name)
+                'Class "{}" has a property with an illegal name: '
+                "{}".format(class_name, property_name)
             )
 
 

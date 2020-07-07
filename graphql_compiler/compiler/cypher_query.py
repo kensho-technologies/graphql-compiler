@@ -79,7 +79,7 @@ def _make_cypher_step(query_metadata_table, linked_location, current_step_blocks
         coercion_block, as_block = remaining_blocks
     else:
         raise AssertionError(
-            u"Unexpected current_step_blocks received: {}".format(current_step_blocks)
+            "Unexpected current_step_blocks received: {}".format(current_step_blocks)
         )
 
     exact_step_type = get_only_element_from_collection(coercion_block.target_class)
@@ -108,7 +108,7 @@ def _make_query_root_cypher_step(query_metadata_table, linked_location, current_
         step_block, as_block = current_step_blocks
     else:
         raise AssertionError(
-            u"Unexpected current_step_blocks received: {}".format(current_step_blocks)
+            "Unexpected current_step_blocks received: {}".format(current_step_blocks)
         )
 
     exact_step_type = get_only_element_from_collection(step_block.start_class)
@@ -160,9 +160,9 @@ def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, qu
         # What we want to avoid is having any leftover blocks here that we should've used.
         if block not in discarded_block_types and not (isinstance(block, Backtrack)):
             raise AssertionError(
-                u"Expected leftover blocks in folded scope after generating"
-                u"CypherSteps to all be of discarded type or Backtrack type."
-                u"Instead, got block {} in list of leftover blocks {}".format(
+                "Expected leftover blocks in folded scope after generating"
+                "CypherSteps to all be of discarded type or Backtrack type."
+                "Instead, got block {} in list of leftover blocks {}".format(
                     block, current_step_ir_blocks
                 )
             )
@@ -209,8 +209,8 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
         elif isinstance(block, QueryRoot):
             if current_step_blocks is not None:
                 raise AssertionError(
-                    u"Unexpectedly encountered a QueryRoot block that was not "
-                    u"the first block in the IR: {} {}".format(block, remaining_ir_blocks)
+                    "Unexpectedly encountered a QueryRoot block that was not "
+                    "the first block in the IR: {} {}".format(block, remaining_ir_blocks)
                 )
 
             current_step_blocks = [block]
@@ -234,12 +234,12 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
         elif isinstance(block, (Filter, CoerceType)):
             current_step_blocks.append(block)
         else:
-            raise AssertionError(u"Unexpected block encountered: {} {}".format(block, ir_blocks))
+            raise AssertionError("Unexpected block encountered: {} {}".format(block, ir_blocks))
 
     if global_operations_index is None:
         raise AssertionError(
-            u"Unexpectedly, no GlobalOperationsStart block was found in "
-            u"the IR blocks: {}".format(remaining_ir_blocks)
+            "Unexpectedly, no GlobalOperationsStart block was found in "
+            "the IR blocks: {}".format(remaining_ir_blocks)
         )
 
     global_operations_blocks = remaining_ir_blocks[global_operations_index + 1 :]
@@ -255,7 +255,7 @@ def convert_to_cypher_query(ir_blocks, query_metadata_table, type_equivalence_hi
         output_block = global_operations_blocks[0]
     else:
         raise AssertionError(
-            u"Unexpected global operations blocks in IR: {} {}".format(
+            "Unexpected global operations blocks in IR: {} {}".format(
                 global_operations_blocks, ir_blocks
             )
         )

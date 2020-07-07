@@ -29,11 +29,13 @@ done
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
 # Assert script is running inside pipenv shell
+set +u
 if [[ "$VIRTUAL_ENV" == "" ]]
 then
     echo "Please run pipenv shell first"
     exit 1
 fi
+set -u
 
 # Get all python files or directories that need to be linted.
 lintable_locations="."
@@ -43,7 +45,7 @@ lintable_locations="."
 pylint_lintable_locations="**/*.py *.py"
 if [ "$diff_only" -eq 1 ] ; then
     # Quotes don't need to be escaped because they nest with $( ).
-    lintable_locations="$(git diff --name-only master... | grep ".*\.py$")"
+    lintable_locations="$(git diff --name-only main... | grep ".*\.py$")"
     pylint_lintable_locations="$lintable_locations"
 fi
 

@@ -1,8 +1,28 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import operator as python_operator
-from typing import Any, Callable, Dict, FrozenSet, Generic, List, Tuple, Type, TypeVar, Union
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    Generic,
+    List,
+    Optional,
+    Tuple,
+    Type,
+    TypeVar,
+    Union,
+)
 
-from graphql import GraphQLInt, GraphQLList, GraphQLNonNull, GraphQLString
+from graphql import (
+    GraphQLBoolean,
+    GraphQLFloat,
+    GraphQLID,
+    GraphQLInt,
+    GraphQLList,
+    GraphQLNonNull,
+    GraphQLString,
+)
 from graphql.type.definition import GraphQLOutputType
 import six
 import sqlalchemy
@@ -19,6 +39,7 @@ from ..schema import (
     TYPENAME_META_FIELD_NAME,
     GraphQLDate,
     GraphQLDateTime,
+    GraphQLDecimal,
 )
 from .compiler_entities import AliasesDictType, AliasType, Expression
 from .helpers import (
@@ -39,15 +60,7 @@ from .helpers import (
 # we must restrict those keywords from being used as variables.
 # For consistency, we blacklist these keywords in both Gremlin and MATCH.
 RESERVED_MATCH_KEYWORDS = frozenset(
-    {
-        u"$matches",
-        u"$matched",
-        u"$paths",
-        u"$elements",
-        u"$pathElements",
-        u"$depth",
-        u"$currentMatch",
-    }
+    {"$matches", "$matched", "$paths", "$elements", "$pathElements", "$depth", "$currentMatch",}
 )
 
 
@@ -132,7 +145,7 @@ class Literal(Generic[ValueT], Expression):
                     validate_safe_or_special_string(x)
             return
 
-        raise GraphQLCompilationError(u"Cannot represent literal: {}".format(self.value))
+        raise GraphQLCompilationError("Cannot represent literal: {}".format(self.value))
 
     def _to_output_code(self) -> str:
         """Return a unicode object with the Gremlin/MATCH/Cypher representation of this Literal."""
@@ -140,11 +153,11 @@ class Literal(Generic[ValueT], Expression):
         # in all of Gremlin, Cypher, and MATCH.
         self.validate()
         if self.value is None:
-            return u"null"
+            return "null"
         elif self.value is True:
-            return u"true"
+            return "true"
         elif self.value is False:
-            return u"false"
+            return "false"
         elif isinstance(self.value, six.string_types):
             return safe_or_special_quoted_string(self.value)
         elif isinstance(self.value, int):
@@ -159,7 +172,7 @@ class Literal(Generic[ValueT], Expression):
                 return "[" + list_contents + "]"
         else:
             pass  # Fall through to assertion error below.
-        raise AssertionError(u"Unreachable state reached: {}".format(self))
+        raise AssertionError("Unreachable state reached: {}".format(self))
 
     to_gremlin = _to_output_code
     to_match = _to_output_code
@@ -203,27 +216,26 @@ class Variable(Expression):
     def validate(self) -> None:
         """Validate that the Variable is correctly representable."""
         # Get the first letter, or empty string if it doesn't exist.
-        if not self.variable_name.startswith(u"$"):
+        if not self.variable_name.startswith("$"):
             raise GraphQLCompilationError(
-                u"Expected variable name to start with $, but was: "
-                u"{}".format(self.variable_name)
+                "Expected variable name to start with $, but was: {}".format(self.variable_name)
             )
 
         if self.variable_name in RESERVED_MATCH_KEYWORDS:
             raise GraphQLCompilationError(
-                u"Cannot use reserved MATCH keyword {} as variable "
-                u"name!".format(self.variable_name)
+                "Cannot use reserved MATCH keyword {} as variable "
+                "name!".format(self.variable_name)
             )
 
         validate_safe_string(self.variable_name[1:])
 
         if not is_graphql_type(self.inferred_type):
-            raise ValueError(u'Invalid value of "inferred_type": {}'.format(self.inferred_type))
+            raise ValueError('Invalid value of "inferred_type": {}'.format(self.inferred_type))
 
         if isinstance(self.inferred_type, GraphQLNonNull):
             raise ValueError(
-                u'GraphQL non-null types are not supported as "inferred_type": '
-                u"{}".format(self.inferred_type)
+                'GraphQL non-null types are not supported as "inferred_type": '
+                "{}".format(self.inferred_type)
             )
 
         if isinstance(self.inferred_type, GraphQLList):
@@ -234,8 +246,8 @@ class Variable(Expression):
                 # In other words, it's an error in writing the GraphQL query, rather than
                 # a programming error within the library.
                 raise GraphQLCompilationError(
-                    u"Lists of Date or DateTime cannot currently be represented as "
-                    u"Variable objects: {}".format(self.inferred_type)
+                    "Lists of Date or DateTime cannot currently be represented as "
+                    "Variable objects: {}".format(self.inferred_type)
                 )
 
     def to_match(self) -> str:
@@ -253,9 +265,9 @@ class Variable(Expression):
         # For the semantics of the date() OrientDB SQL function, see:
         # http://orientdb.com/docs/last/SQL-Functions.html#date
         if is_same_type(GraphQLDate, self.inferred_type):
-            return u'date(%s, "%s")' % (match_variable_name, STANDARD_DATE_FORMAT)
+            return 'date(%s, "%s")' % (match_variable_name, STANDARD_DATE_FORMAT)
         elif is_same_type(GraphQLDateTime, self.inferred_type):
-            return u'date(%s, "%s")' % (match_variable_name, STANDARD_DATETIME_FORMAT)
+            return 'date(%s, "%s")' % (match_variable_name, STANDARD_DATETIME_FORMAT)
         else:
             return match_variable_name
 
@@ -267,9 +279,9 @@ class Variable(Expression):
         # and then parse it inline. For date format parameter meanings, see:
         # http://docs.oracle.com/javase/7/docs/api/java/text/SimpleDateFormat.html
         if is_same_type(GraphQLDate, self.inferred_type):
-            return u'Date.parse("{}", {})'.format(STANDARD_DATE_FORMAT, self.variable_name)
+            return 'Date.parse("{}", {})'.format(STANDARD_DATE_FORMAT, self.variable_name)
         elif is_same_type(GraphQLDateTime, self.inferred_type):
-            return u'Date.parse("{}", {})'.format(STANDARD_DATETIME_FORMAT, self.variable_name)
+            return 'Date.parse("{}", {})'.format(STANDARD_DATETIME_FORMAT, self.variable_name)
         else:
             return six.text_type(self.variable_name)
 
@@ -291,7 +303,7 @@ class Variable(Expression):
         #
         # [0] https://github.com/RedisGraph/RedisGraph/issues/544
         # [1] https://oss.redislabs.com/redisgraph/cypher_support/#types
-        return u"{}".format(self.variable_name)
+        return "{}".format(self.variable_name)
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy BindParameter."""
@@ -337,13 +349,13 @@ class LocalField(Expression):
 
     def get_local_object_gremlin_name(self) -> str:
         """Return the Gremlin name of the local object whose field is being produced."""
-        return u"it"
+        return "it"
 
     def validate(self) -> None:
         """Validate that the LocalField is correctly representable."""
         validate_safe_or_special_string(self.field_name)
         if self.field_type is not None and not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value {} of "field_type": {}'.format(self.field_type, self))
+            raise ValueError('Invalid value {} of "field_type": {}'.format(self.field_type, self))
 
     def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this LocalField."""
@@ -355,7 +367,7 @@ class LocalField(Expression):
         # otherwise specified.
         elif self.field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The match backend does not support meta field {}.".format(self.field_name)
+                "The match backend does not support meta field {}.".format(self.field_name)
             )
 
         return six.text_type(self.field_name)
@@ -370,18 +382,18 @@ class LocalField(Expression):
             return local_object_name
 
         if self.field_name == TYPENAME_META_FIELD_NAME:
-            return u"{}['{}']".format(local_object_name, "@class")
+            return "{}['{}']".format(local_object_name, "@class")
         # Meta fields are special cases; assume all meta fields are not implemented unless
         # otherwise specified.
         elif self.field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The gremlin backend does not support meta field {}.".format(self.field_name)
+                "The gremlin backend does not support meta field {}.".format(self.field_name)
             )
 
         if "@" in self.field_name:
-            return u"{}['{}']".format(local_object_name, self.field_name)
+            return "{}['{}']".format(local_object_name, self.field_name)
         else:
-            return u"{}.{}".format(local_object_name, self.field_name)
+            return "{}.{}".format(local_object_name, self.field_name)
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a sqlalchemy Column picked from the current_alias."""
@@ -389,14 +401,14 @@ class LocalField(Expression):
 
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(
-                u"The SQL backend does not support lists. Cannot "
-                u"process field {}.".format(self.field_name)
+                "The SQL backend does not support lists. Cannot "
+                "process field {}.".format(self.field_name)
             )
 
         # Meta fields are special cases; assume all meta fields are not implemented.
         if self.field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The SQL backend does not support meta field {}.".format(self.field_name)
+                "The SQL backend does not support meta field {}.".format(self.field_name)
             )
 
         return current_alias.c[self.field_name]
@@ -404,8 +416,8 @@ class LocalField(Expression):
     def to_cypher(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"LocalField is not used as part of the query emission process in "
-            u"Cypher, so this is a bug. This function should not be called."
+            "LocalField is not used as part of the query emission process in "
+            "Cypher, so this is a bug. This function should not be called."
         )
 
 
@@ -432,16 +444,16 @@ class GlobalContextField(Expression):
         """Validate that the GlobalContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
-                u"Expected Location location, got: {} {}".format(
+                "Expected Location location, got: {} {}".format(
                     type(self.location).__name__, self.location
                 )
             )
 
         if self.location.field is None:
-            raise AssertionError(u"Received Location without a field: {}".format(self.location))
+            raise AssertionError("Received Location without a field: {}".format(self.location))
 
         if not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+            raise ValueError('Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this GlobalContextField."""
@@ -454,26 +466,26 @@ class GlobalContextField(Expression):
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The match backend does not support meta field {}.".format(field_name)
+                "The match backend does not support meta field {}.".format(field_name)
             )
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
-        return u"%s.%s" % (mark_name, field_name)
+        return "%s.%s" % (mark_name, field_name)
 
     def to_gremlin(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"GlobalContextField is only used for the WHERE statement in "
-            u"MATCH, so this is a bug. This function should not be called."
+            "GlobalContextField is only used for the WHERE statement in "
+            "MATCH, so this is a bug. This function should not be called."
         )
 
     def to_cypher(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"GlobalContextField is not used as part of the query emission "
-            u"process in Cypher, so this is a bug. This function "
-            u"should not be called."
+            "GlobalContextField is not used as part of the query emission "
+            "process in Cypher, so this is a bug. This function "
+            "should not be called."
         )
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
@@ -481,23 +493,23 @@ class GlobalContextField(Expression):
         self.validate()
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(
-                u"The SQL backend does not support lists. Cannot "
-                u"process field {}.".format(self.location.field)
+                "The SQL backend does not support lists. Cannot "
+                "process field {}.".format(self.location.field)
             )
 
         if self.location.field is not None:
             # Meta fields are special cases; assume all meta fields are not implemented.
             if self.location.field in ALL_SUPPORTED_META_FIELDS:
                 raise NotImplementedError(
-                    u"The SQL backend does not support meta field {}.".format(self.location.field)
+                    "The SQL backend does not support meta field {}.".format(self.location.field)
                 )
             return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
         else:
             raise AssertionError(
-                u"This is a bug. The SQL backend does not use "
-                u"global context fields to point to vertices. GlobalContextField "
-                u"at query_path {} and visit_counter {} did note have a valid "
-                u"field.".format(self.location.query_path, self.location.visit_counter)
+                "This is a bug. The SQL backend does not use "
+                "global context fields to point to vertices. GlobalContextField "
+                "at query_path {} and visit_counter {} did note have a valid "
+                "field.".format(self.location.query_path, self.location.visit_counter)
             )
 
 
@@ -528,13 +540,13 @@ class ContextField(Expression):
         """Validate that the ContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
-                u"Expected Location location, got: {} {}".format(
+                "Expected Location location, got: {} {}".format(
                     type(self.location).__name__, self.location
                 )
             )
 
         if not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+            raise ValueError('Invalid value of "field_type": {}'.format(self.field_type))
 
     def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this ContextField."""
@@ -549,14 +561,14 @@ class ContextField(Expression):
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The match backend does not support meta field {}.".format(field_name)
+                "The match backend does not support meta field {}.".format(field_name)
             )
 
         if field_name is None:
-            return u"$matched.%s" % (mark_name,)
+            return "$matched.%s" % (mark_name,)
         else:
             validate_safe_or_special_string(field_name)
-            return u"$matched.%s.%s" % (mark_name, field_name)
+            return "$matched.%s.%s" % (mark_name, field_name)
 
     def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
@@ -570,17 +582,17 @@ class ContextField(Expression):
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The gremlin backend does not support meta field {}.".format(field_name)
+                "The gremlin backend does not support meta field {}.".format(field_name)
             )
 
         if field_name is not None:
             validate_safe_or_special_string(field_name)
             if "@" in field_name:
-                template = u"m.{mark_name}['{field_name}']"
+                template = "m.{mark_name}['{field_name}']"
             else:
-                template = u"m.{mark_name}.{field_name}"
+                template = "m.{mark_name}.{field_name}"
         else:
-            template = u"m.{mark_name}"
+            template = "m.{mark_name}"
 
         validate_safe_string(mark_name)
 
@@ -594,9 +606,9 @@ class ContextField(Expression):
 
         if field_name is not None:
             validate_safe_string(field_name)
-            template = u"{mark_name}.{field_name}"
+            template = "{mark_name}.{field_name}"
         else:
-            template = u"{mark_name}"
+            template = "{mark_name}"
 
         validate_safe_string(mark_name)
 
@@ -608,21 +620,21 @@ class ContextField(Expression):
 
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(
-                u"The SQL backend does not support lists. Cannot "
-                u"process field {}.".format(self.location.field)
+                "The SQL backend does not support lists. Cannot "
+                "process field {}.".format(self.location.field)
             )
 
         if self.location.field is not None:
             # Meta fields are special cases; assume all meta fields are not implemented.
             if self.location.field in ALL_SUPPORTED_META_FIELDS:
                 raise NotImplementedError(
-                    u"The SQL backend does not support meta field {}.".format(self.location.field)
+                    "The SQL backend does not support meta field {}.".format(self.location.field)
                 )
             return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
         else:
             raise AssertionError(
-                u"This is a bug. The SQL backend does not use "
-                u"context fields to point to vertices."
+                "This is a bug. The SQL backend does not use "
+                "context fields to point to vertices."
             )
 
 
@@ -651,19 +663,18 @@ class OutputContextField(Expression):
         """Validate that the OutputContextField is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
-                u"Expected Location location, got: {} {}".format(
+                "Expected Location location, got: {} {}".format(
                     type(self.location).__name__, self.location
                 )
             )
 
         if not self.location.field:
             raise ValueError(
-                u"Expected Location object that points to a field, got: "
-                u"{}".format(self.location)
+                "Expected Location object that points to a field, got: {}".format(self.location)
             )
 
         if not is_graphql_type(self.field_type):
-            raise ValueError(u'Invalid value of "field_type": {}'.format(self.field_type))
+            raise ValueError('Invalid value of "field_type": {}'.format(self.field_type))
 
         stripped_field_type = strip_non_null_from_type(self.field_type)
         if isinstance(stripped_field_type, GraphQLList):
@@ -674,8 +685,8 @@ class OutputContextField(Expression):
                 # In other words, it's an error in writing the GraphQL query, rather than
                 # a programming error within the library.
                 raise GraphQLCompilationError(
-                    u"Lists of Date or DateTime cannot currently be represented as "
-                    u"OutputContextField objects: {}".format(self.field_type)
+                    "Lists of Date or DateTime cannot currently be represented as "
+                    "OutputContextField objects: {}".format(self.field_type)
                 )
 
     def to_match(self) -> str:
@@ -689,18 +700,18 @@ class OutputContextField(Expression):
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The match backend does not support meta field {}.".format(field_name)
+                "The match backend does not support meta field {}.".format(field_name)
             )
         validate_safe_string(mark_name)
         validate_safe_or_special_string(field_name)
 
         stripped_field_type = strip_non_null_from_type(self.field_type)
         if is_same_type(GraphQLDate, stripped_field_type):
-            return u'%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATE_FORMAT)
+            return '%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATE_FORMAT)
         elif is_same_type(GraphQLDateTime, stripped_field_type):
-            return u'%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATETIME_FORMAT)
+            return '%s.%s.format("%s")' % (mark_name, field_name, STANDARD_DATETIME_FORMAT)
         else:
-            return u"%s.%s" % (mark_name, field_name)
+            return "%s.%s" % (mark_name, field_name)
 
     def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
@@ -716,13 +727,13 @@ class OutputContextField(Expression):
         # otherwise specified.
         elif field_name in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The gremlin backend does not support meta field {}.".format(field_name)
+                "The gremlin backend does not support meta field {}.".format(field_name)
             )
 
         if "@" in field_name:
-            template = u"m.{mark_name}['{field_name}']"
+            template = "m.{mark_name}['{field_name}']"
         else:
-            template = u"m.{mark_name}.{field_name}"
+            template = "m.{mark_name}.{field_name}"
 
         format_value = None
         stripped_field_type = strip_non_null_from_type(self.field_type)
@@ -743,7 +754,7 @@ class OutputContextField(Expression):
         validate_safe_string(mark_name)
         validate_safe_string(field_name)
 
-        template = u"{mark_name}.{field_name}"
+        template = "{mark_name}.{field_name}"
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
@@ -751,14 +762,14 @@ class OutputContextField(Expression):
         """Return a SQLAlchemy Column picked from the appropriate alias."""
         if isinstance(self.field_type, GraphQLList):
             raise NotImplementedError(
-                u"The SQL backend does not support lists. Cannot "
-                u"output field {}.".format(self.location.field)
+                "The SQL backend does not support lists. Cannot "
+                "output field {}.".format(self.location.field)
             )
 
         # Meta fields are special cases; assume all meta fields are not implemented.
         if self.location.field in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The SQL backend does not support meta field {}.".format(self.location.field)
+                "The SQL backend does not support meta field {}.".format(self.location.field)
             )
 
         return aliases[(self.location.at_vertex().query_path, None)].c[self.location.field]
@@ -802,18 +813,39 @@ class FoldedContextField(Expression):
         self.field_type = field_type
         self.validate()
 
+    @staticmethod
+    def _get_sql_array_type(graphql_type: GraphQLOutputType) -> Optional[str]:
+        """Convert folded field type to a corresponding SQL type."""
+        # Extract inner type of the GraphQLList.
+        inner_type = strip_non_null_from_type(graphql_type)
+        graphql_type_to_sql_array_type_dict = {
+            GraphQLInt: "BIGINT",
+            GraphQLString: "VARCHAR",
+            GraphQLID: "VARCHAR",
+            GraphQLBoolean: "BOOL",
+            GraphQLFloat: "DOUBLE PRECISION",
+            GraphQLDate: "DATE",
+            GraphQLDateTime: "TIMESTAMP",
+            GraphQLDecimal: "DECIMAL",
+        }
+        for graphql_type, type_name in graphql_type_to_sql_array_type_dict.items():
+            if is_same_type(graphql_type, inner_type):
+                return type_name
+        # If the graphql_type was not found, return None.
+        return None
+
     def validate(self) -> None:
         """Validate that the FoldedContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(
-                u"Expected FoldScopeLocation fold_scope_location, got: {} {}".format(
+                "Expected FoldScopeLocation fold_scope_location, got: {} {}".format(
                     type(self.fold_scope_location), self.fold_scope_location
                 )
             )
 
         if self.fold_scope_location.field is None:
             raise ValueError(
-                u"Expected FoldScopeLocation at a field, but got: {}".format(
+                "Expected FoldScopeLocation at a field, but got: {}".format(
                     self.fold_scope_location
                 )
             )
@@ -821,16 +853,16 @@ class FoldedContextField(Expression):
         if self.fold_scope_location.field == COUNT_META_FIELD_NAME:
             if not is_same_type(GraphQLInt, self.field_type):
                 raise TypeError(
-                    u"Expected the _x_count meta-field to be of GraphQLInt type, but "
-                    u"encountered type {} instead: {}".format(
+                    "Expected the _x_count meta-field to be of GraphQLInt type, but "
+                    "encountered type {} instead: {}".format(
                         self.field_type, self.fold_scope_location
                     )
                 )
         else:
             if not isinstance(self.field_type, GraphQLList):
                 raise ValueError(
-                    u'Invalid value of "field_type" for a field that is not '
-                    u"a meta-field, expected a list type but got: {} {}".format(
+                    'Invalid value of "field_type" for a field that is not '
+                    "a meta-field, expected a list type but got: {} {}".format(
                         self.field_type, self.fold_scope_location
                     )
                 )
@@ -838,8 +870,8 @@ class FoldedContextField(Expression):
             inner_type = strip_non_null_from_type(self.field_type.of_type)
             if isinstance(inner_type, GraphQLList):
                 raise GraphQLCompilationError(
-                    u"Outputting list-valued fields in a @fold context is currently not supported: "
-                    u"{} {}".format(self.fold_scope_location, self.field_type.of_type)
+                    "Outputting list-valued fields in a @fold context is currently not supported: "
+                    "{} {}".format(self.fold_scope_location, self.field_type.of_type)
                 )
 
     def to_match(self) -> str:
@@ -849,7 +881,7 @@ class FoldedContextField(Expression):
         mark_name, field_name = self.fold_scope_location.get_location_at_field_name()
         validate_safe_string(mark_name)
 
-        template = u"$%(mark_name)s.%(field_name)s"
+        template = "$%(mark_name)s.%(field_name)s"
         template_data = {
             "mark_name": mark_name,
         }
@@ -874,8 +906,8 @@ class FoldedContextField(Expression):
     def to_gremlin(self) -> str:
         """Not implemented, should not be used."""
         raise AssertionError(
-            u"FoldedContextField are not used during the query emission process "
-            u"in Gremlin, so this is a bug. This function should not be called."
+            "FoldedContextField are not used during the query emission process "
+            "in Gremlin, so this is a bug. This function should not be called."
         )
 
     def to_cypher(self) -> str:
@@ -888,10 +920,10 @@ class FoldedContextField(Expression):
         )
         validate_safe_string(mark_name)
 
-        template = u"[x IN {mark_name} | x.{field_name}]"
+        template = "[x IN {mark_name} | x.{field_name}]"
 
         if field_name == COUNT_META_FIELD_NAME:
-            raise NotImplementedError()
+            raise NotImplementedError("_x_count is not implemented in the Cypher backend.")
 
         return template.format(mark_name=mark_name, field_name=field_name)
 
@@ -899,8 +931,8 @@ class FoldedContextField(Expression):
         """Return a sqlalchemy Column picked from the appropriate alias."""
         if self.fold_scope_location.field is None:
             raise AssertionError(
-                u"Unreachable code reached, expected a location at a field "
-                u"but got {}: {}".format(self.fold_scope_location, self)
+                "Unreachable code reached, expected a location at a field "
+                "but got {}: {}".format(self.fold_scope_location, self)
             )
 
         # _x_count is a special case that has already been coalesced to 0.
@@ -912,7 +944,7 @@ class FoldedContextField(Expression):
             ].c["fold_output__x_count"]
         elif self.fold_scope_location.field in ALL_SUPPORTED_META_FIELDS:
             raise NotImplementedError(
-                u"The SQL backend does not support meta field {}.".format(
+                "The SQL backend does not support meta field {}.".format(
                     self.fold_scope_location.field
                 )
             )
@@ -926,15 +958,12 @@ class FoldedContextField(Expression):
             return fold_output_column
         elif isinstance(dialect, PGDialect):
             # PostgreSQL
-            # coalesce to an empty array of the corresponding type
-            inner_type = strip_non_null_from_type(self.field_type.of_type)
-            if is_same_type(GraphQLInt, inner_type):
-                sql_array_type = "INT"
-            elif is_same_type(GraphQLString, inner_type):
-                sql_array_type = "VARCHAR"
-            else:
+            # Coalesce to an empty array of the corresponding type.
+            graphql_type = self.field_type.of_type
+            sql_array_type = FoldedContextField._get_sql_array_type(graphql_type)
+            if sql_array_type is None:
                 raise NotImplementedError(
-                    "Type {} not implemented for outputs inside a fold.".format(inner_type)
+                    f"Type {graphql_type} not implemented for outputs inside a fold."
                 )
             empty_array = "ARRAY[]::{}[]".format(sql_array_type)
             return sqlalchemy.func.coalesce(
@@ -942,8 +971,8 @@ class FoldedContextField(Expression):
             )
         else:
             raise NotImplementedError(
-                u"Fold only supported for MSSQL and "
-                u"PostgreSQL, dialect was set to {}".format(dialect.name)
+                "Fold only supported for MSSQL and "
+                "PostgreSQL, dialect was set to {}".format(dialect.name)
             )
 
     def __eq__(self, other: Any) -> bool:
@@ -983,15 +1012,15 @@ class FoldCountContextField(Expression):
         """Validate that the FoldCountContextField is correctly representable."""
         if not isinstance(self.fold_scope_location, FoldScopeLocation):
             raise TypeError(
-                u"Expected FoldScopeLocation fold_scope_location, got: {} {}".format(
+                "Expected FoldScopeLocation fold_scope_location, got: {} {}".format(
                     type(self.fold_scope_location), self.fold_scope_location
                 )
             )
 
         if self.fold_scope_location.field != COUNT_META_FIELD_NAME:
             raise AssertionError(
-                u"Unexpected field in the FoldScopeLocation of this "
-                u"FoldCountContextField object: {} {}".format(self.fold_scope_location, self)
+                "Unexpected field in the FoldScopeLocation of this "
+                "FoldCountContextField object: {} {}".format(self.fold_scope_location, self)
             )
 
     def to_match(self) -> str:
@@ -1001,7 +1030,7 @@ class FoldCountContextField(Expression):
         mark_name, _ = self.fold_scope_location.get_location_name()
         validate_safe_string(mark_name)
 
-        template = u"$%(mark_name)s.size()"
+        template = "$%(mark_name)s.size()"
         template_data = {
             "mark_name": mark_name,
         }
@@ -1009,11 +1038,11 @@ class FoldCountContextField(Expression):
 
     def to_gremlin(self) -> str:
         """Not supported yet."""
-        raise NotImplementedError()
+        raise NotImplementedError("_x_count is not implemented in the Gremlin backend")
 
     def to_cypher(self) -> str:
         """Not supported yet."""
-        raise NotImplementedError()
+        raise NotImplementedError("_x_count is not implemented in the Cypher backend.")
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Return a SQLAlchemy column of a coalesced COUNT(*) from a folded subquery."""
@@ -1048,51 +1077,51 @@ class ContextFieldExistence(Expression):
         """Validate that the ContextFieldExistence is correctly representable."""
         if not isinstance(self.location, Location):
             raise TypeError(
-                u"Expected Location location, got: {} {}".format(
+                "Expected Location location, got: {} {}".format(
                     type(self.location).__name__, self.location
                 )
             )
 
         if self.location.field:
             raise ValueError(
-                u"Expected location to point to a vertex, "
-                u"but found a field: {}".format(self.location)
+                "Expected location to point to a vertex, "
+                "but found a field: {}".format(self.location)
             )
 
     def to_match(self) -> str:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
-        raise AssertionError(u"ContextFieldExistence.to_match() was called: {}".format(self))
+        raise AssertionError("ContextFieldExistence.to_match() was called: {}".format(self))
 
     def to_gremlin(self) -> str:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
-        raise AssertionError(u"ContextFieldExistence.to_gremlin() was called: {}".format(self))
+        raise AssertionError("ContextFieldExistence.to_gremlin() was called: {}".format(self))
 
     def to_cypher(self) -> str:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
-        raise AssertionError(u"ContextFieldExistence.to_cypher() was called: {}".format(self))
+        raise AssertionError("ContextFieldExistence.to_cypher() was called: {}".format(self))
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Must not be used -- ContextFieldExistence must be lowered during the IR lowering step."""
-        raise AssertionError(u"ContextFieldExistence.to_sql() was called: {}".format(self))
+        raise AssertionError("ContextFieldExistence.to_sql() was called: {}".format(self))
 
 
 def _validate_operator_name(operator: str, supported_operators: FrozenSet[str]) -> None:
     """Ensure the named operator is valid and supported."""
     if not isinstance(operator, six.text_type):
         raise TypeError(
-            u"Expected operator as unicode string, got: {} {}".format(
+            "Expected operator as unicode string, got: {} {}".format(
                 type(operator).__name__, operator
             )
         )
 
     if operator not in supported_operators:
-        raise GraphQLCompilationError(u"Unrecognized operator: {}".format(operator))
+        raise GraphQLCompilationError("Unrecognized operator: {}".format(operator))
 
 
 class UnaryTransformation(Expression):
     """An expression that modifies an underlying expression with a unary operator."""
 
-    SUPPORTED_OPERATORS = frozenset({u"size"})
+    SUPPORTED_OPERATORS = frozenset({"size"})
 
     __slots__ = ("operator", "inner_expression")
 
@@ -1108,7 +1137,7 @@ class UnaryTransformation(Expression):
 
         if not isinstance(self.inner_expression, Expression):
             raise TypeError(
-                u"Expected Expression inner_expression, got {} {}".format(
+                "Expected Expression inner_expression, got {} {}".format(
                     type(self.inner_expression).__name__, self.inner_expression
                 )
             )
@@ -1127,15 +1156,13 @@ class UnaryTransformation(Expression):
         self.validate()
 
         translation_table = {
-            u"size": u"size()",
+            "size": "size()",
         }
         match_operator = translation_table.get(self.operator)
         if not match_operator:
-            raise AssertionError(
-                u"Unrecognized operator used: " u"{} {}".format(self.operator, self)
-            )
+            raise AssertionError("Unrecognized operator used: {} {}".format(self.operator, self))
 
-        template = u"%(inner)s.%(operator)s"
+        template = "%(inner)s.%(operator)s"
         args = {
             "inner": self.inner_expression.to_match(),
             "operator": match_operator,
@@ -1145,15 +1172,13 @@ class UnaryTransformation(Expression):
     def to_gremlin(self) -> str:
         """Return a unicode object with the Gremlin representation of this expression."""
         translation_table = {
-            u"size": u"count()",
+            "size": "count()",
         }
         gremlin_operator = translation_table.get(self.operator)
         if not gremlin_operator:
-            raise AssertionError(
-                u"Unrecognized operator used: " u"{} {}".format(self.operator, self)
-            )
+            raise AssertionError("Unrecognized operator used: {} {}".format(self.operator, self))
 
-        template = u"{inner}.{operator}"
+        template = "{inner}.{operator}"
         args = {
             "inner": self.inner_expression.to_gremlin(),
             "operator": gremlin_operator,
@@ -1162,11 +1187,11 @@ class UnaryTransformation(Expression):
 
     def to_cypher(self) -> str:
         """Not implemented yet."""
-        raise NotImplementedError()
+        raise NotImplementedError("Unary operators are not implemented in the Cypher backend.")
 
     def to_sql(self, dialect: Any, aliases: AliasesDictType, current_alias: AliasType) -> Any:
         """Not implemented yet."""
-        raise NotImplementedError(u"Unary operators are not implemented in the SQL backend.")
+        raise NotImplementedError("Unary operators are not implemented in the SQL backend.")
 
 
 class BinaryComposition(Expression):
@@ -1174,23 +1199,23 @@ class BinaryComposition(Expression):
 
     SUPPORTED_OPERATORS = frozenset(
         {
-            u"=",
-            u"!=",
-            u">=",
-            u"<=",
-            u">",
-            u"<",
-            u"+",
-            u"||",
-            u"&&",
-            u"contains",
-            u"not_contains",
-            u"intersects",
-            u"has_substring",
-            u"starts_with",
-            u"ends_with",
-            u"LIKE",
-            u"INSTANCEOF",
+            "=",
+            "!=",
+            ">=",
+            "<=",
+            ">",
+            "<",
+            "+",
+            "||",
+            "&&",
+            "contains",
+            "not_contains",
+            "intersects",
+            "has_substring",
+            "starts_with",
+            "ends_with",
+            "LIKE",
+            "INSTANCEOF",
         }
     )
 
@@ -1219,14 +1244,14 @@ class BinaryComposition(Expression):
 
         if not isinstance(self.left, Expression):
             raise TypeError(
-                u"Expected Expression left, got: {} {} {}".format(
+                "Expected Expression left, got: {} {} {}".format(
                     type(self.left).__name__, self.left, self
                 )
             )
 
         if not isinstance(self.right, Expression):
             raise TypeError(
-                u"Expected Expression right, got: {} {}".format(
+                "Expected Expression right, got: {} {}".format(
                     type(self.right).__name__, self.right
                 )
             )
@@ -1258,41 +1283,41 @@ class BinaryComposition(Expression):
         # Comparing null to a value does not make sense.
         if self.left == NullLiteral:
             raise AssertionError(
-                u"The left expression cannot be a NullLiteral! Received operator "
-                u"{} and right expression {}.".format(self.operator, self.right)
+                "The left expression cannot be a NullLiteral! Received operator "
+                "{} and right expression {}.".format(self.operator, self.right)
             )
         # Null literals use the OrientDB 'IS/IS NOT' (in)equality operators,
         # while other values use the OrientDB '=/<>' operators.
         elif self.right == NullLiteral:
             translation_table = {
-                u"=": (u"IS", regular_operator_format),
-                u"!=": (u"IS NOT", regular_operator_format),
+                "=": ("IS", regular_operator_format),
+                "!=": ("IS NOT", regular_operator_format),
             }
         else:
             translation_table = {
-                u"=": (u"=", regular_operator_format),
-                u"!=": (u"<>", regular_operator_format),
-                u">=": (u">=", regular_operator_format),
-                u"<=": (u"<=", regular_operator_format),
-                u">": (u">", regular_operator_format),
-                u"<": (u"<", regular_operator_format),
-                u"+": (u"+", regular_operator_format),
-                u"||": (u"OR", regular_operator_format),
-                u"&&": (u"AND", regular_operator_format),
-                u"contains": (u"CONTAINS", regular_operator_format),
-                u"not_contains": (u"CONTAINS", negated_regular_operator_format),
-                u"intersects": (u"intersect", intersects_operator_format),
-                u"has_substring": (None, None),  # must be lowered into compatible form using LIKE
-                u"starts_with": (None, None),  # must be lowered into compatible form using LIKE
-                u"ends_with": (None, None),  # must be lowered into compatibe form using LIKE
+                "=": ("=", regular_operator_format),
+                "!=": ("<>", regular_operator_format),
+                ">=": (">=", regular_operator_format),
+                "<=": ("<=", regular_operator_format),
+                ">": (">", regular_operator_format),
+                "<": ("<", regular_operator_format),
+                "+": ("+", regular_operator_format),
+                "||": ("OR", regular_operator_format),
+                "&&": ("AND", regular_operator_format),
+                "contains": ("CONTAINS", regular_operator_format),
+                "not_contains": ("CONTAINS", negated_regular_operator_format),
+                "intersects": ("intersect", intersects_operator_format),
+                "has_substring": (None, None),  # must be lowered into compatible form using LIKE
+                "starts_with": (None, None),  # must be lowered into compatible form using LIKE
+                "ends_with": (None, None),  # must be lowered into compatibe form using LIKE
                 # MATCH-specific operators
-                u"LIKE": (u"LIKE", regular_operator_format),
-                u"INSTANCEOF": (u"INSTANCEOF", regular_operator_format),
+                "LIKE": ("LIKE", regular_operator_format),
+                "INSTANCEOF": ("INSTANCEOF", regular_operator_format),
             }
 
         match_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not match_operator or not format_spec:
-            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
+            raise AssertionError("Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec % dict(
             operator=match_operator, left=self.left.to_match(), right=self.right.to_match()
@@ -1302,38 +1327,38 @@ class BinaryComposition(Expression):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
-        immediate_operator_format = u"({left} {operator} {right})"
-        dotted_operator_format = u"{left}.{operator}({right})"
-        intersects_operator_format = u"(!{left}.{operator}({right}).empty)"
-        negated_dotted_operator_format = u"!{left}.{operator}({right})"
+        immediate_operator_format = "({left} {operator} {right})"
+        dotted_operator_format = "{left}.{operator}({right})"
+        intersects_operator_format = "(!{left}.{operator}({right}).empty)"
+        negated_dotted_operator_format = "!{left}.{operator}({right})"
 
         # Comparing null to a value does not make sense.
         if self.left == NullLiteral:
             raise AssertionError(
-                u"The left expression cannot be a NullLiteral! Received operator "
-                u"{} and right expression {}.".format(self.operator, self.right)
+                "The left expression cannot be a NullLiteral! Received operator "
+                "{} and right expression {}.".format(self.operator, self.right)
             )
         translation_table = {
-            u"=": (u"==", immediate_operator_format),
-            u"!=": (u"!=", immediate_operator_format),
-            u">=": (u">=", immediate_operator_format),
-            u"<=": (u"<=", immediate_operator_format),
-            u">": (u">", immediate_operator_format),
-            u"<": (u"<", immediate_operator_format),
-            u"+": (u"+", immediate_operator_format),
-            u"||": (u"||", immediate_operator_format),
-            u"&&": (u"&&", immediate_operator_format),
-            u"contains": (u"contains", dotted_operator_format),
-            u"not_contains": (u"contains", negated_dotted_operator_format),
-            u"intersects": (u"intersect", intersects_operator_format),
-            u"has_substring": (u"contains", dotted_operator_format),
-            u"starts_with": (u"startsWith", dotted_operator_format),
-            u"ends_with": (u"endsWith", dotted_operator_format),
+            "=": ("==", immediate_operator_format),
+            "!=": ("!=", immediate_operator_format),
+            ">=": (">=", immediate_operator_format),
+            "<=": ("<=", immediate_operator_format),
+            ">": (">", immediate_operator_format),
+            "<": ("<", immediate_operator_format),
+            "+": ("+", immediate_operator_format),
+            "||": ("||", immediate_operator_format),
+            "&&": ("&&", immediate_operator_format),
+            "contains": ("contains", dotted_operator_format),
+            "not_contains": ("contains", negated_dotted_operator_format),
+            "intersects": ("intersect", intersects_operator_format),
+            "has_substring": ("contains", dotted_operator_format),
+            "starts_with": ("startsWith", dotted_operator_format),
+            "ends_with": ("endsWith", dotted_operator_format),
         }
 
         gremlin_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not gremlin_operator or not format_spec:
-            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
+            raise AssertionError("Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec.format(
             operator=gremlin_operator, left=self.left.to_gremlin(), right=self.right.to_gremlin()
@@ -1344,44 +1369,44 @@ class BinaryComposition(Expression):
         self.validate()
 
         # The Cypher versions of some operators require an inverted order of arguments.
-        regular_operator_format = u"({left} {operator} {right})"
-        inverted_operator_format = u"({right} {operator} {left})"
-        negated_inverted_operator_format = u"(NOT ({right} {operator} {left}))"
-        intersects_operator_format = u"any(_ {operator} {left} WHERE _ {operator} {right})"
+        regular_operator_format = "({left} {operator} {right})"
+        inverted_operator_format = "({right} {operator} {left})"
+        negated_inverted_operator_format = "(NOT ({right} {operator} {left}))"
+        intersects_operator_format = "any(_ {operator} {left} WHERE _ {operator} {right})"
 
         # Comparing null to a value does not make sense.
         if self.left == NullLiteral:
             raise AssertionError(
-                u"The left expression cannot be a NullLiteral! Received operator "
-                u"{} and right expression {}.".format(self.operator, self.right)
+                "The left expression cannot be a NullLiteral! Received operator "
+                "{} and right expression {}.".format(self.operator, self.right)
             )
         # Null literals use 'is/is not' as (in)equality operators, while other values use '=/<>'.
         elif self.right == NullLiteral:
             translation_table = {
-                u"=": (u"IS", regular_operator_format),
-                u"!=": (u"IS NOT", regular_operator_format),
+                "=": ("IS", regular_operator_format),
+                "!=": ("IS NOT", regular_operator_format),
             }
         else:
             translation_table = {
-                u"=": (u"=", regular_operator_format),
-                u"!=": (u"<>", regular_operator_format),
-                u">=": (u">=", regular_operator_format),
-                u"<=": (u"<=", regular_operator_format),
-                u">": (u">", regular_operator_format),
-                u"<": (u"<", regular_operator_format),
-                u"||": (u"OR", regular_operator_format),
-                u"&&": (u"AND", regular_operator_format),
-                u"contains": (u"IN", inverted_operator_format),
-                u"not_contains": (u"IN", negated_inverted_operator_format),
-                u"intersects": (u"IN", intersects_operator_format),
-                u"has_substring": (u"CONTAINS", regular_operator_format),
-                u"starts_with": (u"STARTS WITH", regular_operator_format),
-                u"ends_with": (u"ENDS WITH", regular_operator_format),
+                "=": ("=", regular_operator_format),
+                "!=": ("<>", regular_operator_format),
+                ">=": (">=", regular_operator_format),
+                "<=": ("<=", regular_operator_format),
+                ">": (">", regular_operator_format),
+                "<": ("<", regular_operator_format),
+                "||": ("OR", regular_operator_format),
+                "&&": ("AND", regular_operator_format),
+                "contains": ("IN", inverted_operator_format),
+                "not_contains": ("IN", negated_inverted_operator_format),
+                "intersects": ("IN", intersects_operator_format),
+                "has_substring": ("CONTAINS", regular_operator_format),
+                "starts_with": ("STARTS WITH", regular_operator_format),
+                "ends_with": ("ENDS WITH", regular_operator_format),
             }
 
         cypher_operator, format_spec = translation_table.get(self.operator, (None, None))
         if not cypher_operator or not format_spec:
-            raise AssertionError(u"Unrecognized operator used: {} {}".format(self.operator, self))
+            raise AssertionError("Unrecognized operator used: {} {}".format(self.operator, self))
 
         return format_spec.format(
             operator=cypher_operator, left=self.left.to_cypher(), right=self.right.to_cypher()
@@ -1392,26 +1417,26 @@ class BinaryComposition(Expression):
         self.validate()
 
         translation_table = {
-            u"=": python_operator.__eq__,
-            u"!=": python_operator.__ne__,
-            u"<": python_operator.__lt__,
-            u">": python_operator.__gt__,
-            u"<=": python_operator.__le__,
-            u">=": python_operator.__ge__,
-            u"&&": sql.expression.and_,
-            u"||": sql.expression.or_,
-            u"has_substring": sql.operators.ColumnOperators.contains,
-            u"starts_with": sql.operators.ColumnOperators.startswith,
-            u"ends_with": sql.operators.ColumnOperators.endswith,
+            "=": python_operator.__eq__,
+            "!=": python_operator.__ne__,
+            "<": python_operator.__lt__,
+            ">": python_operator.__gt__,
+            "<=": python_operator.__le__,
+            ">=": python_operator.__ge__,
+            "&&": sql.expression.and_,
+            "||": sql.expression.or_,
+            "has_substring": sql.operators.ColumnOperators.contains,
+            "starts_with": sql.operators.ColumnOperators.startswith,
+            "ends_with": sql.operators.ColumnOperators.endswith,
             # IR generation converts an in_collection filter in the query to a contains filter
             # in the IR. Because of this an implementation for in_collection and not_in_collection
             # is not needed.
-            u"contains": sqlalchemy_extensions.contains_operator,
-            u"not_contains": sqlalchemy_extensions.not_contains_operator,
+            "contains": sqlalchemy_extensions.contains_operator,
+            "not_contains": sqlalchemy_extensions.not_contains_operator,
         }
         if self.operator not in translation_table:
             raise NotImplementedError(
-                u"The SQL backend does not support operator {}.".format(self.operator)
+                "The SQL backend does not support operator {}.".format(self.operator)
             )
         return translation_table[self.operator](
             self.left.to_sql(dialect, aliases, current_alias),
@@ -1445,19 +1470,19 @@ class TernaryConditional(Expression):
         """Validate that the TernaryConditional is correctly representable."""
         if not isinstance(self.predicate, Expression):
             raise TypeError(
-                u"Expected Expression predicate, got: {} {}".format(
+                "Expected Expression predicate, got: {} {}".format(
                     type(self.predicate).__name__, self.predicate
                 )
             )
         if not isinstance(self.if_true, Expression):
             raise TypeError(
-                u"Expected Expression if_true, got: {} {}".format(
+                "Expected Expression if_true, got: {} {}".format(
                     type(self.if_true).__name__, self.if_true
                 )
             )
         if not isinstance(self.if_false, Expression):
             raise TypeError(
-                u"Expected Expression if_false, got: {} {}".format(
+                "Expected Expression if_false, got: {} {}".format(
                     type(self.if_false).__name__, self.if_false
                 )
             )
@@ -1491,21 +1516,21 @@ class TernaryConditional(Expression):
             """Visitor function that ensures the predicate does not contain TernaryConditionals."""
             if isinstance(expression, TernaryConditional):
                 raise ValueError(
-                    u"Cannot emit MATCH code for TernaryConditional that contains "
-                    u"in its predicate another TernaryConditional: "
-                    u"{} {}".format(expression, self)
+                    "Cannot emit MATCH code for TernaryConditional that contains "
+                    "in its predicate another TernaryConditional: "
+                    "{} {}".format(expression, self)
                 )
             return expression
 
         self.predicate.visit_and_update(visitor_fn)
 
-        format_spec = u'if(eval("%(predicate)s"), %(if_true)s, %(if_false)s)'
+        format_spec = 'if(eval("%(predicate)s"), %(if_true)s, %(if_false)s)'
         predicate_string = self.predicate.to_match()
-        if u'"' in predicate_string:
+        if '"' in predicate_string:
             raise AssertionError(
-                u"Found a double-quote within the predicate string, this would "
-                u"have terminated the if(eval()) early and should be fixed: "
-                u"{} {}".format(predicate_string, self)
+                "Found a double-quote within the predicate string, this would "
+                "have terminated the if(eval()) early and should be fixed: "
+                "{} {}".format(predicate_string, self)
             )
 
         return format_spec % dict(
@@ -1518,7 +1543,7 @@ class TernaryConditional(Expression):
         """Return a unicode object with the Gremlin representation of this expression."""
         self.validate()
 
-        return u"({predicate} ? {if_true} : {if_false})".format(
+        return "({predicate} ? {if_true} : {if_false})".format(
             predicate=self.predicate.to_gremlin(),
             if_true=self.if_true.to_gremlin(),
             if_false=self.if_false.to_gremlin(),
@@ -1528,7 +1553,7 @@ class TernaryConditional(Expression):
         """Return a unicode object with the Cypher representation of this expression."""
         self.validate()
 
-        return u"(CASE WHEN {predicate} THEN {if_true} ELSE {if_false} END)".format(
+        return "(CASE WHEN {predicate} THEN {if_true} ELSE {if_false} END)".format(
             predicate=self.predicate.to_cypher(),
             if_true=self.if_true.to_cypher(),
             if_false=self.if_false.to_cypher(),

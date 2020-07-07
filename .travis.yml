@@ -1,7 +1,7 @@
 # In addition to building PRs, build pushes to the following branches and tag names.
 branches:
   only:
-  - master
+  - main
   - /^v\d+\.\d+(\.\d+)?(-\S*)?$/  # tagged commits with new release versions
 
 language: python
@@ -22,7 +22,11 @@ install:
   - pip install --upgrade pip
   - pip install --upgrade setuptools pipenv
   - pipenv install --dev --deploy --system
-  - pipenv install --system --skip-lock -e .
+  # This last step will ensure that any Python version-specific dependencies
+  # not covered in the pipenv lockfile are installed anyway.
+  # This is a pip command rather than a pipenv command because we want to see
+  # what exactly got installed here, and the pipenv version of this wouldn't output that.
+  - pip install -e .
 matrix:
   include:
   - name: "Lint and static analysis"
