@@ -14,6 +14,7 @@ import six
 from .. import schema
 from .test_helpers import get_schema
 from copy import deepcopy
+from graphql import build_schema
 
 
 class SchemaTests(unittest.TestCase):
@@ -156,14 +157,12 @@ type MyType {
 
             type Animal {
                 uuid: ID
-            }
+            }Gra
 
             type RootSchemaQuery {
                 Animal: [Animal]
             }
         """
-        from .copy_copy import deepcopy
-        from graphql import build_schema add -
         graphql_schema = build_schema(SCHEMA_TEXT)
         graphql_schema_copy = deepcopy(graphql_schema)
 
