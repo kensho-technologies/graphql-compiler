@@ -1089,7 +1089,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         params: Dict[str, Any] = {
             "uuid": "00000000-0000-0000-0000-000000000000",
             "description": "big animal",
-            "birthday": datetime(2019, 3, 1),
+            "birthday": date(2019, 3, 1),
         }
 
         # If we '='-filter on a property that isn't an index, with no distinct-field-values-count
@@ -1155,14 +1155,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertEqual(expected_selectivity, selectivity)
 
         # Test with sampling data, where desired value is common
-        statistics_with_distinct_birthday_values_data = LocalStatistics(
+        statistics_with_birthday_samples = LocalStatistics(
             {"Animal": 1000000},
             sampling_summaries={
                 "Animal": SamplingSummary(
                     class_name="Animal",
-                    value_counts={
-                        "birthday": {datetime(2019, 3, 1): 100, datetime(2019, 4, 6): 80,}
-                    },
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
                     sample_ratio=1000,
                 )
             },
@@ -1170,9 +1168,9 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
         selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph,
-            statistics_with_distinct_birthday_values_data,
+            statistics_with_birthday_samples,
             nonunique_filter,
-            {"birthday": datetime(2019, 4, 6)},
+            {"birthday": date(2019, 4, 6)},
             classname,
         )
         # There are 1M animals. We sampled 1K, and 80 of them had the desired birthday. We estimate
@@ -1181,14 +1179,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertEqual(expected_selectivity, selectivity)
 
         # Test with sampling data, where desired value is not common
-        statistics_with_distinct_birthday_values_data = LocalStatistics(
+        statistics_with_birthday_samples = LocalStatistics(
             {"Animal": 1000000},
             sampling_summaries={
                 "Animal": SamplingSummary(
                     class_name="Animal",
-                    value_counts={
-                        "birthday": {datetime(2019, 3, 1): 100, datetime(2019, 4, 6): 80,}
-                    },
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
                     sample_ratio=1000,
                 )
             },
@@ -1196,9 +1192,9 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
         selectivity = _make_schema_info_and_get_filter_selectivity(
             schema_graph,
-            statistics_with_distinct_birthday_values_data,
+            statistics_with_birthday_samples,
             nonunique_filter,
-            {"birthday": datetime(2020, 9, 7)},
+            {"birthday": date(2020, 9, 7)},
             classname,
         )
         # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
@@ -1278,6 +1274,56 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph, empty_statistics, in_collection_filter, unique_params, classname
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # Test with sampling data, where none of the collection values are common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": SamplingSummary(
+                    class_name="Animal",
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    sample_ratio=1000,
+                )
+            },
+        )
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            FilterInfo(
+                fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
+            ),
+            {"birthday_collection": [date(2017, 3, 22), date(1999, 12, 31),]},
+            "Animal",
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=(55 + 55))
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # Test with sampling data, where some of the collection values are common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": SamplingSummary(
+                    class_name="Animal",
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    sample_ratio=1000,
+                )
+            },
+        )
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            FilterInfo(
+                fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
+            ),
+            {"birthday_collection": [date(2019, 4, 6), date(1999, 12, 31),]},
+            "Animal",
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=(80000 + 55))
         self.assertEqual(expected_selectivity, selectivity)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
