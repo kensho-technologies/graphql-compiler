@@ -1845,6 +1845,31 @@ def fold_on_many_to_one_edge() -> CommonTestData:  # noqa: D103
     )
 
 
+def fold_after_recurse() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_ParentOf @recurse(depth: 3) {
+                out_Animal_LivesIn @fold {
+                    name @output(out_name: "homes_list")
+                }
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "homes_list": OutputMetadata(type=GraphQLList(GraphQLString), optional=False, folded=True),
+    }
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def fold_same_edge_type_in_different_locations() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {

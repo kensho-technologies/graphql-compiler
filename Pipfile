@@ -28,6 +28,8 @@ pylint = ">=2.4.4,<2.5"
 pytest = ">=5.1.3,<6"
 pytest-cov = ">=2.6.1,<3"
 snapshottest = ">=0.5.1,<1"
+# TODO: add dependency on https://github.com/dropbox/sqlalchemy-stubs and corresponding mypy plugin
+#       when we can make everything type-check correctly with it.
 
 # Documentation requirements. Keep in sync with docs/requirements.txt.
 # Read the Docs doesn't support pipfiles: https://github.com/readthedocs/readthedocs.org/issues/3181
@@ -37,7 +39,7 @@ sphinx = ">=1.8,<2"
 [packages]  # Make sure to keep in sync with setup.py requirements.
 arrow = ">=0.15.0,<1"
 funcy = ">=1.7.3,<2"
-graphql-core = ">=3,<3.1" # 3.1 contains breaking change
+graphql-core = ">=3.1,<3.2"  # minor versions sometimes contain breaking changes
 pytz = ">=2017.2"
 six = ">=1.10.0"
 sqlalchemy = ">=1.3.0,<2"

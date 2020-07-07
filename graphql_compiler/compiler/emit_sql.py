@@ -32,6 +32,7 @@ from .helpers import (
     Location,
     QueryPath,
     get_edge_direction_and_name,
+    get_vertex_path,
 )
 from .metadata import LocationInfo
 
@@ -80,60 +81,64 @@ def _traverse_and_validate_blocks(ir: IrAndMetadata) -> Iterator[BasicBlock]:
         yield block
 
 
-def _find_columns_used_outside_folds(
+def _find_used_columns(
     sql_schema_info: SQLAlchemySchemaInfo, ir: IrAndMetadata
 ) -> Dict[VertexPath, Set[str]]:
-    """For each query path outside of a fold output, find which columns are used."""
+    """For each query path, find which of its columns would be used in the resulting query."""
+    # TODO(bojanserafimov): The IR only talks about fields, and the query builder that emits
+    #                       sql interprets them as columns in some complicated way. This function
+    #                       spec implicitly depends on the implementation of the sql emitter in
+    #                       this module, as it tries to predict what columns it will use.
+    #
+    #                       It would be much cleaner to go the other way: To define here what
+    #                       the field->column conversion strategy is, specify what columns are
+    #                       considered "used", and put the burden on the query builder to respect
+    #                       that: to expose all "used" columns when encapsulating with subqueries
+    #                       or CTEs, and only ask for "used" columns from those encapsulations.
     used_columns: Dict[VertexPath, Set[str]] = {}
 
     # Find filters used
     for location, _ in ir.query_metadata_table.registered_locations:
-        if isinstance(location, FoldScopeLocation):
-            continue
         for filter_info in ir.query_metadata_table.get_filter_infos(location):
             for field in filter_info.fields:
-                used_columns.setdefault(location.query_path, set()).add(field)
+                used_columns.setdefault(get_vertex_path(location), set()).add(field)
 
     # Find foreign keys used
     for location, location_info in ir.query_metadata_table.registered_locations:
         for child_location in ir.query_metadata_table.get_child_locations(location):
-            if isinstance(child_location, FoldScopeLocation):
-                continue
-            edge_direction, edge_name = get_edge_direction_and_name(child_location.query_path[-1])
+            edge_direction, edge_name = get_edge_direction_and_name(
+                get_vertex_path(child_location)[-1]
+            )
             vertex_field_name = f"{edge_direction}_{edge_name}"
             edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
-            used_columns.setdefault(location.query_path, set()).add(edge.from_column)
-            used_columns.setdefault(child_location.query_path, set()).add(edge.to_column)
+            used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
+            used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.to_column)
 
             # A recurse implies an outgoing foreign key usage
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
-                used_columns.setdefault(child_location.query_path, set()).add(edge.from_column)
+                used_columns.setdefault(get_vertex_path(child_location), set()).add(
+                    edge.from_column
+                )
 
     # Find outputs used
     for _, output_info in ir.query_metadata_table.outputs:
-        if isinstance(output_info.location, FoldScopeLocation):
-            continue
-        query_path = output_info.location.query_path
+        query_path = get_vertex_path(output_info.location)
         used_columns.setdefault(query_path, set()).add(output_info.location.field)
 
     # Find tags used
-    for _, output_info in ir.query_metadata_table.tags:
-        if isinstance(output_info.location, FoldScopeLocation):
-            continue
-        query_path = output_info.location.query_path
-        used_columns.setdefault(query_path, set()).add(output_info.location.field)
+    for _, tag_info in ir.query_metadata_table.tags:
+        query_path = get_vertex_path(tag_info.location)
+        used_columns.setdefault(query_path, set()).add(tag_info.location.field)
 
     # Columns used in the base case of CTE recursions should be made available from parent scope
     for location, _ in ir.query_metadata_table.registered_locations:
-        if isinstance(location, FoldScopeLocation):
-            continue
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
             traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
-            used_columns[location.query_path] = used_columns.get(location.query_path, set()).union(
-                used_columns[location.query_path + (traversal,)]
-            )
-            used_columns[location.query_path].add(edge.from_column)
+            used_columns[get_vertex_path(location)] = used_columns.get(
+                get_vertex_path(location), set()
+            ).union(used_columns[get_vertex_path(location) + (traversal,)])
+            used_columns[get_vertex_path(location)].add(edge.from_column)
 
     return used_columns
 
@@ -176,12 +181,14 @@ def _find_folded_fields(ir: IrAndMetadata) -> Dict[FoldScopeLocation, Set[str]]:
                 output_info.location.field
             )
 
-    # Add _x_count, if used as a Filter at any Location.
+    # Add _x_count, if used as a Filter anywhere. It is only allowed to appear within
+    # scopes marked @fold, so we ignore locations that are not FoldScopeLocation.
     for location, _ in ir.query_metadata_table.registered_locations:
-        for location_filter in ir.query_metadata_table.get_filter_infos(location):
-            for field in location_filter.fields:
-                if field == COUNT_META_FIELD_NAME:
-                    folded_fields.setdefault(location.at_vertex(), set()).add(field)
+        if isinstance(location, FoldScopeLocation):
+            for location_filter in ir.query_metadata_table.get_filter_infos(location):
+                for field in location_filter.fields:
+                    if field == COUNT_META_FIELD_NAME:
+                        folded_fields.setdefault(location.at_vertex(), set()).add(field)
 
     return folded_fields
 
@@ -707,9 +714,7 @@ class CompilationState(object):
         # Immutable metadata
         self._sql_schema_info: SQLAlchemySchemaInfo = sql_schema_info
         self._ir: IrAndMetadata = ir
-        self._used_columns: Dict[VertexPath, Set[str]] = _find_columns_used_outside_folds(
-            sql_schema_info, ir
-        )
+        self._used_columns: Dict[VertexPath, Set[str]] = _find_used_columns(sql_schema_info, ir)
         # Mapping FoldScopeLocations (without field information) to output fields at that location.
         self._all_folded_fields: Dict[FoldScopeLocation, Set[str]] = _find_folded_fields(ir)
 
@@ -842,6 +847,12 @@ class CompilationState(object):
     @property
     def _current_location_info(self) -> LocationInfo:
         """Get the LocationInfo of the current location in the query."""
+        if self._current_location is None:
+            raise AssertionError(
+                "Attempting to get LocationInfo with a current location of None. "
+                "This is a bug -- it should never happen!"
+            )
+
         return self._ir.query_metadata_table.get_location_info(self._current_location)
 
     @property
@@ -935,18 +946,23 @@ class CompilationState(object):
         Returns:
             name of the single-column primary key
         """
-        if self._current_alias is None or not self._current_alias.primary_key:
+        primary_keys = (
+            self._sql_schema_info.vertex_name_to_table[self._current_classname].alias().primary_key
+        )
+
+        if not primary_keys:
             raise AssertionError(
                 f"The table for vertex {self._current_classname} has no primary key specified. "
                 f"This information is required to emit a {directive_name} directive."
             )
-        if len(self._current_alias.primary_key) > 1:
+        if len(primary_keys) > 1:
             raise NotImplementedError(
                 f"The table for vertex {self._current_classname} has a composite primary key "
-                f"{self._current_alias.primary_key}. The SQL backend does not support "
+                f"{primary_keys}. The SQL backend does not support "
                 f"{directive_name} on tables with composite primary keys."
             )
-        return str(self._current_alias.primary_key[0].name)
+
+        return str(primary_keys[0].name)
 
     def recurse(self, vertex_field: str, depth: int) -> None:
         """Execute a Recurse Block."""
@@ -1007,6 +1023,9 @@ class CompilationState(object):
         # Instead of joining to the current _from_clause, we make this alias the _from_clause.
         # If the existing _from_clause had any information in it, then the _current_alias would
         # be a cte that contains all that information.
+        # TODO(bojanserafimov): If the existing _from_clause had no filters or traversals, but
+        #                       had an output, the output needs to be moved into the cte or
+        #                       we need to join to the _from_clause.
         self._from_clause = self._current_alias
 
     def start_global_operations(self) -> None:

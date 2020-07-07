@@ -4,7 +4,7 @@ from collections import namedtuple
 from inspect import getmembers, isfunction
 from pprint import pformat
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
@@ -83,8 +83,8 @@ SCHEMA_TEXT = """
 
     directive @recurse(
         \"\"\"
-        Recurse up to this many times on this edge. A depth of 1 produces the current
-        vertex and its immediate neighbors along the given edge.
+        Recurse up to this many times on this edge. A depth of 1 produces the current \
+vertex and its immediate neighbors along the given edge.
         \"\"\"
         depth: Int!
     ) on FIELD
@@ -553,10 +553,22 @@ def compare_input_metadata(
 
 
 def compare_ignoring_whitespace(
-    test_case: Any, expected: str, received: str, msg: Optional[str]
+    test_case: TestCase, expected: str, received: str, msg: Optional[str]
 ) -> None:
     """Compare expected and received code, ignoring whitespace, with the given failure message."""
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
+
+
+def compare_schema_texts_order_independently(
+    test_case: TestCase, expected_schema_text: str, received_schema_text: str,
+) -> None:
+    """Compare expected and received schema texts, ignoring order of definitions."""
+    expected_schema_blocks = expected_schema_text.split("\n\n")
+    received_schema_blocks = expected_schema_text.split("\n\n")
+
+    # This is the preferred order-independent comparison method in Python:
+    # https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertCountEqual
+    test_case.assertCountEqual(expected_schema_blocks, received_schema_blocks)
 
 
 def get_schema() -> GraphQLSchema:

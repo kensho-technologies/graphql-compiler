@@ -2692,9 +2692,9 @@ language governing permissions and limitations under the License.
 Copyright 2017-present Kensho Technologies, LLC. The present date is
 determined by the timestamp of the most recent commit in the repository.
 
-.. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=master
+.. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=main
    :target: https://travis-ci.org/kensho-technologies/graphql-compiler
-.. |Coverage Status| image:: https://codecov.io/gh/kensho-technologies/graphql-compiler/branch/master/graph/badge.svg
+.. |Coverage Status| image:: https://codecov.io/gh/kensho-technologies/graphql-compiler/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/kensho-technologies/graphql-compiler
 .. |License| image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg
    :target: https://opensource.org/licenses/Apache-2.0

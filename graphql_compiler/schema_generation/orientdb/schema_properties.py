@@ -69,7 +69,7 @@ PROPERTY_TYPE_ANY_NAME = "Any"
 COLLECTION_PROPERTY_TYPES = {PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID}
 
 # Map of numeric type identifier to human-readable type name.
-# Also the master list of all property types that the graph supports,
+# Also the central list of all property types that the graph supports,
 # since the graph doesn't actually support all of OrientDB's types.
 PROPERTY_TYPE_ID_TO_NAME = {
     PROPERTY_TYPE_BOOLEAN_ID: PROPERTY_TYPE_BOOLEAN_NAME,
