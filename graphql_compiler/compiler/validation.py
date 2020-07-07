@@ -66,13 +66,7 @@ def validate_schema_and_query_ast(schema, query_ast):
                     frozenset(["reason"]),
                 ]
             ),
-            frozenset(
-                [
-                    "specifiedBy",
-                    frozenset([DirectiveLocation.SCALAR]),
-                    frozenset(["url"]),
-                ]
-            ),
+            frozenset(["specifiedBy", frozenset([DirectiveLocation.SCALAR]), frozenset(["url"]),]),
         ]
     )
 
