@@ -428,34 +428,19 @@ def get_selectivity_of_filters_at_vertex(
                         [selectivity_at_field, selectivity]
                     )
 
-        # Process in_collection filters
+        # Process in_collection and = filters
         for filter_info in filters_on_field:
-            if filter_info.op_name == "in_collection":
-                if not filter_uses_only_runtime_parameters(filter_info):
-                    continue  # We can't reason about tagged parameters in in_collection filters
-
-                # TODO(bojanserafimov): Check if the filter values are in the interval selected
-                #                       by the inequality filters.
+            if filter_info.op_name in ("=", "in_collection"):
                 filter_argument = get_only_element_from_collection(filter_info.args)
                 filter_field = get_only_element_from_collection(filter_info.fields)
-                collection = parameters[get_parameter_name(filter_argument)]
-                selectivity = _estimate_filter_selectivity_of_in_collection(
-                    schema_info, location_name, filter_field, collection
-                )
-                selectivity_at_field = _combine_filter_selectivities(
-                    [selectivity_at_field, selectivity]
-                )
-
-        # Process equality filters
-        for filter_info in filters_on_field:
-            if filter_info.op_name == "=":
-                # TODO(bojanserafimov): Check if the filter value is in the interval selected
-                #                       by the inequality filters.
                 collection = None
-                filter_argument = get_only_element_from_collection(filter_info.args)
-                filter_field = get_only_element_from_collection(filter_info.fields)
                 if is_runtime_parameter(filter_argument):
-                    collection = [parameters[get_parameter_name(filter_argument)]]
+                    # TODO(bojanserafimov): Check if the filter values are in the interval selected
+                    #                       by the inequality filters.
+                    collection = parameters[get_parameter_name(filter_argument)]
+                    if filter_info.op_name == "=":
+                        collection = [collection]
+
                 selectivity = _estimate_filter_selectivity_of_in_collection(
                     schema_info, location_name, filter_field, collection
                 )
