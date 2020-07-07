@@ -172,7 +172,7 @@ def _estimate_filter_selectivity_of_in_collection(
     location_name: str,
     filter_field: str,
     collection: Optional[Set[Any]],
-):
+) -> Selectivity:
     """Calculate the selectivity of in_collection filter.
 
     Args:
@@ -210,7 +210,7 @@ def _estimate_filter_selectivity_of_in_collection(
         # TODO(bojanserafimov): If we have value_count statistics for the field, but we conclude
         #                       that this is not one of the common values, we use the rule of 3
         #                       (see statistics.get_value_count). The distinct_value_count stats
-        #                       could provide additional precision case if available.
+        #                       could provide additional precision if available.
         return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=sum(collection_value_counts))
     elif distinct_field_values_count is not None:
         # Assumption: all distinct field values are distributed evenly among vertex instances,

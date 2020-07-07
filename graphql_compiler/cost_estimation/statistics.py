@@ -15,7 +15,7 @@ class SamplingSummary:
     # The class this summary describes
     class_name: str
 
-    # Mapping field_name -> field_value -> observed_count for all field names and observed
+    # Mapping field_name -> (field_value -> observed_count) for all field names and observed
     # field values on this class.
     value_counts: Dict[str, Dict[Any, int]]
 
@@ -169,10 +169,11 @@ class LocalStatistics(Statistics):
                              element is a value greater than or equal to i/N of all present
                              values. The number N can be different for each entry. N has to be at
                              least 2 for every entry present in the dict.
-            sampling_summaries: dict, class_name: str -> SamplingSummary
+            sampling_summaries: optional SamplingSummaries for some classes
             TODO(bojanserafimov): Enforce a canonical representation for quantile values and
                                   sampling summaries. Datetimes should be in utc, decimals should
                                   have type float, etc.
+            TODO(bojanserafimov): Sanity-check class_counts against sample_ratio * num_samples
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
