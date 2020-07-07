@@ -57,7 +57,7 @@ def validate_schema_and_query_ast(schema, query_ast):
 
     # The following directives are supported and ignored by the compiler,
     # since they are meant to communicate user-facing information.
-    supported_default_directive = frozenset(
+    supported_default_directives = frozenset(
         [
             frozenset(
                 [
@@ -118,7 +118,7 @@ def validate_schema_and_query_ast(schema, query_ast):
         actual_directives
         - expected_directives
         - unsupported_default_directives
-        - supported_default_directive
+        - supported_default_directives
     )
     if extra_directives:
         extra_message = (
