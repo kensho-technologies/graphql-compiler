@@ -55,8 +55,8 @@ def validate_schema_and_query_ast(schema, query_ast):
         ]
     )
 
-    # This directive is supported and ignored by the compiler, since it is meant as an indication
-    # to the user that a field should not be used.
+    # The following directives are supported and ignored by the compiler,
+    # since they are meant to communicate user-facing information.
     supported_default_directive = frozenset(
         [
             frozenset(
@@ -65,7 +65,14 @@ def validate_schema_and_query_ast(schema, query_ast):
                     frozenset([DirectiveLocation.FIELD_DEFINITION, DirectiveLocation.ENUM_VALUE]),
                     frozenset(["reason"]),
                 ]
-            )
+            ),
+            frozenset(
+                [
+                    "specifiedBy",
+                    frozenset([DirectiveLocation.SCALAR]),
+                    frozenset(["url"]),
+                ]
+            ),
         ]
     )
 
