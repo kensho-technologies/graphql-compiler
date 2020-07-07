@@ -5,43 +5,43 @@ There are two ways to rename a part of a schema: 1-1 renaming and 1-many renamin
 
 1-1 renaming replaces the name of a type, field, or enum value in the schema. For instance, given
 the following part of a schema:
-  type Dog {
-    name: String
-  }
-  type Human {
-    pet: Dog
-  }
+    type Dog {
+        name: String
+    }
+    type Human {
+        pet: Dog
+    }
 1-1 renaming "Dog" to "NewDog" on a schema containing this object type (but not containing a
 type named "NewDog") would produce a schema almost identical to the original schema except
 with the NewDog object type replacing Dog everywhere it appears.
-  type NewDog {
-    name: String
-  }
-  type Human {
-    pet: NewDog
-  }
+    type NewDog {
+        name: String
+    }
+    type Human {
+        pet: NewDog
+    }
 If "Dog" also appeared as a field in the schema's root type, it would be renamed to "NewDog" there
 as well.
 
 1-many renaming is an operation intended for fields in an object type and enum values only, in which
 the same field or enum value is mapped to multiple names. For instance, given the following type in
 a schema:
-  type Dog {
-    name: String
-  }
+    type Dog {
+        name: String
+    }
 1-many renaming the "Dog" type's "name" field to "name" and "secondname" would produce a schema
 almost identical to the original schema except with both fields representing the same underlying
 data.
-  type Dog {
-    name: String
-    secondname: String
-  }
+    type Dog {
+        name: String
+        secondname: String
+    }
 
 Suppressing part of the schema removes it altogether. For instance, given the following part of a
 schema:
-  type Dog {
-    name: String
-  }
+    type Dog {
+        name: String
+    }
 suppressing "Dog" would produce an otherwise-identical schema but with that type (and therefore all
 its fields) removed. If "Dog" also appeared as a field in the schema's root type, it would be
 removed there as well.
@@ -253,11 +253,13 @@ def _check_for_cascading_type_suppression(
         if visitor.fields_to_suppress:
             for object_type in visitor.fields_to_suppress:
                 error_message_components.append(f"Object type {object_type} contains: ")
-                error_message_components += [
-                    f"field {field} of suppressed type "
-                    f"{visitor.fields_to_suppress[object_type][field]}, "
-                    for field in visitor.fields_to_suppress[object_type]
-                ]
+                error_message_components.extend(
+                    (
+                        f"field {field} of suppressed type "
+                        f"{visitor.fields_to_suppress[object_type][field]}, "
+                        for field in visitor.fields_to_suppress[object_type]
+                    )
+                )
             error_message_components.append(
                 "A schema containing a field that is of a nonexistent type is invalid. When field "
                 "suppression is supported, you can fix this problem by suppressing the fields "
@@ -277,9 +279,9 @@ def _check_for_cascading_type_suppression(
                 error_message_components.append(
                     f"Union type {union_type} has no non-suppressed members: "
                 )
-                error_message_components += [
-                    union_member.name.value for union_member in union_type.types
-                ]
+                error_message_components.extend(
+                    (union_member.name.value for union_member in union_type.types)
+                )
             error_message_components.append(
                 "To fix this, you can suppress the union as well by adding union_type: None to the "
                 "renamings argument when renaming types, for each value of union_type described "
