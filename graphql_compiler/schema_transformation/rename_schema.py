@@ -81,7 +81,7 @@ from graphql import (
     UnionTypeDefinitionNode,
     build_ast_schema,
 )
-from graphql.language.visitor import IDLE, REMOVE, Visitor, visit
+from graphql.language.visitor import IDLE, REMOVE, Visitor, VisitorAction, visit
 import six
 
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
@@ -126,16 +126,8 @@ RenameTypes = Union[
 ]
 RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
 # AST visitor functions can return a number of different things, such as returning a Node (to update
-# that node) or returning a special value defined in graphql.visitor such as REMOVE (to remove the
-# node) and IDLE (to do nothing with the node). In the current GraphQL-core version (>=3,<3.1),
-# REMOVE is set to the singleton object Ellipsis and IDLE is set to None. However, because these
-# special values' underlying definitions can change, we can't type-hint functions returning a
-# special value with anything more specific than Any. For more information, see:
-# https://github.com/kensho-technologies/graphql-compiler/pull/834#discussion_r434622400
-# We can update this type hint when a future GraphQL-core release organizes these special return
-# values into an enum.
-# https://github.com/graphql-python/graphql-core/issues/96
-VisitorReturnType = Union[Node, Any]
+# that node) or returning a special value specified in graphql.visitor's VisitorAction.
+VisitorReturnType = Union[Node, VisitorAction]
 
 
 def rename_schema(
@@ -481,7 +473,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
-    ) -> Union[RenameTypesT, Any]:
+    ) -> Union[RenameTypesT, VisitorAction]:
         """Specify input node change based on renamings. If node renamed, update reverse_name_map.
 
         Don't rename if the type is the query type, a scalar type, or a builtin type.
@@ -497,9 +489,7 @@ class RenameSchemaTypesVisitor(Visitor):
             and IDLE to delete or do nothing with the node a visitor is currently at, respectively.
             If the current node is to be renamed, this function returns a Node object identical to
             the input node except with a new name. If it is to be suppressed, this function returns
-            REMOVE. If neither of these are the case, this function returns IDLE. Note that the
-            return type hint Any is a catch-all because REMOVE is set to the singleton object
-            Ellipsis- see VisitorReturnType's comment.
+            REMOVE. If neither of these are the case, this function returns IDLE.
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
