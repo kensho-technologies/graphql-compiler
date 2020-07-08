@@ -23,7 +23,7 @@ from ...cost_estimation.int_value_conversion import (
     swap_uuid_prefix_and_suffix,
 )
 from ...cost_estimation.interval import Interval, intersect_int_intervals
-from ...cost_estimation.statistics import LocalStatistics, SamplingSummary, Statistics
+from ...cost_estimation.statistics import LocalStatistics, Statistics, VertexSamplingSummary
 from ...global_utils import QueryStringWithParameters
 from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -1158,8 +1158,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         statistics_with_birthday_samples = LocalStatistics(
             {"Animal": 1000000},
             sampling_summaries={
-                "Animal": SamplingSummary(
-                    class_name="Animal",
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
                     value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
                     sample_ratio=1000,
                 )
@@ -1182,8 +1182,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         statistics_with_birthday_samples = LocalStatistics(
             {"Animal": 1000000},
             sampling_summaries={
-                "Animal": SamplingSummary(
-                    class_name="Animal",
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
                     value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
                     sample_ratio=1000,
                 )
@@ -1280,8 +1280,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         statistics_with_birthday_samples = LocalStatistics(
             {"Animal": 1000000},
             sampling_summaries={
-                "Animal": SamplingSummary(
-                    class_name="Animal",
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
                     value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
                     sample_ratio=1000,
                 )
@@ -1305,8 +1305,8 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         statistics_with_birthday_samples = LocalStatistics(
             {"Animal": 1000000},
             sampling_summaries={
-                "Animal": SamplingSummary(
-                    class_name="Animal",
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
                     value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
                     sample_ratio=1000,
                 )
