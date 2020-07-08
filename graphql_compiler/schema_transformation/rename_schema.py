@@ -259,15 +259,6 @@ def _check_for_cascading_type_suppression(
             )
         if visitor.union_types_to_suppress:
             for union_type in visitor.union_types_to_suppress:
-                if union_type.types is None:
-                    union_name = union_type.name.value
-                    # This shouldn't happen, but the GraphQL core library type-hints the field as
-                    # Optional[FrozenList[NamedTypeNode]]. Follow-up discussion here:
-                    # https://github.com/graphql-python/graphql-core/issues/98
-                    raise AssertionError(
-                        f"Union {union_name} must include one or more unique member types, but "
-                        f"{union_name}'s list of union types was None."
-                    )
                 error_message_components.append(
                     f"Union type {union_type} has no non-suppressed members: "
                 )
@@ -702,14 +693,6 @@ class CascadingSuppressionCheckVisitor(Visitor):
     ) -> None:
         """Check that each union still has at least one non-suppressed member."""
         union_name = node.name.value
-        if node.types is None:
-            # This shouldn't happen, but the GraphQL core library type-hints the field as
-            # Optional[FrozenList[NamedTypeNode]]. Follow-up discussion here:
-            # https://github.com/graphql-python/graphql-core/issues/98
-            raise AssertionError(
-                f"Union {union_name} must include one or more unique member types, but "
-                f"{union_name}'s list of union types was None."
-            )
         # Check if all the union members are suppressed.
         for union_member in node.types:
             union_member_type = get_ast_with_non_null_and_list_stripped(union_member).name.value
