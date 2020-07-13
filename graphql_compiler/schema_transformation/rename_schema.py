@@ -53,6 +53,7 @@ Operations that are already supported:
 
 Operations that are not yet supported but will be implemented:
 - Suppressions for fields, enums, enum values, interfaces, and types that implement interfaces.
+- Renamings and suppressions for scalar types
 - 1-1 and 1-many renamings for fields and enum values.
 
 Renaming constraints:
@@ -140,10 +141,11 @@ def rename_schema(
     value is None, it will be suppressed in the renamed schema and queries will not be able to
     access it.
 
-    Any such names that do not appear in renamings will be unchanged.
+    Any such names that do not appear in renamings will be unchanged. Directives will never be
+    renamed.
 
-    Scalars and directives not belonging to the root/query type will never be renamed. In addition,
-    some operations have not been implemented yet (see module-level docstring for more details).
+    In addition, some operations have not been implemented yet (see module-level docstring for more
+    details).
 
     Args:
         schema_ast: represents a valid schema that does not contain extensions, input object
@@ -325,7 +327,7 @@ def _rename_and_suppress_types(
 ) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename types, enums, interfaces using renamings.
 
-    The query type will not be renamed. Scalar types, field names, enum values will not be renamed.
+    The query type will not be renamed.
 
     The input schema AST will not be modified.
 
@@ -467,7 +469,7 @@ class RenameSchemaTypesVisitor(Visitor):
     ) -> Union[RenameTypesT, VisitorAction]:
         """Specify input node change based on renamings. If node renamed, update reverse_name_map.
 
-        Don't rename if the type is the query type, a scalar type, or a builtin type.
+        Don't rename if the type is the query type, or a builtin type.
 
         The input node will not be modified. reverse_name_map may be modified.
 
