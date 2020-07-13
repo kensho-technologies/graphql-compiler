@@ -615,6 +615,17 @@ class RenameQueryTypeFieldsVisitor(Visitor):
 
 
 class CascadingSuppressionCheckVisitor(Visitor):
+    """Traverse the schema to check for cascading suppression issues.
+
+    The fields_to_suppress attribute records non-suppressed fields that depend on suppressed types.
+    The union_types_to_suppress attribute records unions that had all its members suppressed.
+
+    After calling visit() on the schema using this visitor, if any of these attributes are non-empty
+    then there are further suppressions required to produce a legal schema so the code should then
+    raise a CascadingSuppressionError.
+
+    """
+
     def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
 
@@ -628,7 +639,6 @@ class CascadingSuppressionCheckVisitor(Visitor):
         self.current_type: Optional[str] = None
         # Maps a type T to a dict which maps a field F belonging to T to the field's type T'
         self.fields_to_suppress: Dict[str, Dict[str, str]] = {}
-        # Record any unions to suppress because all their types were suppressed
         self.union_types_to_suppress: List[UnionTypeDefinitionNode] = []
 
     def enter_object_type_definition(
@@ -709,6 +719,17 @@ class CascadingSuppressionCheckVisitor(Visitor):
 
 
 class SuppressionNotImplementedVisitor(Visitor):
+    """Traverse the schema to check for suppressions that are not yet implemented.
+
+    Each attribute that mentions an unsupported suppression records the types that renamings
+    attempts to suppress.
+
+    After calling visit() on the schema using this visitor, if any of these attributes are non-empty
+    then some suppressions specified by renamings are unsupported, so the code should then raise a
+    NotImplementedError.
+
+    """
+
     def __init__(self, renamings: Mapping[str, Optional[str]]) -> None:
         """Confirm renamings does not attempt to suppress enum/interface/interface implementation.
 
