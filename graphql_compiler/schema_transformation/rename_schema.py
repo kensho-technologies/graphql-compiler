@@ -109,10 +109,10 @@ RenamedSchemaDescriptor = namedtuple(
 )
 
 
-# Union of classes of nodes to be renamed by an instance of RenameSchemaTypesVisitor. Note that
-# RenameSchemaTypesVisitor also has a class attribute rename_types which parallels the classes here.
-# This duplication is necessary due to language and linter constraints-- see the comment in the
-# RenameSchemaTypesVisitor class for more information.
+# Union of classes of nodes to be renamed or suppressed by an instance of RenameSchemaTypesVisitor.
+# Note that RenameSchemaTypesVisitor also has a class attribute rename_types which parallels the
+# classes here. This duplication is necessary due to language and linter constraints-- see the
+# comment in the RenameSchemaTypesVisitor class for more information.
 # Unfortunately, RenameTypes itself has to be a module attribute instead of a class attribute
 # because a bug in flake8 produces a linting error if RenameTypes is a class attribute and we type
 # hint the return value of the RenameSchemaTypesVisitor's
@@ -134,7 +134,7 @@ VisitorReturnType = Union[Node, VisitorAction]
 def rename_schema(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
 ) -> RenamedSchemaDescriptor:
-    """Create a RenamedSchemaDescriptor; types and query type fields are renamed using renamings.
+    """Create a RenamedSchemaDescriptor; types and query type fields are renamed or suppressed using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
     appears in renamings will be renamed to the corresponding value if the value is not None. If the
@@ -325,7 +325,7 @@ def _rename_and_suppress_types(
     query_type: str,
     scalars: AbstractSet[str],
 ) -> Tuple[DocumentNode, Dict[str, str]]:
-    """Rename types, enums, interfaces using renamings.
+    """Rename and suppress types, enums, interfaces using renamings.
 
     The query type will not be renamed.
 
@@ -357,7 +357,7 @@ def _rename_and_suppress_types(
 def _rename_and_suppress_query_type_fields(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> DocumentNode:
-    """Rename all fields of the query type.
+    """Rename or suppress all fields of the query type.
 
     The input schema AST will not be modified.
 
@@ -469,7 +469,7 @@ class RenameSchemaTypesVisitor(Visitor):
     ) -> Union[RenameTypesT, VisitorAction]:
         """Specify input node change based on renamings. If node renamed, update reverse_name_map.
 
-        Don't rename if the type is the query type, or a builtin type.
+        Don't rename if the type is the query type or a builtin type.
 
         The input node will not be modified. reverse_name_map may be modified.
 
@@ -544,7 +544,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
 class RenameQueryTypeFieldsVisitor(Visitor):
     def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
-        """Create a visitor for renaming fields of the query type in a schema AST.
+        """Create a visitor for renaming or suppressing fields of the query type in a schema AST.
 
         Args:
             renamings: maps original type name to renamed name or None (for type suppression). Any
@@ -598,7 +598,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> VisitorReturnType:
-        """If inside the query type, rename field and add the name pair to reverse_field_map."""
+        """If inside query type, rename or remove field as specified by renamings."""
         if self.in_query_type:
             field_name = node.name.value
             new_field_name = self.renamings.get(field_name, field_name)  # Default use original
