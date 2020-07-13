@@ -134,7 +134,7 @@ VisitorReturnType = Union[Node, VisitorAction]
 def rename_schema(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
 ) -> RenamedSchemaDescriptor:
-    """Create a RenamedSchemaDescriptor; types and query type fields are renamed or suppressed using renamings.
+    """Create a RenamedSchemaDescriptor; rename/suppress types and root type fields using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
     appears in renamings will be renamed to the corresponding value if the value is not None. If the
