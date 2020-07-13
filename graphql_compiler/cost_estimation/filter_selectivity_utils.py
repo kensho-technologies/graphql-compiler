@@ -4,11 +4,15 @@ from __future__ import division
 import bisect
 from collections import namedtuple
 import sys
-from typing import Any, Dict, List, Set
+from typing import Any, Dict, Iterable, List, Optional, Set
 
 import six
 
-from ..compiler.helpers import get_parameter_name, is_runtime_parameter
+from ..compiler.helpers import (
+    get_only_element_from_collection,
+    get_parameter_name,
+    is_runtime_parameter,
+)
 from ..compiler.metadata import FilterInfo
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .helpers import is_uuid4_type
@@ -163,44 +167,60 @@ def _get_query_interval_of_integer_inequality_filter(
     return query_interval
 
 
-# TODO(bojanserafimov): This function can be simplified, as len(filter_fields) is always 1.
-def _estimate_filter_selectivity_of_equality(schema_info, location_name, filter_fields):
-    """Calculate the selectivity of equality filter(s) at a given location.
-
-    Using the available unique indexes and/or the distinct_field_values_count statistic, this
-    function extracts the current location's selectivites, and then combines them, returning one
-    Selectivity object.
+def _estimate_filter_selectivity_of_in_collection(
+    schema_info: QueryPlanningSchemaInfo,
+    location_name: str,
+    filter_field: str,
+    collection: Optional[Set[Any]],
+) -> Selectivity:
+    """Calculate the selectivity of in_collection filter.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        location_name: string, type of the location being filtered
-        filter_fields: tuple of str, listing all the fields being filtered over
+        location_name: type name of the location being filtered
+        filter_field: field affected by the filter
+        collection: the values the filter allows, if known. A value of None means the collection
+                    is not known at compile time.
 
     Returns:
         Selectivity object, the selectivity of an specific equality filter at a given location.
     """
-    all_selectivities = []
-
+    # If the field is uniquely indexed, value count statistics are unnecessary
     unique_indexes = schema_info.schema_graph.get_unique_indexes_for_class(location_name)
-    if _are_filter_fields_uniquely_indexed(filter_fields, unique_indexes):
+    if _are_filter_fields_uniquely_indexed((filter_field,), unique_indexes):
         # TODO(evan): don't return a higher absolute selectivity than class counts.
-        all_selectivities.append(Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0))
+        num_entries = 1 if collection is None else len(collection)
+        return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=num_entries)
 
-    for field_name in filter_fields:
-        statistics_result = schema_info.statistics.get_distinct_field_values_count(
-            location_name, field_name
-        )
+    # Get all relevant statistics
+    collection_value_counts = None
+    if collection is not None:
+        collection_value_counts = [
+            schema_info.statistics.get_value_count(location_name, filter_field, collection_value)
+            for collection_value in collection
+        ]
+        if any(count is None for count in collection_value_counts):
+            collection_value_counts = None
+    distinct_field_values_count = schema_info.statistics.get_distinct_field_values_count(
+        location_name, filter_field
+    )
 
-        if statistics_result is not None:
-            # Assumption: all distinct field values are distributed evenly among vertex instances,
-            # so each distinct value occurs
-            # (# of current location vertex instances) / (# of distinct field values) times.
-            all_selectivities.append(
-                Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0 / statistics_result)
-            )
-
-    result_selectivity = _combine_filter_selectivities(all_selectivities)
-    return result_selectivity
+    # Combine statistics to compute selectivity
+    if collection_value_counts is not None:
+        # TODO(bojanserafimov): If we have value_count statistics for the field, but we conclude
+        #                       that this is not one of the common values, we use the rule of 3
+        #                       (see statistics.get_value_count). The distinct_value_count stats
+        #                       could provide additional precision if available.
+        return Selectivity(kind=ABSOLUTE_SELECTIVITY, value=sum(collection_value_counts))
+    elif distinct_field_values_count is not None:
+        # Assumption: all distinct field values are distributed evenly among vertex instances,
+        # so each distinct value occurs
+        # (# of current location vertex instances) / (# of distinct field values) times.
+        num_entries = 1 if collection is None else len(collection)
+        selectivity_fraction = min(1.0, float(num_entries) / distinct_field_values_count)
+        return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=selectivity_fraction)
+    else:
+        return Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
 
 
 def _combine_filter_selectivities(selectivities):
@@ -322,22 +342,26 @@ def get_integer_interval_for_filters_on_field(
     return interval
 
 
-def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, location_name):
+def get_selectivity_of_filters_at_vertex(
+    schema_info: QueryPlanningSchemaInfo,
+    filter_infos: Iterable[FilterInfo],
+    parameters: Dict[str, Any],
+    location_name: str,
+) -> Selectivity:
     """Get the combined selectivity of all filters at the vertex.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        filter_infos: list of FilterInfos, filters on the location being filtered
-        parameters: dict, parameters with which query will be executed
-        location_name: string, type of the location being filtered
-        counts: float, result count that we're adjusting for filters
+        filter_infos: filters on the location being filtered
+        parameters: parameters with which query will be executed
+        location_name: type name of the location being filtered
 
     Returns:
         Selectivity object
     """
     # Group filters by field
     # TODO this is already computed in QueryPlanningAnalysis.single_field_filters
-    single_field_filters = {}
+    single_field_filters: Dict[str, Set[FilterInfo]] = {}
     for filter_info in filter_infos:
         if len(filter_info.fields) == 0:
             raise AssertionError("Got filter on 0 fields {} {}".format(filter_info, location_name))
@@ -364,10 +388,16 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                 # uuid4 fields are uniformly distributed, so we simply divide the fraction of
                 # the domain queried with the size of the domain.
                 domain_interval = Interval[int](MIN_UUID_INT, MAX_UUID_INT)
+                domain_size = measure_int_interval(domain_interval)
+                if domain_size is None:
+                    raise AssertionError(f"Expected domain {domain_interval} to have a size.")
+
                 interval = intersect_int_intervals(interval, domain_interval)
-                fraction_of_domain_queried = float(
-                    measure_int_interval(interval)
-                ) / measure_int_interval(domain_interval)
+                interval_size = measure_int_interval(interval)
+                if interval_size is None:
+                    raise AssertionError(f"Expected interval {interval} to have a size.")
+
+                fraction_of_domain_queried = float(interval_size) / domain_size
                 selectivity = Selectivity(
                     kind=FRACTIONAL_SELECTIVITY, value=fraction_of_domain_queried
                 )
@@ -398,46 +428,21 @@ def get_selectivity_of_filters_at_vertex(schema_info, filter_infos, parameters, 
                         [selectivity_at_field, selectivity]
                     )
 
-        # Process in_collection filters
+        # Process in_collection and = filters
         for filter_info in filters_on_field:
-            if filter_info.op_name == "in_collection":
-                if not filter_uses_only_runtime_parameters(filter_info):
-                    continue  # We can't reason about tagged parameters in in_collection filters
+            if filter_info.op_name in ("=", "in_collection"):
+                filter_argument = get_only_element_from_collection(filter_info.args)
+                filter_field = get_only_element_from_collection(filter_info.fields)
+                collection = None
+                if is_runtime_parameter(filter_argument):
+                    # TODO(bojanserafimov): Check if the filter values are in the interval selected
+                    #                       by the inequality filters.
+                    collection = parameters[get_parameter_name(filter_argument)]
+                    if filter_info.op_name == "=":
+                        collection = [collection]
 
-                # TODO(bojanserafimov): Check if the filter values are in the interval selected
-                #                       by the inequality filters.
-                collection = parameters[get_parameter_name(filter_info.args[0])]
-                selectivity_per_entry_in_collection = _estimate_filter_selectivity_of_equality(
-                    schema_info, location_name, filter_info.fields
-                )
-
-                # Assumption: the selectivity is proportional to the number of entries in
-                # the collection. This will not hold in case of duplicates.
-                if _is_absolute(selectivity_per_entry_in_collection):
-                    selectivity = Selectivity(
-                        kind=ABSOLUTE_SELECTIVITY,
-                        value=float(len(collection)) * selectivity_per_entry_in_collection.value,
-                    )
-                elif _is_fractional(selectivity_per_entry_in_collection):
-                    selectivity = Selectivity(
-                        kind=FRACTIONAL_SELECTIVITY,
-                        value=min(
-                            float(len(collection)) * selectivity_per_entry_in_collection.value, 1.0
-                        )
-                        # The estimate may be above 1.0 in case of duplicates in the collection
-                        # so we make sure the value is <= 1.0
-                    )
-                selectivity_at_field = _combine_filter_selectivities(
-                    [selectivity_at_field, selectivity]
-                )
-
-        # Process equality filters
-        for filter_info in filters_on_field:
-            if filter_info.op_name == "=":
-                # TODO(bojanserafimov): Check if the filter value is in the interval selected
-                #                       by the inequality filters.
-                selectivity = _estimate_filter_selectivity_of_equality(
-                    schema_info, location_name, filter_info.fields
+                selectivity = _estimate_filter_selectivity_of_in_collection(
+                    schema_info, location_name, filter_field, collection
                 )
                 selectivity_at_field = _combine_filter_selectivities(
                     [selectivity_at_field, selectivity]
