@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from datetime import date, datetime
+import math
 from typing import Any, Dict, List
 import unittest
 
@@ -1199,7 +1200,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
         # the count of uncommon values. See get_value_count in statistics.py for justification.
-        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=55)
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=math.sqrt(3000))
         self.assertEqual(expected_selectivity, selectivity)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -1298,7 +1299,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
         # the count of uncommon values. See get_value_count in statistics.py for justification.
-        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=(55 + 55))
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=(2 * math.sqrt(3000)))
         self.assertEqual(expected_selectivity, selectivity)
 
         # Test with sampling data, where some of the collection values are common
@@ -1323,7 +1324,9 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         )
         # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
         # the count of uncommon values. See get_value_count in statistics.py for justification.
-        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=(80000 + 55))
+        expected_selectivity = Selectivity(
+            kind=ABSOLUTE_SELECTIVITY, value=(80000 + math.sqrt(3000))
+        )
         self.assertEqual(expected_selectivity, selectivity)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")

@@ -115,7 +115,7 @@ class Statistics(object):
         """
         return None
 
-    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[int]:
+    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[float]:
         """Return the estimated number of times the given value appears in the database.
 
         Args:
@@ -226,7 +226,7 @@ class LocalStatistics(Statistics):
         statistic_key = (vertex_name, field_name)
         return self._field_quantiles.get(statistic_key)
 
-    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[int]:
+    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[float]:
         """See base class."""
         vertex_sampling_summary = self._sampling_summaries.get(vertex_name)
         if vertex_sampling_summary is None:
@@ -237,7 +237,7 @@ class LocalStatistics(Statistics):
             return None
 
         sampled_value_count = field_sampled_value_counts.get(value)
-        if sampled_value_count:
+        if sampled_value_count is not None:
             return sampled_value_count * vertex_sampling_summary.sample_ratio
         else:
             # We want to minimize the error ratio: max(true_value/estimate, estimate/true_value).
@@ -246,4 +246,4 @@ class LocalStatistics(Statistics):
             # 95% confidence that the error ratio is at most math.sqrt(3 * sample_ratio). Some
             # intuition: with a sample ratio of 1000 the error ratio bound evaluates to about
             # sqrt(3000) ~= 55.
-            return max(1, round(math.sqrt(3 * vertex_sampling_summary.sample_ratio)))
+            return max(1, math.sqrt(3 * vertex_sampling_summary.sample_ratio))
