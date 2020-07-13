@@ -125,7 +125,7 @@ class Statistics(object):
 
         Returns:
             An estimate on how often this value currently appears in the given field, or None
-            if unkwnown.
+            if unknown.
         """
         return None
 
