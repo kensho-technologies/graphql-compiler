@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from datetime import date, datetime
+import math
 from typing import Any, Dict, List
 import unittest
 
@@ -23,7 +24,7 @@ from ...cost_estimation.int_value_conversion import (
     swap_uuid_prefix_and_suffix,
 )
 from ...cost_estimation.interval import Interval, intersect_int_intervals
-from ...cost_estimation.statistics import LocalStatistics, Statistics
+from ...cost_estimation.statistics import LocalStatistics, Statistics, VertexSamplingSummary
 from ...global_utils import QueryStringWithParameters
 from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
@@ -105,6 +106,25 @@ class CostEstimationTests(unittest.TestCase):
         # For each Animal, there are on average 5.0 / 3.0 Animal_ParentOf edges, so we expect
         # 3.0 * (5.0 / 3.0) results.
         expected_cardinality_estimate = 5.0
+
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_traverse_zero_edge_case(self) -> None:
+        """Ensure we correctly estimate cardinality over edges."""
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        test_data = test_input_data.traverse_and_output()
+
+        count_data = {
+            "Animal": 0,
+            "Animal_ParentOf": 0,
+        }
+        statistics = LocalStatistics(count_data)
+
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, test_data.graphql_input, dict()
+        )
+        expected_cardinality_estimate = 0.0
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
@@ -1086,7 +1106,11 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         classname = "Animal"
 
         empty_statistics = LocalStatistics(dict())
-        params: Dict[str, Any] = {}
+        params: Dict[str, Any] = {
+            "uuid": "00000000-0000-0000-0000-000000000000",
+            "description": "big animal",
+            "birthday": date(2019, 3, 1),
+        }
 
         # If we '='-filter on a property that isn't an index, with no distinct-field-values-count
         # statistics, return a fractional selectivity of 1.
@@ -1150,6 +1174,54 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+        # Test with sampling data, where desired value is common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    sample_ratio=1000,
+                )
+            },
+        )
+        nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            nonunique_filter,
+            {"birthday": date(2019, 4, 6)},
+            classname,
+        )
+        # There are 1M animals. We sampled 1K, and 80 of them had the desired birthday. We estimate
+        # that 80K all animals have the desired birthday.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=80000)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # Test with sampling data, where desired value is not common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    sample_ratio=1000,
+                )
+            },
+        )
+        nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            nonunique_filter,
+            {"birthday": date(2020, 9, 7)},
+            classname,
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=math.sqrt(3000))
+        self.assertEqual(expected_selectivity, selectivity)
+
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_in_collection_filter_selectivity(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -1185,7 +1257,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertEqual(expected_selectivity, selectivity)
 
         statistics_with_distinct_birthday_values_data = LocalStatistics(
-            dict(), distinct_birthday_values_data
+            dict(), distinct_field_values_counts=distinct_birthday_values_data
         )
         # If we use an in_collection-filter with 4 elements on a property that is not uniquely
         # indexed, but has 3 distinct values, return a fractional selectivity of 1.0.
@@ -1193,7 +1265,14 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph,
             statistics_with_distinct_birthday_values_data,
             nonunique_filter,
-            nonunique_params,
+            {
+                "birthday_collection": [
+                    date(2017, 3, 22),
+                    date(1999, 12, 31),
+                    date(2317, 3, 22),
+                    date(1399, 12, 31),
+                ]
+            },
             classname,
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
@@ -1215,6 +1294,58 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph, empty_statistics, in_collection_filter, unique_params, classname
         )
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # Test with sampling data, where none of the collection values are common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    sample_ratio=1000,
+                )
+            },
+        )
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            FilterInfo(
+                fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
+            ),
+            {"birthday_collection": [date(2017, 3, 22), date(1999, 12, 31),]},
+            "Animal",
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=(2 * math.sqrt(3000)))
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # Test with sampling data, where some of the collection values are common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    sample_ratio=1000,
+                )
+            },
+        )
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            FilterInfo(
+                fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
+            ),
+            {"birthday_collection": [date(2019, 4, 6), date(1999, 12, 31),]},
+            "Animal",
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(
+            kind=ABSOLUTE_SELECTIVITY, value=(80000 + math.sqrt(3000))
+        )
         self.assertEqual(expected_selectivity, selectivity)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")

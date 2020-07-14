@@ -57,6 +57,21 @@ class InvalidCrossSchemaEdgeError(SchemaTransformError):
     """
 
 
+class CascadingSuppressionError(SchemaTransformError):
+    """Raised if existing suppressions would require further suppressions.
+
+    This may be raised during schema renaming if it:
+    * suppresses all the fields of a type but not the type itself
+    * suppresses all the members of a union but not the union itself
+    * suppresses a type X but there still exists a different type Y that has fields of type X.
+    The error message will suggest fixing this illegal state by describing further suppressions, but
+    adding these suppressions may lead to other types, unions, fields, etc. needing suppressions of
+    their own. Most real-world schemas wouldn't have these cascading situations, and if they do,
+    they are unlikely to have many of them, so the error messages are not meant to describe the full
+    sequence of steps required to fix all suppression errors in one pass.
+    """
+
+
 _alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
 
 

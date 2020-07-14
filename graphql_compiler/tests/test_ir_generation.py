@@ -3508,6 +3508,42 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_fold_after_recurse(self):
+        test_data = test_input_data.fold_after_recurse()
+
+        base_location = helpers.Location(("Animal",))
+        base_recurse = base_location.navigate_to_subpath("out_Animal_ParentOf")
+        base_fold = base_recurse.navigate_to_fold("out_Animal_LivesIn")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Animal"}),
+            blocks.MarkLocation(base_location),
+            blocks.Recurse("out", "Animal_ParentOf", 3, within_optional_scope=False),
+            blocks.MarkLocation(base_recurse),
+            blocks.Fold(base_fold),
+            blocks.MarkLocation(base_fold),
+            blocks.Unfold(),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "animal_name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "homes_list": expressions.FoldedContextField(
+                        base_fold.navigate_to_field("name"), GraphQLList(GraphQLString)
+                    ),
+                }
+            ),
+        ]
+        expected_location_types = {
+            base_location: "Animal",
+            base_recurse: "Animal",
+            base_fold: "Location",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_fold_after_traverse(self):
         test_data = test_input_data.fold_after_traverse()
 
