@@ -426,6 +426,61 @@ class IntegrationTests(TestCase):
                     {"descendant_name": "Animal 4"},  # depth 3 match
                 ],
             ),
+            # Query 8: Skip depth 0
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        out_Animal_ParentOf @recurse(depth: 2){
+                            name @output(out_name: "descendant_name")
+                        }
+                    }
+                }
+            }""",
+                [
+                    {"descendant_name": "Animal 1"},  # depth 1 match
+                    {"descendant_name": "Animal 2"},  # depth 1 match
+                    {"descendant_name": "Animal 3"},  # depth 1 match
+                    {"descendant_name": "Animal 1"},  # depth 2 match
+                    {"descendant_name": "Animal 2"},  # depth 2 match
+                    {"descendant_name": "Animal 3"},  # depth 2 match
+                    {"descendant_name": "Animal 4"},  # depth 2 match
+                    {"descendant_name": "Animal 1"},  # depth 3 match
+                    {"descendant_name": "Animal 2"},  # depth 3 match
+                    {"descendant_name": "Animal 3"},  # depth 3 match
+                    {"descendant_name": "Animal 4"},  # depth 3 match
+                ],
+            ),
+            # Query 8: Output child name
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "child_name")
+                        out_Animal_ParentOf @recurse(depth: 2){
+                            name @output(out_name: "descendant_name")
+                        }
+                    }
+                }
+            }""",
+                [
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 1 match
+                    {"child_name": "Animal 2", "descendant_name": "Animal 2"},  # depth 1 match
+                    {"child_name": "Animal 3", "descendant_name": "Animal 3"},  # depth 1 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 2 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 2 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 2 match
+                    {"child_name": "Animal 3", "descendant_name": "Animal 4"},  # depth 2 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 3 match
+                ],
+            ),
         ]
 
         # TODO(bojanserafimov): Only testing in MSSQL because none of our backends agree on recurse
