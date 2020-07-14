@@ -23,9 +23,12 @@ with the NewDog object type replacing Dog everywhere it appears.
 If "Dog" also appeared as a field in the schema's root type, it would be renamed to "NewDog" there
 as well.
 
-1-many renaming is an operation intended for fields in an object type and enum values only, in which
-the same field or enum value is mapped to multiple names. For instance, given the following type in
-a schema:
+1-many renaming is an operation intended specifically for any of the following:
+- fields in object types
+- fields in interface types
+- enum values
+In 1-many renaming, the same field or enum value is mapped to multiple names. For instance, given
+the following type in a schema:
     type Dog {
         name: String
     }
@@ -626,6 +629,11 @@ class CascadingSuppressionCheckVisitor(Visitor):
 
     """
 
+    # For a type named T, and its field named F whose type has name V, this dict would be
+    # {"T": {"F": "V"}}
+    fields_to_suppress: Dict[str, Dict[str, str]]
+    union_types_to_suppress: List[UnionTypeDefinitionNode]
+
     def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
 
@@ -637,9 +645,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
         self.renamings = renamings
         self.query_type = query_type
         self.current_type: Optional[str] = None
-        # Maps a type T to a dict which maps a field F belonging to T to the field's type T'
-        self.fields_to_suppress: Dict[str, Dict[str, str]] = {}
-        self.union_types_to_suppress: List[UnionTypeDefinitionNode] = []
+        self.fields_to_suppress = {}
+        self.union_types_to_suppress = []
 
     def enter_object_type_definition(
         self,
@@ -730,6 +737,10 @@ class SuppressionNotImplementedVisitor(Visitor):
 
     """
 
+    unsupported_enum_suppressions: Set[str]
+    unsupported_interface_suppressions: Set[str]
+    unsupported_interface_implementation_suppressions: Set[str]
+
     def __init__(self, renamings: Mapping[str, Optional[str]]) -> None:
         """Confirm renamings does not attempt to suppress enum/interface/interface implementation.
 
@@ -738,9 +749,9 @@ class SuppressionNotImplementedVisitor(Visitor):
                        suppression). Any name not in the dict will be unchanged
         """
         self.renamings = renamings
-        self.unsupported_enum_suppressions: Set[str] = set()
-        self.unsupported_interface_suppressions: Set[str] = set()
-        self.unsupported_interface_implementation_suppressions: Set[str] = set()
+        self.unsupported_enum_suppressions = set()
+        self.unsupported_interface_suppressions = set()
+        self.unsupported_interface_implementation_suppressions = set()
 
     def enter_enum_type_definition(
         self,
