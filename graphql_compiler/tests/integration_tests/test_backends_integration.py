@@ -453,7 +453,7 @@ class IntegrationTests(TestCase):
                     {"descendant_name": "Animal 4"},  # depth 3 match
                 ],
             ),
-            # Query 8: Output child name
+            # Query 9: Output child name
             (
                 """
             {
