@@ -753,9 +753,13 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(CascadingSuppressionError):
             rename_schema(
                 parse(ISS.multiple_fields_schema), {"Dog": None}
-            )  # a field in Human is of type Dog.
+            )  # The type named Human contains a field of type Dog.
 
     def test_field_of_suppressed_type_in_suppressed_type(self):
+        # The schema contains an object type that contains a field of the type Human. Normally,
+        # suppressing the type named Human would cause a CascadingSuppressionError because the
+        # resulting schema would still have fields of the type Human. Here, however, only the type
+        # named Human contains such a field, so suppressing the type Human produces a legal schema.
         renamed_schema = rename_schema(parse(ISS.recursive_field_schema), {"Human": None})
         renamed_schema_string = dedent(
             """\
