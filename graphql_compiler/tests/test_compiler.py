@@ -9730,7 +9730,8 @@ class CompilerTests(unittest.TestCase):
                 anon_1
                 LEFT OUTER JOIN anon_2
                     ON anon_1."Animal_in_Animal_ParentOf__uuid" = anon_2.__cte_key
-                WHERE anon_2.__cte_key IS NOT NULL OR anon_1."Animal_in_Animal_ParentOf__uuid" IS NULL
+                WHERE anon_2.__cte_key IS NOT NULL OR anon_1."Animal_in_Animal_ParentOf__uuid"
+                    IS NULL
         """
 
         check_test_data(

@@ -927,12 +927,13 @@ class CompilationState(object):
                 for alias_key, alias_value in self._aliases.items()
             }
             self._came_from = {
-                old_to_new_alias[alias]: old_to_new_alias[alias].c[came_from.name]  # TODO there's a better way
+                old_to_new_alias[alias]: old_to_new_alias[alias].c[
+                    came_from.name
+                ]  # TODO there's a better way
                 for alias, came_from in self._came_from.items()
             }
             self._aliases = {
-                alias_key: old_to_new_alias[alias]
-                for alias_key, alias in self._aliases.items()
+                alias_key: old_to_new_alias[alias] for alias_key, alias in self._aliases.items()
             }
             if not isinstance(self._current_location, Location):
                 raise AssertionError(

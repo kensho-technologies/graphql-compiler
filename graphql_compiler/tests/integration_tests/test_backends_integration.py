@@ -289,7 +289,7 @@ class IntegrationTests(TestCase):
 
         # (query, expected_results) pairs. All of them running with the same parameters.
         # The queries are ran in the order specified here.
-        queries = [
+        queries: List[Tuple[str, List[Dict[str, Any]]]] = [
             # Query 1: Just the root
             (
                 """
@@ -504,7 +504,7 @@ class IntegrationTests(TestCase):
                     {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 2 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 2 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 2 match
-                    {"child_name": "Animal 2", "descendant_name": None},        # depth 2 match
+                    {"child_name": "Animal 2", "descendant_name": None},  # depth 2 match
                     {"child_name": "Animal 3", "descendant_name": "Animal 4"},  # depth 2 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 3 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 3 match
@@ -799,7 +799,7 @@ class IntegrationTests(TestCase):
             "UniquelyIdentifiable": {"uuid": GraphQLID}
         }
         schema, _ = generate_schema(
-            self.orientdb_client,  # type: ignore  # from fixture
+            self.orientdb_client,
             class_to_field_type_overrides=class_to_field_type_overrides,
             hidden_classes={ORIENTDB_BASE_VERTEX_CLASS_NAME},
         )

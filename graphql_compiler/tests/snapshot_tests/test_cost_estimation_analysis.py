@@ -381,7 +381,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_distinct_result_set_estimates_with_revisit_counts(self):
-        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
