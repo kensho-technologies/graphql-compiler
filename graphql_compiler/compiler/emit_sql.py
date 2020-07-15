@@ -913,8 +913,11 @@ class CompilationState(object):
         if self._recurse_needs_cte:
             self._current_alias = self.get_query(extra_outputs).cte(recursive=False)
             self._from_clause = self._current_alias
-
             self._filters = []  # The filters are already included in the cte
+
+            # After creating this CTE, accessing a field of any of the currently marked
+            # locations should redirect to the column of the cte that exposes that field.
+            # Here we replace all aliases with ColumnRouters pointing to the CTE.
             old_to_new_alias = {
                 alias_value: ColumnRouter(
                     {
@@ -933,6 +936,7 @@ class CompilationState(object):
             self._aliases = {
                 alias_key: old_to_new_alias[alias] for alias_key, alias in self._aliases.items()
             }
+
             if not isinstance(self._current_location, Location):
                 raise AssertionError(
                     f"Attempted to wrap to CTE while the _current_location of was type "
