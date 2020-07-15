@@ -1,20 +1,26 @@
 """Module to execute GraphQL introspection query faster than graphql-core.
 
-On a large schema with tens of thousands of types, the approach using graphql-core's
+The approach using graphql-core's graphql_sync() function is approximately 20x slower
+than the code in this module. On a large schema with tens of thousands of types,
 graphql_sync takes 26 seconds to run, whereas this module executes the same query in
 1.37 seconds. This module calls the same Type resolvers as graphql_sync to prevent
 code duplication with graphql-core.
 
+The major difference between graphql_sync and this module is this module is very specific
+to the introspection query, which removes the indirection that graphql_sync experiences as
+graphql_sync must parse and traverse the query document to identify the next field to resolve,
+whereas in this module, everything is hardcoded. This may be the source of the severe
+performance difference.
+
 This module is fully dependent on the introspection query returned by `get_introspection_query`
 from graphql-core (with default parameters). Changes to that query will need to be
-reflected in this module. This module also assumes that the introspection query can
-be executed on the given schema.
+reflected in this module.
 """
 
-
-from typing import Any, Dict, Tuple, cast
+from typing import Any, Dict, Optional, Tuple, cast
 
 from graphql import (
+    ExecutionResult,
     GraphQLAbstractType,
     GraphQLArgument,
     GraphQLDirective,
@@ -30,6 +36,110 @@ from graphql import (
 )
 
 
+_introspection_query = """
+query IntrospectionQuery {
+    __schema {
+        queryType { name }
+        mutationType { name }
+        subscriptionType { name }
+        types {
+            ...FullType
+        }
+        directives {
+            name
+            description
+            locations
+            args {
+                ...InputValue
+            }
+        }
+    }
+}
+
+fragment FullType on __Type {
+    kind
+    name
+    description
+    fields(includeDeprecated: true) {
+        name
+        description
+        args {
+            ...InputValue
+        }
+        type {
+            ...TypeRef
+        }
+        isDeprecated
+        deprecationReason
+    }
+    inputFields {
+        ...InputValue
+    }
+    interfaces {
+        ...TypeRef
+    }
+    enumValues(includeDeprecated: true) {
+        name
+        description
+        isDeprecated
+        deprecationReason
+    }
+    possibleTypes {
+        ...TypeRef
+    }
+}
+
+fragment InputValue on __InputValue {
+    name
+    description
+    type { ...TypeRef }
+    defaultValue
+}
+
+fragment TypeRef on __Type {
+    kind
+    name
+    ofType {
+        kind
+        name
+        ofType {
+            kind
+            name
+            ofType {
+                kind
+                name
+                ofType {
+                    kind
+                    name
+                    ofType {
+                        kind
+                        name
+                        ofType {
+                            kind
+                            name
+                            ofType {
+                                kind
+                                name
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+"""
+
+
+def remove_whitespace_from_query(query: str) -> str:
+    """Return an equivalent query with spaces and newline characters removed."""
+    return query.replace(" ", "").replace("\n", "")
+
+
+whitespace_free_introspection_query = remove_whitespace_from_query(_introspection_query)
+
+
+# pylint: disable=unsubscriptable-object
 __Schema = cast(GraphQLObjectType, introspection_types["__Schema"])
 __Directive = cast(GraphQLObjectType, introspection_types["__Directive"])
 __DirectiveLocation = cast(GraphQLEnumType, introspection_types["__DirectiveLocation"])
@@ -38,9 +148,11 @@ __Field = cast(GraphQLObjectType, introspection_types["__Field"])
 __InputValue = cast(GraphQLObjectType, introspection_types["__InputValue"])
 __EnumValue = cast(GraphQLObjectType, introspection_types["__EnumValue"])
 __TypeKind = cast(GraphQLEnumType, introspection_types["__TypeKind"])
+# pylint: enable=unsubscriptable-object
 
 
 def _get_type_ref(type_: GraphQLType) -> Dict[str, Any]:
+    """Compute data for the TypeRef fragment of the introspection query for a particular type."""
     of_type = __Type.fields["ofType"].resolve(type_, None)
     return {
         "kind": __TypeKind.serialize(__Type.fields["kind"].resolve(type_, None)),
@@ -50,6 +162,7 @@ def _get_type_ref(type_: GraphQLType) -> Dict[str, Any]:
 
 
 def _get_input_value(arg: Tuple[str, GraphQLArgument]) -> Dict[str, Any]:
+    """Compute data for the InputValue fragment of the introspection query for a particular arg."""
     return {
         "name": __InputValue.fields["name"].resolve(arg, None),
         "description": __InputValue.fields["description"].resolve(arg, None),
@@ -59,6 +172,7 @@ def _get_input_value(arg: Tuple[str, GraphQLArgument]) -> Dict[str, Any]:
 
 
 def _get_field(field: Tuple[str, GraphQLField]) -> Dict[str, Any]:
+    """Compute data for `fields` field of the introspection query for a particular field."""
     return {
         "name": __Field.fields["name"].resolve(field, None),
         "description": __Field.fields["description"].resolve(field, None),
@@ -70,6 +184,7 @@ def _get_field(field: Tuple[str, GraphQLField]) -> Dict[str, Any]:
 
 
 def _get_enum_value(enum_value: Tuple[str, GraphQLEnumValue]) -> Dict[str, Any]:
+    """Compute data for `enumValues` field of the introspection query for a particular enumvalue."""
     return {
         "name": __EnumValue.fields["name"].resolve(enum_value, None),
         "description": __EnumValue.fields["description"].resolve(enum_value, None),
@@ -79,6 +194,7 @@ def _get_enum_value(enum_value: Tuple[str, GraphQLEnumValue]) -> Dict[str, Any]:
 
 
 def _get_full_type(type_: GraphQLNamedType, schema: GraphQLSchema) -> Dict[str, Any]:
+    """Compute data for the FullType fragment of the introspection query for a particular type."""
     fields = __Type.fields["fields"].resolve(type_, None, includeDeprecated=True)
     input_fields = __Type.fields["inputFields"].resolve(type_, None)
     interfaces = __Type.fields["interfaces"].resolve(type_, None)
@@ -116,6 +232,7 @@ def _get_full_type(type_: GraphQLNamedType, schema: GraphQLSchema) -> Dict[str, 
 
 
 def _get_directive(directive: GraphQLDirective) -> Dict[str, Any]:
+    """Compute data for `directives` field of the introspection query for a particular directive."""
     return {
         "name": __Directive.fields["name"].resolve(directive, None),
         "description": __Directive.fields["description"].resolve(directive, None),
@@ -129,9 +246,8 @@ def _get_directive(directive: GraphQLDirective) -> Dict[str, Any]:
     }
 
 
-def execute_fast_introspection_query(schema: GraphQLSchema) -> Dict[str, Any]:
+def _execute_fast_introspection_query(schema: GraphQLSchema) -> ExecutionResult:
     """Compute the GraphQL introspection query."""
-
     response_types = []
     for type_ in __Schema.fields["types"].resolve(schema, None):
         response_types.append(_get_full_type(type_, schema))
@@ -159,4 +275,18 @@ def execute_fast_introspection_query(schema: GraphQLSchema) -> Dict[str, Any]:
     }
     response_payload = {"__schema": response}
 
-    return response_payload
+    return ExecutionResult(data=response_payload, errors=[])
+
+
+def try_fast_introspection(schema: GraphQLSchema, query: str) -> Optional[ExecutionResult]:
+    """Compute the GraphQL introspection query if query can be computed fastly.
+
+    This can be used in replacement of `graphql_sync`. It automatically checks if the query
+    is the expected introspection query in this module; if the query is not the expected
+    introspection query, this function returns None, meaning the query cannot be computed fastly
+    with this module. Otherwise, it will execute the introspection query fastly and return
+    the computed result in the form of a GraphQL ExecutionResult.
+    """
+    if remove_whitespace_from_query(query) != whitespace_free_introspection_query:
+        return None
+    return _execute_fast_introspection_query(schema)
