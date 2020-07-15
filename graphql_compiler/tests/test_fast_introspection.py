@@ -27,5 +27,6 @@ class FastIntrospectionTests(unittest.TestCase):
     def test_try_fast_introspection_equal_graphql_sync(self) -> None:
         schema = get_schema()
         result = try_fast_introspection(schema, introspection_query)
+        self.assertIsNotNone(result)
         if result:
             self.assertEqual(graphql_sync(schema, introspection_query).data, result.data)
