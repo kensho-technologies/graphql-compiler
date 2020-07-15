@@ -9683,8 +9683,6 @@ class CompilerTests(unittest.TestCase):
                     ON anon_1.[Animal_in_Animal_ParentOf__uuid] = anon_2.__cte_key
             WHERE anon_2.__cte_key IS NOT NULL OR anon_1.[Animal_in_Animal_ParentOf__uuid] IS NULL
         """
-        # TODO(bojanserafimov) Add an integration test for this query to make sure the recurse
-        #                      preserves left join misses from the parent optional traversal.
         # TODO(bojanserafimov) Test with a traversal inside the recurse. See that the recursive
         #                      cte uses LEFT OUTER JOIN.
         expected_cypher = SKIP_TEST
