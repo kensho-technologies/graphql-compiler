@@ -481,6 +481,37 @@ class IntegrationTests(TestCase):
                     {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 3 match
                 ],
             ),
+            # Query 10: Recurse within optional scope. Animal_1 has no grandchildren from its
+            #           child Animal_2, but since we use an @optional edge, Animal_2 should
+            #           still appear in the result as a child of Animal_1. Here we are testing
+            #           that the use of @recurse does not interfere with @optional semantics.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "child_name")
+                        out_Animal_ParentOf @optional {
+                            out_Animal_ParentOf @recurse(depth: 1){
+                                name @output(out_name: "descendant_name")
+                            }
+                        }
+                    }
+                }
+            }""",
+                [
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 2 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 2 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 2 match
+                    {"child_name": "Animal 2", "descendant_name": None},        # depth 2 match
+                    {"child_name": "Animal 3", "descendant_name": "Animal 4"},  # depth 2 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 3 match
+                ],
+            ),
         ]
 
         # TODO(bojanserafimov): Only testing in MSSQL because none of our backends agree on recurse
