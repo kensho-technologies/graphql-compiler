@@ -433,7 +433,7 @@ class IntegrationTests(TestCase):
                 Animal {
                     name @filter(op_name: "=", value: ["$starting_animal_name"])
                     out_Animal_ParentOf {
-                        out_Animal_ParentOf @recurse(depth: 2){
+                        out_Animal_ParentOf @recurse(depth: 2) {
                             name @output(out_name: "descendant_name")
                         }
                     }
