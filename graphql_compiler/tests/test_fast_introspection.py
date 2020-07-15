@@ -1,4 +1,4 @@
-# Copyright 2017-present Kensho Technologies, LLC.
+# Copyright 2020-present Kensho Technologies, LLC.
 import unittest
 
 from graphql import get_introspection_query, graphql_sync

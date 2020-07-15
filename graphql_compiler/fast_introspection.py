@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 """Module to execute GraphQL introspection query faster than graphql-core.
 
 The approach using graphql-core's graphql_sync() function is approximately 20x slower
