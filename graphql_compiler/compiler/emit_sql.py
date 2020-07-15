@@ -743,7 +743,7 @@ class CompilationState(object):
         self._relocate(ir.query_metadata_table.root_location)
 
         # Mapping aliases to the column used to join into them.
-        self._came_from: Dict[Alias, Column] = {}
+        self._came_from: Dict[Union[Alias, ColumnRouter], Column] = {}
 
         self._recurse_needs_cte: bool = False
 
