@@ -34,6 +34,7 @@ from graphql import (
     GraphQLType,
     introspection_types,
     is_abstract_type,
+    validate_schema,
 )
 
 
@@ -276,7 +277,7 @@ def _execute_fast_introspection_query(schema: GraphQLSchema) -> ExecutionResult:
     }
     response_payload = {"__schema": response}
 
-    return ExecutionResult(data=response_payload, errors=[])
+    return ExecutionResult(data=response_payload, errors=None)
 
 
 def try_fast_introspection(schema: GraphQLSchema, query: str) -> Optional[ExecutionResult]:
@@ -290,4 +291,10 @@ def try_fast_introspection(schema: GraphQLSchema, query: str) -> Optional[Execut
     """
     if remove_whitespace_from_query(query) != whitespace_free_introspection_query:
         return None
+
+    # Schema validations
+    schema_validation_errors = validate_schema(schema)
+    if schema_validation_errors:
+        return ExecutionResult(data=None, errors=schema_validation_errors)
+
     return _execute_fast_introspection_query(schema)

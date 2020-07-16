@@ -1,7 +1,7 @@
 # Copyright 2020-present Kensho Technologies, LLC.
 import unittest
 
-from graphql import get_introspection_query, graphql_sync
+from graphql import GraphQLError, GraphQLSchema, get_introspection_query, graphql_sync
 
 from ..fast_introspection import (
     remove_whitespace_from_query,
@@ -26,7 +26,17 @@ class FastIntrospectionTests(unittest.TestCase):
 
     def test_try_fast_introspection_equal_graphql_sync(self) -> None:
         schema = get_schema()
-        result = try_fast_introspection(schema, introspection_query)
-        self.assertIsNotNone(result)
-        if result:
-            self.assertEqual(graphql_sync(schema, introspection_query).data, result.data)
+        execution_result = try_fast_introspection(schema, introspection_query)
+        self.assertIsNotNone(execution_result)
+        if execution_result:
+            self.assertEqual(graphql_sync(schema, introspection_query), execution_result)
+
+    def test_fast_introspection_validate_schema(self) -> None:
+        execution_result = try_fast_introspection(GraphQLSchema(), introspection_query)
+        self.assertIsNotNone(execution_result)
+        if execution_result:
+            self.assertIsNone(execution_result.data)
+            self.assertEqual(
+                execution_result.errors,
+                [GraphQLError('Query root type must be provided.')]
+            )
