@@ -830,6 +830,10 @@ class CompilationState(object):
             #    approach is incorrect because a mandatory edge traversal miss inside an optional
             #    scope is supposed to invalidate the whole result. However, with this solution the
             #    result will still appear.
+            # 3. You might think it's safe to INNER JOIN on recursive traversals in optional
+            #    scope, since the recursion always contains the 0-th level, which is the vertex
+            #    itself. However, when you join a selectable to itself, any rows with NULL value
+            #    at the join key are dropped.
             self._filters.append(
                 sqlalchemy.or_(
                     self._came_from[self._current_alias].isnot(None),
