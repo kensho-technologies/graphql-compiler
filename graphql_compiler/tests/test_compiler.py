@@ -2335,7 +2335,9 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 anon_1.name AS relation_name
             FROM
-                anon_1
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN anon_1
+                    ON [Animal_1].uuid = anon_1.__cte_key
         """
         expected_cypher = """
             MATCH (Animal___1:Animal)
@@ -2368,7 +2370,9 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 anon_1.name AS relation_name
             FROM
-                anon_1
+                schema_1."Animal" AS "Animal_1"
+                JOIN anon_1
+                    ON "Animal_1".uuid = anon_1.__cte_key
         """
 
         check_test_data(
@@ -2425,7 +2429,10 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 anon_1.color AS animal_color,
                 anon_1.name AS relation_name
-            FROM anon_1
+            FROM
+                anon_2
+                JOIN anon_1
+                    ON anon_2.[Animal__uuid] = anon_1.__cte_key
         """
         expected_cypher = SKIP_TEST
         expected_postgresql = SKIP_TEST
@@ -2480,7 +2487,9 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 anon_1.name AS relation_name
             FROM
-                anon_1
+                anon_2
+                JOIN anon_1
+                    ON anon_2.[Animal__uuid] = anon_1.__cte_key
         """
         expected_cypher = SKIP_TEST
         expected_postgresql = SKIP_TEST
@@ -2865,7 +2874,9 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 anon_1.name AS relation_name
             FROM
-                anon_1
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN anon_1
+                    ON [Animal_1].uuid = anon_1.__cte_key
             WHERE
                 anon_1.color = :wanted
         """
@@ -2898,7 +2909,9 @@ class CompilerTests(unittest.TestCase):
             SELECT
                 anon_1.name AS relation_name
             FROM
-                anon_1
+                schema_1."Animal" AS "Animal_1"
+                JOIN anon_1
+                    ON "Animal_1".uuid = anon_1.__cte_key
             WHERE
                 anon_1.color = %(wanted)s
         """
@@ -5459,8 +5472,10 @@ class CompilerTests(unittest.TestCase):
             [Animal_1].name AS animal_name,
             folded_subquery_1.fold_output_name AS homes_list
         FROM
-            db_1.schema_1.[Animal] AS [Animal_1],
-            anon_1 JOIN (
+            db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN anon_1
+                ON [Animal_1].uuid = anon_1.__cte_key
+            JOIN (
                 SELECT
                     anon_2.uuid AS uuid,
                     coalesce((
@@ -9662,10 +9677,14 @@ class CompilerTests(unittest.TestCase):
                 anon_1.[Animal_in_Animal_ParentOf__name] AS child_name,
                 anon_1.[Animal__name] AS name,
                 anon_2.name AS self_and_ancestor_name
-            FROM anon_1, anon_2
+            FROM
+                anon_1
+                LEFT OUTER JOIN anon_2
+                    ON anon_1.[Animal_in_Animal_ParentOf__uuid] = anon_2.__cte_key
+            WHERE anon_2.__cte_key IS NOT NULL OR anon_1.[Animal_in_Animal_ParentOf__uuid] IS NULL
         """
-        # TODO(bojanserafimov) Add an integration test for this query to make sure the recurse
-        #                      preserves left join misses from the parent optional traversal.
+        # TODO(bojanserafimov) Test with a traversal inside the recurse. See that the recursive
+        #                      cte uses LEFT OUTER JOIN.
         expected_cypher = SKIP_TEST
         expected_postgresql = """
             WITH RECURSIVE anon_1 AS (
@@ -9708,7 +9727,11 @@ class CompilerTests(unittest.TestCase):
                 anon_1."Animal__name" AS name,
                 anon_2.name AS self_and_ancestor_name
             FROM
-                anon_1, anon_2
+                anon_1
+                LEFT OUTER JOIN anon_2
+                    ON anon_1."Animal_in_Animal_ParentOf__uuid" = anon_2.__cte_key
+                WHERE anon_2.__cte_key IS NOT NULL OR anon_1."Animal_in_Animal_ParentOf__uuid"
+                    IS NULL
         """
 
         check_test_data(

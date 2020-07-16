@@ -690,7 +690,7 @@ class UniqueAliasGenerator(object):
         return alias
 
 
-@dataclass
+@dataclass(eq=False)  # Setting eq=False allows the class to inherit id-based hash from object
 class ColumnRouter:
     """Container for columns selected from a variety of selectables.
 
@@ -743,7 +743,7 @@ class CompilationState(object):
         self._relocate(ir.query_metadata_table.root_location)
 
         # Mapping aliases to the column used to join into them.
-        self._came_from: Dict[Alias, Column] = {}
+        self._came_from: Dict[Union[Alias, ColumnRouter], Column] = {}
 
         self._recurse_needs_cte: bool = False
 
@@ -830,6 +830,10 @@ class CompilationState(object):
             #    approach is incorrect because a mandatory edge traversal miss inside an optional
             #    scope is supposed to invalidate the whole result. However, with this solution the
             #    result will still appear.
+            # 3. You might think it's safe to INNER JOIN on recursive traversals in optional
+            #    scope, since the recursion always contains the 0-th level, which is the vertex
+            #    itself. However, when you join a selectable to itself, any rows with NULL value
+            #    at the join key are dropped.
             self._filters.append(
                 sqlalchemy.or_(
                     self._came_from[self._current_alias].isnot(None),
@@ -913,10 +917,13 @@ class CompilationState(object):
         if self._recurse_needs_cte:
             self._current_alias = self.get_query(extra_outputs).cte(recursive=False)
             self._from_clause = self._current_alias
-
             self._filters = []  # The filters are already included in the cte
-            self._aliases = {
-                alias_key: ColumnRouter(
+
+            # After creating this CTE, accessing a field of any of the currently marked
+            # locations should redirect to the column of the CTE that exposes that field.
+            # Here we replace all aliases with ColumnRouters pointing to the CTE.
+            old_to_new_alias = {
+                alias_value: ColumnRouter(
                     {
                         external_name: self._current_alias.c[internal_name]
                         for external_name, internal_name in column_mappings.get(
@@ -926,6 +933,14 @@ class CompilationState(object):
                 )
                 for alias_key, alias_value in self._aliases.items()
             }
+            self._came_from = {
+                old_to_new_alias[alias]: old_to_new_alias[alias].c[came_from.name]
+                for alias, came_from in self._came_from.items()
+            }
+            self._aliases = {
+                alias_key: old_to_new_alias[alias] for alias_key, alias in self._aliases.items()
+            }
+
             if not isinstance(self._current_location, Location):
                 raise AssertionError(
                     f"Attempted to wrap to CTE while the _current_location of was type "
@@ -1020,13 +1035,8 @@ class CompilationState(object):
             .where(base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
-        # Instead of joining to the current _from_clause, we make this alias the _from_clause.
-        # If the existing _from_clause had any information in it, then the _current_alias would
-        # be a cte that contains all that information.
-        # TODO(bojanserafimov): If the existing _from_clause had no filters or traversals, but
-        #                       had an output, the output needs to be moved into the cte or
-        #                       we need to join to the _from_clause.
-        self._from_clause = self._current_alias
+        # TODO(bojanserafimov): This creates an unused alias if there's no tags or outputs so far
+        self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
 
     def start_global_operations(self) -> None:
         """Execute a GlobalOperationsStart block."""
