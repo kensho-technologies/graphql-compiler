@@ -920,7 +920,7 @@ class CompilationState(object):
             self._filters = []  # The filters are already included in the cte
 
             # After creating this CTE, accessing a field of any of the currently marked
-            # locations should redirect to the column of the cte that exposes that field.
+            # locations should redirect to the column of the CTE that exposes that field.
             # Here we replace all aliases with ColumnRouters pointing to the CTE.
             old_to_new_alias = {
                 alias_value: ColumnRouter(
