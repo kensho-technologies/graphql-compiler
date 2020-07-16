@@ -293,25 +293,25 @@ class IntegrationTests(TestCase):
             # Query 1: Just the root
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                         @output(out_name: "root_name")
-                }
-            }""",
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                             @output(out_name: "root_name")
+                    }
+                }""",
                 [{"root_name": "Animal 1"}],
             ),
             # Query 2: Immediate children
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf {
-                        name @output(out_name: "descendant_name")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf {
+                            name @output(out_name: "descendant_name")
+                        }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"descendant_name": "Animal 1"},
                     {"descendant_name": "Animal 2"},
@@ -321,16 +321,16 @@ class IntegrationTests(TestCase):
             # Query 3: Grandchildren
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf {
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
                         out_Animal_ParentOf {
-                            name @output(out_name: "descendant_name")
+                            out_Animal_ParentOf {
+                                name @output(out_name: "descendant_name")
+                            }
                         }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"descendant_name": "Animal 1"},
                     {"descendant_name": "Animal 2"},
@@ -341,18 +341,18 @@ class IntegrationTests(TestCase):
             # Query 4: Grand-grandchildren
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf {
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
                         out_Animal_ParentOf {
                             out_Animal_ParentOf {
-                                name @output(out_name: "descendant_name")
+                                out_Animal_ParentOf {
+                                    name @output(out_name: "descendant_name")
+                                }
                             }
                         }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"descendant_name": "Animal 1"},
                     {"descendant_name": "Animal 2"},
@@ -363,14 +363,14 @@ class IntegrationTests(TestCase):
             # Query 5: Recurse depth 1
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf @recurse(depth: 1){
-                        name @output(out_name: "descendant_name")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf @recurse(depth: 1){
+                            name @output(out_name: "descendant_name")
+                        }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"descendant_name": "Animal 1"},  # depth 0 match
                     {"descendant_name": "Animal 1"},  # depth 1 match
@@ -381,14 +381,14 @@ class IntegrationTests(TestCase):
             # Query 6: Recurse depth 2
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf @recurse(depth: 2){
-                        name @output(out_name: "descendant_name")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf @recurse(depth: 2){
+                            name @output(out_name: "descendant_name")
+                        }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"descendant_name": "Animal 1"},  # depth 0 match
                     {"descendant_name": "Animal 1"},  # depth 1 match
@@ -403,14 +403,14 @@ class IntegrationTests(TestCase):
             # Query 7: Recurse depth 3
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf @recurse(depth: 3){
-                        name @output(out_name: "descendant_name")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf @recurse(depth: 3){
+                            name @output(out_name: "descendant_name")
+                        }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"descendant_name": "Animal 1"},  # depth 0 match
                     {"descendant_name": "Animal 1"},  # depth 1 match
@@ -429,16 +429,16 @@ class IntegrationTests(TestCase):
             # Query 8: Skip depth 0
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf {
-                        out_Animal_ParentOf @recurse(depth: 2) {
-                            name @output(out_name: "descendant_name")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf {
+                            out_Animal_ParentOf @recurse(depth: 2) {
+                                name @output(out_name: "descendant_name")
+                            }
                         }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"descendant_name": "Animal 1"},  # depth 0 match
                     {"descendant_name": "Animal 2"},  # depth 0 match
@@ -456,17 +456,17 @@ class IntegrationTests(TestCase):
             # Query 9: Output child name
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf {
-                        name @output(out_name: "child_name")
-                        out_Animal_ParentOf @recurse(depth: 2) {
-                            name @output(out_name: "descendant_name")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf {
+                            name @output(out_name: "child_name")
+                            out_Animal_ParentOf @recurse(depth: 2) {
+                                name @output(out_name: "descendant_name")
+                            }
                         }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 0 match
                     {"child_name": "Animal 2", "descendant_name": "Animal 2"},  # depth 0 match
@@ -487,19 +487,19 @@ class IntegrationTests(TestCase):
             #           that the use of @recurse does not interfere with @optional semantics.
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf {
-                        name @output(out_name: "child_name")
-                        out_Animal_ParentOf @optional {
-                            out_Animal_ParentOf @recurse(depth: 1){
-                                name @output(out_name: "descendant_name")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf {
+                            name @output(out_name: "child_name")
+                            out_Animal_ParentOf @optional {
+                                out_Animal_ParentOf @recurse(depth: 1){
+                                    name @output(out_name: "descendant_name")
+                                }
                             }
                         }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 0 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 0 match
@@ -515,22 +515,22 @@ class IntegrationTests(TestCase):
             # Query 11: Same as query 10, but with additional traversal inside the @recurse.
             (
                 """
-            {
-                Animal {
-                    name @filter(op_name: "=", value: ["$starting_animal_name"])
-                    out_Animal_ParentOf {
-                        name @output(out_name: "child")
-                        out_Animal_ParentOf @optional {
-                            out_Animal_ParentOf @recurse(depth: 1){
-                                name @output(out_name: "descendant")
-                                out_Animal_ParentOf {
-                                     name @output(out_name: "tiny_child")
+                {
+                    Animal {
+                        name @filter(op_name: "=", value: ["$starting_animal_name"])
+                        out_Animal_ParentOf {
+                            name @output(out_name: "child")
+                            out_Animal_ParentOf @optional {
+                                out_Animal_ParentOf @recurse(depth: 1){
+                                    name @output(out_name: "descendant")
+                                    out_Animal_ParentOf {
+                                         name @output(out_name: "tiny_child")
+                                    }
                                 }
                             }
                         }
                     }
-                }
-            }""",
+                }""",
                 [
                     {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 1"},
                     {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 2"},
