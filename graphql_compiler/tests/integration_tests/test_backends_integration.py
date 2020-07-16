@@ -512,6 +512,37 @@ class IntegrationTests(TestCase):
                     {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 1 match
                 ],
             ),
+            # Query 11: Same as query 10, but with additional traversal inside the @recurse.
+            (
+                """
+            {
+                Animal {
+                    name @filter(op_name: "=", value: ["$starting_animal_name"])
+                    out_Animal_ParentOf {
+                        name @output(out_name: "child")
+                        out_Animal_ParentOf @optional {
+                            out_Animal_ParentOf @recurse(depth: 1){
+                                name @output(out_name: "descendant")
+                                out_Animal_ParentOf {
+                                     name @output(out_name: "tiny_child")
+                                }
+                            }
+                        }
+                    }
+                }
+            }""",
+                [
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 1"},  # depth 0
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 2"},  # depth 0
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 3"},  # depth 0
+                    {"child": "Animal 1", "descendant": "Animal 3", "tiny_child": "Animal 4"},  # depth 0
+                    {"child": "Animal 2", "descendant": None, "tiny_child": None},  # depth 0
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 1"},  # depth 1
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 2"},  # depth 1
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 3"},  # depth 1
+                    {"child": "Animal 1", "descendant": "Animal 3", "tiny_child": "Animal 4"},  # depth 1
+                ],
+            ),
         ]
 
         # TODO(bojanserafimov): Only testing in MSSQL because none of our backends agree on recurse
