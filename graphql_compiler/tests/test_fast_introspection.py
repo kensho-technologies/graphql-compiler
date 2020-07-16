@@ -37,6 +37,5 @@ class FastIntrospectionTests(unittest.TestCase):
         if execution_result:
             self.assertIsNone(execution_result.data)
             self.assertEqual(
-                execution_result.errors,
-                [GraphQLError('Query root type must be provided.')]
+                execution_result.errors, [GraphQLError("Query root type must be provided.")]
             )
