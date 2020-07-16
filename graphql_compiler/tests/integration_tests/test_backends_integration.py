@@ -440,17 +440,17 @@ class IntegrationTests(TestCase):
                 }
             }""",
                 [
+                    {"descendant_name": "Animal 1"},  # depth 0 match
+                    {"descendant_name": "Animal 2"},  # depth 0 match
+                    {"descendant_name": "Animal 3"},  # depth 0 match
                     {"descendant_name": "Animal 1"},  # depth 1 match
                     {"descendant_name": "Animal 2"},  # depth 1 match
                     {"descendant_name": "Animal 3"},  # depth 1 match
+                    {"descendant_name": "Animal 4"},  # depth 1 match
                     {"descendant_name": "Animal 1"},  # depth 2 match
                     {"descendant_name": "Animal 2"},  # depth 2 match
                     {"descendant_name": "Animal 3"},  # depth 2 match
                     {"descendant_name": "Animal 4"},  # depth 2 match
-                    {"descendant_name": "Animal 1"},  # depth 3 match
-                    {"descendant_name": "Animal 2"},  # depth 3 match
-                    {"descendant_name": "Animal 3"},  # depth 3 match
-                    {"descendant_name": "Animal 4"},  # depth 3 match
                 ],
             ),
             # Query 9: Output child name
@@ -468,17 +468,17 @@ class IntegrationTests(TestCase):
                 }
             }""",
                 [
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 0 match
+                    {"child_name": "Animal 2", "descendant_name": "Animal 2"},  # depth 0 match
+                    {"child_name": "Animal 3", "descendant_name": "Animal 3"},  # depth 0 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 1 match
-                    {"child_name": "Animal 2", "descendant_name": "Animal 2"},  # depth 1 match
-                    {"child_name": "Animal 3", "descendant_name": "Animal 3"},  # depth 1 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 1 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 1 match
+                    {"child_name": "Animal 3", "descendant_name": "Animal 4"},  # depth 1 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 2 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 2 match
                     {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 2 match
-                    {"child_name": "Animal 3", "descendant_name": "Animal 4"},  # depth 2 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 3 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 3 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 3 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 2 match
                 ],
             ),
             # Query 10: Recurse within optional scope. Animal_1 has no grandchildren from its
@@ -501,15 +501,15 @@ class IntegrationTests(TestCase):
                 }
             }""",
                 [
-                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 2 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 2 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 2 match
-                    {"child_name": "Animal 2", "descendant_name": None},  # depth 2 match
-                    {"child_name": "Animal 3", "descendant_name": "Animal 4"},  # depth 2 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 3 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 3 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 3 match
-                    {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 3 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 0 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 0 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 0 match
+                    {"child_name": "Animal 2", "descendant_name": None},  # depth 0 match
+                    {"child_name": "Animal 3", "descendant_name": "Animal 4"},  # depth 0 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 1"},  # depth 1 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 2"},  # depth 1 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 3"},  # depth 1 match
+                    {"child_name": "Animal 1", "descendant_name": "Animal 4"},  # depth 1 match
                 ],
             ),
         ]
