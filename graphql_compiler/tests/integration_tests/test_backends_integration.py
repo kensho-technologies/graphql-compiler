@@ -532,15 +532,15 @@ class IntegrationTests(TestCase):
                 }
             }""",
                 [
-                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 1"},  # depth 0
-                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 2"},  # depth 0
-                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 3"},  # depth 0
-                    {"child": "Animal 1", "descendant": "Animal 3", "tiny_child": "Animal 4"},  # depth 0
-                    {"child": "Animal 2", "descendant": None, "tiny_child": None},  # depth 0
-                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 1"},  # depth 1
-                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 2"},  # depth 1
-                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 3"},  # depth 1
-                    {"child": "Animal 1", "descendant": "Animal 3", "tiny_child": "Animal 4"},  # depth 1
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 1"},
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 2"},
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 3"},
+                    {"child": "Animal 1", "descendant": "Animal 3", "tiny_child": "Animal 4"},
+                    {"child": "Animal 2", "descendant": None, "tiny_child": None},
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 1"},
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 2"},
+                    {"child": "Animal 1", "descendant": "Animal 1", "tiny_child": "Animal 3"},
+                    {"child": "Animal 1", "descendant": "Animal 3", "tiny_child": "Animal 4"},
                 ],
             ),
         ]
