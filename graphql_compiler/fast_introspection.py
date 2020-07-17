@@ -133,14 +133,16 @@ fragment TypeRef on __Type {
 """
 
 
-def remove_whitespace_from_query(query: str) -> str:
+def _remove_whitespace_from_query(query: str) -> str:
     """Return an equivalent query with spaces and newline characters removed."""
     return query.replace(" ", "").replace("\n", "")
 
 
-whitespace_free_introspection_query = remove_whitespace_from_query(_introspection_query)
+_whitespace_free_introspection_query = _remove_whitespace_from_query(_introspection_query)
 
 
+# Pylint appears to think that "introspection_types" is not dict-like.
+# It is a FrozenDict, so this is a false-positive error.
 # pylint: disable=unsubscriptable-object
 __Schema = cast(GraphQLObjectType, introspection_types["__Schema"])
 __Directive = cast(GraphQLObjectType, introspection_types["__Directive"])
@@ -283,13 +285,18 @@ def _execute_fast_introspection_query(schema: GraphQLSchema) -> ExecutionResult:
 def try_fast_introspection(schema: GraphQLSchema, query: str) -> Optional[ExecutionResult]:
     """Compute the GraphQL introspection query if query can be computed fastly.
 
-    This can be used in replacement of `graphql_sync`. It automatically checks if the query
-    is the expected introspection query in this module; if the query is not the expected
-    introspection query, this function returns None, meaning the query cannot be computed fastly
-    with this module. Otherwise, it will execute the introspection query fastly and return
-    the computed result in the form of a GraphQL ExecutionResult.
+    Args:
+        schema: GraphQL schema object, obtained from the graphql library
+        query: string containing the introspection query to be executed on the schema
+
+    Returns:
+        - GraphQL Execution Result with data = None: there were schema validation errors.
+        - GraphQL ExecutionResult with data != None: fast introspection was successful and computed
+          data can be found under data attribute.
+        - None if the query does not match the set introspection query in this module: the query
+          cannot be computed fastly with this module.
     """
-    if remove_whitespace_from_query(query) != whitespace_free_introspection_query:
+    if _remove_whitespace_from_query(query) != _whitespace_free_introspection_query:
         return None
 
     # Schema validations
