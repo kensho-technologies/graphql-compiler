@@ -1699,16 +1699,6 @@ class CompilerTests(unittest.TestCase):
             WHERE (
                 (
                     (
-                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
-                        OR
-                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
-                    )
-                    OR
-                    (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
-                )
-                AND
-                (
-                    (
                         (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
                             .out_Animal_FedAt IS null)
                         OR
@@ -1718,6 +1708,16 @@ class CompilerTests(unittest.TestCase):
                     OR
                     (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
                         IS NOT null)
+                )
+                AND
+                (
+                    (
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                        OR
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
                 )
             )
         """
@@ -1988,16 +1988,6 @@ class CompilerTests(unittest.TestCase):
             WHERE (
                 (
                     (
-                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
-                        OR
-                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
-                    )
-                    OR
-                    (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
-                )
-                AND
-                (
-                    (
                         (Animal__out_Animal_ParentOf__in_Animal_ParentOf___1
                             .out_Animal_FedAt IS null)
                         OR
@@ -2007,6 +1997,16 @@ class CompilerTests(unittest.TestCase):
                     OR
                     (Animal__out_Animal_ParentOf__in_Animal_ParentOf__out_Animal_FedAt___1
                         IS NOT null)
+                )
+                AND
+                (
+                    (
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt IS null)
+                        OR
+                        (Animal__out_Animal_ParentOf___1.out_Animal_FedAt.size() = 0)
+                    )
+                    OR
+                    (Animal__out_Animal_ParentOf__out_Animal_FedAt___1 IS NOT null)
                 )
             )
         """
@@ -5158,15 +5158,15 @@ class CompilerTests(unittest.TestCase):
             WHERE (
                 (
                     (
-                        (
-                            (Animal___1.out_Animal_ParentOf IS null)
-                            OR
-                            (Animal___1.out_Animal_ParentOf.size() = 0)
-                        )
+                        (Animal___1.out_Animal_FedAt IS null)
                         OR
-                        (Animal__out_Animal_ParentOf___1 IS NOT null)
+                        (Animal___1.out_Animal_FedAt.size() = 0)
                     )
-                    AND
+                    OR
+                    (Animal__out_Animal_FedAt___1 IS NOT null)
+                )
+                AND
+                (
                     (
                         (
                             (Animal___1.out_Animal_OfSpecies IS null)
@@ -5176,16 +5176,16 @@ class CompilerTests(unittest.TestCase):
                         OR
                         (Animal__out_Animal_OfSpecies___1 IS NOT null)
                     )
-                )
-                AND
-                (
+                    AND
                     (
-                        (Animal___1.out_Animal_FedAt IS null)
+                        (
+                            (Animal___1.out_Animal_ParentOf IS null)
+                            OR
+                            (Animal___1.out_Animal_ParentOf.size() = 0)
+                        )
                         OR
-                        (Animal___1.out_Animal_FedAt.size() = 0)
+                        (Animal__out_Animal_ParentOf___1 IS NOT null)
                     )
-                    OR
-                    (Animal__out_Animal_FedAt___1 IS NOT null)
                 )
             )
         """
@@ -8585,12 +8585,6 @@ class CompilerTests(unittest.TestCase):
                         class: Animal,
                         where: ((
                             (
-                                (out_Animal_ParentOf IS null)
-                                OR
-                                (out_Animal_ParentOf.size() = 0)
-                            )
-                            AND
-                            (
                                 (name LIKE ('%' + ({wanted} + '%')))
                                 AND
                                 (
@@ -8598,6 +8592,12 @@ class CompilerTests(unittest.TestCase):
                                     OR
                                     (in_Animal_ParentOf.size() = 0)
                                 )
+                            )
+                            AND
+                            (
+                                (out_Animal_ParentOf IS null)
+                                OR
+                                (out_Animal_ParentOf.size() = 0)
                             )
                         )),
                         as: Animal___1
@@ -8645,13 +8645,13 @@ class CompilerTests(unittest.TestCase):
                     MATCH {{
                         class: Animal,
                         where: ((
+                            (name LIKE ('%' + ({wanted} + '%')))
+                            AND
                             (
                                 (out_Animal_ParentOf IS null)
                                 OR
                                 (out_Animal_ParentOf.size() = 0)
                             )
-                            AND
-                            (name LIKE ('%' + ({wanted} + '%')))
                         )),
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{
@@ -8815,13 +8815,13 @@ class CompilerTests(unittest.TestCase):
                     MATCH {{
                         class: Animal,
                         where: ((
+                            (name LIKE ('%' + ({wanted} + '%')))
+                            AND
                             (
                                 (out_Animal_ParentOf IS null)
                                 OR
                                 (out_Animal_ParentOf.size() = 0)
                             )
-                            AND
-                            (name LIKE ('%' + ({wanted} + '%')))
                         )),
                         as: Animal___1
                     }}.in('Animal_ParentOf') {{

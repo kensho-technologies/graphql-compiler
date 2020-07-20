@@ -329,6 +329,7 @@ def lower_folded_coerce_types_into_filter_blocks(
     """Lower CoerceType blocks into "INSTANCEOF" Filter blocks. Indended for folded IR blocks."""
     new_folded_ir_blocks: List[BasicBlock] = []
     for block in folded_ir_blocks:
+        new_block: BasicBlock
         if isinstance(block, CoerceType):
             new_block = convert_coerce_type_to_instanceof_filter(block)
         else:

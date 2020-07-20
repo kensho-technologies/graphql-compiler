@@ -332,7 +332,7 @@ class LocalField(Expression):
 
     __slots__ = ("field_name", "field_type")
 
-    def __init__(self, field_name: str, field_type: GraphQLOutputType) -> None:
+    def __init__(self, field_name: str, field_type: Optional[GraphQLOutputType]) -> None:
         """Construct a new LocalField object that references a field at the current position.
 
         Args:
