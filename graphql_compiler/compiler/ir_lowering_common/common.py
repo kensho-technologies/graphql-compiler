@@ -28,7 +28,7 @@ from ..expressions import (
     TernaryConditional,
     TrueLiteral,
 )
-from ..helpers import BaseLocation, FoldScopeLocation, Location, validate_safe_string
+from ..helpers import FoldScopeLocation, Location, validate_safe_string
 from ..metadata import QueryMetadataTable
 
 
