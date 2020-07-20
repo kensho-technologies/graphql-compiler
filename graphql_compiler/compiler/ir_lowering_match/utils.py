@@ -1,14 +1,16 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 import itertools
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 
 import six
 
 from ...schema import is_vertex_field_name
-from ..blocks import Filter
+from ..blocks import CoerceType, Filter
 from ..expressions import (
     BinaryComposition,
     Expression,
+    ExpressionT,
     GlobalContextField,
     Literal,
     LocalField,
@@ -17,10 +19,12 @@ from ..expressions import (
     UnaryTransformation,
     ZeroLiteral,
 )
-from ..helpers import get_only_element_from_collection
+from ..helpers import Location, get_only_element_from_collection
+from ..ir_lowering_common.common import SimpleOptionalLocationInfo
+from ..metadata import QueryMetadataTable
 
 
-def convert_coerce_type_to_instanceof_filter(coerce_type_block):
+def convert_coerce_type_to_instanceof_filter(coerce_type_block: CoerceType) -> Filter:
     """Create an "INSTANCEOF" Filter block from a CoerceType block."""
     coerce_type_target = get_only_element_from_collection(coerce_type_block.target_class)
 
@@ -33,7 +37,9 @@ def convert_coerce_type_to_instanceof_filter(coerce_type_block):
     return Filter(new_predicate)
 
 
-def convert_coerce_type_and_add_to_where_block(coerce_type_block, where_block):
+def convert_coerce_type_and_add_to_where_block(
+    coerce_type_block: CoerceType, where_block: Filter
+) -> Filter:
     """Create an "INSTANCEOF" Filter from a CoerceType, adding to an existing Filter if any."""
     instanceof_filter = convert_coerce_type_to_instanceof_filter(coerce_type_block)
 
@@ -44,7 +50,7 @@ def convert_coerce_type_and_add_to_where_block(coerce_type_block, where_block):
         return instanceof_filter
 
 
-def expression_list_to_conjunction(expression_list):
+def expression_list_to_conjunction(expression_list: List[BinaryComposition]) -> Expression:
     """Convert a list of expressions to an Expression that is the conjunction of all of them."""
     if not isinstance(expression_list, list):
         raise AssertionError("Expected `list`, Received {}.".format(expression_list))
@@ -67,7 +73,7 @@ def expression_list_to_conjunction(expression_list):
 class BetweenClause(Expression):
     """A `BETWEEN` Expression, constraining a field value to lie within a lower and upper bound."""
 
-    def __init__(self, field, lower_bound, upper_bound):
+    def __init__(self, field: LocalField, lower_bound: Expression, upper_bound: Expression) -> None:
         """Construct an expression that is true when the field value is within the given bounds.
 
         Args:
@@ -84,7 +90,7 @@ class BetweenClause(Expression):
         self.upper_bound = upper_bound
         self.validate()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate that the Between Expression is correctly representable."""
         if not isinstance(self.field, LocalField):
             raise TypeError(
@@ -107,7 +113,7 @@ class BetweenClause(Expression):
                 )
             )
 
-    def visit_and_update(self, visitor_fn):
+    def visit_and_update(self, visitor_fn: Callable[[Expression], ExpressionT]) -> ExpressionT:
         """Create an updated version (if needed) of BetweenClause via the visitor pattern."""
         new_lower_bound = self.lower_bound.visit_and_update(visitor_fn)
         new_upper_bound = self.upper_bound.visit_and_update(visitor_fn)
@@ -117,7 +123,7 @@ class BetweenClause(Expression):
         else:
             return visitor_fn(self)
 
-    def to_match(self):
+    def to_match(self) -> str:
         """Return a unicode object with the MATCH representation of this BetweenClause."""
         template = "({field_name} BETWEEN {lower_bound} AND {upper_bound})"
         return template.format(
@@ -127,7 +133,9 @@ class BetweenClause(Expression):
         )
 
 
-def filter_edge_field_non_existence(edge_expression):
+def filter_edge_field_non_existence(
+    edge_expression: Union[LocalField, GlobalContextField]
+) -> BinaryComposition:
     """Return an Expression that is True iff the specified edge (edge_expression) does not exist."""
     # When an edge does not exist at a given vertex, OrientDB represents that in one of two ways:
     #   - the edge's field does not exist (is null) on the vertex document, or
@@ -156,8 +164,10 @@ def filter_edge_field_non_existence(edge_expression):
 
 
 def _filter_orientdb_simple_optional_edge(
-    query_metadata_table, optional_edge_location, inner_location
-):
+    query_metadata_table: QueryMetadataTable,
+    optional_edge_location: Location,
+    inner_location: Location,
+) -> BinaryComposition:
     """Return an Expression that is False for rows that don't follow the @optional specification.
 
     OrientDB does not filter correctly within optionals. Namely, a result where the optional edge
@@ -202,6 +212,11 @@ def _filter_orientdb_simple_optional_edge(
     # The optional_edge_location here is actually referring to the edge field itself.
     # This is definitely non-standard, but required to get the proper semantics.
     # To get its type, we construct the location of the vertex field on the other side of the edge.
+    if optional_edge_location.field is None:
+        raise AssertionError(
+            f"optional_edge_location.field was unexpectedly set to None for "
+            f"location {optional_edge_location}. This is a bug!"
+        )
     vertex_location = optional_edge_location.at_vertex().navigate_to_subpath(
         optional_edge_location.field
     )
@@ -213,7 +228,10 @@ def _filter_orientdb_simple_optional_edge(
     return BinaryComposition("||", edge_field_non_existence, inner_location_existence)
 
 
-def construct_where_filter_predicate(query_metadata_table, simple_optional_root_info):
+def construct_where_filter_predicate(
+    query_metadata_table: QueryMetadataTable,
+    simple_optional_root_info: Dict[Location, SimpleOptionalLocationInfo],
+) -> Expression:
     """Return an Expression that is True if and only if each simple optional filter is True.
 
     Construct filters for each simple optional, that are True if and only if `edge_field` does
@@ -238,7 +256,7 @@ def construct_where_filter_predicate(query_metadata_table, simple_optional_root_
     Returns:
         a new Expression object
     """
-    inner_location_name_to_where_filter = {}
+    inner_location_name_to_where_filter: Dict[str, BinaryComposition] = {}
     for root_location, root_info_dict in six.iteritems(simple_optional_root_info):
         inner_location = root_info_dict["inner_location"]
         inner_location_name, _ = inner_location.get_location_name()
@@ -266,7 +284,7 @@ CompoundMatchQuery = namedtuple("CompoundMatchQuery", ("match_queries"))
 
 
 class OptionalTraversalTree(object):
-    def __init__(self, complex_optional_roots):
+    def __init__(self, complex_optional_roots: List[Location]):
         """Initialize empty tree of optional root Locations (elements of complex_optional_roots).
 
         This object construst a tree of complex optional roots. These are locations preceding an
@@ -277,13 +295,13 @@ class OptionalTraversalTree(object):
             complex_optional_roots: list of @optional locations (location preceding an @optional
                                     traverse) that expand vertex fields within
         """
-        self._location_to_children = {
+        self._location_to_children: Dict[Optional[Location], Set[Location]] = {
             optional_root_location: set() for optional_root_location in complex_optional_roots
         }
-        self._root_location = None
+        self._root_location: Optional[Location] = None
         self._location_to_children[self._root_location] = set()
 
-    def insert(self, optional_root_locations_path):
+    def insert(self, optional_root_locations_path: List[Location]) -> None:
         """Insert a path of optional Locations into the tree.
 
         Each OptionalTraversalTree object contains child Location objects as keys mapping to
@@ -312,7 +330,9 @@ class OptionalTraversalTree(object):
                 self._location_to_children[parent_location].add(optional_root_location)
                 parent_location = optional_root_location
 
-    def get_all_rooted_subtrees_as_lists(self, start_location=None):
+    def get_all_rooted_subtrees_as_lists(
+        self, start_location: Optional[Location] = None
+    ) -> List[List[Location]]:
         """Return a list of all rooted subtrees (each as a list of Location objects)."""
         if start_location is not None and start_location not in self._location_to_children:
             raise AssertionError(
@@ -351,7 +371,7 @@ class OptionalTraversalTree(object):
 
         # For every possible subset of the children, and every combination of the chosen
         # subtrees within, create a list of subtree Location lists.
-        new_subtrees_as_lists = []
+        new_subtrees_as_lists: List[List[Location]] = []
         for location_subset in all_location_subsets:
             all_child_subtree_possibilities = [
                 location_to_list_of_subtrees[location] for location in location_subset
@@ -366,7 +386,10 @@ class OptionalTraversalTree(object):
         return new_subtrees_as_lists
 
 
-def construct_optional_traversal_tree(complex_optional_roots, location_to_optional_roots):
+def construct_optional_traversal_tree(
+    complex_optional_roots: List[Location],
+    location_to_optional_roots: Dict[Location, List[Location]],
+) -> OptionalTraversalTree:
     """Return a tree of complex optional root locations.
 
     Args:

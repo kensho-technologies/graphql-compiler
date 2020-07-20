@@ -94,6 +94,12 @@ def _construct_field_operator_expression_dict(
 
             field_name = left_clause.field_name
             field_type = left_clause.field_type
+            if field_type is None:
+                raise AssertionError(
+                    f"Unexpectedly encountered untyped clause while performing BETWEEN lowering, "
+                    f"this is a bug: {left_clause}"
+                )
+
             field_name_to_type[field_name] = field_type
             expressions_dict = field_name_to_expressions.setdefault(field_name, {})
             expressions_dict.setdefault(new_expression.operator, []).append(new_expression)

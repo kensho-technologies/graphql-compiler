@@ -1,7 +1,9 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
 
+from ...schema.schema_info import CommonSchemaInfo
 from ..blocks import Filter
+from ..compiler_frontend import IrAndMetadata
 from ..ir_lowering_common.common import (
     extract_optional_location_root_info,
     extract_simple_optional_location_info,
@@ -11,7 +13,7 @@ from ..ir_lowering_common.common import (
     remove_end_optionals,
 )
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
-from ..match_query import convert_to_match_query
+from ..match_query import MatchQuery, convert_to_match_query
 from ..workarounds import (
     orientdb_class_with_while,
     orientdb_eval_scheduling,
@@ -41,7 +43,7 @@ from .utils import construct_where_filter_predicate
 ##############
 
 
-def lower_ir(schema_info, ir):
+def lower_ir(schema_info: CommonSchemaInfo, ir: IrAndMetadata) -> MatchQuery:
     """Lower the IR into an IR form that can be represented in MATCH queries.
 
     Args:

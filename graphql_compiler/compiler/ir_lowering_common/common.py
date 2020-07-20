@@ -28,7 +28,7 @@ from ..expressions import (
     TernaryConditional,
     TrueLiteral,
 )
-from ..helpers import BaseLocation, FoldScopeLocation, validate_safe_string
+from ..helpers import BaseLocation, FoldScopeLocation, Location, validate_safe_string
 from ..metadata import QueryMetadataTable
 
 
@@ -267,7 +267,7 @@ def extract_folds_from_ir_blocks(
 
 def extract_optional_location_root_info(
     ir_blocks: List[BasicBlock],
-) -> Tuple[List[BaseLocation], Dict[BaseLocation, Tuple[BaseLocation, ...]]]:
+) -> Tuple[List[Location], Dict[Location, Tuple[Location, ...]]]:
     """Construct a mapping from locations within @optional to their correspoding optional Traverse.
 
     Args:
@@ -278,7 +278,7 @@ def extract_optional_location_root_info(
         complex_optional_roots: list of @optional locations (location immmediately preceding
                                 an @optional Traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
-                                    within some number of @optionals and optional_roots is a list
+                                    within some number of @optionals and optional_roots is a tuple
                                     of optional root locations preceding the successive @optional
                                     scopes within which the location resides
     """
@@ -290,13 +290,13 @@ def extract_optional_location_root_info(
     # - in_optional_root_locations: all the optional root locations
     # - encountered_traverse_within_optional: whether the optional is complex or not
     # in order that they appear on the path from the root to that location.
-    in_optional_root_locations: List[BaseLocation] = []
+    in_optional_root_locations: List[Location] = []
     encountered_traverse_within_optional: List[bool] = []
 
     # Blocks within folded scopes should not be taken into account in this function.
     _, non_folded_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
 
-    preceding_location = None
+    preceding_location: Optional[Location] = None
     for current_block in non_folded_ir_blocks:
         if len(in_optional_root_locations) > 0 and isinstance(current_block, (Traverse, Recurse)):
             encountered_traverse_within_optional[-1] = True
@@ -324,13 +324,21 @@ def extract_optional_location_root_info(
             in_optional_root_locations.pop()
             encountered_traverse_within_optional.pop()
         elif isinstance(current_block, MarkLocation):
-            preceding_location = current_block.location
+            current_location = current_block.location
+            if not isinstance(current_location, Location):
+                raise AssertionError(
+                    f"Expected current_location to be an instance of Location, but instead "
+                    f"found value {current_location} of type {type(current_location)}. "
+                    f"This is a bug!"
+                )
+
+            preceding_location = current_location
             if len(in_optional_root_locations) != 0:
                 # in_optional_root_locations will not be empty if and only if we are within an
                 # @optional scope. In this case, we add the current location to the dictionary
                 # mapping it to the sequence of optionals locations leading up to it.
                 optional_root_locations_stack = tuple(in_optional_root_locations)
-                location_to_optional_roots[current_block.location] = optional_root_locations_stack
+                location_to_optional_roots[current_location] = optional_root_locations_stack
         else:
             # No locations need to be marked, and no optional scopes begin or end here.
             pass
@@ -339,15 +347,15 @@ def extract_optional_location_root_info(
 
 
 SimpleOptionalLocationInfo = TypedDict(
-    "SimpleOptionalLocationInfo", {"inner_location": BaseLocation, "edge_field": str,}
+    "SimpleOptionalLocationInfo", {"inner_location": Location, "edge_field": str,}
 )
 
 
 def extract_simple_optional_location_info(
     ir_blocks: List[BasicBlock],
-    complex_optional_roots: List[BaseLocation],
-    location_to_optional_roots: Dict[BaseLocation, Tuple[BaseLocation, ...]],
-) -> Dict[BaseLocation, SimpleOptionalLocationInfo]:
+    complex_optional_roots: List[Location],
+    location_to_optional_roots: Dict[Location, Tuple[Location, ...]],
+) -> Dict[Location, SimpleOptionalLocationInfo]:
     """Construct a map from simple optional locations to their inner location and traversed edge.
 
     Args:
@@ -355,7 +363,7 @@ def extract_simple_optional_location_info(
         complex_optional_roots: list of @optional locations (location immmediately preceding
                                 an @optional traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
-                                    within some number of @optionals and optional_roots is a list
+                                    within some number of @optionals and optional_roots is a tuple
                                     of optional root locations preceding the successive @optional
                                     scopes within which the location resides
 
@@ -385,10 +393,17 @@ def extract_simple_optional_location_info(
     _, non_folded_ir_blocks = extract_folds_from_ir_blocks(ir_blocks)
 
     simple_optional_root_info = {}
-    preceding_location = None
+    preceding_location: Optional[Location] = None
     for current_block in non_folded_ir_blocks:
         if isinstance(current_block, MarkLocation):
-            preceding_location = current_block.location
+            current_location = current_block.location
+            if not isinstance(current_location, Location):
+                raise AssertionError(
+                    f"Expected current_location to be an instance of Location, but instead "
+                    f"found value {current_location} of type {type(current_location)}. "
+                    f"This is a bug!"
+                )
+            preceding_location = current_location
         elif isinstance(current_block, Traverse) and current_block.optional:
             if preceding_location in simple_optional_root_locations:
                 # The current optional Traverse is "simple"
