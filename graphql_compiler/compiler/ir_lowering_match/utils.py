@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import namedtuple
 import itertools
-from typing import Callable, Dict, List, Optional, Set, Union
+from typing import Callable, Collection, Dict, List, Optional, Set, Union
 
 import six
 
@@ -50,7 +50,7 @@ def convert_coerce_type_and_add_to_where_block(
         return instanceof_filter
 
 
-def expression_list_to_conjunction(expression_list: List[BinaryComposition]) -> Expression:
+def expression_list_to_conjunction(expression_list: Collection[Expression]) -> Expression:
     """Convert a list of expressions to an Expression that is the conjunction of all of them."""
     if not isinstance(expression_list, list):
         raise AssertionError("Expected `list`, Received {}.".format(expression_list))
@@ -66,7 +66,7 @@ def expression_list_to_conjunction(expression_list: List[BinaryComposition]) -> 
         return expression_list[0]
     else:
         return BinaryComposition(
-            "&&", expression_list_to_conjunction(expression_list[1:]), expression_list[0]
+            "&&", expression_list[0], expression_list_to_conjunction(expression_list[1:])
         )
 
 
