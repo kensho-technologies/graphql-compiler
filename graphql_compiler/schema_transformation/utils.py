@@ -57,12 +57,12 @@ class SchemaRenameNameConflictError(SchemaTransformError):
 
     name_conflicts: Dict[str, Set[str]]
 
-    def __init__(self, name_conflicts: Dict[str, Set[str]]):
+    def __init__(self, name_conflicts: Dict[str, Set[str]]) -> None:
         """Record all renaming conflicts."""
         super().__init__()
         self.name_conflicts = name_conflicts
 
-    def __str__(self):
+    def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
         return (
             f"Applying the renaming would produce a schema with multiple types with the same name, "
