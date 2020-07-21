@@ -91,7 +91,7 @@ import six
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
     CascadingSuppressionError,
-    SchemaNameConflictError,
+    SchemaRenameNameConflictError,
     SchemaTransformError,
     check_ast_schema_is_valid,
     check_type_name_is_valid,
@@ -354,6 +354,8 @@ def _rename_and_suppress_types(
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
     renamed_schema_ast = visit(schema_ast, visitor)
+    if visitor.name_conflicts != {}:
+        raise SchemaRenameNameConflictError(visitor.name_conflicts)
     return renamed_schema_ast, visitor.reverse_name_map
 
 
@@ -444,6 +446,9 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
+    name_conflicts: Dict[str, Set[str]]  # Collects naming conflict errors. If renaming
+    # would result in multiple types being renamed to "Foo", name_conflicts will map "Foo" to an
+    # set containing the name of each such type.
 
     def __init__(
         self,
@@ -462,7 +467,10 @@ class RenameSchemaTypesVisitor(Visitor):
         """
         self.renamings = renamings
         self.reverse_name_map: Dict[str, str] = {}  # From renamed type name to original type name
-        # reverse_name_map contains all non-suppressed types, including those that were unchanged
+        # reverse_name_map contains all non-suppressed types, including those that were unchanged.
+        # Must contain unchanged names to prevent renaming conflicts and raise
+        # SchemaNameConflictError when they arise.
+        self.name_conflicts = {}
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
@@ -507,13 +515,12 @@ class RenameSchemaTypesVisitor(Visitor):
             new_name_string in self.reverse_name_map
             and self.reverse_name_map[new_name_string] != name_string
         ):
-            raise SchemaNameConflictError(
-                '"{}" and "{}" are both renamed to "{}"'.format(
-                    name_string, self.reverse_name_map[new_name_string], new_name_string
-                )
-            )
+            # At least two different types are mapped to the same new_name_string
+            if new_name_string not in self.name_conflicts:
+                self.name_conflicts[new_name_string] = {self.reverse_name_map[new_name_string]}
+            self.name_conflicts[new_name_string].add(name_string)
         if new_name_string in self.scalar_types or new_name_string in self.builtin_types:
-            raise SchemaNameConflictError(
+            raise SchemaRenameNameConflictError(
                 '"{}" was renamed to "{}", clashing with scalar "{}"'.format(
                     name_string, new_name_string, new_name_string
                 )

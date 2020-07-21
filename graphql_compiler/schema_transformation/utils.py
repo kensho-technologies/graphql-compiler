@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
+from typing import Dict, Set
 
 from graphql import build_ast_schema
 from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
@@ -39,14 +40,39 @@ class InvalidTypeNameError(SchemaTransformError):
     """
 
 
-class SchemaNameConflictError(SchemaTransformError):
-    """Raised when renaming or merging types or fields cause name conflicts.
+class SchemaMergeNameConflictError(SchemaTransformError):
+    """Raised when merging types or fields cause name conflicts.
 
-    This may be raised if a field or type is renamed to conflict with another field or type,
-    if two merged schemas share an identically named field or type, or if a
+    This may be raised if two merged schemas share an identically named field or type, or if a
     CrossSchemaEdgeDescriptor provided when merging schemas has an edge name that causes a
     name conflict with an existing field.
     """
+
+
+class SchemaRenameNameConflictError(SchemaTransformError):
+    """Raised when renaming types or fields cause name conflicts.
+
+    This may be raised if a field or type is renamed to conflict with another field or type.
+    """
+
+    name_conflicts: Dict[str, Set[str]]
+
+    def __init__(self, name_conflicts: Dict[str, Set[str]]):
+        """Record all renaming conflicts."""
+        super().__init__()
+        self.name_conflicts = name_conflicts
+
+    def __str__(self):
+        """Explain renaming conflict and the fix."""
+        return (
+            f"Applying the renaming would produce a schema with multiple types with the same name, "
+            f"which is an illegal state. Each entry here shows the type name that would appear in "
+            f"the renamed schema, along with all type names in the original schema that map to "
+            f"it:\n"
+            f"{self.name_conflicts}\n"
+            f"To fix this, ensure that no two types in the renamed schema have the same name by "
+            f"modifying the renamings argument of rename_schema."
+        )
 
 
 class InvalidCrossSchemaEdgeError(SchemaTransformError):

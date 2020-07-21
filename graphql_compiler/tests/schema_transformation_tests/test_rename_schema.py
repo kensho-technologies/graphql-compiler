@@ -11,7 +11,7 @@ from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, ren
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
-    SchemaNameConflictError,
+    SchemaRenameNameConflictError,
     SchemaTransformError,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
@@ -622,7 +622,7 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError):
             rename_schema(parse(schema_string), {"Human1": "Human", "Human2": "Human"})
 
     def test_clashing_type_single_rename(self):
@@ -647,7 +647,7 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError):
             rename_schema(parse(schema_string), {"Human2": "Human"})
 
     def test_clashing_type_one_unchanged_rename(self):
@@ -672,7 +672,7 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError):
             rename_schema(parse(schema_string), {"Human": "Human", "Human2": "Human"})
 
     def test_clashing_scalar_type_rename(self):
@@ -694,7 +694,7 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError):
             rename_schema(parse(schema_string), {"Human": "SCALAR"})
 
     def test_builtin_type_conflict_rename(self):
@@ -714,7 +714,7 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError):
             rename_schema(parse(schema_string), {"Human": "String"})
 
     def test_illegal_rename_start_with_number(self):
