@@ -290,7 +290,7 @@ def _check_for_cascading_type_suppression(
 def _check_for_unsupported_operation(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
 ) -> None:
-    """Check for unsupported renaming/ suppression operations."""
+    """Check for unsupported renaming or suppression operations."""
     _check_for_unsupported_scalar_operation(renamings, scalars)
     _ensure_no_unsupported_suppression(schema_ast, renamings)
 
