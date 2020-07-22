@@ -57,7 +57,9 @@ class SchemaRenameNameConflictError(SchemaTransformError):
 
     name_conflicts: Dict[str, Set[str]]
 
-    def __init__(self, name_conflicts: Dict[str, Set[str]], renamed_to_scalar_conflicts: Dict[str, str]) -> None:
+    def __init__(
+        self, name_conflicts: Dict[str, Set[str]], renamed_to_scalar_conflicts: Dict[str, str]
+    ) -> None:
         """Record all renaming conflicts."""
         super().__init__()
         self.name_conflicts = name_conflicts
@@ -67,16 +69,21 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         """Explain renaming conflict and the fix."""
         name_conflicts_message = ""
         if self.name_conflicts != {}:
-            name_conflicts_message = (            f"Applying the renaming would produce a schema with multiple types with the same name, "
-                f"which is an illegal state. Each entry here shows the type name that would appear in "
-                f"the renamed schema, along with all type names in the original schema that map to "
-                f"it: {self.name_conflicts}. To fix this, ensure that no two types in the renamed schema have the same name by "
-                f"modifying the renamings argument of rename_schema so that it does not map a type name to a name that a different type will have in the resulting schema."
+            name_conflicts_message = (
+                f"Applying the renaming would produce a schema with multiple types with the same "
+                f"name, which is an illegal state. Each entry here shows the type name that would "
+                f"appear in the renamed schema, along with all type names in the original schema "
+                f"that map to it: {self.name_conflicts}. To fix this, ensure that no two types in "
+                f"the renamed schema have the same name by modifying the renamings argument of "
+                f"rename_schema so that it does not map a type name to a name that a different "
+                f"type will have in the resulting schema."
             )
         renamed_to_scalar_conflicts_message = ""
         if self.renamed_to_scalar_conflicts != {}:
             renamed_to_scalar_conflicts_message = (
-                f"Additionally, applying the renaming would rename the following types to a name already taken by a scalar: {self.renamed_to_scalar_conflicts}. To fix this, ensure that no type name is mapped to a scalar's name."
+                f"Additionally, applying the renaming would rename the following types to a name "
+                f"already taken by a scalar: {self.renamed_to_scalar_conflicts}. To fix this, "
+                f"ensure that no type name is mapped to a scalar's name."
             )
         return "\n".join([name_conflicts_message, renamed_to_scalar_conflicts_message])
 

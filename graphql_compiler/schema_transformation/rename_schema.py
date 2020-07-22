@@ -355,7 +355,9 @@ def _rename_and_suppress_types(
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.name_conflicts != {} or visitor.renamed_to_scalar_conflicts != {}:
-        raise SchemaRenameNameConflictError(visitor.name_conflicts, visitor.renamed_to_scalar_conflicts)
+        raise SchemaRenameNameConflictError(
+            visitor.name_conflicts, visitor.renamed_to_scalar_conflicts
+        )
     return renamed_schema_ast, visitor.reverse_name_map
 
 
