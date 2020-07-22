@@ -239,11 +239,11 @@ def _validate_renamings(
         - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
           implementing an interface
     """
-    _check_for_cascading_type_suppression(schema_ast, renamings, query_type)
-    _check_for_unsupported_operation(schema_ast, renamings, scalars)
+    _ensure_no_cascading_type_suppressions(schema_ast, renamings, query_type)
+    _ensure_no_unsupported_operations(schema_ast, renamings, scalars)
 
 
-def _check_for_cascading_type_suppression(
+def _ensure_no_cascading_type_suppressions(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> None:
     """Check for fields with suppressed types or unions whose members were all suppressed."""
@@ -287,15 +287,15 @@ def _check_for_cascading_type_suppression(
         raise CascadingSuppressionError("\n".join(error_message_components))
 
 
-def _check_for_unsupported_operation(
+def _ensure_no_unsupported_operations(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
 ) -> None:
     """Check for unsupported renaming or suppression operations."""
-    _check_for_unsupported_scalar_operation(renamings, scalars)
-    _ensure_no_unsupported_suppression(schema_ast, renamings)
+    _ensure_no_unsupported_scalar_operations(renamings, scalars)
+    _ensure_no_unsupported_suppressions(schema_ast, renamings)
 
 
-def _check_for_unsupported_scalar_operation(
+def _ensure_no_unsupported_scalar_operations(
     renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
 ) -> None:
     """Check for unsupported scalar operations."""
@@ -312,7 +312,7 @@ def _check_for_unsupported_scalar_operation(
         )
 
 
-def _ensure_no_unsupported_suppression(
+def _ensure_no_unsupported_suppressions(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
 ) -> None:
     """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
