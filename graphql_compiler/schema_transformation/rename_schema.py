@@ -354,8 +354,8 @@ def _rename_and_suppress_types(
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
     renamed_schema_ast = visit(schema_ast, visitor)
-    if visitor.name_conflicts != {}:
-        raise SchemaRenameNameConflictError(visitor.name_conflicts)
+    if visitor.name_conflicts != {} or visitor.renamed_to_scalar_conflicts != {}:
+        raise SchemaRenameNameConflictError(visitor.name_conflicts, visitor.renamed_to_scalar_conflicts)
     return renamed_schema_ast, visitor.reverse_name_map
 
 
@@ -449,6 +449,10 @@ class RenameSchemaTypesVisitor(Visitor):
     name_conflicts: Dict[str, Set[str]]  # Collects naming conflict errors. If renaming
     # would result in multiple types being renamed to "Foo", name_conflicts will map "Foo" to an
     # set containing the name of each such type.
+    renamed_to_scalar_conflicts: Dict[str, str]  # Collects attempts to rename a type with a name
+    # already used by a scalar. If renamings tries to rename a type named "Foo" to "Bar" and there
+    # already exists a scalar named "Bar" in the schema, then
+    # renamed_to_scalar_conflicts["Foo"] == "Bar"
 
     def __init__(
         self,
@@ -471,6 +475,7 @@ class RenameSchemaTypesVisitor(Visitor):
         # Must contain unchanged names to prevent renaming conflicts and raise
         # SchemaNameConflictError when they arise.
         self.name_conflicts = {}
+        self.renamed_to_scalar_conflicts = {}
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
         self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
@@ -520,11 +525,7 @@ class RenameSchemaTypesVisitor(Visitor):
                 self.name_conflicts[new_name_string] = {self.reverse_name_map[new_name_string]}
             self.name_conflicts[new_name_string].add(name_string)
         if new_name_string in self.scalar_types or new_name_string in self.builtin_types:
-            raise SchemaRenameNameConflictError(
-                '"{}" was renamed to "{}", clashing with scalar "{}"'.format(
-                    name_string, new_name_string, new_name_string
-                )
-            )
+            self.renamed_to_scalar_conflicts[name_string] = new_name_string
 
         self.reverse_name_map[new_name_string] = name_string
         if new_name_string == name_string:
