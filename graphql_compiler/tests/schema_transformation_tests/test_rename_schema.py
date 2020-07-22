@@ -775,7 +775,7 @@ class TestRenameSchema(unittest.TestCase):
                     # specified_scalar_types is a FrozenDict whose keys are built-in scalar type
                     # names (e.g. "String")
                     return key  # Making an exception for Date and all built-in scalar types because
-                    # they are scalars and renaming/ suppressing hasn't been implemented yet
+                    # they are scalars and renaming and suppressing them hasn't been implemented yet
                 return "New" + key
 
         renamed_schema = rename_schema(parse(ISS.various_types_schema), PrefixNewDict())
