@@ -2,7 +2,7 @@
 from textwrap import dedent
 import unittest
 
-from graphql import parse
+from graphql import parse, specified_scalar_types
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
@@ -326,32 +326,19 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_scalar_rename(self):
-        renamed_schema = rename_schema(
-            parse(ISS.scalar_schema),
-            {"Human": "NewHuman", "Date": "NewDate", "String": "NewString"},
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.scalar_schema), {"Date": "NewDate"},
+            )
 
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type NewHuman {
-              id: String
-              birthday: Date
-            }
-
-            scalar Date
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
+    def test_builtin_rename(self):
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.list_schema),
+                {
+                    "String": "NewString"
+                },
+            )
 
     def test_union_rename(self):
         renamed_schema = rename_schema(
@@ -445,9 +432,7 @@ class TestRenameSchema(unittest.TestCase):
                 "Droid": "NewDroid",
                 "Character": "NewCharacter",
                 "Height": "NewHeight",
-                "Date": "NewDate",
                 "id": "NewId",
-                "String": "NewString",
             },
         )
         renamed_schema_string = dedent(
@@ -786,6 +771,9 @@ class TestRenameSchema(unittest.TestCase):
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
             def get(self, key, default=None):
+                if key == "Date" or key in specified_scalar_types.keys():
+                    return key  # Making an exception for Date and all built-in scalar types because
+                    # they are scalars and renaming/ suppressing hasn't been implemented yet
                 return "New" + key
 
         renamed_schema = rename_schema(parse(ISS.various_types_schema), PrefixNewDict())
