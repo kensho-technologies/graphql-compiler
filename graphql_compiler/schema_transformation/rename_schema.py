@@ -290,7 +290,7 @@ def _check_for_cascading_type_suppression(
 def _check_for_unsupported_operation(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
 ) -> None:
-    """Check for unsupported renaming/ suppression operations."""
+    """Check for unsupported renaming or suppression operations."""
     _check_for_unsupported_scalar_operation(renamings, scalars)
     _ensure_no_unsupported_suppression(schema_ast, renamings)
 
@@ -306,7 +306,7 @@ def _check_for_unsupported_scalar_operation(
             unsupported_scalar_operations[scalar] = renamings.get(scalar)
     if unsupported_scalar_operations != {}:
         raise NotImplementedError(
-            f"Scalar renaming/ suppression is not implemented yet, but renamings attempted to "
+            f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
             f"modify the following scalars: {unsupported_scalar_operations}. To fix this, remove "
             f"them from renamings."
         )
