@@ -84,6 +84,7 @@ from graphql import (
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
     build_ast_schema,
+    specified_scalar_types,
 )
 from graphql.language.visitor import IDLE, REMOVE, Visitor, VisitorAction, visit
 import six
@@ -209,7 +210,10 @@ def rename_schema(
 
 
 def _validate_renamings(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str, scalars: AbstractSet[str],
+    schema_ast: DocumentNode,
+    renamings: Mapping[str, Optional[str]],
+    query_type: str,
+    scalars: AbstractSet[str],
 ) -> None:
     """Validate the renamings argument before attempting to rename the schema.
 
@@ -493,7 +497,9 @@ class RenameSchemaTypesVisitor(Visitor):
         # reverse_name_map contains all non-suppressed types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
-        self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
+        self.builtin_types = frozenset(specified_scalar_types.keys())  # pylint: disable=E1101
+        # pylint produces a false positive-- see issue here:
+        # https://github.com/PyCQA/pylint/issues/3743
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT

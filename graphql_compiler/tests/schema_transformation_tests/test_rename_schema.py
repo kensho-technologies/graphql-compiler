@@ -334,10 +334,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_builtin_rename(self):
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.list_schema),
-                {
-                    "String": "NewString"
-                },
+                parse(ISS.list_schema), {"String": "NewString"},
             )
 
     def test_union_rename(self):
@@ -771,7 +768,12 @@ class TestRenameSchema(unittest.TestCase):
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
             def get(self, key, default=None):
-                if key == "Date" or key in specified_scalar_types.keys():
+                if key == "Date" or key in specified_scalar_types:  # pylint: disable=E1135
+                    # pylint produces a false positive when checking for membership for
+                    # specified_scalar_types-- see issue here:
+                    # https://github.com/PyCQA/pylint/issues/3743
+                    # specified_scalar_types is a FrozenDict whose keys are built-in scalar type
+                    # names (e.g. "String")
                     return key  # Making an exception for Date and all built-in scalar types because
                     # they are scalars and renaming/ suppressing hasn't been implemented yet
                 return "New" + key
