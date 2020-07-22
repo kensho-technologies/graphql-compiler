@@ -306,7 +306,7 @@ def _check_for_unsupported_scalar_operation(
             unsupported_scalar_operations[scalar] = renamings.get(scalar)
     if unsupported_scalar_operations != {}:
         raise NotImplementedError(
-            f"Scalar renaming/ suppression is not implemented yet, but renamings attempted to "
+            f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
             f"modify the following scalars: {unsupported_scalar_operations}. To fix this, remove "
             f"them from renamings."
         )
