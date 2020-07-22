@@ -16,6 +16,8 @@ _operator_definitions_for_non_null_values = {
     "starts_with": lambda left, right: left.startswith(right),
     "ends_with": lambda left, right: left.endswith(right),
     "in_collection": lambda left, right: left in right,
+    "&&": lambda left, right: left and right,
+    "||": lambda left, right: left or right,
 }
 
 
