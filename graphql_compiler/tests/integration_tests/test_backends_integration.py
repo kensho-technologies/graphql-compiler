@@ -555,6 +555,132 @@ class IntegrationTests(TestCase):
         for graphql_query, expected_results in queries:
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
+    @integration_fixtures
+    def test_recurse_duplication_regression(self) -> None:
+        parameters = {}
+        # (query, expected_results) pairs. All of them running with the same parameters.
+        # The queries are ran in the order specified here.
+        queries: List[Tuple[str, List[Dict[str, Any]]]] = [
+            # Query 1: Get all parents
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf {
+                            name @output(out_name: "father")
+                        }
+                    }
+                }""",
+                [
+                    {'animal': 'Animal 1', 'father': 'Animal 1'},
+                    {'animal': 'Animal 2', 'father': 'Animal 1'},
+                    {'animal': 'Animal 3', 'father': 'Animal 1'},
+                    {'animal': 'Animal 4', 'father': 'Animal 3'},
+                ],
+            ),
+            # Query 2: Get all grandparents
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf {
+                            in_Animal_ParentOf {
+                                name @output(out_name: "grandfather")
+                            }
+                        }
+                    }
+                }""",
+                [
+                    {'animal': 'Animal 1', 'grandfather': 'Animal 1'},
+                    {'animal': 'Animal 2', 'grandfather': 'Animal 1'},
+                    {'animal': 'Animal 3', 'grandfather': 'Animal 1'},
+                    {'animal': 'Animal 4', 'grandfather': 'Animal 1'},
+                ],
+            ),
+            # Query 3: Use recursion to get self, parent and grandparent
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf @recurse(depth: 2) {
+                            name @output(out_name: "ancestor")
+                        }
+                    }
+                }""",
+                [
+                    {'animal': 'Animal 1', 'ancestor': 'Animal 1'},  # self
+                    {'animal': 'Animal 1', 'ancestor': 'Animal 1'},  # parent
+                    {'animal': 'Animal 1', 'ancestor': 'Animal 1'},  # grandparent
+                    {'animal': 'Animal 2', 'ancestor': 'Animal 2'},  # self
+                    {'animal': 'Animal 2', 'ancestor': 'Animal 1'},  # parent
+                    {'animal': 'Animal 2', 'ancestor': 'Animal 1'},  # grandparent
+                    {'animal': 'Animal 3', 'ancestor': 'Animal 3'},  # self
+                    {'animal': 'Animal 3', 'ancestor': 'Animal 1'},  # parent
+                    {'animal': 'Animal 3', 'ancestor': 'Animal 1'},  # grandparent
+                    {'animal': 'Animal 4', 'ancestor': 'Animal 4'},  # self
+                    {'animal': 'Animal 4', 'ancestor': 'Animal 3'},  # parent
+                    {'animal': 'Animal 4', 'ancestor': 'Animal 1'},  # grandparent
+                ],
+            ),
+            # Query 4: Unfold recursion to omit self
+            #
+            #  XXX: This output is incorrect. I'm just showing the current output. Results
+            #       are duplicated. This is because the starting point for the recursive
+            #       cte is a column of the base cte that repeats. Notice that the number
+            #       of duplicates corresponds to the number of siblings of the root animal.
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf {
+                            in_Animal_ParentOf @recurse(depth: 1) {
+                                name @output(out_name: "ancestor")
+                            }
+                        }
+                    }
+                }""",
+                [
+                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # parent
+                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # grandparent
+                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # parent (duplicate)
+                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # grandparent(duplicate)
+                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # parent (duplicate)
+                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # grandparent (duplicate)
+
+                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # parent
+                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # grandparent
+                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # parent (duplicate)
+                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # grandparent (duplicate)
+                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # parent (duplicate)
+                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # grandparent (duplicate)
+
+                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # parent
+                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # grandparent
+                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # parent (duplicate)
+                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # grandparent (duplicate)
+                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # parent (duplicate)
+                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # grandparent (duplicate)
+
+                    {'animal': 'Animal 4', "ancestor": "Animal 1"}, # parent
+                    {'animal': 'Animal 4', "ancestor": "Animal 3"}, # grandparent
+                ],
+            ),
+        ]
+
+        # TODO(bojanserafimov): Only testing in MSSQL because none of our backends agree on recurse
+        #                       semantics when multiple paths to the same output are inolved:
+        #                       - Our Match backend would represent each result once, even though it
+        #                         was reached multiple times by different paths.
+        #                       - Our SQL backend would duplicate the output row once for each path
+        #                       - Our Neo4j backend would find all different paths that use each
+        #                         edge at most once, and duplicate the result for each one.
+        for graphql_query, expected_results in queries:
+            self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
+
     @use_all_backends(except_backends=(test_backend.REDISGRAPH,))  # Not implemented yet
     @integration_fixtures
     def test_fold_basic(self, backend_name: str) -> None:
