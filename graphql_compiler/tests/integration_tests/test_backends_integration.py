@@ -557,7 +557,7 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_recurse_duplication_regression(self) -> None:
-        parameters = {}
+        parameters: Dict[str, Any] = {}
         # (query, expected_results) pairs. All of them running with the same parameters.
         # The queries are ran in the order specified here.
         queries: List[Tuple[str, List[Dict[str, Any]]]] = [
@@ -573,10 +573,10 @@ class IntegrationTests(TestCase):
                     }
                 }""",
                 [
-                    {'animal': 'Animal 1', 'father': 'Animal 1'},
-                    {'animal': 'Animal 2', 'father': 'Animal 1'},
-                    {'animal': 'Animal 3', 'father': 'Animal 1'},
-                    {'animal': 'Animal 4', 'father': 'Animal 3'},
+                    {"animal": "Animal 1", "father": "Animal 1"},
+                    {"animal": "Animal 2", "father": "Animal 1"},
+                    {"animal": "Animal 3", "father": "Animal 1"},
+                    {"animal": "Animal 4", "father": "Animal 3"},
                 ],
             ),
             # Query 2: Get all grandparents
@@ -593,10 +593,10 @@ class IntegrationTests(TestCase):
                     }
                 }""",
                 [
-                    {'animal': 'Animal 1', 'grandfather': 'Animal 1'},
-                    {'animal': 'Animal 2', 'grandfather': 'Animal 1'},
-                    {'animal': 'Animal 3', 'grandfather': 'Animal 1'},
-                    {'animal': 'Animal 4', 'grandfather': 'Animal 1'},
+                    {"animal": "Animal 1", "grandfather": "Animal 1"},
+                    {"animal": "Animal 2", "grandfather": "Animal 1"},
+                    {"animal": "Animal 3", "grandfather": "Animal 1"},
+                    {"animal": "Animal 4", "grandfather": "Animal 1"},
                 ],
             ),
             # Query 3: Use recursion to get self, parent and grandparent
@@ -611,18 +611,18 @@ class IntegrationTests(TestCase):
                     }
                 }""",
                 [
-                    {'animal': 'Animal 1', 'ancestor': 'Animal 1'},  # self
-                    {'animal': 'Animal 1', 'ancestor': 'Animal 1'},  # parent
-                    {'animal': 'Animal 1', 'ancestor': 'Animal 1'},  # grandparent
-                    {'animal': 'Animal 2', 'ancestor': 'Animal 2'},  # self
-                    {'animal': 'Animal 2', 'ancestor': 'Animal 1'},  # parent
-                    {'animal': 'Animal 2', 'ancestor': 'Animal 1'},  # grandparent
-                    {'animal': 'Animal 3', 'ancestor': 'Animal 3'},  # self
-                    {'animal': 'Animal 3', 'ancestor': 'Animal 1'},  # parent
-                    {'animal': 'Animal 3', 'ancestor': 'Animal 1'},  # grandparent
-                    {'animal': 'Animal 4', 'ancestor': 'Animal 4'},  # self
-                    {'animal': 'Animal 4', 'ancestor': 'Animal 3'},  # parent
-                    {'animal': 'Animal 4', 'ancestor': 'Animal 1'},  # grandparent
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # self
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 2", "ancestor": "Animal 2"},  # self
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 3", "ancestor": "Animal 3"},  # self
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 4", "ancestor": "Animal 4"},  # self
+                    {"animal": "Animal 4", "ancestor": "Animal 3"},  # parent
+                    {"animal": "Animal 4", "ancestor": "Animal 1"},  # grandparent
                 ],
             ),
             # Query 4: Unfold recursion to omit self
@@ -644,29 +644,26 @@ class IntegrationTests(TestCase):
                     }
                 }""",
                 [
-                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # parent
-                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # grandparent
-                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # parent (duplicate)
-                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # grandparent(duplicate)
-                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # parent (duplicate)
-                    {'animal': 'Animal 1', "ancestor": "Animal 1"}, # grandparent (duplicate)
-
-                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # parent
-                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # grandparent
-                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # parent (duplicate)
-                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # grandparent (duplicate)
-                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # parent (duplicate)
-                    {'animal': 'Animal 2', "ancestor": "Animal 1"}, # grandparent (duplicate)
-
-                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # parent
-                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # grandparent
-                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # parent (duplicate)
-                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # grandparent (duplicate)
-                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # parent (duplicate)
-                    {'animal': 'Animal 3', "ancestor": "Animal 1"}, # grandparent (duplicate)
-
-                    {'animal': 'Animal 4', "ancestor": "Animal 1"}, # parent
-                    {'animal': 'Animal 4', "ancestor": "Animal 3"}, # grandparent
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent (duplicate)
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent(duplicate)
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent (duplicate)
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent (duplicate)
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent (duplicate)
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent (duplicate)
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent (duplicate)
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent (duplicate)
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent (duplicate)
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent (duplicate)
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent (duplicate)
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent (duplicate)
+                    {"animal": "Animal 4", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 4", "ancestor": "Animal 3"},  # grandparent
                 ],
             ),
         ]
