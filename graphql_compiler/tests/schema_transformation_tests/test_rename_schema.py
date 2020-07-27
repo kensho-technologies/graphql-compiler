@@ -2,7 +2,7 @@
 from textwrap import dedent
 import unittest
 
-from graphql import parse, specified_scalar_types
+from graphql import GraphQLSchema, build_ast_schema, parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
@@ -13,6 +13,7 @@ from ...schema_transformation.utils import (
     InvalidTypeNameError,
     SchemaNameConflictError,
     SchemaTransformError,
+    get_scalar_names,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
 
@@ -767,18 +768,18 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
+            def __init__(self, schema: GraphQLSchema):
+                self.schema = schema
+
             def get(self, key, default=None):
-                if key == "Date" or key in specified_scalar_types:  # pylint: disable=E1135
-                    # pylint produces a false positive when checking for membership for
-                    # specified_scalar_types-- see issue here:
-                    # https://github.com/PyCQA/pylint/issues/3743
-                    # specified_scalar_types is a FrozenDict whose keys are built-in scalar type
-                    # names (e.g. "String")
-                    return key  # Making an exception for Date and all built-in scalar types because
-                    # they are scalars and renaming and suppressing them hasn't been implemented yet
+                if key in get_scalar_names(self.schema):
+                    # Making an exception for scalar types because renaming and suppressing them
+                    # hasn't been implemented yet
+                    return key
                 return "New" + key
 
-        renamed_schema = rename_schema(parse(ISS.various_types_schema), PrefixNewDict())
+        schema = parse(ISS.various_types_schema)
+        renamed_schema = rename_schema(schema, PrefixNewDict(build_ast_schema(schema)))
         renamed_schema_string = dedent(
             """\
             schema {
