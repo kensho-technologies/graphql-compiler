@@ -8,27 +8,7 @@ from ..blocks import Filter
 from ..compiler_entities import Expression
 from ..expressions import BinaryComposition, LocalField
 from ..match_query import MatchQuery, MatchStep
-from .utils import BetweenClause
-
-
-def _expression_list_to_conjunction(expression_list: List[Expression]) -> Expression:
-    """Return an Expression that is the `&&` of all the expressions in the given list."""
-    if not isinstance(expression_list, list):
-        raise AssertionError(
-            "Expected list. Received {}: "
-            "{}".format(type(expression_list).__name__, expression_list)
-        )
-    if len(expression_list) == 0:
-        raise AssertionError(
-            "Received empty expression_list "
-            "(function should never be called with empty list): "
-            "{}".format(expression_list)
-        )
-    elif len(expression_list) == 1:
-        return expression_list[0]
-    else:
-        remaining_conjunction = _expression_list_to_conjunction(expression_list[1:])
-        return BinaryComposition("&&", expression_list[0], remaining_conjunction)
+from .utils import BetweenClause, expression_list_to_conjunction
 
 
 def _extract_conjuction_elements_from_expression(expression: Expression) -> Iterable[Expression]:
@@ -94,6 +74,12 @@ def _construct_field_operator_expression_dict(
 
             field_name = left_clause.field_name
             field_type = left_clause.field_type
+            if field_type is None:
+                raise AssertionError(
+                    f"Unexpectedly encountered untyped clause while performing BETWEEN lowering, "
+                    f"this is a bug: {left_clause}"
+                )
+
             field_name_to_type[field_name] = field_type
             expressions_dict = field_name_to_expressions.setdefault(field_name, {})
             expressions_dict.setdefault(new_expression.operator, []).append(new_expression)
@@ -138,7 +124,7 @@ def _lower_expressions_to_between(base_expression: Expression) -> Expression:
                     new_expression_deque.extend(expression)
 
         if lowering_occurred:
-            return _expression_list_to_conjunction(list(new_expression_deque))
+            return expression_list_to_conjunction(list(new_expression_deque))
         else:
             return base_expression
 
