@@ -3,9 +3,8 @@
 from typing import Any, Dict, List, Optional, Tuple
 
 import six
-from typing_extensions import TypedDict
 
-from ...compiler.compiler_entities import BasicBlockT
+from ...typedefs import TypedDict
 from ..blocks import (
     BasicBlock,
     ConstructResult,
@@ -18,6 +17,7 @@ from ..blocks import (
     Traverse,
     Unfold,
 )
+from ..compiler_entities import BasicBlockT
 from ..expressions import (
     BinaryComposition,
     ContextField,
