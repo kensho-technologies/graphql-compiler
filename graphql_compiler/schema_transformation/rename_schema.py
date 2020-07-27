@@ -303,7 +303,7 @@ def _ensure_no_unsupported_scalar_operations(
     for scalar in scalars:
         if renamings.get(scalar, scalar) != scalar:
             # Then it either attempts to rename or suppress the scalar.
-            unsupported_scalar_operations[scalar] = renamings.get(scalar)
+            unsupported_scalar_operations[scalar] = renamings[scalar]
     if unsupported_scalar_operations != {}:
         raise NotImplementedError(
             f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
@@ -497,7 +497,7 @@ class RenameSchemaTypesVisitor(Visitor):
         # reverse_name_map contains all non-suppressed types, including those that were unchanged
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
-        
+
         # pylint produces a false positive-- see issue here:
         # https://github.com/PyCQA/pylint/issues/3743
         self.builtin_types = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
