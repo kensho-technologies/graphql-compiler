@@ -302,9 +302,10 @@ def _ensure_no_unsupported_scalar_operations(
     unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
     for scalar in scalars:
         if renamings.get(scalar, scalar) != scalar:
-            # Then it either attempts to rename or suppress the scalar.
+            # renamings.get(scalar, scalar) returns something that is not scalar iff it attempts to
+            # do something with the scalar (i.e. renaming or suppressing it)
             unsupported_scalar_operations[scalar] = renamings[scalar]
-    if unsupported_scalar_operations != {}:
+    if unsupported_scalar_operations:
         raise NotImplementedError(
             f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
             f"modify the following scalars: {unsupported_scalar_operations}. To fix this, remove "
