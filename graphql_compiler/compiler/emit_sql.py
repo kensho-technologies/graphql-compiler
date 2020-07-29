@@ -1028,7 +1028,7 @@ class CompilationState(object):
             # don't.
             # This optimization is absolutely necessary for queries with highly selective filters before
             # the recursion. It improves performance by a factor of the filter selectivity,
-            # which can go up to 1 million times in common queries.
+            # which can be 1 million times or more in common queries.
             base = base.where(
                 base_alias.c[primary_key].in_(sqlalchemy.select([previous_alias.c[primary_key]]))
             )
