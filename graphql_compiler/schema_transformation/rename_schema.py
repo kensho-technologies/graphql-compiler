@@ -84,6 +84,7 @@ from graphql import (
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
     build_ast_schema,
+    specified_scalar_types,
 )
 from graphql.language.visitor import IDLE, REMOVE, Visitor, VisitorAction, visit
 import six
@@ -188,7 +189,7 @@ def rename_schema(
     query_type = get_query_type_name(schema)
     scalars = get_scalar_names(schema)
 
-    _validate_renamings(schema_ast, renamings, query_type)
+    _validate_renamings(schema_ast, renamings, query_type, scalars)
 
     # Rename types, interfaces, enums, unions and suppress types, unions
     schema_ast, reverse_name_map = _rename_and_suppress_types(
@@ -209,13 +210,17 @@ def rename_schema(
 
 
 def _validate_renamings(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+    schema_ast: DocumentNode,
+    renamings: Mapping[str, Optional[str]],
+    query_type: str,
+    scalars: AbstractSet[str],
 ) -> None:
     """Validate the renamings argument before attempting to rename the schema.
 
     Check for fields with suppressed types or unions whose members were all suppressed. Also,
     confirm renamings contains no enums, interfaces, or interface implementation suppressions
-    because that hasn't been implemented yet.
+    because that hasn't been implemented yet. Confirm that no scalars would be suppressed or
+    renamed.
 
     The input AST will not be modified.
 
@@ -226,17 +231,19 @@ def _validate_renamings(
         renamings: maps original type name to renamed name or None (for type suppression). Any name
                    not in the dict will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
+        scalars: set of all scalars used in the schema, including user defined scalars and used
+                 builtin scalars, excluding unused builtins
 
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
         - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
           implementing an interface
     """
-    _check_for_cascading_type_suppression(schema_ast, renamings, query_type)
-    _ensure_no_unsupported_suppression(schema_ast, renamings)
+    _ensure_no_cascading_type_suppressions(schema_ast, renamings, query_type)
+    _ensure_no_unsupported_operations(schema_ast, renamings, scalars)
 
 
-def _check_for_cascading_type_suppression(
+def _ensure_no_cascading_type_suppressions(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
 ) -> None:
     """Check for fields with suppressed types or unions whose members were all suppressed."""
@@ -280,7 +287,33 @@ def _check_for_cascading_type_suppression(
         raise CascadingSuppressionError("\n".join(error_message_components))
 
 
-def _ensure_no_unsupported_suppression(
+def _ensure_no_unsupported_operations(
+    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
+) -> None:
+    """Check for unsupported renaming or suppression operations."""
+    _ensure_no_unsupported_scalar_operations(renamings, scalars)
+    _ensure_no_unsupported_suppressions(schema_ast, renamings)
+
+
+def _ensure_no_unsupported_scalar_operations(
+    renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
+) -> None:
+    """Check for unsupported scalar operations."""
+    unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
+    for scalar in scalars:
+        if renamings.get(scalar, scalar) != scalar:
+            # renamings.get(scalar, scalar) returns something that is not scalar iff it attempts to
+            # do something with the scalar (i.e. renaming or suppressing it)
+            unsupported_scalar_operations[scalar] = renamings[scalar]
+    if unsupported_scalar_operations:
+        raise NotImplementedError(
+            f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
+            f"modify the following scalars: {unsupported_scalar_operations}. To fix this, remove "
+            f"them from renamings."
+        )
+
+
+def _ensure_no_unsupported_suppressions(
     schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
 ) -> None:
     """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
@@ -480,7 +513,10 @@ class RenameSchemaTypesVisitor(Visitor):
         self.renamed_to_scalar_conflicts = {}
         self.query_type = query_type
         self.scalar_types = frozenset(scalar_types)
-        self.builtin_types = frozenset({"String", "Int", "Float", "Boolean", "ID"})
+
+        # pylint produces a false positive-- see issue here:
+        # https://github.com/PyCQA/pylint/issues/3743
+        self.builtin_types = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT

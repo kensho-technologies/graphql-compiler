@@ -2,7 +2,7 @@
 from textwrap import dedent
 import unittest
 
-from graphql import parse
+from graphql import GraphQLSchema, build_ast_schema, parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
@@ -13,6 +13,7 @@ from ...schema_transformation.utils import (
     InvalidTypeNameError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
+    get_scalar_names,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
 
@@ -326,32 +327,16 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_scalar_rename(self):
-        renamed_schema = rename_schema(
-            parse(ISS.scalar_schema),
-            {"Human": "NewHuman", "Date": "NewDate", "String": "NewString"},
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.scalar_schema), {"Date": "NewDate"},
+            )
 
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type NewHuman {
-              id: String
-              birthday: Date
-            }
-
-            scalar Date
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
+    def test_builtin_rename(self):
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.list_schema), {"String": "NewString"},
+            )
 
     def test_union_rename(self):
         renamed_schema = rename_schema(
@@ -445,9 +430,7 @@ class TestRenameSchema(unittest.TestCase):
                 "Droid": "NewDroid",
                 "Character": "NewCharacter",
                 "Height": "NewHeight",
-                "Date": "NewDate",
                 "id": "NewId",
-                "String": "NewString",
             },
         )
         renamed_schema_string = dedent(
@@ -785,10 +768,18 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_rename_using_dict_like_prefixer_class(self):
         class PrefixNewDict(object):
+            def __init__(self, schema: GraphQLSchema):
+                self.schema = schema
+
             def get(self, key, default=None):
+                if key in get_scalar_names(self.schema):
+                    # Making an exception for scalar types because renaming and suppressing them
+                    # hasn't been implemented yet
+                    return key
                 return "New" + key
 
-        renamed_schema = rename_schema(parse(ISS.various_types_schema), PrefixNewDict())
+        schema = parse(ISS.various_types_schema)
+        renamed_schema = rename_schema(schema, PrefixNewDict(build_ast_schema(schema)))
         renamed_schema_string = dedent(
             """\
             schema {
