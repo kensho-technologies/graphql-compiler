@@ -1014,10 +1014,13 @@ class CompilationState(object):
         used_columns = sorted(self._used_columns[self._current_location.query_path])
 
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
+        base_alias = self._current_alias.alias()
         base = sqlalchemy.select(
-            [previous_alias.c[col].label(col) for col in used_columns]
-            + [previous_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
-        ).cte(recursive=True)
+            [base_alias.c[col].label(col) for col in used_columns]
+            + [base_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
+        ).where(base_alias.c[primary_key].in_(
+            sqlalchemy.select([previous_alias.c[primary_key]])
+        )).cte(recursive=True)
 
         # The recursive step selects all needed columns, increments the depth, and joins to the base
         step = self._current_alias.alias()

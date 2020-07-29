@@ -626,11 +626,6 @@ class IntegrationTests(TestCase):
                 ],
             ),
             # Query 4: Unfold recursion to omit self
-            #
-            #  XXX: This output is incorrect. I'm just showing the current output. Results
-            #       are duplicated. This is because the starting point for the recursive
-            #       cte is a column of the base cte that repeats. Notice that the number
-            #       of duplicates corresponds to the number of siblings of the root animal.
             (
                 """
                 {
@@ -646,22 +641,10 @@ class IntegrationTests(TestCase):
                 [
                     {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent
                     {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent
-                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent (duplicate)
-                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent(duplicate)
-                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent (duplicate)
-                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent (duplicate)
                     {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent
                     {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent
-                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent (duplicate)
-                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent (duplicate)
-                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent (duplicate)
-                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent (duplicate)
                     {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent
                     {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent
-                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent (duplicate)
-                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent (duplicate)
-                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent (duplicate)
-                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent (duplicate)
                     {"animal": "Animal 4", "ancestor": "Animal 1"},  # parent
                     {"animal": "Animal 4", "ancestor": "Animal 3"},  # grandparent
                 ],
