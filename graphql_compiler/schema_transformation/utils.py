@@ -81,11 +81,11 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         renamed_to_scalar_conflicts_message = ""
         if self.renamed_to_scalar_conflicts != {}:
             renamed_to_scalar_conflicts_message = (
-                f"Additionally, applying the renaming would rename the following types to a name "
-                f"already taken by a scalar: {self.renamed_to_scalar_conflicts}. To fix this, "
-                f"ensure that no type name is mapped to a scalar's name."
+                f"Applying the renaming would rename the following types to a name already taken "
+                f"by a scalar: {self.renamed_to_scalar_conflicts}. To fix this, ensure that no "
+                f"type name is mapped to a scalar's name."
             )
-        return "\n".join([name_conflicts_message, renamed_to_scalar_conflicts_message])
+        return "".join([name_conflicts_message, renamed_to_scalar_conflicts_message])
 
 
 class InvalidCrossSchemaEdgeError(SchemaTransformError):
