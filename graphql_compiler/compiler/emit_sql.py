@@ -1027,7 +1027,7 @@ class CompilationState(object):
             # The SQL database could do this predicate pushdown itself, but most implementations
             # don't.
             # This optimization is absolutely necessary for queries with highly selective filters before
-            # the recursion. It improves performance by a factor of the filter selectivity,
+            # the recursion. It improves performance by a factor of (1 / filter selectivity),
             # which can be 1 million times or more in common queries.
             base = base.where(
                 base_alias.c[primary_key].in_(sqlalchemy.select([previous_alias.c[primary_key]]))
