@@ -1026,7 +1026,7 @@ class CompilationState(object):
             # will not be discarded when the recursive cte is joined to the rest of the query.
             # The SQL database could do this predicate pushdown itself, but most implementations
             # don't.
-            # This optimization is absolutely necessary for queries with strong filters before
+            # This optimization is absolutely necessary for queries with highly selective filters before
             # the recursion. It improves performance by a factor of the filter selectivity,
             # which can go up to 1 million times in common queries.
             base = base.where(
