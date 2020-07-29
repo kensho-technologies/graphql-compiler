@@ -998,7 +998,7 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         primary_key = self._get_current_primary_key_name("@recurse")
 
-        # Wrap the query so far into a cte if it would speed up the recursive query.
+        # Wrap the query so far into a CTE if it would speed up the recursive query.
         if self._recurse_needs_cte:
             self._wrap_into_cte()
 
@@ -1023,11 +1023,11 @@ class CompilationState(object):
         )
         if self._recurse_needs_cte:
             # Optimization: Only compute the recursion for the valid starting points -- ones that
-            # will not be discarded when the recursive cte is joined to the rest of the query.
+            # will not be discarded when the recursive CTE is joined to the rest of the query.
             # The SQL database could do this predicate pushdown itself, but most implementations
             # don't.
-            # This optimization is absolutely necessary for queries with highly selective filters before
-            # the recursion. It improves performance by a factor of (1 / filter selectivity),
+            # This optimization is absolutely necessary for queries with highly selective filters
+            # before the recursion. It improves performance by a factor of (1 / filter selectivity),
             # which can be 1 million times or more in common queries.
             base = base.where(
                 base_alias.c[primary_key].in_(sqlalchemy.select([previous_alias.c[primary_key]]))
