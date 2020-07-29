@@ -557,9 +557,20 @@ class IntegrationTests(TestCase):
 
     @integration_fixtures
     def test_recurse_duplication_regression(self) -> None:
+        # Regression test for the following bug:
+        # https://github.com/kensho-technologies/graphql-compiler/pull/887
+
         parameters: Dict[str, Any] = {}
         # (query, expected_results) pairs. All of them running with the same parameters.
-        # The queries are ran in the order specified here.
+        #
+        # The queries are ran in the order specified here. The last query checks that a
+        # many-to-one traversal before recursion does not cause duplicate results to appear.
+        # The preceding queries help justify the expected result of the last query in
+        # a more readable way, and guard against changes in the test data:
+        # - If the test data changes and breaks the last test, the preceding tests
+        #   will point out that this is not a bug in recursion, but a change in data.
+        # - If the test data changes, the last test passes, but it no longer serves as
+        #   a good regression test for this bug, the preceding tests will fail.
         queries: List[Tuple[str, List[Dict[str, Any]]]] = [
             # Query 1: Get all parents
             (
