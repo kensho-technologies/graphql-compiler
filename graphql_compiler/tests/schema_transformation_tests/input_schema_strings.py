@@ -333,45 +333,6 @@ class InputSchemaStrings(object):
     """
     )
 
-    multiple_scalars_schema = dedent(
-        """\
-        schema {
-          query: SchemaQuery
-        }
-
-        scalar Date
-
-        scalar DateTime
-
-        scalar Decimal
-
-        enum Height {
-          TALL
-          SHORT
-        }
-
-        interface Character {
-          id: String
-        }
-
-        type Human implements Character {
-          id: String
-          name: String
-          birthday: Date
-        }
-
-        type Giraffe implements Character {
-          id: String
-          height: Height
-        }
-
-        type SchemaQuery {
-          Human: Human
-          Giraffe: Giraffe
-        }
-    """
-    )
-
     same_field_schema = dedent(
         """\
         schema {
