@@ -1022,6 +1022,13 @@ class CompilationState(object):
             + [base_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
         )
         if self._recurse_needs_cte:
+            # Optimization: Only compute the recursion for the valid starting points -- ones that
+            # will not be discarded when the recursive cte is joined to the rest of the query.
+            # The SQL database could do this predicate pushdown itself, but most implementations
+            # don't.
+            # This optimization is absolutely necessary for queries with strong filters before
+            # the recursion. It improves performance by a factor of the filter selectivity,
+            # which can go up to 1 million times in common queries.
             base = base.where(
                 base_alias.c[primary_key].in_(sqlalchemy.select([previous_alias.c[primary_key]]))
             )
