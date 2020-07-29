@@ -133,7 +133,7 @@ def _find_used_columns(
 
     # Columns used in the base case of CTE recursions should be made available from parent scope
     # TODO(bojanserafimov): Some of these are no longer needed, since we don't select from
-    #                       the base cete, but only semijoin to its primary key now.
+    #                       the base cte, but only semijoin to its primary key now.
     for location, _ in ir.query_metadata_table.registered_locations:
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
             traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
