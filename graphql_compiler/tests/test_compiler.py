@@ -2319,8 +2319,6 @@ class CompilerTests(unittest.TestCase):
                     0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
-                WHERE
-                    [Animal_2].uuid IN (SELECT [Animal_1].uuid FROM db_1.schema_1.[Animal] AS [Animal_1])
                 UNION ALL
                 SELECT
                     [Animal_3].name AS name,
@@ -2357,8 +2355,6 @@ class CompilerTests(unittest.TestCase):
                     0 AS __cte_depth
                 FROM
                     schema_1."Animal" AS "Animal_2"
-                WHERE
-                    "Animal_2".uuid IN (SELECT "Animal_1".uuid FROM schema_1."Animal" AS "Animal_1")
                 UNION ALL
                 SELECT
                     "Animal_3".name AS name,
@@ -2865,8 +2861,6 @@ class CompilerTests(unittest.TestCase):
                     0 AS __cte_depth
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_2]
-                WHERE
-                    [Animal_2].uuid IN (SELECT [Animal_1].uuid FROM db_1.schema_1.[Animal] AS [Animal_1])
                 UNION ALL
                 SELECT
                     [Animal_3].color AS color,
@@ -2902,8 +2896,6 @@ class CompilerTests(unittest.TestCase):
                     0 AS __cte_depth
                 FROM
                     schema_1."Animal" AS "Animal_2"
-                WHERE
-                    "Animal_2".uuid IN (SELECT "Animal_1".uuid FROM schema_1."Animal" AS "Animal_1")
                 UNION ALL
                 SELECT
                     "Animal_3".color AS color,
@@ -2926,7 +2918,6 @@ class CompilerTests(unittest.TestCase):
             WHERE
                 anon_1.color = %(wanted)s
         """
-        # TODO(bojanserafimov): Should we semijoin if there's no base cte? Seems incorrect.
         check_test_data(
             self,
             test_data,
@@ -5468,8 +5459,6 @@ class CompilerTests(unittest.TestCase):
                 0 AS __cte_depth
             FROM
                 db_1.schema_1.[Animal] AS [Animal_2]
-            WHERE
-                [Animal_2].uuid IN (SELECT [Animal_1].uuid FROM db_1.schema_1.[Animal] AS [Animal_1])
             UNION ALL
             SELECT
                 [Animal_3].lives_in AS lives_in,
@@ -9726,7 +9715,8 @@ class CompilerTests(unittest.TestCase):
                     0 AS __cte_depth
                 FROM
                     schema_1."Animal" AS "Animal_3"
-                WHERE "Animal_3".uuid IN (SELECT anon_1."Animal_in_Animal_ParentOf__uuid" FROM anon_1)
+                WHERE "Animal_3".uuid IN (
+                    SELECT anon_1."Animal_in_Animal_ParentOf__uuid" FROM anon_1)
                 UNION ALL
                 SELECT
                     "Animal_4".name AS name,
