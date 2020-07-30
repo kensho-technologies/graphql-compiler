@@ -488,6 +488,10 @@ class RenameSchemaTypesVisitor(Visitor):
     # already used by a scalar. If renamings tries to rename a type named "Foo" to "Bar" and there
     # already exists a scalar named "Bar" in the schema, then
     # renamed_to_scalar_conflicts["Foo"] == "Bar"
+    reverse_name_map: Dict[str, str]  # From renamed type name to original type name
+    # reverse_name_map contains all non-suppressed types, including those that were unchanged. Must
+    # contain unchanged names to prevent renaming conflicts and raise SchemaNameConflictError when
+    # they arise.
 
     def __init__(
         self,
@@ -505,10 +509,7 @@ class RenameSchemaTypesVisitor(Visitor):
                           and any builtin scalars that were used
         """
         self.renamings = renamings
-        self.reverse_name_map: Dict[str, str] = {}  # From renamed type name to original type name
-        # reverse_name_map contains all non-suppressed types, including those that were unchanged.
-        # Must contain unchanged names to prevent renaming conflicts and raise
-        # SchemaNameConflictError when they arise.
+        self.reverse_name_map = {}
         self.name_conflicts = {}
         self.renamed_to_scalar_conflicts = {}
         self.query_type = query_type
