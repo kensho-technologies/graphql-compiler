@@ -56,6 +56,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
     """
 
     name_conflicts: Dict[str, Set[str]]
+    renamed_to_scalar_conflicts: Dict[str, str]
 
     def __init__(
         self, name_conflicts: Dict[str, Set[str]], renamed_to_scalar_conflicts: Dict[str, str]
@@ -68,7 +69,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
         name_conflicts_message = ""
-        if self.name_conflicts != {}:
+        if self.name_conflicts:
             name_conflicts_message = (
                 f"Applying the renaming would produce a schema with multiple types with the same "
                 f"name, which is an illegal state. Each entry here shows the type name that would "
@@ -79,13 +80,13 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                 f"type will have in the resulting schema."
             )
         renamed_to_scalar_conflicts_message = ""
-        if self.renamed_to_scalar_conflicts != {}:
+        if self.renamed_to_scalar_conflicts:
             renamed_to_scalar_conflicts_message = (
                 f"Applying the renaming would rename the following types to a name already taken "
                 f"by a scalar: {self.renamed_to_scalar_conflicts}. To fix this, ensure that no "
                 f"type name is mapped to a scalar's name."
             )
-        return "".join([name_conflicts_message, renamed_to_scalar_conflicts_message])
+        return " ".join(filter(None, [name_conflicts_message, renamed_to_scalar_conflicts_message]))
 
 
 class InvalidCrossSchemaEdgeError(SchemaTransformError):
