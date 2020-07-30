@@ -71,20 +71,19 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         name_conflicts_message = ""
         if self.name_conflicts:
             name_conflicts_message = (
-                f"Applying the renaming would produce a schema with multiple types with the same "
-                f"name, which is an illegal state. Each entry here shows the type name that would "
-                f"appear in the renamed schema, along with all type names in the original schema "
-                f"that map to it: {self.name_conflicts}. To fix this, ensure that no two types in "
-                f"the renamed schema have the same name by modifying the renamings argument of "
-                f"rename_schema so that it does not map a type name to a name that a different "
-                f"type will have in the resulting schema."
+                f"Applying the renaming would produce a schema in which multiple types have the "
+                f"same name, which is an illegal schema state. The name_conflicts dict describes "
+                f"these problems: {self.name_conflicts}. For each key k in name_conflicts, "
+                f"name_conflicts[k] is the set of types in the original schema that get mapped to "
+                f"k in the new schema. To fix this, modify the renamings argument of rename_schema "
+                f"to ensure that no two types in the renamed schema have the same name."
             )
         renamed_to_scalar_conflicts_message = ""
         if self.renamed_to_scalar_conflicts:
             renamed_to_scalar_conflicts_message = (
-                f"Applying the renaming would rename the following types to a name already taken "
-                f"by a scalar: {self.renamed_to_scalar_conflicts}. To fix this, ensure that no "
-                f"type name is mapped to a scalar's name."
+                f"Applying the renaming would rename the following types to a name already used by "
+                f"a scalar: {self.renamed_to_scalar_conflicts}. To fix this, ensure that no type "
+                f"name is mapped to a scalar's name."
             )
         return " ".join(filter(None, [name_conflicts_message, renamed_to_scalar_conflicts_message]))
 
