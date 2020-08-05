@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from typing import List
 
-from graphql import GraphQLSchema, DocumentNode
+from graphql import DocumentNode, GraphQLSchema
 from graphql.language import DirectiveLocation
 from graphql.validation import validate
 import six
