@@ -872,9 +872,10 @@ def generate_schema(
 def get_empty_test_macro_registry() -> MacroRegistry:
     """Return a MacroRegistry with appropriate type_equivalence_hints and subclass_set."""
     schema = get_schema()
-    type_equivalence_hints = cast(TypeEquivalenceHintsType, {
-        schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),
-    })
+    type_equivalence_hints = cast(
+        TypeEquivalenceHintsType,
+        {schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),},
+    )
     subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
     macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)
     return macro_registry
