@@ -1,6 +1,5 @@
 # Copyright 2017-present Kensho Technologies, LLC.
-class GraphQLError(Exception):
-    """Generic error when processing GraphQL."""
+from graphql import GraphQLError
 
 
 class GraphQLParsingError(GraphQLError):
