@@ -23,10 +23,7 @@ def validate_schema_and_query_ast(schema: GraphQLSchema, query_ast: DocumentNode
     Returns:
         list containing schema and/or query validation errors
     """
-    core_graphql_errors = [
-        str(error)
-        for error in validate(schema, query_ast)
-    ]
+    core_graphql_errors = [str(error) for error in validate(schema, query_ast)]
 
     # The following directives appear in the core-graphql library, but are not supported by the
     # GraphQL compiler.
