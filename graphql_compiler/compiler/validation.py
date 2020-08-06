@@ -1,4 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import List
+
+from graphql import DocumentNode, GraphQLSchema
 from graphql.language import DirectiveLocation
 from graphql.validation import validate
 import six
@@ -6,7 +9,7 @@ import six
 from ..schema import DIRECTIVES
 
 
-def validate_schema_and_query_ast(schema, query_ast):
+def validate_schema_and_query_ast(schema: GraphQLSchema, query_ast: DocumentNode) -> List[str]:
     """Validate the supplied GraphQL schema and query_ast.
 
     This method wraps around graphql-core's validation to enforce a stricter requirement of the
@@ -20,7 +23,7 @@ def validate_schema_and_query_ast(schema, query_ast):
     Returns:
         list containing schema and/or query validation errors
     """
-    core_graphql_errors = validate(schema, query_ast)
+    core_graphql_errors = [str(error) for error in validate(schema, query_ast)]
 
     # The following directives appear in the core-graphql library, but are not supported by the
     # GraphQL compiler.
