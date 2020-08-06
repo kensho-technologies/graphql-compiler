@@ -62,7 +62,7 @@ def _safe_gremlin_date(value):
     try:
         serialized_value = GraphQLDate.serialize(value)
     except ValueError as e:
-        raise GraphQLInvalidArgumentError(e)
+        raise GraphQLInvalidArgumentError(str(e))
 
     return _safe_gremlin_string(serialized_value)
 
@@ -72,7 +72,7 @@ def _safe_gremlin_datetime(value):
     try:
         serialized_value = GraphQLDateTime.serialize(value)
     except ValueError as e:
-        raise GraphQLInvalidArgumentError(e)
+        raise GraphQLInvalidArgumentError(str(e))
 
     return _safe_gremlin_string(serialized_value)
 

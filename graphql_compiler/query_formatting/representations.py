@@ -49,4 +49,4 @@ def coerce_to_decimal(value):
         try:
             return decimal.Decimal(value)
         except decimal.InvalidOperation as e:
-            raise GraphQLInvalidArgumentError(e)
+            raise GraphQLInvalidArgumentError(str(e))

@@ -92,7 +92,7 @@ def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, v
             try:
                 decimal.Decimal(value)
             except decimal.InvalidOperation as e:
-                raise GraphQLInvalidArgumentError(e)
+                raise GraphQLInvalidArgumentError(str(e))
     elif is_same_type(GraphQLDate, stripped_type):
         # Datetimes pass as instances of date. We want to explicitly only allow dates.
         if isinstance(value, datetime.datetime) or not isinstance(value, datetime.date):
@@ -100,14 +100,14 @@ def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, v
         try:
             GraphQLDate.serialize(value)
         except ValueError as e:
-            raise GraphQLInvalidArgumentError(e)
+            raise GraphQLInvalidArgumentError(str(e))
     elif is_same_type(GraphQLDateTime, stripped_type):
         if not isinstance(value, (datetime.date, arrow.Arrow)):
             _raise_invalid_type_error(name, (datetime.date, arrow.Arrow), value)
         try:
             GraphQLDateTime.serialize(value)
         except ValueError as e:
-            raise GraphQLInvalidArgumentError(e)
+            raise GraphQLInvalidArgumentError(str(e))
     elif isinstance(stripped_type, GraphQLList):
         if not isinstance(value, list):
             _raise_invalid_type_error(name, (list,), value)

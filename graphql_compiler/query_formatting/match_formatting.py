@@ -34,7 +34,7 @@ def _safe_match_date(value):
     try:
         serialized_value = GraphQLDate.serialize(value)
     except ValueError as e:
-        raise GraphQLInvalidArgumentError(e)
+        raise GraphQLInvalidArgumentError(str(e))
 
     return _safe_match_string(serialized_value)
 
@@ -44,7 +44,7 @@ def _safe_match_datetime(value):
     try:
         serialized_value = GraphQLDateTime.serialize(value)
     except ValueError as e:
-        raise GraphQLInvalidArgumentError(e)
+        raise GraphQLInvalidArgumentError(str(e))
 
     return _safe_match_string(serialized_value)
 
