@@ -296,7 +296,7 @@ def _serialize_date(value: Any) -> str:
     return value.isoformat()
 
 
-def _parse_date_value(value: str) -> date:
+def _parse_date_value(value: Any) -> date:
     """Deserialize a Date object from its proper ISO-8601 representation."""
     return arrow.get(value, "YYYY-MM-DD").date()
 
