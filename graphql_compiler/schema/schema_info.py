@@ -260,7 +260,7 @@ def make_sqlalchemy_schema_info(
     See the documentation of SQLAlchemySchemaInfo for more detailed documentation of the args.
 
     Args:
-        schema: GraphQLSchema
+        schema: GraphQLSchema describing the schema against which queries can be written
         type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
                                 Used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
@@ -276,16 +276,18 @@ def make_sqlalchemy_schema_info(
                                 Be very careful with this option, as bad input here will
                                 lead to incorrect output queries being generated.
                                 *****
-        dialect: sqlalchemy.engine.interfaces.Dialect
-        vertex_name_to_table: dict mapping every graphql object type or interface type name in the
-                              schema to a sqlalchemy table
-        join_descriptors: dict mapping graphql object and interface type names in the schema to:
-                             dict mapping every vertex field name at that type to a
-                             DirectJoinDescriptor. The tables the join is to be performed on are not
-                             specified. They are inferred from the schema and the tables dictionary.
-        validate: Optional bool (default True), specifying whether to validate that the given
-                  input is valid for creation of a SQLAlchemySchemaInfo. Consider not validating
-                  to save on performance when dealing with a large schema.
+        dialect: SQLAlchemy Dialect object specifying the SQL dialect that should be used to query
+                 this schema
+        vertex_name_to_table: dict mapping every GraphQL object type or interface type name in the
+                              schema to a SQLAlchemy table
+        join_descriptors: dict mapping GraphQL object and interface type names in the schema to:
+                          dict mapping every vertex field name at that type to a
+                          DirectJoinDescriptor. The tables on which the join is to be performed
+                          are not specified. They are inferred from the schema and the tables
+                          dictionary.
+        validate: whether to validate that the given inputs are valid for creation of
+                  a SQLAlchemySchemaInfo object. Disabling validation may improve performance for
+                  particularly large schemas, at the risk of constructing an invalid schema info.
 
     Returns:
         SQLAlchemySchemaInfo containing the input arguments provided
