@@ -248,11 +248,16 @@ SQLAlchemySchemaInfo = namedtuple(
 
 
 def make_sqlalchemy_schema_info(
-    schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors, validate=True
-):
+    schema: GraphQLSchema,
+    type_equivalence_hints: TypeEquivalenceHintsType,
+    dialect: Dialect,
+    vertex_name_to_table: Dict[str, sqlalchemy.Table],
+    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]],
+    validate: bool = True,
+) -> SQLAlchemySchemaInfo:
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
 
-    See the documentation of SQLAlchemyschemaInfo for more detailed documentation of the args.
+    See the documentation of SQLAlchemySchemaInfo for more detailed documentation of the args.
 
     Args:
         schema: GraphQLSchema
