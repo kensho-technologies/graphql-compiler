@@ -3,7 +3,7 @@ from copy import copy
 import string
 from typing import Dict, Set
 
-from graphql import build_ast_schema
+from graphql import build_ast_schema, specified_scalar_types
 from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
@@ -50,21 +50,26 @@ class SchemaMergeNameConflictError(SchemaTransformError):
 
 
 class SchemaRenameNameConflictError(SchemaTransformError):
-    """Raised when renaming types or fields cause name conflicts.
-
-    This may be raised if a field or type is renamed to conflict with another field or type.
-    """
+    """Raised when renaming causes name conflicts."""
 
     name_conflicts: Dict[str, Set[str]]
-    renamed_to_scalar_conflicts: Dict[str, str]
+    renamed_to_builtin_scalar_conflicts: Dict[str, str]
 
     def __init__(
-        self, name_conflicts: Dict[str, Set[str]], renamed_to_scalar_conflicts: Dict[str, str]
+        self,
+        name_conflicts: Dict[str, Set[str]],
+        renamed_to_builtin_scalar_conflicts: Dict[str, str]
     ) -> None:
         """Record all renaming conflicts."""
+        if not name_conflicts and not renamed_to_builtin_scalar_conflicts:
+            raise ValueError(
+                "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
+                "name_conflicts and renamed_to_scalar_conflicts arguments were both empty "
+                "dictionaries."
+            )
         super().__init__()
         self.name_conflicts = name_conflicts
-        self.renamed_to_scalar_conflicts = renamed_to_scalar_conflicts
+        self.renamed_to_builtin_scalar_conflicts = renamed_to_builtin_scalar_conflicts
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
@@ -73,19 +78,22 @@ class SchemaRenameNameConflictError(SchemaTransformError):
             name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple types have the "
                 f"same name, which is an illegal schema state. The name_conflicts dict describes "
-                f"these problems: {self.name_conflicts}. For each key k in name_conflicts, "
-                f"name_conflicts[k] is the set of types in the original schema that get mapped to "
-                f"k in the new schema. To fix this, modify the renamings argument of rename_schema "
-                f"to ensure that no two types in the renamed schema have the same name."
+                f"these problems. For each key k in name_conflicts, name_conflicts[k] is the set "
+                f"of types in the original schema that get mapped to k in the new schema. To fix "
+                f"this, modify the renamings argument of rename_schema to ensure that no two types "
+                f"in the renamed schema have the same name. name_conflicts: {self.name_conflicts}"
             )
-        renamed_to_scalar_conflicts_message = ""
-        if self.renamed_to_scalar_conflicts:
-            renamed_to_scalar_conflicts_message = (
-                f"Applying the renaming would rename the following types to a name already used by "
-                f"a scalar: {self.renamed_to_scalar_conflicts}. To fix this, ensure that no type "
-                f"name is mapped to a scalar's name."
+        renamed_to_builtin_scalar_conflicts_message = ""
+        if self.renamed_to_builtin_scalar_conflicts:
+            renamed_to_builtin_scalar_conflicts_message = (
+                f"Applying the renaming would rename type(s) to a name already used by a built-in "
+                f"GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
+                f"scalar's name. The following dict maps each to-be-renamed type to the scalar "
+                f"name it was mapped to: {self.renamed_to_builtin_scalar_conflicts}"
             )
-        return " ".join(filter(None, [name_conflicts_message, renamed_to_scalar_conflicts_message]))
+        return "\n".join(
+            filter(None, [name_conflicts_message, renamed_to_builtin_scalar_conflicts_message])
+        )
 
 
 class InvalidCrossSchemaEdgeError(SchemaTransformError):
@@ -112,6 +120,11 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 _alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
+
+
+# String representations for the GraphQL built-in scalar types
+# pylint produces a false positive-- see issue here: https://github.com/PyCQA/pylint/issues/3743
+builtin_scalar_types = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
 
 
 def check_schema_identifier_is_valid(identifier):
@@ -170,11 +183,10 @@ def get_query_type_name(schema):
     return schema.query_type.name
 
 
-def get_scalar_names(schema):
-    """Get names of all scalars used in the input schema.
+def get_custom_scalar_names(schema):
+    """Get names of all custom scalars used in the input schema.
 
-    Includes all user defined scalars, as well as any builtin scalars used in the schema; excludes
-    builtin scalars not used in the schema.
+    Includes all user defined scalars; excludes builtin scalars.
 
     Note: If the user defined a scalar that shares its name with a builtin introspection type
     (such as __Schema, __Directive, etc), it will not be listed in type_map and thus will not
@@ -187,7 +199,7 @@ def get_scalar_names(schema):
     scalars = {
         type_name
         for type_name, type_object in six.iteritems(type_map)
-        if isinstance(type_object, GraphQLScalarType)
+        if isinstance(type_object, GraphQLScalarType) and type_name not in builtin_scalar_types
     }
     return scalars
 
