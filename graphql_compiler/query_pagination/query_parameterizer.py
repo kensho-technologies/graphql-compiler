@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import logging
-from typing import Any, Dict, List, Set, Tuple, TypeVar, Union, cast
+from typing import Any, Dict, List, Set, Tuple, TypeVar, cast
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -13,7 +13,6 @@ from graphql.language.ast import (
     ListValueNode,
     NameNode,
     OperationDefinitionNode,
-    SelectionNode,
     SelectionSetNode,
     StringValueNode,
 )
@@ -21,7 +20,6 @@ from graphql.pyutils import FrozenList
 
 from ..ast_manipulation import (
     assert_selection_is_a_field_node,
-    assert_selection_is_a_field_or_inline_fragment_node,
     get_ast_field_name,
     get_only_query_definition,
     get_only_selection_from_ast,
