@@ -84,7 +84,6 @@ from graphql import (
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
     build_ast_schema,
-    specified_scalar_types,
 )
 from graphql.language.visitor import IDLE, REMOVE, Visitor, VisitorAction, visit
 import six
@@ -94,11 +93,12 @@ from .utils import (
     CascadingSuppressionError,
     SchemaNameConflictError,
     SchemaTransformError,
+    builtin_scalar_types,
     check_ast_schema_is_valid,
     check_type_name_is_valid,
     get_copy_of_node_with_new_name,
+    get_custom_scalar_names,
     get_query_type_name,
-    get_scalar_names,
 )
 
 
@@ -187,13 +187,13 @@ def rename_schema(
 
     schema = build_ast_schema(schema_ast)
     query_type = get_query_type_name(schema)
-    scalars = get_scalar_names(schema)
+    custom_scalar_types = get_custom_scalar_names(schema)
 
-    _validate_renamings(schema_ast, renamings, query_type, scalars)
+    _validate_renamings(schema_ast, renamings, query_type, custom_scalar_types)
 
     # Rename types, interfaces, enums, unions and suppress types, unions
     schema_ast, reverse_name_map = _rename_and_suppress_types(
-        schema_ast, renamings, query_type, scalars
+        schema_ast, renamings, query_type, custom_scalar_types
     )
     reverse_name_map_changed_names_only = {
         renamed_name: original_name
@@ -213,7 +213,7 @@ def _validate_renamings(
     schema_ast: DocumentNode,
     renamings: Mapping[str, Optional[str]],
     query_type: str,
-    scalars: AbstractSet[str],
+    custom_scalar_types: AbstractSet[str],
 ) -> None:
     """Validate the renamings argument before attempting to rename the schema.
 
@@ -231,8 +231,8 @@ def _validate_renamings(
         renamings: maps original type name to renamed name or None (for type suppression). Any name
                    not in the dict will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        scalars: set of all scalars used in the schema, including user defined scalars and used
-                 builtin scalars, excluding unused builtins
+        custom_scalar_types: set of all user defined scalars used in the schema (excluding
+                             builtin scalars)
 
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
@@ -240,7 +240,7 @@ def _validate_renamings(
           implementing an interface
     """
     _ensure_no_cascading_type_suppressions(schema_ast, renamings, query_type)
-    _ensure_no_unsupported_operations(schema_ast, renamings, scalars)
+    _ensure_no_unsupported_operations(schema_ast, renamings, custom_scalar_types)
 
 
 def _ensure_no_cascading_type_suppressions(
@@ -288,23 +288,29 @@ def _ensure_no_cascading_type_suppressions(
 
 
 def _ensure_no_unsupported_operations(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
+    schema_ast: DocumentNode,
+    renamings: Mapping[str, Optional[str]],
+    custom_scalar_types: AbstractSet[str],
 ) -> None:
     """Check for unsupported renaming or suppression operations."""
-    _ensure_no_unsupported_scalar_operations(renamings, scalars)
+    _ensure_no_unsupported_scalar_operations(renamings, custom_scalar_types)
     _ensure_no_unsupported_suppressions(schema_ast, renamings)
 
 
 def _ensure_no_unsupported_scalar_operations(
-    renamings: Mapping[str, Optional[str]], scalars: AbstractSet[str],
+    renamings: Mapping[str, Optional[str]], custom_scalar_types: AbstractSet[str],
 ) -> None:
     """Check for unsupported scalar operations."""
     unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
-    for scalar in scalars:
+    for scalar in custom_scalar_types:
         if renamings.get(scalar, scalar) != scalar:
             # renamings.get(scalar, scalar) returns something that is not scalar iff it attempts to
             # do something with the scalar (i.e. renaming or suppressing it)
             unsupported_scalar_operations[scalar] = renamings[scalar]
+    for builtin_scalar in builtin_scalar_types:
+        if renamings.get(builtin_scalar, builtin_scalar) != builtin_scalar:
+            # Check builtin_scalar_types as well.
+            unsupported_scalar_operations[builtin_scalar] = renamings[builtin_scalar]
     if unsupported_scalar_operations:
         raise NotImplementedError(
             f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
@@ -359,7 +365,7 @@ def _rename_and_suppress_types(
     schema_ast: DocumentNode,
     renamings: Mapping[str, Optional[str]],
     query_type: str,
-    scalars: AbstractSet[str],
+    custom_scalar_types: AbstractSet[str],
 ) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename and suppress types, enums, interfaces using renamings.
 
@@ -372,8 +378,8 @@ def _rename_and_suppress_types(
         renamings: maps original type name to renamed name or None (for type suppression). Any
                    name not in the dict will be unchanged
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        scalars: set of all scalars used in the schema, including user defined scalars and used
-                 builtin scalars, excluding unused builtins
+        custom_scalar_types: set of all user defined scalars used in the schema (excluding
+                             builtin scalars)
 
     Returns:
         Tuple containing the modified version of the schema AST, and the renamed type name to
@@ -385,7 +391,7 @@ def _rename_and_suppress_types(
           to rename a type to an invalid name
         - SchemaNameConflictError if the rename causes name conflicts
     """
-    visitor = RenameSchemaTypesVisitor(renamings, query_type, scalars)
+    visitor = RenameSchemaTypesVisitor(renamings, query_type, custom_scalar_types)
     renamed_schema_ast = visit(schema_ast, visitor)
     return renamed_schema_ast, visitor.reverse_name_map
 
@@ -482,7 +488,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self,
         renamings: Mapping[str, Optional[str]],
         query_type: str,
-        scalar_types: AbstractSet[str],
+        custom_scalar_types: AbstractSet[str],
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
@@ -490,18 +496,14 @@ class RenameSchemaTypesVisitor(Visitor):
             renamings: maps original type name to renamed name or None (for type suppression). Any
                        name not in the dict will be unchanged
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
-            scalar_types: set of all scalars used in the schema, including all user defined scalars
-                          and any builtin scalars that were used
+            custom_scalar_types: set of all user defined scalars used in the schema (excluding
+                                 builtin scalars)
         """
         self.renamings = renamings
         self.reverse_name_map: Dict[str, str] = {}  # From renamed type name to original type name
         # reverse_name_map contains all non-suppressed types, including those that were unchanged
         self.query_type = query_type
-        self.scalar_types = frozenset(scalar_types)
-
-        # pylint produces a false positive-- see issue here:
-        # https://github.com/PyCQA/pylint/issues/3743
-        self.builtin_types = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
+        self.custom_scalar_types = frozenset(custom_scalar_types)
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -530,7 +532,11 @@ class RenameSchemaTypesVisitor(Visitor):
         """
         name_string = node.name.value
 
-        if name_string == self.query_type or name_string in self.scalar_types:
+        if (
+            name_string == self.query_type
+            or name_string in self.custom_scalar_types
+            or name_string in builtin_scalar_types
+        ):
             return IDLE
 
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
@@ -542,15 +548,22 @@ class RenameSchemaTypesVisitor(Visitor):
         if (
             new_name_string in self.reverse_name_map
             and self.reverse_name_map[new_name_string] != name_string
-        ):
+        ) or new_name_string in self.custom_scalar_types:
+            # Either new_name_string is the name of a type (that may or may not have been
+            # renamed) in reverse_name_map or new_name_string is the name of a custom scalar.
+            # Either way, we want the original name of the type that is would be named
+            # new_name_string in the renamed schema.
+            other_name_string_renamed_to_new_name_string = self.reverse_name_map.get(
+                new_name_string, new_name_string
+            )
             raise SchemaNameConflictError(
                 '"{}" and "{}" are both renamed to "{}"'.format(
-                    name_string, self.reverse_name_map[new_name_string], new_name_string
+                    name_string, other_name_string_renamed_to_new_name_string, new_name_string
                 )
             )
-        if new_name_string in self.scalar_types or new_name_string in self.builtin_types:
+        if new_name_string in self.custom_scalar_types or new_name_string in builtin_scalar_types:
             raise SchemaNameConflictError(
-                '"{}" was renamed to "{}", clashing with scalar "{}"'.format(
+                '"{}" was renamed to "{}", clashing with built-in scalar "{}"'.format(
                     name_string, new_name_string, new_name_string
                 )
             )
