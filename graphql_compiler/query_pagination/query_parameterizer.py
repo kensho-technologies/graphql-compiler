@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import logging
-from typing import Any, Dict, List, Set, Tuple, cast
+from typing import Any, Dict, List, Set, Tuple, TypeVar, Union, cast
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -19,7 +19,13 @@ from graphql.language.ast import (
 )
 from graphql.pyutils import FrozenList
 
-from ..ast_manipulation import get_ast_field_name, get_only_query_definition
+from ..ast_manipulation import (
+    assert_selection_is_a_field_node,
+    assert_selection_is_a_field_or_inline_fragment_node,
+    get_ast_field_name,
+    get_only_query_definition,
+    get_only_selection_from_ast,
+)
 from ..compiler.helpers import get_parameter_name
 from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..cost_estimation.int_value_conversion import convert_field_value_to_int
@@ -113,14 +119,17 @@ def _are_filter_operations_equal_and_possible_to_eliminate(
     return False
 
 
+FieldOrFragmentT = TypeVar("FieldOrFragmentT", FieldNode, InlineFragmentNode)
+
+
 def _add_pagination_filter_at_node(
     query_analysis: QueryPlanningAnalysis,
     node_vertex_path: VertexPath,
-    node_ast: SelectionNode,
+    node_ast: FieldOrFragmentT,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-) -> Tuple[SelectionNode, Dict[str, Any]]:
+) -> Tuple[FieldOrFragmentT, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
@@ -139,11 +148,6 @@ def _add_pagination_filter_at_node(
                  the same operation removed.
         new_parameters: The parameters to use with the new_ast
     """
-    if not isinstance(node_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
-        raise AssertionError(
-            f'Input AST is of type "{type(node_ast).__name__}", which should not be a selection.'
-        )
-
     if node_ast.selection_set is None:
         raise AssertionError(
             f"Vertex field AST has no selection set at path {node_vertex_path}. "
@@ -159,15 +163,16 @@ def _add_pagination_filter_at_node(
     new_selections = []
     found_field = False
     for selection_ast in node_ast.selection_set.selections:
-        new_selection_ast = selection_ast
-        field_name = get_ast_field_name(selection_ast)
+        field_ast = assert_selection_is_a_field_node(selection_ast)
+        new_field_ast = field_ast
+        field_name = get_ast_field_name(field_ast)
         if field_name == pagination_field:
             found_field = True
-            new_selection_ast = copy(selection_ast)
-            new_selection_ast.directives = copy(selection_ast.directives)
+            new_field_ast = copy(field_ast)
+            new_field_ast.directives = copy(field_ast.directives)
 
             new_directives: List[DirectiveNode] = []
-            for directive in selection_ast.directives or []:
+            for directive in field_ast.directives or []:
                 operation = _get_filter_node_operation(directive)
                 if _are_filter_operations_equal_and_possible_to_eliminate(
                     new_directive_operation, operation
@@ -200,8 +205,8 @@ def _add_pagination_filter_at_node(
                 else:
                     new_directives.append(directive)
             new_directives.append(directive_to_add)
-            new_selection_ast.directives = FrozenList(new_directives)
-        new_selections.append(new_selection_ast)
+            new_field_ast.directives = FrozenList(new_directives)
+        new_selections.append(new_field_ast)
 
     # If field didn't exist, create it and add the new directive to it.
     if not found_field:
@@ -214,15 +219,20 @@ def _add_pagination_filter_at_node(
     return new_ast, new_parameters
 
 
+FieldOrFragmentOrDefinitionT = TypeVar(
+    "FieldOrFragmentOrDefinitionT", FieldNode, InlineFragmentNode, OperationDefinitionNode
+)
+
+
 def _add_pagination_filter_recursively(
     query_analysis: QueryPlanningAnalysis,
-    node_ast: SelectionNode,
+    node_ast: FieldOrFragmentOrDefinitionT,
     full_query_path: VertexPath,
     query_path: VertexPath,
     pagination_field: str,
     directive_to_add: DirectiveNode,
     extended_parameters: Dict[str, Any],
-) -> Tuple[SelectionNode, Dict[str, Any]]:
+) -> Tuple[FieldOrFragmentOrDefinitionT, Dict[str, Any]]:
     """Add the filter to the target field, returning a query and its new parameters.
 
     Args:
@@ -241,12 +251,16 @@ def _add_pagination_filter_recursively(
                  the same operation removed.
         new_parameters: The parameters to use with the new_ast
     """
-    if not isinstance(node_ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
-        raise AssertionError(
-            f'Input AST is of type "{type(node_ast).__name__}", which should not be a selection.'
-        )
-
     if len(query_path) == 0:
+        if isinstance(node_ast, OperationDefinitionNode):
+            # N.B.: We cannot use assert_selection_is_a_field_or_inline_fragment_node() here, since
+            #       that function's return type annotation is a Union type that isn't compatible
+            #       with the generic type signature of _add_pagination_filter_at_node().
+            raise AssertionError(
+                f"Unexpectedly encountered an OperationDefinitionNode while expecting either a "
+                f"FieldNode or InlineFragmentNode. This is a bug. Node value: {node_ast}"
+            )
+
         return _add_pagination_filter_at_node(
             query_analysis,
             full_query_path,
@@ -259,23 +273,50 @@ def _add_pagination_filter_recursively(
     if node_ast.selection_set is None:
         raise AssertionError(f"Invalid query path {query_path} {node_ast}.")
 
+    # Handle the case if a node contains only a type coercion. In that case, this node contains
+    # no fields, so we recurse into the type coercion and recursively apply pagination there.
+    if len(node_ast.selection_set.selections) == 1:
+        inner_selection_ast = get_only_selection_from_ast(node_ast, AssertionError)
+        if isinstance(inner_selection_ast, InlineFragmentNode):
+            # This node contains only a type coercion. Recurse to its contents and return early.
+            new_inner_selection_ast, new_parameters = _add_pagination_filter_recursively(
+                query_analysis,
+                inner_selection_ast,
+                full_query_path,
+                query_path,
+                pagination_field,
+                directive_to_add,
+                extended_parameters,
+            )
+
+            new_ast = copy(node_ast)
+            new_ast.selection_set = SelectionSetNode(selections=[new_inner_selection_ast])
+            return new_ast, new_parameters
+        else:
+            # No type coercion here -- only field selections. Fall through to the code below.
+            pass
+
     found_field = False
     new_selections = []
     for selection_ast in node_ast.selection_set.selections:
-        new_selection_ast = selection_ast
-        field_name = get_ast_field_name(selection_ast)
+        # At this point, we know that all selections within this node are of FieldNode type, since
+        # we handled the InlineFragment case above. Assert that our selection is a FieldNode.
+        field_ast = assert_selection_is_a_field_node(selection_ast)
+
+        new_field_ast = field_ast
+        field_name = get_ast_field_name(field_ast)
         if field_name == query_path[0]:
             found_field = True
-            new_selection_ast, new_parameters = _add_pagination_filter_recursively(
+            new_field_ast, new_parameters = _add_pagination_filter_recursively(
                 query_analysis,
-                selection_ast,
+                field_ast,
                 full_query_path,
                 query_path[1:],
                 pagination_field,
                 directive_to_add,
                 extended_parameters,
             )
-        new_selections.append(new_selection_ast)
+        new_selections.append(new_field_ast)
 
     if not found_field:
         raise AssertionError(f"Invalid query path {query_path} {node_ast}.")
