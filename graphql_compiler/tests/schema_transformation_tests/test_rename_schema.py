@@ -77,9 +77,11 @@ def check_rename_conflict_error_message(
         if not name_conflicts_part.startswith(name_conflicts_prefix):
             return False
         # Then check the string representation of name_conflicts
-        name_conflicts_representation = name_conflicts_part[len(name_conflicts_prefix) :]
         try:
-            if literal_eval(name_conflicts_representation) != expected_name_conflicts:
+            if (
+                literal_eval(name_conflicts_part[len(name_conflicts_prefix) :])
+                != expected_name_conflicts
+            ):
                 return False
         except SyntaxError:
             # in case it's syntactically invalid
@@ -90,13 +92,17 @@ def check_rename_conflict_error_message(
         ):
             return False
         # Then check the string representation of renamed_to_builtin_scalar_conflicts
-        renamed_to_builtin_scalar_conflicts_representation = renamed_to_builtin_scalar_conflicts_part[
-            len(renamed_to_builtin_scalar_conflicts_prefix) :
-        ]
-        if (
-            literal_eval(renamed_to_builtin_scalar_conflicts_representation)
-            != expected_renamed_to_builtin_scalar_conflicts
-        ):
+        try:
+            if (
+                literal_eval(
+                    renamed_to_builtin_scalar_conflicts_part[
+                        len(renamed_to_builtin_scalar_conflicts_prefix) :
+                    ]
+                )
+                != expected_renamed_to_builtin_scalar_conflicts
+            ):
+                return False
+        except SyntaxError:
             return False
     return True
 

@@ -166,10 +166,10 @@ def rename_schema(
         - CascadingSuppressionError if a type suppression would require further suppressions
         - SchemaTransformError if renamings suppressed every type. Note that this is a superclass of
           CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
-          SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will also
-          catch all of its subclasses. This will change after the error classes are modified so that
-          errors can be fixed programmatically, at which point it will make sense for the user to
-          attempt to treat different errors differently
+          SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
+          also catch all of its subclasses. This will change after the error classes are modified so
+          that errors can be fixed programmatically, at which point it will make sense for the user
+          to attempt to treat different errors differently
         - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
           implementing an interface
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
@@ -488,16 +488,15 @@ class RenameSchemaTypesVisitor(Visitor):
         }
     )
     # Collects naming conflict errors. If renaming would result in multiple types being named "Foo",
-    # name_conflicts will map "Foo" to a set containing the name of each such type.
+    # name_conflicts will map "Foo" to a set containing the name of each such type
     name_conflicts: Dict[str, Set[str]]
     # Collects attempts to rename a type to a name that conflicts with a GraphQL builtin scalar
     # name. For instance, if renamings tries to rename a type named "Foo" to "String" and there
     # then renamed_to_scalar_conflicts["Foo"] == "String"
     renamed_to_builtin_scalar_conflicts: Dict[str, str]
-    # From renamed type name to original type name
-    # reverse_name_map contains all non-suppressed types, including those that were unchanged. Must
-    # contain unchanged names to prevent renaming conflicts and raise SchemaRenameNameConflictError when
-    # they arise.
+    # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
+    # types, including those that were unchanged. Must contain unchanged names to prevent renaming
+    # conflicts and raise SchemaRenameNameConflictError when they arise
     reverse_name_map: Dict[str, str]
 
     def __init__(

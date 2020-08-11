@@ -64,7 +64,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         if not name_conflicts and not renamed_to_builtin_scalar_conflicts:
             raise ValueError(
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
-                "name_conflicts and renamed_to_scalar_conflicts arguments were both empty "
+                "name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both empty "
                 "dictionaries."
             )
         super().__init__()
