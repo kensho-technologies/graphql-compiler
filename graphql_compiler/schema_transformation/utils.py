@@ -58,7 +58,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
     def __init__(
         self,
         name_conflicts: Dict[str, Set[str]],
-        renamed_to_builtin_scalar_conflicts: Dict[str, str]
+        renamed_to_builtin_scalar_conflicts: Dict[str, str],
     ) -> None:
         """Record all renaming conflicts."""
         if not name_conflicts and not renamed_to_builtin_scalar_conflicts:

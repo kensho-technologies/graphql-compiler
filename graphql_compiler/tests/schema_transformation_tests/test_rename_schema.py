@@ -1,5 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from ast import literal_eval
 from textwrap import dedent
+from typing import Dict, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -17,6 +19,86 @@ from ...schema_transformation.utils import (
     get_custom_scalar_names,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
+
+
+def check_rename_conflict_error_message(
+    expected_name_conflicts: Dict[str, Set[str]],
+    expected_renamed_to_builtin_scalar_conflicts: Dict[str, str],
+    error: SchemaRenameNameConflictError,
+) -> bool:
+    """Check SchemaRenameNameConflictError's error message contains the expected data structures.
+
+    Since there are no guarantees for the order in which GraphQL-core's visit function visits nodes
+    at the same depth in the schema AST, SchemaRenameNameConflictError's __str__ method is not
+    fully deterministic. This function checks that the __str__ method contains valid string
+    representations of SchemaRenameNameConflictError's name_conflicts and
+    renamed_to_builtin_scalar_conflicts fields.
+
+    Args:
+        expected_name_conflicts: expected name conflicts from renaming
+        expected_renamed_to_builtin_scalar_conflicts: expected conflicts from renaming to built-in
+                                                      scalar types
+        error: exception object raised during schema renaming due to name conflict
+
+    Returns:
+        true iff the expected error message and actual error message are equivalent.
+    """
+    name_conflicts_prefix = (
+        "Applying the renaming would produce a schema in which multiple types have the "
+        "same name, which is an illegal schema state. The name_conflicts dict describes "
+        "these problems. For each key k in name_conflicts, name_conflicts[k] is the set "
+        "of types in the original schema that get mapped to k in the new schema. To fix "
+        "this, modify the renamings argument of rename_schema to ensure that no two types "
+        "in the renamed schema have the same name. name_conflicts: "
+    )
+    renamed_to_builtin_scalar_conflicts_prefix = (
+        "Applying the renaming would rename type(s) to a name already used by a built-in "
+        "GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
+        "scalar's name. The following dict maps each to-be-renamed type to the scalar "
+        "name it was mapped to: "
+    )
+    actual_error_message = str(error)
+    name_conflicts_part = None
+    renamed_to_builtin_scalar_conflicts_part = None
+    if expected_name_conflicts and expected_renamed_to_builtin_scalar_conflicts:
+        name_conflicts_part, renamed_to_builtin_scalar_conflicts_part = actual_error_message.split(
+            "\n"
+        )
+    elif expected_name_conflicts:
+        name_conflicts_part = actual_error_message
+    elif expected_renamed_to_builtin_scalar_conflicts:
+        renamed_to_builtin_scalar_conflicts_part = actual_error_message
+    else:
+        raise AssertionError(
+            "Illegal for SchemaRenameNameConflictError to have all arguments as empty dicts"
+        )
+
+    if name_conflicts_part:
+        if not name_conflicts_part.startswith(name_conflicts_prefix):
+            return False
+        # Then check the string representation of name_conflicts
+        name_conflicts_representation = name_conflicts_part[len(name_conflicts_prefix) :]
+        try:
+            if literal_eval(name_conflicts_representation) != expected_name_conflicts:
+                return False
+        except SyntaxError:
+            # in case it's syntactically invalid
+            return False
+    if renamed_to_builtin_scalar_conflicts_part:
+        if not renamed_to_builtin_scalar_conflicts_part.startswith(
+            renamed_to_builtin_scalar_conflicts_prefix
+        ):
+            return False
+        # Then check the string representation of renamed_to_builtin_scalar_conflicts
+        renamed_to_builtin_scalar_conflicts_representation = renamed_to_builtin_scalar_conflicts_part[
+            len(renamed_to_builtin_scalar_conflicts_prefix) :
+        ]
+        if (
+            literal_eval(renamed_to_builtin_scalar_conflicts_representation)
+            != expected_renamed_to_builtin_scalar_conflicts
+        ):
+            return False
+    return True
 
 
 class TestRenameSchema(unittest.TestCase):
@@ -606,8 +688,11 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(schema_string), {"Human1": "Human", "Human2": "Human"})
+        self.assertTrue(
+            check_rename_conflict_error_message({"Human": {"Human1", "Human2"}}, {}, e.exception)
+        )
 
     def test_clashing_type_single_rename(self):
         schema_string = dedent(
@@ -631,8 +716,11 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(schema_string), {"Human2": "Human"})
+        self.assertTrue(
+            check_rename_conflict_error_message({"Human": {"Human", "Human2"}}, {}, e.exception)
+        )
 
     def test_clashing_type_one_unchanged_rename(self):
         schema_string = dedent(
@@ -656,8 +744,11 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(schema_string), {"Human": "Human", "Human2": "Human"})
+        self.assertTrue(
+            check_rename_conflict_error_message({"Human": {"Human", "Human2"}}, {}, e.exception)
+        )
 
     def test_clashing_scalar_type_rename(self):
         schema_string = dedent(
@@ -678,8 +769,11 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(schema_string), {"Human": "SCALAR"})
+        self.assertTrue(
+            check_rename_conflict_error_message({"SCALAR": {"SCALAR", "Human"}}, {}, e.exception)
+        )
 
     def test_builtin_type_conflict_rename(self):
         schema_string = dedent(
@@ -698,8 +792,42 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError):
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(schema_string), {"Human": "String"})
+        self.assertTrue(check_rename_conflict_error_message({}, {"Human": "String"}, e.exception))
+
+    def test_multiple_naming_conflicts(self):
+        schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            type Cat {
+              nickname: String
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            type Human {
+              id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(parse(schema_string), {"Human": "String", "Dog": "Cat"})
+        self.assertTrue(
+            check_rename_conflict_error_message(
+                {"Cat": {"Dog", "Cat"}}, {"Human": "String"}, e.exception
+            )
+        )
 
     def test_illegal_rename_start_with_number(self):
         with self.assertRaises(InvalidTypeNameError):
