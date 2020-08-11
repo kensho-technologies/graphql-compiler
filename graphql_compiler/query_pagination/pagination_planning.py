@@ -18,7 +18,7 @@ class PaginationAdvisory(ABC):
 class MissingClassCount(PaginationAdvisory):
     class_name: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize a human-readable message."""
         self.message = (
             f"Class count statistics for the vertices and edges mentioned in the query "
@@ -30,7 +30,7 @@ class MissingClassCount(PaginationAdvisory):
 class PaginationFieldNotSpecified(PaginationAdvisory):
     vertex_name: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize a human-readable message."""
         self.message = (
             "Specifying a pagination field for vertex {} in the QueryPlanningSchemaInfo "
@@ -46,7 +46,7 @@ class InsufficientQuantiles(PaginationAdvisory):
     current_resolution: int
     desired_resolution: int
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize a human-readable message."""
         self.message = (
             "Pagination would have been more successful if more quantiles were provided "
