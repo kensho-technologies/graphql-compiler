@@ -385,13 +385,12 @@ class QueryPlanningAnalysis:
     ast_with_parameters: ASTWithParameters
 
     @cached_property
-    def query_string_with_parameters(self):
+    def query_string_with_parameters(self) -> QueryStringWithParameters:
         """Return the query in string form."""
-        query_string = print_ast(self.ast_with_parameters.query_ast)
-        return QueryStringWithParameters(query_string, self.ast_with_parameters.parameters)
+        return QueryStringWithParameters.from_ast_with_parameters(self.ast_with_parameters)
 
     @cached_property
-    def metadata_table(self):
+    def metadata_table(self) -> QueryMetadataTable:
         """Return the metadata table for this query."""
         ir_and_metadata = ast_to_ir(
             self.schema_info.schema,
@@ -486,8 +485,21 @@ class QueryPlanningAnalysis:
 
 
 def analyze_query_string(
-    schema_info: QueryPlanningSchemaInfo, query: QueryStringWithParameters
+    schema_info: QueryPlanningSchemaInfo, query_and_params: QueryStringWithParameters
 ) -> QueryPlanningAnalysis:
-    """Create a QueryPlanningAnalysis object for the given query."""
-    query_ast = safe_parse_graphql(query.query_string)
-    return QueryPlanningAnalysis(schema_info, ASTWithParameters(query_ast, query.parameters))
+    """Create a QueryPlanningAnalysis object for the given query string and parameters."""
+    ast_with_params = ASTWithParameters.from_query_string_with_parameters(query_and_params)
+    return analyze_query_ast(schema_info, ast_with_params)
+
+
+def analyze_query_ast(
+    schema_info: QueryPlanningSchemaInfo, ast_with_params: ASTWithParameters
+) -> QueryPlanningAnalysis:
+    """Create a QueryPlanningAnalysis object for the given query AST and parameters."""
+    # This function exists for the sake of parity with "analyze_query_string()" as
+    # the analysis operations in question work just as well over ASTs as over query strings.
+    # Even though this function is just a proxy for the QueryPlanningAnalysis constructor,
+    # this is not something that would be obvious to the reader. What we are trying to avoid
+    # is a situation where someone doesn't realize QueryPlanningAnalysis can be made from an AST,
+    # so they print the AST into a query string, only to parse it again with analyze_query_string().
+    return QueryPlanningAnalysis(schema_info, ast_with_params)
