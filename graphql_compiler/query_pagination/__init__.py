@@ -1,8 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from typing import Tuple
 
-from graphql.language.printer import print_ast
-
 from ..cost_estimation.analysis import QueryPlanningAnalysis, analyze_query_string
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
@@ -155,13 +153,12 @@ def paginate_query(
     query_analysis = analyze_query_string(schema_info, query)
     ast_page_and_remainder, advisories = paginate_query_ast(query_analysis, page_size)
 
-    page_query_with_parameters = QueryStringWithParameters(
-        print_ast(ast_page_and_remainder.one_page.query_ast),
-        ast_page_and_remainder.one_page.parameters,
+    page_query_with_parameters = QueryStringWithParameters.from_ast_with_parameters(
+        ast_page_and_remainder.one_page
     )
     remainder_queries_with_parameters = tuple(
-        QueryStringWithParameters(print_ast(query.query_ast), query.parameters)
-        for query in ast_page_and_remainder.remainder
+        QueryStringWithParameters.from_ast_with_parameters(ast_with_params)
+        for ast_with_params in ast_page_and_remainder.remainder
     )
     text_page_and_remainder = PageAndRemainder[QueryStringWithParameters](
         query, page_size, page_query_with_parameters, remainder_queries_with_parameters
