@@ -558,9 +558,10 @@ class RenameSchemaTypesVisitor(Visitor):
             # If neither type is a custom scalar, the two type names in the original schema are
             # name_string and self.reverse_name_map[new_name_string].
             # If one of the types is a custom scalar, it won't appear in self.reverse_name_map
-            # because custom scalar renaming has not been implemented yet. Since this renaming has
-            # not been implemented yet, we know for sure that the scalar's name is new_name_string.
-            # So, in either case, the two types in the original schema will be named name_string and
+            # because custom scalar renaming has not been implemented yet and self.reverse_name_map
+            # does not include scalars. Since this renaming has not been implemented yet, we know
+            # for sure that the scalar's name is new_name_string.
+            # In either case, the two types in the original schema will be named name_string and
             # conflictingly_renamed_type_name.
             conflictingly_renamed_type_name = self.reverse_name_map.get(
                 new_name_string, new_name_string
