@@ -545,20 +545,29 @@ class RenameSchemaTypesVisitor(Visitor):
             return REMOVE
         check_type_name_is_valid(new_name_string)
 
+        # Either new_name_string is the name of a type (that may or may not have been
+        # renamed) in reverse_name_map or new_name_string is the name of a custom scalar.
+        # Either way, we want the original name of the type that is would be named
+        # new_name_string in the renamed schema.
         if (
             new_name_string in self.reverse_name_map
             and self.reverse_name_map[new_name_string] != name_string
         ) or new_name_string in self.custom_scalar_names:
-            # Either new_name_string is the name of a type (that may or may not have been
-            # renamed) in reverse_name_map or new_name_string is the name of a custom scalar.
-            # Either way, we want the original name of the type that is would be named
-            # new_name_string in the renamed schema.
-            other_name_string_renamed_to_new_name_string = self.reverse_name_map.get(
+            # This type of conflict arises when two types with different names in the original
+            # schema have the same name in the new schema.
+            # If neither type is a custom scalar, the two type names in the original schema are
+            # name_string and self.reverse_name_map[new_name_string].
+            # If one of the types is a custom scalar, it won't appear in self.reverse_name_map
+            # because custom scalar renaming has not been implemented yet. Since this renaming has
+            # not been implemented yet, we know for sure that the scalar's name is new_name_string.
+            # So, in either case, the two types in the original schema will be named name_string and
+            # conflictingly_renamed_type_name.
+            conflictingly_renamed_type_name = self.reverse_name_map.get(
                 new_name_string, new_name_string
             )
             raise SchemaNameConflictError(
                 '"{}" and "{}" are both renamed to "{}"'.format(
-                    name_string, other_name_string_renamed_to_new_name_string, new_name_string
+                    name_string, conflictingly_renamed_type_name, new_name_string
                 )
             )
         if new_name_string in builtin_scalar_type_names:
