@@ -1,8 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from typing import Tuple
 
-from graphql.language.printer import print_ast
-
 from ..cost_estimation.analysis import QueryPlanningAnalysis, analyze_query_string
 from ..global_utils import ASTWithParameters, QueryStringWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo

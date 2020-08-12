@@ -5,9 +5,7 @@ from typing import Any, Dict, Set, Union
 
 from cached_property import cached_property
 from graphql import GraphQLInterfaceType, GraphQLObjectType
-from graphql.language.printer import print_ast
 
-from ..ast_manipulation import safe_parse_graphql
 from ..compiler.compiler_frontend import ast_to_ir
 from ..compiler.helpers import (
     BaseLocation,
