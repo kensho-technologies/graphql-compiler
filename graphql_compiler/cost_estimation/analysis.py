@@ -483,10 +483,10 @@ class QueryPlanningAnalysis:
 
 
 def analyze_query_string(
-    schema_info: QueryPlanningSchemaInfo, query_and_params: QueryStringWithParameters
+    schema_info: QueryPlanningSchemaInfo, query_with_params: QueryStringWithParameters
 ) -> QueryPlanningAnalysis:
     """Create a QueryPlanningAnalysis object for the given query string and parameters."""
-    ast_with_params = ASTWithParameters.from_query_string_with_parameters(query_and_params)
+    ast_with_params = ASTWithParameters.from_query_string_with_parameters(query_with_params)
     return analyze_query_ast(schema_info, ast_with_params)
 
 
