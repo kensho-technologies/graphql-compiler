@@ -41,7 +41,8 @@ def check_rename_conflict_error_message(
         error: exception object raised during schema renaming due to name conflict
 
     Returns:
-        true iff the expected error message and actual error message are equivalent.
+        True iff the error message correctly represents the data structures and matches the
+        expected SchemaRenameNameConflictError error message format.
     """
     name_conflicts_prefix = (
         "Applying the renaming would produce a schema in which multiple types have the "
@@ -84,7 +85,7 @@ def check_rename_conflict_error_message(
             ):
                 return False
         except SyntaxError:
-            # in case it's syntactically invalid
+            # In case it's syntactically invalid
             return False
     if renamed_to_builtin_scalar_conflicts_part:
         if not renamed_to_builtin_scalar_conflicts_part.startswith(

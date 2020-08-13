@@ -487,16 +487,16 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
-    # Collects naming conflict errors. If renaming would result in multiple types being named "Foo",
-    # name_conflicts will map "Foo" to a set containing the name of each such type
+    # Collects naming conflict errors involving types that are not built-in scalar types. If
+    # renaming would result in multiple types being named "Foo", name_conflicts will map "Foo" to a
+    # set containing the name of each such type
     name_conflicts: Dict[str, Set[str]]
-    # Collects attempts to rename a type to a name that conflicts with a GraphQL builtin scalar
-    # name. For instance, if renamings tries to rename a type named "Foo" to "String" and there
-    # then renamed_to_scalar_conflicts["Foo"] == "String"
+    # Collects naming conflict errors involving built-in scalar types. If renaming would rename a
+    # type named "Foo" to "String", renamed_to_scalar_conflicts will map "Foo" to "String"
     renamed_to_builtin_scalar_conflicts: Dict[str, str]
     # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
-    # types, including those that were unchanged. Must contain unchanged names to prevent renaming
-    # conflicts and raise SchemaRenameNameConflictError when they arise
+    # non-scalar types, including those that were unchanged. Must contain unchanged names to prevent
+    # renaming conflicts and raise SchemaRenameNameConflictError when they arise
     reverse_name_map: Dict[str, str]
 
     def __init__(
