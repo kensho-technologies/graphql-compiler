@@ -304,12 +304,12 @@ def _ensure_no_unsupported_scalar_operations(
     unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
     for scalar_name in custom_scalar_names:
         if renamings.get(scalar_name, scalar_name) != scalar_name:
-            # renamings.get(scalar, scalar) returns something that is not scalar iff it attempts to
-            # do something with the scalar (i.e. renaming or suppressing it)
+            # renamings.get(scalar_name, scalar_name) returns something that is not scalar iff it
+            # attempts to do something with the scalar (i.e. renaming or suppressing it)
             unsupported_scalar_operations[scalar_name] = renamings[scalar_name]
     for builtin_scalar_name in builtin_scalar_type_names:
         if renamings.get(builtin_scalar_name, builtin_scalar_name) != builtin_scalar_name:
-            # Check that built-in scalar types rename unchanged during renaming.
+            # Check that built-in scalar types remain unchanged during renaming.
             unsupported_scalar_operations[builtin_scalar_name] = renamings[builtin_scalar_name]
     if unsupported_scalar_operations:
         raise NotImplementedError(
@@ -547,8 +547,8 @@ class RenameSchemaTypesVisitor(Visitor):
 
         # Renaming conflict arises when two types with different names in the original schema have
         # the same name in the new schema. There are two ways to produce this conflict:
-        # * when neither type is a custom scalar
-        # * when one type is a custom scalar and the other is not
+        # 1. when neither type is a custom scalar
+        # 2. when one type is a custom scalar and the other is not
         #
         # If neither type is a custom scalar, then desired_type_name will be in
         # self.reverse_name_map (because self.reverse_name_map records all non-scalar types in
