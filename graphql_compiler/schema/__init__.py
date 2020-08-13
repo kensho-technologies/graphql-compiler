@@ -4,7 +4,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from hashlib import sha256
 from itertools import chain
-from typing import Any, FrozenSet
+from typing import Any, FrozenSet, Iterable
 
 import arrow
 from graphql import (
@@ -267,7 +267,7 @@ INBOUND_EDGE_FIELD_PREFIX = "in_"
 VERTEX_FIELD_PREFIXES = frozenset({OUTBOUND_EDGE_FIELD_PREFIX, INBOUND_EDGE_FIELD_PREFIX})
 
 
-def is_vertex_field_name(field_name):
+def is_vertex_field_name(field_name: str) -> bool:
     """Return True if the field's name indicates it is a non-root vertex field."""
     # N.B.: A vertex field is a field whose type is a vertex type. This is what edges are.
     return field_name.startswith(OUTBOUND_EDGE_FIELD_PREFIX) or field_name.startswith(
@@ -275,7 +275,7 @@ def is_vertex_field_name(field_name):
     )
 
 
-def _unused_function(*args, **kwargs):
+def _unused_function(*args: Any, **kwargs: Any) -> None:
     """Must not be called. Placeholder for functions that are required but aren't used."""
     raise NotImplementedError(
         "The function you tried to call is not implemented, args / kwargs: "
@@ -283,7 +283,7 @@ def _unused_function(*args, **kwargs):
     )
 
 
-def _serialize_date(value):
+def _serialize_date(value: Any) -> str:
     """Serialize a Date object to its proper ISO-8601 representation."""
     # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
     # interchangeable. Rather than using isinstance, we will therefore check for exact type
@@ -296,7 +296,7 @@ def _serialize_date(value):
     return value.isoformat()
 
 
-def _parse_date_value(value):
+def _parse_date_value(value: Any) -> date:
     """Deserialize a Date object from its proper ISO-8601 representation."""
     return arrow.get(value, "YYYY-MM-DD").date()
 
@@ -403,12 +403,12 @@ ALL_SUPPORTED_META_FIELDS = frozenset((TYPENAME_META_FIELD_NAME, COUNT_META_FIEL
 EXTENDED_META_FIELD_DEFINITIONS = OrderedDict(((COUNT_META_FIELD_NAME, GraphQLField(GraphQLInt)),))
 
 
-def is_meta_field(field_name):
+def is_meta_field(field_name: str) -> bool:
     """Return True if the field is considered a meta field in the schema, and False otherwise."""
     return field_name in ALL_SUPPORTED_META_FIELDS
 
 
-def insert_meta_fields_into_existing_schema(graphql_schema):
+def insert_meta_fields_into_existing_schema(graphql_schema: GraphQLSchema) -> None:
     """Add compiler-specific meta-fields into all interfaces and types of the specified schema.
 
     It is preferable to use the EXTENDED_META_FIELD_DEFINITIONS constant above to directly inject
@@ -426,9 +426,18 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
         graphql_schema: GraphQLSchema object describing the schema that is going to be used with
                         the compiler. N.B.: MUTATED IN-PLACE in this method.
     """
-    root_type_name = graphql_schema.get_query_type().name
+    query_type = graphql_schema.query_type
+    if query_type is None:
+        raise AssertionError(
+            f"Unexpectedly received a GraphQL schema with no defined query type. It is impossible "
+            f"to insert GraphQL compiler's meta fields into such a schema, since the schema cannot "
+            f"be used for querying with GraphQL compiler. Received schema type map: "
+            f"{graphql_schema.type_map}"
+        )
 
-    for type_name, type_obj in six.iteritems(graphql_schema.get_type_map()):
+    root_type_name = query_type.name
+
+    for type_name, type_obj in six.iteritems(graphql_schema.type_map):
         if type_name.startswith("__") or type_name == root_type_name:
             # Ignore the types that are built into GraphQL itself, as well as the root query type.
             continue
@@ -448,7 +457,7 @@ def insert_meta_fields_into_existing_schema(graphql_schema):
             type_obj.fields[meta_field_name] = meta_field
 
 
-def check_for_nondefault_directive_names(directives):
+def check_for_nondefault_directive_names(directives: Iterable[GraphQLDirective]) -> None:
     """Check if any user-created directives are present."""
     # Include compiler-supported directives, and the default directives GraphQL defines.
     expected_directive_names = {

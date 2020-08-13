@@ -6,17 +6,18 @@ from decimal import Decimal
 import re
 import unittest
 
+from graphql import build_ast_schema, parse
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
 from graphql.utilities import print_schema
 import pytz
 import six
 
 from .. import schema
-from .test_helpers import get_schema
+from .test_helpers import compare_ignoring_whitespace, get_schema
 
 
 class SchemaTests(unittest.TestCase):
-    def test_directives_match(self):
+    def test_directives_match(self) -> None:
         # Directives don't currently implement an equality operator.
         # Instead, we will construct a fake schema, then print it and compare the directives'
         # string representation, which is standardized GraphQL and has to contain all their info.
@@ -50,7 +51,7 @@ class SchemaTests(unittest.TestCase):
         actual_directives = _get_directives_in_string_form(schema.DIRECTIVES)
         self.assertEqual(test_directives, actual_directives)
 
-    def test_decimal_serialization_and_parsing(self):
+    def test_decimal_serialization_and_parsing(self) -> None:
         test_data = {
             "0": Decimal(0),
             "123": Decimal(123),
@@ -65,7 +66,7 @@ class SchemaTests(unittest.TestCase):
             self.assertEqual(serialized_decimal, schema.GraphQLDecimal.serialize(decimal_obj))
             self.assertEqual(decimal_obj, schema.GraphQLDecimal.parse_value(serialized_decimal))
 
-    def test_date_serialization_and_parsing(self):
+    def test_date_serialization_and_parsing(self) -> None:
         test_data = {
             "2017-01-01": date(2017, 1, 1),
             "2008-02-29": date(2008, 2, 29),
@@ -76,7 +77,7 @@ class SchemaTests(unittest.TestCase):
             self.assertEqual(iso_date, schema.GraphQLDate.serialize(date_obj))
             self.assertEqual(date_obj, schema.GraphQLDate.parse_value(iso_date))
 
-    def test_datetime_serialization_and_parsing(self):
+    def test_datetime_serialization_and_parsing(self) -> None:
         test_data = {
             # Basic.
             "2017-01-01T00:00:00": datetime(2017, 1, 1, 0, 0, 0),
@@ -121,7 +122,7 @@ class SchemaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 schema.GraphQLDateTime.parse_value(serialization_input)
 
-    def test_meta_fields_from_constant(self):
+    def test_meta_fields_from_constant(self) -> None:
         fields = schema.EXTENDED_META_FIELD_DEFINITIONS.copy()
         fields.update(
             OrderedDict((("foo", GraphQLField(GraphQLString)), ("bar", GraphQLField(GraphQLInt)),))
@@ -140,3 +141,128 @@ type MyType {
             "    ", "  "
         )  # 2 space indentation instead of 4 spaces
         self.assertIn(expected_type_definition, printed_schema)
+
+    def test_meta_field_in_place_insertion(self) -> None:
+        self.maxDiff = None
+
+        # This is a real schema prefix, valid for use with GraphQL compiler.
+        schema_unmodified_prefix = """\
+schema {
+    query: RootSchemaQuery
+}
+
+directive @filter(
+    \"\"\"Name of the filter operation to perform.\"\"\"
+    op_name: String!
+
+    \"\"\"List of string operands for the operator.\"\"\"
+    value: [String!]
+) repeatable on FIELD | INLINE_FRAGMENT
+
+directive @tag(
+    \"\"\"Name to apply to the given property field.\"\"\"
+    tag_name: String!
+) on FIELD
+
+directive @output(
+    \"\"\"What to designate the output field generated from this property field.\"\"\"
+    out_name: String!
+) on FIELD
+
+directive @output_source on FIELD
+
+directive @optional on FIELD
+
+directive @recurse(
+    \"\"\"
+    Recurse up to this many times on this edge. A depth of 1 produces the current \
+vertex and its immediate neighbors along the given edge.
+    \"\"\"
+    depth: Int!
+) on FIELD
+
+directive @fold on FIELD
+
+directive @macro_edge on FIELD_DEFINITION
+
+directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+\"\"\"
+The `Date` scalar type represents day-accuracy date objects.Values are
+serialized following the ISO-8601 datetime format specification, for example
+"2017-03-21". The year, month and day fields must be included, and the format
+followed exactly, or the behavior is undefined.
+\"\"\"
+scalar Date
+
+\"\"\"
+The `DateTime` scalar type represents timezone-naive second-accuracy
+timestamps.Values are serialized following the ISO-8601 datetime format
+specification, for example "2017-03-21T12:34:56". All of these fields must
+be included, including the seconds, and the format followed
+exactly, or the behavior is undefined.
+\"\"\"
+scalar DateTime
+
+\"\"\"
+The `Decimal` scalar type is an arbitrary-precision decimal number object useful
+for representing values that should never be rounded, such as currency amounts.
+Values are allowed to be transported as either a native Decimal type, if the
+underlying transport allows that, or serialized as strings in decimal format,
+without thousands separators and using a "." as the decimal separator: for
+example, "12345678.012345".
+\"\"\"
+scalar Decimal
+"""
+
+        # N.B.: Make sure that any type names used here come lexicographically after "Decimal".
+        #       Otherwise, due to the alphabetical order of types shown in the schema, the test
+        #       may break, or the test code that generates the expected output might get complex.
+        original_schema_text = (
+            schema_unmodified_prefix
+            + """\
+interface FooInterface {
+    field1: Int
+}
+
+type RealFoo implements FooInterface {
+    field1: Int
+    field2: String
+}
+
+type RootSchemaQuery {
+    FooInterface: [FooInterface]
+    RealFoo: [RealFoo]
+}
+"""
+        )
+
+        expected_final_schema_text = (
+            schema_unmodified_prefix
+            + """\
+interface FooInterface {
+    field1: Int
+    _x_count: Int
+}
+
+type RealFoo implements FooInterface {
+    field1: Int
+    field2: String
+    _x_count: Int
+}
+
+type RootSchemaQuery {
+    FooInterface: [FooInterface]
+    RealFoo: [RealFoo]
+}
+"""
+        )
+
+        graphql_schema = build_ast_schema(parse(original_schema_text))
+
+        schema.insert_meta_fields_into_existing_schema(graphql_schema)
+
+        actual_final_schema_text = print_schema(graphql_schema)
+        compare_ignoring_whitespace(
+            self, expected_final_schema_text, actual_final_schema_text, None
+        )
