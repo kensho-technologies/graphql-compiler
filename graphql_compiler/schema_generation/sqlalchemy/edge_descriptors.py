@@ -73,9 +73,9 @@ def generate_direct_edge_descriptors_from_foreign_keys(
 
     Return:
         set of edge descriptors. An edge descriptor is generated for each single-column foreign key
-        and primary key pair. For instance, if there is a foreign key column A.b_id referencing
-        primary key column B.b_id, and V_a and V_b are the vertex type names of table A and B
-        respectively, then this function would generate the following edge descriptor:
+        and primary key pair. For instance, suppose there is a foreign key A.b_id referencing
+        primary key B.b_id, and that V_a and V_b are the vertex type names of table A and B
+        respectively. Then this function would generate the following edge descriptor:
         DirectEdgeDescriptor(
             from_vertex=V_a,
             from_column=b_id,
