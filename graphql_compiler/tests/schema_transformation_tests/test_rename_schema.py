@@ -13,7 +13,8 @@ from ...schema_transformation.utils import (
     InvalidTypeNameError,
     SchemaNameConflictError,
     SchemaTransformError,
-    get_scalar_names,
+    builtin_scalar_type_names,
+    get_custom_scalar_names,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
 
@@ -772,7 +773,7 @@ class TestRenameSchema(unittest.TestCase):
                 self.schema = schema
 
             def get(self, key, default=None):
-                if key in get_scalar_names(self.schema):
+                if key in get_custom_scalar_names(self.schema) or key in builtin_scalar_type_names:
                     # Making an exception for scalar types because renaming and suppressing them
                     # hasn't been implemented yet
                     return key
