@@ -545,27 +545,41 @@ class RenameSchemaTypesVisitor(Visitor):
             return REMOVE
         check_type_name_is_valid(new_name_string)
 
-        # Either new_name_string is the name of a type (that may or may not have been
-        # renamed) in reverse_name_map or new_name_string is the name of a custom scalar.
-        # Either way, we want the original name of the type that is would be named
-        # new_name_string in the renamed schema.
+        # Renaming conflict arises when two types with different names in the original schema have
+        # the same name in the new schema. There are two ways to produce this conflict:
+        # * when neither type is a custom scalar
+        # * when one type is a custom scalar and the other is not
+        #
+        # If neither type is a custom scalar, then new_name_string will be in
+        # self.reverse_name_map (because self.reverse_name_map records all non-scalar types in
+        # the schema). The types named self.reverse_name_map[new_name_string] and name_string in
+        # the old schema would both get mapped to new_name_string in the new schema, even though
+        # self.reverse_name_map[new_name_string] != name_string.
+        #
+        # If one type in the conflict is a custom scalar, then the conflict arises from
+        # attempting to rename a non-scalar type (from name_string to new_name_string) when
+        # there already exists a custom scalar type named new_name_string. Custom scalar
+        # renaming has not been implemented yet so we know for sure that the scalar's name (in
+        # both the original and new schema) is new_name_string.
+        #
+        # It's also possible to produce a similar conflict where one type is not a custom scalar but
+        # rather a built-in scalar, e.g. String. That case is handled separately because renaming a
+        # type to a built-in scalar will never be allowed in any schema, whereas the conflicts here
+        # arise from conflicting with the existence of other types in the schema.
         if (
-            new_name_string in self.reverse_name_map
-            and self.reverse_name_map[new_name_string] != name_string
-        ) or new_name_string in self.custom_scalar_names:
-            # This type of conflict arises when two types with different names in the original
-            # schema have the same name in the new schema.
-            # If neither type is a custom scalar, the two type names in the original schema are
-            # name_string and self.reverse_name_map[new_name_string].
-            # If one of the types is a custom scalar, it won't appear in self.reverse_name_map
-            # because custom scalar renaming has not been implemented yet and self.reverse_name_map
-            # does not include scalars. Since this renaming has not been implemented yet, we know
-            # for sure that the scalar's name is new_name_string.
-            # In either case, the two types in the original schema will be named name_string and
-            # conflictingly_renamed_type_name.
+            self.reverse_name_map.get(new_name_string, name_string) != name_string
+            or new_name_string in self.custom_scalar_names
+        ):
+            # If neither type in this conflict is a custom scalar, the two types causing conflict
+            # were named name_string and self.reverse_name_map[new_name_string] in the original
+            # schema.
+            # If one type in this conflict is a custom scalar, the two types causing conflict were
+            # named name_string and new_name_string (the latter being the custom scalar name) in the
+            # original schema.
             conflictingly_renamed_type_name = self.reverse_name_map.get(
                 new_name_string, new_name_string
             )
+
             raise SchemaNameConflictError(
                 '"{}" and "{}" are both renamed to "{}"'.format(
                     name_string, conflictingly_renamed_type_name, new_name_string
