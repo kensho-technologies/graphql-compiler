@@ -57,15 +57,17 @@ setup(
     install_requires=[  # Make sure to keep in sync with Pipfile requirements.
         "arrow>=0.15.0,<1",
         "funcy>=1.7.3,<2",
-        "graphql-core>=3.1,<3.2",
+        "graphql-core>=3.1.2,<3.2",
         "pytz>=2017.2",
         "six>=1.10.0",
         "sqlalchemy>=1.3.0,<2",
-        "cached-property>=1.5.1,<2",
     ],
     extras_require={
         ':python_version<"3.7"': ["dataclasses>=0.7,<1"],
-        ':python_version<"3.8"': ["typing-extensions>=3.7.4.2,<4"],
+        ':python_version<"3.8"': [
+            "backports.cached-property>=1.0.0.post2,<2",
+            "typing-extensions>=3.7.4.2,<4",
+        ],
     },
     classifiers=[
         "Development Status :: 5 - Production/Stable",
