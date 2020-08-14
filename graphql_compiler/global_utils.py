@@ -13,7 +13,7 @@ from .ast_manipulation import safe_parse_graphql
 try:
     from functools import cached_property  # noqa
 except ImportError:
-    from backports.cached_property import cached_property  # noqa  # type: ignore[no-redef]
+    from backports.cached_property import cached_property  # type: ignore[no-redef] # noqa
 
 
 # A path starting with a vertex and continuing with edges from that vertex
