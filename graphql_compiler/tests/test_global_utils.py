@@ -5,7 +5,7 @@ from ..global_utils import assert_set_equality
 
 
 class GlobalUtilTests(unittest.TestCase):
-    def test_assert_equality(self):
+    def test_assert_equality(self) -> None:
         # Matching sets
         assert_set_equality({"a", "b"}, {"a", "b"})
 
