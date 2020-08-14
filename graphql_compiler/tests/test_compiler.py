@@ -1,13 +1,24 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """End-to-end tests of the GraphQL compiler."""
+from functools import partial
 import os
+from typing import Callable, Optional, Type, Union, cast
 import unittest
 
-from graphql import GraphQLID, GraphQLString
+from funcy import identity, rpartial
+from graphql import (
+    GraphQLID,
+    GraphQLInterfaceType,
+    GraphQLObjectType,
+    GraphQLString,
+    GraphQLUnionType,
+)
 import six
+from sqlalchemy.sql.selectable import Select
 
 from . import test_input_data
 from ..compiler import (
+    CompilationResult,
     OutputMetadata,
     compile_graphql_to_cypher,
     compile_graphql_to_gremlin,
@@ -16,6 +27,7 @@ from ..compiler import (
 )
 from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..schema import TypeEquivalenceHintsType
 from ..schema.schema_info import CommonSchemaInfo
 from .test_helpers import (
     SKIP_TEST,
@@ -29,93 +41,113 @@ from .test_helpers import (
 )
 
 
+def _check_expected_output_for_language(
+    test_case: unittest.TestCase,
+    test_data: test_input_data.CommonTestData,
+    compiler_func: Callable[[str], CompilationResult],
+    query_printer_func: Callable[[Union[str, Select]], str],
+    output_equality_assertion_func: Callable[[unittest.TestCase, str, str], None],
+    expected_output: Union[str, Type[NotImplementedError]],
+) -> None:
+    """Assert that the provided GraphQL input produces the expected compiler output."""
+    graphql_query = test_data.graphql_input
+
+    if expected_output == SKIP_TEST:
+        # This test is skipped.
+        pass
+    elif expected_output == NotImplementedError:
+        # This test is expected to raise an error that indicates the functionality is unsupported.
+        unsupported_errors = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
+        with test_case.assertRaises(unsupported_errors):
+            compiler_func(graphql_query)
+    elif isinstance(expected_output, str):
+        # This test is expected to compile properly and produce the given input.
+        result = compiler_func(graphql_query)
+        compiled_query = query_printer_func(result.query)
+
+        output_equality_assertion_func(test_case, expected_output, compiled_query)
+        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    else:
+        raise AssertionError(f"Received unexpected value for expected_output: {expected_output}")
+
+
 def check_test_data(
-    test_case,
-    test_data,
-    expected_match,
-    expected_gremlin,
-    expected_mssql,
-    expected_cypher,
-    expected_postgresql,
-):
+    test_case: "CompilerTests",
+    test_data: test_input_data.CommonTestData,
+    expected_match: Union[str, Type[NotImplementedError]],
+    expected_gremlin: Union[str, Type[NotImplementedError]],
+    expected_mssql: Union[str, Type[NotImplementedError]],
+    expected_cypher: Union[str, Type[NotImplementedError]],
+    expected_postgresql: Union[str, Type[NotImplementedError]],
+) -> None:
     """Assert that the GraphQL input generates all expected output queries data."""
+    schema_based_type_equivalence_hints: Optional[TypeEquivalenceHintsType]
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
         # Here, we convert them to the required GraphQL types.
         schema_based_type_equivalence_hints = {
-            test_case.schema.get_type(key): test_case.schema.get_type(value)
+            cast(
+                Union[GraphQLInterfaceType, GraphQLObjectType], test_case.schema.get_type(key)
+            ): cast(GraphQLUnionType, test_case.schema.get_type(value))
             for key, value in six.iteritems(test_data.type_equivalence_hints)
         }
     else:
         schema_based_type_equivalence_hints = None
 
     common_schema_info = CommonSchemaInfo(test_case.schema, schema_based_type_equivalence_hints)
-    graphql_query = test_data.graphql_input
 
-    if expected_match == SKIP_TEST:
-        pass
-    else:
-        result = compile_graphql_to_match(common_schema_info, test_data.graphql_input)
-        compare_match(test_case, expected_match, result.query)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    match_compiler_func = partial(compile_graphql_to_match, common_schema_info)
+    gremlin_compiler_func = partial(compile_graphql_to_gremlin, common_schema_info)
+    cypher_compiler_func = partial(compile_graphql_to_cypher, common_schema_info)
+    mssql_compiler_func = partial(compile_graphql_to_sql, test_case.mssql_schema_info)
+    postgresql_compiler_func = partial(compile_graphql_to_sql, test_case.postgresql_schema_info)
 
-    # Allow features to not be implemented in Gremlin and SQL, and instead raise compilation errors.
-    if expected_gremlin == SKIP_TEST:
-        pass
-    elif expected_gremlin == NotImplementedError:
-        with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_gremlin(common_schema_info, graphql_query)
-    else:
-        result = compile_graphql_to_gremlin(common_schema_info, graphql_query)
-        compare_gremlin(test_case, expected_gremlin, result.query)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    mssql_printer_func = rpartial(
+        print_sqlalchemy_query_string, test_case.mssql_schema_info.dialect
+    )
+    postgresql_printer_func = rpartial(
+        print_sqlalchemy_query_string, test_case.postgresql_schema_info.dialect
+    )
 
-    if expected_mssql == SKIP_TEST:
-        pass
-    elif expected_mssql == NotImplementedError:
-        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
-        with test_case.assertRaises(not_supported):
-            compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
-    else:
-        result = compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
-        string_result = print_sqlalchemy_query_string(
-            result.query, test_case.mssql_schema_info.dialect
+    # compare_match() takes an optional kwarg that means its signature is not representable
+    # using the Callable[] syntax. We don't use that kwarg, so fix the signature with a cast.
+    compare_parameterized_match = cast(Callable[[unittest.TestCase, str, str], None], compare_match)
+
+    language_configurations = [
+        ("MATCH", match_compiler_func, identity, compare_parameterized_match, expected_match),
+        ("Gremlin", gremlin_compiler_func, identity, compare_gremlin, expected_gremlin),
+        ("Cypher", cypher_compiler_func, identity, compare_cypher, expected_cypher),
+        ("MS SQL", mssql_compiler_func, mssql_printer_func, compare_sql, expected_mssql),
+        (
+            "PostgreSQL",
+            postgresql_compiler_func,
+            postgresql_printer_func,
+            compare_sql,
+            expected_postgresql,
+        ),
+    ]
+
+    for configuration in language_configurations:
+        (
+            _,
+            compiler_func,
+            query_printer_func,
+            equality_assertion_func,
+            expected_output,
+        ) = configuration
+        _check_expected_output_for_language(
+            test_case,
+            test_data,
+            compiler_func,
+            query_printer_func,
+            equality_assertion_func,
+            expected_output,
         )
-        compare_sql(test_case, expected_mssql, string_result)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-    if expected_postgresql == SKIP_TEST:
-        pass
-    elif expected_postgresql == NotImplementedError:
-        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
-        with test_case.assertRaises(not_supported):
-            compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
-    else:
-        result = compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
-        string_result = print_sqlalchemy_query_string(
-            result.query, test_case.postgresql_schema_info.dialect
-        )
-        compare_sql(test_case, expected_postgresql, string_result)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-    if expected_cypher == SKIP_TEST:
-        pass
-    elif expected_cypher == NotImplementedError:
-        with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_cypher(common_schema_info, graphql_query)
-    else:
-        result = compile_graphql_to_cypher(common_schema_info, graphql_query)
-        compare_cypher(test_case, expected_cypher, result.query)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
 
 class CompilerTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
