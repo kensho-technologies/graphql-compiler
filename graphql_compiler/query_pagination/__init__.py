@@ -10,11 +10,13 @@ from .query_parameterizer import generate_parameterized_queries
 from .typedefs import PageAndRemainder
 
 
-def _estimate_number_of_pages(query: ASTWithParameters, result_size: float, page_size: int) -> int:
+def _estimate_number_of_pages(
+    query: QueryStringWithParameters, result_size: float, page_size: int
+) -> int:
     """Estimate how many pages of results we should generate to meet the desired result size.
 
     Args:
-        query: ASTWithParameters
+        query: QueryStringWithParameters
         result_size: The estimated result size of a query
         page_size: The desired page size of a query
 
