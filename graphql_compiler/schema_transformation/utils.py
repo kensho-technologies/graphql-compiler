@@ -2,7 +2,7 @@
 from copy import copy
 import string
 
-from graphql import build_ast_schema
+from graphql import build_ast_schema, specified_scalar_types
 from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
@@ -75,6 +75,11 @@ class CascadingSuppressionError(SchemaTransformError):
 _alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
 
 
+# String representations for the GraphQL built-in scalar types
+# pylint produces a false positive-- see issue here: https://github.com/PyCQA/pylint/issues/3743
+builtin_scalar_type_names = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
+
+
 def check_schema_identifier_is_valid(identifier):
     """Check if input is a valid identifier, made of alphanumeric and underscore characters.
 
@@ -131,11 +136,10 @@ def get_query_type_name(schema):
     return schema.query_type.name
 
 
-def get_scalar_names(schema):
-    """Get names of all scalars used in the input schema.
+def get_custom_scalar_names(schema):
+    """Get names of all custom scalars used in the input schema.
 
-    Includes all user defined scalars, as well as any builtin scalars used in the schema; excludes
-    builtin scalars not used in the schema.
+    Includes all user defined scalars; excludes builtin scalars.
 
     Note: If the user defined a scalar that shares its name with a builtin introspection type
     (such as __Schema, __Directive, etc), it will not be listed in type_map and thus will not
@@ -145,12 +149,12 @@ def get_scalar_names(schema):
         Set[str], set of names of scalars used in the schema
     """
     type_map = schema.type_map
-    scalars = {
+    custom_scalar_names = {
         type_name
         for type_name, type_object in six.iteritems(type_map)
-        if isinstance(type_object, GraphQLScalarType)
+        if isinstance(type_object, GraphQLScalarType) and type_name not in builtin_scalar_type_names
     }
-    return scalars
+    return custom_scalar_names
 
 
 def try_get_ast_by_name_and_type(asts, target_name, target_type):
