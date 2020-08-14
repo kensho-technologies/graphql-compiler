@@ -11,9 +11,9 @@ from .ast_manipulation import safe_parse_graphql
 
 # Imported from here, to avoid spreading the conditional import everywhere.
 try:
-    from functools import cached_property  # noqa
+    from functools import cached_property  # noqa  # pylint: disable=unused-import
 except ImportError:
-    from backports.cached_property import cached_property  # type: ignore[no-redef] # noqa
+    from backports.cached_property import cached_property  # type: ignore[no-redef]  # noqa
 
 
 # A path starting with a vertex and continuing with edges from that vertex
