@@ -129,6 +129,10 @@ def checked_cast(target_type: Type[T_A], value: Any) -> T_A:
 def checked_cast_to_union2(
     target_types: Tuple[Type[T_A], Type[T_B]], value: Any,
 ) -> Union[T_A, T_B]:
+    """Assert that the value is one of the two specified types."""
+    # N.B.: If we ever need a union of more than two types, feel free to make functions like
+    #       checked_cast_to_union3() or checked_cast_to_union4() as necessary, so long as you
+    #       cover them with tests on par with the ones for this function.
     if not isinstance(value, target_types):
         raise AssertionError(
             f"Expected value {value} to be an instance of one of {target_types}, but that "
