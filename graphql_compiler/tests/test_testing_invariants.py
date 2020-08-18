@@ -21,7 +21,7 @@ class TestingInvariants(unittest.TestCase):
             if input_name not in IGNORED_FUNCTIONS
         }
 
-    def test_ir_generation_test_invariants(self):
+    def test_ir_generation_test_invariants(self) -> None:
         # Importing IrGenerationTests globally would expose them to py.test a second time.
         # We import them here so that these tests are not run again.
         from .test_ir_generation import IrGenerationTests
@@ -35,7 +35,7 @@ class TestingInvariants(unittest.TestCase):
                     )
                 )
 
-    def test_compiler_test_invariants(self):
+    def test_compiler_test_invariants(self) -> None:
         # Importing CompilerTests globally would expose them to py.test a second time.
         # We import them here so that these tests are not run again.
         from .test_compiler import CompilerTests

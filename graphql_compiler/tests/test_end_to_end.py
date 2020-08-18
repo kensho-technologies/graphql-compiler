@@ -366,7 +366,7 @@ class QueryFormattingTests(unittest.TestCase):
         )
         self.assertEqual(datetime.datetime(2014, 2, 5, 3, 20, 55), value)
 
-    def test_deserialize_lists(self):
+    def test_deserialize_lists(self) -> None:
         # Non-collection
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_argument("numbers", GraphQLList(GraphQLInt), 1)

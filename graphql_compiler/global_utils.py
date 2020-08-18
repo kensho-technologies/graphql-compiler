@@ -1,9 +1,19 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
-from typing import Any, Dict, NamedTuple, Set, Tuple, TypeVar
+from typing import Any, Dict, NamedTuple, Set, Tuple, Type, TypeVar
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull, GraphQLType
+from graphql.language.printer import print_ast
 import six
+
+from .ast_manipulation import safe_parse_graphql
+
+
+# Imported from here, to avoid spreading the conditional import everywhere.
+try:
+    from functools import cached_property  # noqa  # pylint: disable=unused-import
+except ImportError:
+    from backports.cached_property import cached_property  # type: ignore[no-redef]  # noqa
 
 
 # A path starting with a vertex and continuing with edges from that vertex
@@ -17,12 +27,26 @@ class PropertyPath(NamedTuple):
     field_name: str
 
 
+QueryStringWithParametersT = TypeVar(
+    "QueryStringWithParametersT", bound="QueryStringWithParameters"
+)
+ASTWithParametersT = TypeVar("ASTWithParametersT", bound="ASTWithParameters")
+
+
 @dataclass
 class QueryStringWithParameters:
     """A query string and parameters that validate against the query."""
 
     query_string: str
     parameters: Dict[str, Any]
+
+    @classmethod
+    def from_ast_with_parameters(
+        cls: Type[QueryStringWithParametersT], ast_with_params: "ASTWithParameters"
+    ) -> QueryStringWithParametersT:
+        """Convert an ASTWithParameters into its equivalent QueryStringWithParameters form."""
+        query_string = print_ast(ast_with_params.query_ast)
+        return cls(query_string, ast_with_params.parameters)
 
 
 @dataclass
@@ -31,6 +55,14 @@ class ASTWithParameters:
 
     query_ast: DocumentNode
     parameters: Dict[str, Any]
+
+    @classmethod
+    def from_query_string_with_parameters(
+        cls: Type[ASTWithParametersT], query_with_params: QueryStringWithParameters
+    ) -> ASTWithParametersT:
+        """Convert an QueryStringWithParameters into its equivalent ASTWithParameters form."""
+        query_ast = safe_parse_graphql(query_with_params.query_string)
+        return cls(query_ast, query_with_params.parameters)
 
 
 KT = TypeVar("KT")
