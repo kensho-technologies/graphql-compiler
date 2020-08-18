@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from typing import Any, Optional, Type, Union
+from typing import Optional, Type, Union
 
 from graphql.error import GraphQLSyntaxError
 from graphql.language.ast import (
@@ -151,36 +151,6 @@ def get_ast_with_non_null_and_list_stripped(ast: TypeNode) -> NamedTypeNode:
     if not isinstance(ast, NamedTypeNode):
         raise AssertionError(
             f"Expected the AST value to be a NamedTypeNode, but unexpectedly instead found: {ast}"
-        )
-
-    return ast
-
-
-def assert_selection_is_a_field_node(ast: Any) -> FieldNode:
-    """Return the input value, if it is indeed a FieldNode, or raise AssertionError otherwise."""
-    # N.B.: Using Any as the input type, since the inputs here are a variety of generics, unions,
-    #       and a number of AST types. Since this function asserts the type of the input anyway,
-    #       this is not a concern.
-    if not isinstance(ast, FieldNode):
-        raise AssertionError(
-            f"Expected AST to be a FieldNode, but instead found {type(ast).__name__}. "
-            f"This is a bug. Node value: {ast}"
-        )
-
-    return ast
-
-
-def assert_selection_is_a_field_or_inline_fragment_node(
-    ast: Any,
-) -> Union[FieldNode, InlineFragmentNode]:
-    """Return the input FieldNode or InlineFragmentNode, or raise AssertionError otherwise."""
-    # N.B.: Using Any as the input type, since the inputs here are a variety of generics, unions,
-    #       and a number of AST types. Since this function asserts the type of the input anyway,
-    #       this is not a concern.
-    if not isinstance(ast, (FieldNode, InlineFragmentNode)):
-        raise AssertionError(
-            f"Expected AST to be a FieldNode or InlineFragmentNode, but instead "
-            f"found {type(ast).__name__}. This is a bug. Node value: {ast}"
         )
 
     return ast

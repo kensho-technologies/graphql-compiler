@@ -19,7 +19,6 @@ from graphql.language.ast import (
 from graphql.pyutils import FrozenList
 
 from ..ast_manipulation import (
-    assert_selection_is_a_field_node,
     get_ast_field_name,
     get_only_query_definition,
     get_only_selection_from_ast,
@@ -28,7 +27,12 @@ from ..compiler.helpers import get_parameter_name
 from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..cost_estimation.int_value_conversion import convert_field_value_to_int
 from ..exceptions import GraphQLError
-from ..global_utils import ASTWithParameters, PropertyPath, VertexPath
+from ..global_utils import (
+    ASTWithParameters,
+    PropertyPath,
+    VertexPath,
+    checked_cast,
+)
 from .pagination_planning import VertexPartitionPlan
 
 
@@ -161,7 +165,7 @@ def _add_pagination_filter_at_node(
     new_selections = []
     found_field = False
     for selection_ast in node_ast.selection_set.selections:
-        field_ast = assert_selection_is_a_field_node(selection_ast)
+        field_ast = checked_cast(FieldNode, selection_ast)
         new_field_ast = field_ast
         field_name = get_ast_field_name(field_ast)
         if field_name == pagination_field:
@@ -251,9 +255,11 @@ def _add_pagination_filter_recursively(
     """
     if len(query_path) == 0:
         if isinstance(node_ast, OperationDefinitionNode):
-            # N.B.: We cannot use assert_selection_is_a_field_or_inline_fragment_node() here, since
-            #       that function's return type annotation is a Union type that isn't compatible
-            #       with the generic type signature of _add_pagination_filter_at_node().
+            # N.B.: We can't use checked_cast_to_union2() here, because we need to narrow a generic
+            #       bound to another generic bound: FieldOrFragmentOrDefinitionT -> FieldOrFragmentT
+            #       Generics in Python are erased at runtime, so we have to do this by "subtracting"
+            #       out the OperationDefinitionNode, which is the difference between the two
+            #       generic types.
             raise AssertionError(
                 f"Unexpectedly encountered an OperationDefinitionNode while expecting either a "
                 f"FieldNode or InlineFragmentNode. This is a bug. Node value: {node_ast}"
@@ -299,7 +305,7 @@ def _add_pagination_filter_recursively(
     for selection_ast in node_ast.selection_set.selections:
         # At this point, we know that all selections within this node are of FieldNode type, since
         # we handled the InlineFragment case above. Assert that our selection is a FieldNode.
-        field_ast = assert_selection_is_a_field_node(selection_ast)
+        field_ast = checked_cast(FieldNode, selection_ast)
 
         new_field_ast = field_ast
         field_name = get_ast_field_name(field_ast)
