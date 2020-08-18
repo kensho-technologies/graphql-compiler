@@ -274,14 +274,15 @@ enable=abstract-class-instantiated,
     overlap-except,
     docstyle,
     # Disabled for now, maybe enable in the future:
-    # abstract-method,             # needs some cleanup first
-    # no-absolute-import,          # maybe with Python 3 support
-    # parameter_documentation,     # needs some cleanup and maybe configuration
-    # unused-argument,             # needs some cleanup and per-line suppression,
-                                   # buggy / unclear how to suppress only a single function
-    # useless-object-inheritance,  # when we stop having Python 2 in the codebase
-    # fixme,                       # sometimes there is a legitimate need for a TODO
-    # redundant-returns-doc,       # needs some cleanup first
+    # abstract-method,                 # needs some cleanup first
+    # no-absolute-import,              # maybe with Python 3 support
+    # parameter_documentation,         # needs some cleanup and maybe configuration
+    # unused-argument,                 # needs some cleanup and per-line suppression,
+                                       # buggy / unclear how to suppress only a single function
+    # useless-object-inheritance,      # when we stop having Python 2 in the codebase
+    # fixme,                           # sometimes there is a legitimate need for a TODO
+    # redundant-returns-doc,           # needs some cleanup first
+    # inconsistent-return-statements,  # useful, but pylint takes way too long to check it
 
 
 # Consider the following sample rc files for errors to enable/disable:

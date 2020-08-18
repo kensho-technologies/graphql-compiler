@@ -795,6 +795,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
             return IDLE
         self.union_types_to_suppress.append(node)
 
+        return IDLE
+
 
 class SuppressionNotImplementedVisitor(Visitor):
     """Traverse the schema to check for suppressions that are not yet implemented.
