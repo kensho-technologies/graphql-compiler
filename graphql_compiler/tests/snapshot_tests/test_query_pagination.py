@@ -1771,12 +1771,10 @@ class QueryPaginationTests(unittest.TestCase):
         self.assertTrue(first_page_and_remainder.remainder == tuple())
         self.assertEqual(advisories, (MissingClassCount("Animal_LivesIn"),))
 
-    @pytest.mark.xfail(
-        strict=True, reason="inline fragment not supported", raises=Exception
-    )
+    @pytest.mark.xfail(strict=True, reason="inline fragment not supported", raises=Exception)
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_pagination_with_inline_fragment(self) -> None:
-        schema_graph = generate_schema_graph(self.orientdb_client)
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
         pagination_keys["Species"] = "limbs"  # Force pagination on int field
@@ -1786,8 +1784,7 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
-            class_counts,
-            field_quantiles={("Species", "limbs"): list(range(100))},
+            class_counts, field_quantiles={("Species", "limbs"): list(range(100))},
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1798,7 +1795,8 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = QueryStringWithParameters("""{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 out_Entity_Related {
                     ... on Species {
@@ -1806,7 +1804,9 @@ class QueryPaginationTests(unittest.TestCase):
                     }
                 }
             }
-        }""", {})
+        }""",
+            {},
+        )
         analysis = analyze_query_string(schema_info, query)
 
         vertex_partition_plan = VertexPartitionPlan(("Species", "out_Entity_Related"), "limbs", 2)
@@ -1819,9 +1819,7 @@ class QueryPaginationTests(unittest.TestCase):
         first_param = next(generated_parameters, sentinel)
         self.assertEqual(50, first_param)
 
-        page_query, _ = generate_parameterized_queries(
-            analysis, vertex_partition_plan, first_param
-        )
+        page_query, _ = generate_parameterized_queries(analysis, vertex_partition_plan, first_param)
 
         expected_page_query_string = """{
             Species {
