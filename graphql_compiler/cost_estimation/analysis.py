@@ -199,7 +199,7 @@ def get_field_value_intervals(
     Args:
         schema_info: QueryPlanningSchemaInfo
         types: the type at each node
-        filters: the set of filters at each node
+        single_field_filters: the set of filters at each node
         parameters: parameters used for the query
 
     Returns:
@@ -265,7 +265,7 @@ def get_distinct_result_set_estimates(
     Args:
         schema_info: QueryPlanningSchemaInfo
         types: the type at each node
-        filters: the set of filters at each node
+        selectivities: the selectivities at each VertexPath
         parameters: the query parameters
 
     Returns:

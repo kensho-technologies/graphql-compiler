@@ -9,10 +9,8 @@ def compare_sorted_locations_list(
     test_case: unittest.TestCase, sorted_locations: List[BaseLocation]
 ) -> None:
     """Ensure that the given list of locations is in ascending order."""
-    for i in range(len(sorted_locations)):
-        first_location = sorted_locations[i]
-        for j in range(len(sorted_locations)):
-            second_location = sorted_locations[j]
+    for i, first_location in enumerate(sorted_locations):
+        for j, second_location in enumerate(sorted_locations):
             expected_comparison = i < j
             received_comparison = first_location < second_location
             test_case.assertEqual(
@@ -59,10 +57,8 @@ class LocationTests(unittest.TestCase):
             Location(("Animal", "in_Animal_Parent_of", "out_Animal_FedAt"), "name", 2),
             Location(("Animal", "in_Animal_Parent_of", "out_Animal_FedAt"), "uuid", 2),
         ]
-        for i in range(len(sorted_locations)):
-            first_location = sorted_locations[i]
-            for j in range(len(sorted_locations)):
-                second_location = sorted_locations[j]
+        for i, first_location in enumerate(sorted_locations):
+            for j, second_location in enumerate(sorted_locations):
                 expected_comparison = i < j
                 received_location_comparison = first_location < second_location
                 self.assertEqual(expected_comparison, received_location_comparison)
@@ -91,10 +87,8 @@ class LocationTests(unittest.TestCase):
                 "uuid",
             ),
         ]
-        for i in range(len(sorted_locations)):
-            first_location = sorted_locations[i]
-            for j in range(len(sorted_locations)):
-                second_location = sorted_locations[j]
+        for i, first_location in enumerate(sorted_locations):
+            for j, second_location in enumerate(sorted_locations):
                 expected_comparison = i < j
                 received_comparison = first_location < second_location
                 self.assertEqual(expected_comparison, received_comparison)

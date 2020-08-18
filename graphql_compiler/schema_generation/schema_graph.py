@@ -364,9 +364,15 @@ class SchemaElement(object):
 
 
 class VertexType(SchemaElement):
+
+    # The parent class' __init__ method is marked abstract, and must be overridden.
+    # See the parent class for more details.
+    # pylint: disable=useless-super-delegation
     def __init__(self, class_name, abstract, properties, class_fields):
         """See base class __init__ method."""
         super(VertexType, self).__init__(class_name, abstract, properties, class_fields)
+
+    # pylint: enable=useless-super-delegation
 
 
 class EdgeType(SchemaElement):
@@ -419,9 +425,15 @@ class EdgeType(SchemaElement):
 
 
 class NonGraphElement(SchemaElement):
+
+    # The parent class' __init__ method is marked abstract, and must be overridden.
+    # See the parent class for more details.
+    # pylint: disable=useless-super-delegation
     def __init__(self, class_name, abstract, properties, class_fields):
         """See base class __init__ method."""
         super(NonGraphElement, self).__init__(class_name, abstract, properties, class_fields)
+
+    # pylint: enable=useless-super-delegation
 
 
 def _validate_non_abstract_edge_has_defined_base_connections(

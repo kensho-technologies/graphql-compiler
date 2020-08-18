@@ -581,15 +581,13 @@ class RenameSchemaTypesVisitor(Visitor):
             )
 
             raise SchemaNameConflictError(
-                '"{}" and "{}" are both renamed to "{}"'.format(
-                    type_name, conflictingly_renamed_type_name, desired_type_name
-                )
+                f'"{type_name}" and "{conflictingly_renamed_type_name}" are both '
+                f'renamed to "{desired_type_name}"'
             )
         if desired_type_name in builtin_scalar_type_names:
             raise SchemaNameConflictError(
-                '"{}" was renamed to "{}", clashing with built-in scalar "{}"'.format(
-                    type_name, desired_type_name, desired_type_name
-                )
+                f'"{type_name}" was renamed to "{desired_type_name}", clashing with '
+                f'built-in scalar "{desired_type_name}"'
             )
 
         self.reverse_name_map[desired_type_name] = type_name
