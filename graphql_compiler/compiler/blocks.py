@@ -460,7 +460,7 @@ class OutputSource(MarkerBlock):
 
     __slots__ = ()
 
-    def validate(self):
+    def validate(self) -> None:
         """Validate the OutputSource block. An OutputSource block is always valid in isolation."""
 
 
