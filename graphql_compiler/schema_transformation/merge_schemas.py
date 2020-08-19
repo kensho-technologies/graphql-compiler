@@ -13,7 +13,7 @@ from ..compiler.helpers import INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION
 from ..compiler.subclass import compute_subclass_sets
 from .utils import (
     InvalidCrossSchemaEdgeError,
-    SchemaNameConflictError,
+    SchemaMergeNameConflictError,
     check_ast_schema_is_valid,
     check_schema_identifier_is_valid,
     get_query_type_name,
@@ -325,7 +325,7 @@ def _process_directive_definition(directive, existing_directives, merged_schema_
         if print_ast(directive) == print_ast(existing_directives[directive_name]):
             return existing_directives, merged_schema_ast
         else:
-            raise SchemaNameConflictError(
+            raise SchemaMergeNameConflictError(
                 'Directive "{}" with definition "{}" has already been defined with '
                 'definition "{}".'.format(
                     directive_name,
@@ -363,7 +363,7 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
     if scalar_name in existing_scalars:
         return existing_scalars, merged_schema_ast
     if scalar_name in type_name_to_schema_id:
-        raise SchemaNameConflictError(
+        raise SchemaMergeNameConflictError(
             'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
             'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
             "to avoid conflicts.".format(
@@ -407,13 +407,13 @@ def _process_generic_type_definition(
     """
     type_name = generic_type.name.value
     if type_name in existing_scalars:
-        raise SchemaNameConflictError(
+        raise SchemaMergeNameConflictError(
             'New type "{}" in schema "{}" clashes with existing scalar. Consider '
             'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
             "to avoid conflicts.".format(type_name, schema_id, type_name, schema_id)
         )
     if type_name in type_name_to_schema_id:
-        raise SchemaNameConflictError(
+        raise SchemaMergeNameConflictError(
             'New type "{}" in schema "{}" clashes with existing type "{}" in schema "{}". '
             'Consider renaming type "{}" in either schema before merging to avoid '
             "conflicts.".format(
@@ -803,7 +803,7 @@ def _add_edge_field(
 
     # Error if new edge causes a field name clash
     if any(field.name.value == new_edge_field_name for field in type_fields):
-        raise SchemaNameConflictError(
+        raise SchemaMergeNameConflictError(
             'New field "{}" under type "{}" created by the {}bound field of edge named '
             '"{}" clashes with an existing field of the same name. Consider changing the '
             "name of your edge to avoid name conflicts.".format(

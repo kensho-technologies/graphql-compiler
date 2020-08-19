@@ -91,7 +91,7 @@ import six
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
     CascadingSuppressionError,
-    SchemaNameConflictError,
+    SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
     check_ast_schema_is_valid,
@@ -166,10 +166,10 @@ def rename_schema(
         - CascadingSuppressionError if a type suppression would require further suppressions
         - SchemaTransformError if renamings suppressed every type. Note that this is a superclass of
           CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
-          SchemaNameConflictError, so handling exceptions of type SchemaTransformError will also
-          catch all of its subclasses. This will change after the error classes are modified so that
-          errors can be fixed programmatically, at which point it will make sense for the user to
-          attempt to treat different errors differently
+          SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
+          also catch all of its subclasses. This will change after the error classes are modified so
+          that errors can be fixed programmatically, at which point it will make sense for the user
+          to attempt to treat different errors differently
         - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
           implementing an interface
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
@@ -180,7 +180,7 @@ def rename_schema(
           the AST does not represent a valid schema, if any query type field does not have the
           same name as the type that it queries, if the schema contains type extensions or
           input object definitions, or if the schema contains mutations or subscriptions
-        - SchemaNameConflictError if there are conflicts between the renamed types or fields
+        - SchemaRenameNameConflictError if there are conflicts between the renamed types or fields
     """
     # Check input schema satisfies various structural requirements
     check_ast_schema_is_valid(schema_ast)
@@ -389,10 +389,14 @@ def _rename_and_suppress_types(
     Raises:
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
           to rename a type to an invalid name
-        - SchemaNameConflictError if the rename causes name conflicts
+        - SchemaRenameNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, custom_scalar_names)
     renamed_schema_ast = visit(schema_ast, visitor)
+    if visitor.name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
+        raise SchemaRenameNameConflictError(
+            visitor.name_conflicts, visitor.renamed_to_builtin_scalar_conflicts
+        )
     return renamed_schema_ast, visitor.reverse_name_map
 
 
@@ -483,6 +487,17 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
+    # Collects naming conflict errors involving types that are not built-in scalar types. If
+    # renaming would result in multiple types being named "Foo", name_conflicts will map "Foo" to a
+    # set containing the name of each such type
+    name_conflicts: Dict[str, Set[str]]
+    # Collects naming conflict errors involving built-in scalar types. If renaming would rename a
+    # type named "Foo" to "String", renamed_to_scalar_conflicts will map "Foo" to "String"
+    renamed_to_builtin_scalar_conflicts: Dict[str, str]
+    # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
+    # non-scalar types, including those that were unchanged. Must contain unchanged names to prevent
+    # renaming conflicts and raise SchemaRenameNameConflictError when they arise
+    reverse_name_map: Dict[str, str]
 
     def __init__(
         self,
@@ -500,8 +515,9 @@ class RenameSchemaTypesVisitor(Visitor):
                                  builtin scalars)
         """
         self.renamings = renamings
-        self.reverse_name_map: Dict[str, str] = {}  # From renamed type name to original type name
-        # reverse_name_map contains all non-suppressed types, including those that were unchanged
+        self.reverse_name_map = {}
+        self.name_conflicts = {}
+        self.renamed_to_builtin_scalar_conflicts = {}
         self.query_type = query_type
         self.custom_scalar_names = frozenset(custom_scalar_names)
 
@@ -527,7 +543,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
         Raises:
             - InvalidTypeNameError if either the node's current name or renamed name is invalid
-            - SchemaNameConflictError if the newly renamed node causes name conflicts with
+            - SchemaRenameNameConflictError if the newly renamed node causes name conflicts with
               existing types, scalars, or builtin types
         """
         type_name = node.name.value
@@ -579,18 +595,13 @@ class RenameSchemaTypesVisitor(Visitor):
             conflictingly_renamed_type_name = self.reverse_name_map.get(
                 desired_type_name, desired_type_name
             )
-
-            raise SchemaNameConflictError(
-                '"{}" and "{}" are both renamed to "{}"'.format(
-                    type_name, conflictingly_renamed_type_name, desired_type_name
-                )
-            )
+            # Collect all types in the original schema that would be named desired_type_name in the
+            # new schema
+            if desired_type_name not in self.name_conflicts:
+                self.name_conflicts[desired_type_name] = {conflictingly_renamed_type_name}
+            self.name_conflicts[desired_type_name].add(type_name)
         if desired_type_name in builtin_scalar_type_names:
-            raise SchemaNameConflictError(
-                '"{}" was renamed to "{}", clashing with built-in scalar "{}"'.format(
-                    type_name, desired_type_name, desired_type_name
-                )
-            )
+            self.renamed_to_builtin_scalar_conflicts[type_name] = desired_type_name
 
         self.reverse_name_map[desired_type_name] = type_name
         if desired_type_name == type_name:
