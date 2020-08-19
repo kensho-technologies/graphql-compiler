@@ -1135,7 +1135,7 @@ Example Use
     {
         Animal {
             name @output(out_name: "animal_name")
-            color @filter(op_name: "is_null", value: [])
+            color @filter(op_name: "is_null")
         }
     }
 
@@ -1159,7 +1159,7 @@ Example Use
     {
         Animal {
             name @output(out_name: "animal_name")
-            color @filter(op_name: "is_not_null", value: [])
+            color @filter(op_name: "is_not_null")
         }
     }
 
