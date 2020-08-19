@@ -364,16 +364,12 @@ def _process_scalar_definition(scalar, existing_scalars, type_name_to_schema_id,
         return existing_scalars, merged_schema_ast
     if scalar_name in type_name_to_schema_id:
         raise SchemaMergeNameConflictError(
-            'New scalar "{}" clashes with existing type "{}" in schema "{}". Consider '
-            'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
-            "to avoid conflicts.".format(
-                scalar_name,
-                scalar_name,
-                type_name_to_schema_id[scalar_name],
-                scalar_name,
-                type_name_to_schema_id[scalar_name],
-            )
+            f'New scalar "{scalar_name}" clashes with existing type "{scalar_name}" in '
+            f'schema "{type_name_to_schema_id[scalar_name]}". Consider '
+            f'renaming type "{scalar_name}" in schema "{type_name_to_schema_id[scalar_name]}" '
+            f"before merging, to avoid conflicts."
         )
+
     # new, valid scalar
     new_definitions = list(merged_schema_ast.definitions)
     new_definitions.append(scalar)
@@ -408,17 +404,15 @@ def _process_generic_type_definition(
     type_name = generic_type.name.value
     if type_name in existing_scalars:
         raise SchemaMergeNameConflictError(
-            'New type "{}" in schema "{}" clashes with existing scalar. Consider '
-            'renaming type "{}" in schema "{}" using the tool rename_schema before merging '
-            "to avoid conflicts.".format(type_name, schema_id, type_name, schema_id)
+            f'New type "{type_name}" in schema "{schema_id}" clashes with existing scalar. '
+            f'Consider renaming type "{type_name}" in schema "{schema_id}" '
+            f"before merging, to avoid conflicts."
         )
     if type_name in type_name_to_schema_id:
         raise SchemaMergeNameConflictError(
-            'New type "{}" in schema "{}" clashes with existing type "{}" in schema "{}". '
-            'Consider renaming type "{}" in either schema before merging to avoid '
-            "conflicts.".format(
-                type_name, schema_id, type_name, type_name_to_schema_id[type_name], type_name
-            )
+            f'New type "{type_name}" in schema "{schema_id}" clashes with existing type '
+            f'"{type_name}" in schema "{type_name_to_schema_id[type_name]}". Consider renaming '
+            f'type "{type_name}" in either schema before merging, to avoid conflicts.'
         )
 
     new_definitions = list(merged_schema_ast.definitions)

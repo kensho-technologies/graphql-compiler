@@ -595,11 +595,13 @@ class RenameSchemaTypesVisitor(Visitor):
             conflictingly_renamed_type_name = self.reverse_name_map.get(
                 desired_type_name, desired_type_name
             )
+
             # Collect all types in the original schema that would be named desired_type_name in the
             # new schema
             if desired_type_name not in self.name_conflicts:
                 self.name_conflicts[desired_type_name] = {conflictingly_renamed_type_name}
             self.name_conflicts[desired_type_name].add(type_name)
+
         if desired_type_name in builtin_scalar_type_names:
             self.renamed_to_builtin_scalar_conflicts[type_name] = desired_type_name
 
@@ -807,6 +809,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
             # If the union is also suppressed, then nothing needs to happen here
             return IDLE
         self.union_types_to_suppress.append(node)
+
+        return IDLE
 
 
 class SuppressionNotImplementedVisitor(Visitor):

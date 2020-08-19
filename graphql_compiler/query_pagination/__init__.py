@@ -136,7 +136,6 @@ def paginate_query(
     Args:
         schema_info: QueryPlanningSchemaInfo
         query: QueryStringWithParameters
-        parameters: dict, parameters with which query will be estimated.
         page_size: int, describes the desired number of result rows per page.
 
     Returns:
