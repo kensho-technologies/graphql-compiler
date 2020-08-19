@@ -1263,7 +1263,7 @@ Example Use
     {
         Animal {
             name @output(out_name: "animal_name")
-            color @filter(op_name: "is_null", value: [])
+            color @filter(op_name: "is_null")
         }
     }
 
@@ -1274,7 +1274,7 @@ Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
--  :code:`value` must be empty.
+-  :code:`value` must either not appear in the filter (shown in the example) or be an empty list.
 
 is\_not\_null
 ~~~~~~~~~~~~~
@@ -1287,7 +1287,7 @@ Example Use
     {
         Animal {
             name @output(out_name: "animal_name")
-            color @filter(op_name: "is_not_null", value: [])
+            color @filter(op_name: "is_not_null")
         }
     }
 
@@ -1297,7 +1297,7 @@ Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
--  :code:`value` must be empty.
+-  :code:`value` must either not appear in the filter (shown in the example) or be an empty list.
 
 Type coercions
 --------------

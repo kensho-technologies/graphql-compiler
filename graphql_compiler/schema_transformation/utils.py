@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
+from typing import Dict, Set
 
 from graphql import build_ast_schema, specified_scalar_types
 from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
@@ -39,14 +40,60 @@ class InvalidTypeNameError(SchemaTransformError):
     """
 
 
-class SchemaNameConflictError(SchemaTransformError):
-    """Raised when renaming or merging types or fields cause name conflicts.
+class SchemaMergeNameConflictError(SchemaTransformError):
+    """Raised when merging types or fields cause name conflicts.
 
-    This may be raised if a field or type is renamed to conflict with another field or type,
-    if two merged schemas share an identically named field or type, or if a
+    This may be raised if two merged schemas share an identically named field or type, or if a
     CrossSchemaEdgeDescriptor provided when merging schemas has an edge name that causes a
     name conflict with an existing field.
     """
+
+
+class SchemaRenameNameConflictError(SchemaTransformError):
+    """Raised when renaming causes name conflicts."""
+
+    name_conflicts: Dict[str, Set[str]]
+    renamed_to_builtin_scalar_conflicts: Dict[str, str]
+
+    def __init__(
+        self,
+        name_conflicts: Dict[str, Set[str]],
+        renamed_to_builtin_scalar_conflicts: Dict[str, str],
+    ) -> None:
+        """Record all renaming conflicts."""
+        if not name_conflicts and not renamed_to_builtin_scalar_conflicts:
+            raise ValueError(
+                "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
+                "name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both empty "
+                "dictionaries."
+            )
+        super().__init__()
+        self.name_conflicts = name_conflicts
+        self.renamed_to_builtin_scalar_conflicts = renamed_to_builtin_scalar_conflicts
+
+    def __str__(self) -> str:
+        """Explain renaming conflict and the fix."""
+        name_conflicts_message = ""
+        if self.name_conflicts:
+            name_conflicts_message = (
+                f"Applying the renaming would produce a schema in which multiple types have the "
+                f"same name, which is an illegal schema state. The name_conflicts dict describes "
+                f"these problems. For each key k in name_conflicts, name_conflicts[k] is the set "
+                f"of types in the original schema that get mapped to k in the new schema. To fix "
+                f"this, modify the renamings argument of rename_schema to ensure that no two types "
+                f"in the renamed schema have the same name. name_conflicts: {self.name_conflicts}"
+            )
+        renamed_to_builtin_scalar_conflicts_message = ""
+        if self.renamed_to_builtin_scalar_conflicts:
+            renamed_to_builtin_scalar_conflicts_message = (
+                f"Applying the renaming would rename type(s) to a name already used by a built-in "
+                f"GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
+                f"scalar's name. The following dict maps each to-be-renamed type to the scalar "
+                f"name it was mapped to: {self.renamed_to_builtin_scalar_conflicts}"
+            )
+        return "\n".join(
+            filter(None, [name_conflicts_message, renamed_to_builtin_scalar_conflicts_message])
+        )
 
 
 class InvalidCrossSchemaEdgeError(SchemaTransformError):
