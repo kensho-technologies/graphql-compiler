@@ -150,25 +150,23 @@ def check_schema_identifier_is_valid(identifier):
         )
 
 
-def check_type_name_is_valid(name):
+def type_name_is_valid(name: str) -> bool:
     """Check if input is a valid, nonreserved GraphQL type name.
 
-    Args:
-        name: str
+    A GraphQL type name is valid iff it consists of only alphanumeric characters and underscores and
+    does not start with a numeric character. It is nonreserved (i.e. not reserved for GraphQL
+    internal use) if it does not start with double underscores.
 
-    Raises:
-        - InvalidTypeNameError if the name doesn't consist of only alphanumeric characters and
-          underscores, starts with a numeric character, or starts with double underscores
+    Args:
+        name: to validate
+
+    Returns:
+        True iff name is a valid, nonreserved GraphQL type name.
     """
-    if not isinstance(name, str):
-        raise InvalidTypeNameError('Name "{}" is not a string.'.format(name))
-    if not re_name.match(name):
-        raise InvalidTypeNameError('"{}" is not a valid GraphQL name.'.format(name))
-    if name.startswith("__"):
-        raise InvalidTypeNameError(
-            '"{}" starts with two underscores, which is reserved for '
-            "GraphQL internal use and is not allowed.".format(name)
-        )
+    # Unfortunately, one place this function is used in the enter method of
+    # CheckValidTypesAndNamesVisitor which doesn't ensure that name is a string, so the isinstance
+    # check is still required here.
+    return isinstance(name, str) and bool(re_name.match(name)) and not name.startswith("__")
 
 
 def get_query_type_name(schema):
@@ -343,7 +341,13 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         elif node_type in self.unexpected_types:
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
         elif node_type in self.check_name_validity_types:
-            check_type_name_is_valid(node.name.value)
+            if not type_name_is_valid(node.name.value):
+                raise InvalidTypeNameError(
+                    f"Node name {node.name.value} is not a valid, unreserved GraphQL name. Valid, "
+                    f"unreserved GraphQL names must consist of only alphanumeric characters and "
+                    f"underscores, must not start with a numeric character, and must not start "
+                    f"with double underscores."
+                )
 
 
 class CheckQueryTypeFieldsNameMatchVisitor(Visitor):

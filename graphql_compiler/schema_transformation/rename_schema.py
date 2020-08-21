@@ -91,14 +91,15 @@ import six
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
     CascadingSuppressionError,
+    InvalidTypeNameError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
     check_ast_schema_is_valid,
-    check_type_name_is_valid,
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
+    type_name_is_valid,
 )
 
 
@@ -387,12 +388,19 @@ def _rename_and_suppress_types(
         renamed.
 
     Raises:
-        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
-          to rename a type to an invalid name
+        - InvalidTypeNameError if the user attempts to rename a type to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(renamings, query_type, custom_scalar_names)
     renamed_schema_ast = visit(schema_ast, visitor)
+    if visitor.invalid_type_names:
+        raise InvalidTypeNameError(
+            f"Applying the renaming would rename types with names that are not valid, unreserved "
+            f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            f"characters and underscores, must not start with a numeric character, and must not "
+            f"start with double underscores. The following dictionary maps each type's original "
+            f"name to what would be the new name: {visitor.invalid_type_names}"
+        )
     if visitor.name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
         raise SchemaRenameNameConflictError(
             visitor.name_conflicts, visitor.renamed_to_builtin_scalar_conflicts
@@ -498,6 +506,11 @@ class RenameSchemaTypesVisitor(Visitor):
     # non-scalar types, including those that were unchanged. Must contain unchanged names to prevent
     # renaming conflicts and raise SchemaRenameNameConflictError when they arise
     reverse_name_map: Dict[str, str]
+    # Collects invalid type names in renamings. If renaming would rename a type named "Foo" to a
+    # string that is not a valid, unreserved GraphQL type name (see definition in the
+    # type_name_is_valid function in utils), invalid_type_names will map "Foo" to the invalid type
+    # name.
+    invalid_type_names: Dict[str, str]
 
     def __init__(
         self,
@@ -518,6 +531,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.reverse_name_map = {}
         self.name_conflicts = {}
         self.renamed_to_builtin_scalar_conflicts = {}
+        self.invalid_type_names = {}
         self.query_type = query_type
         self.custom_scalar_names = frozenset(custom_scalar_names)
 
@@ -540,11 +554,6 @@ class RenameSchemaTypesVisitor(Visitor):
             If the current node is to be renamed, this function returns a Node object identical to
             the input node except with a new name. If it is to be suppressed, this function returns
             REMOVE. If neither of these are the case, this function returns IDLE.
-
-        Raises:
-            - InvalidTypeNameError if either the node's current name or renamed name is invalid
-            - SchemaRenameNameConflictError if the newly renamed node causes name conflicts with
-              existing types, scalars, or builtin types
         """
         type_name = node.name.value
 
@@ -559,7 +568,8 @@ class RenameSchemaTypesVisitor(Visitor):
         if desired_type_name is None:
             # Suppress the type
             return REMOVE
-        check_type_name_is_valid(desired_type_name)
+        if not type_name_is_valid(desired_type_name):
+            self.invalid_type_names[type_name] = desired_type_name
 
         # Renaming conflict arises when two types with different names in the original schema have
         # the same name in the new schema. There are two ways to produce this conflict:
