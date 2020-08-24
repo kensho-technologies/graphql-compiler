@@ -1,10 +1,12 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
-from typing import Dict, Set
+from typing import Dict, Set, FrozenSet, Optional, List, Union, Any, Type, TypeVar
 
-from graphql import build_ast_schema, specified_scalar_types
-from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
+from graphql import build_ast_schema, specified_scalar_types, GraphQLSchema
+from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode, Node, \
+    ObjectTypeDefinitionNode, FieldDefinitionNode, DocumentNode, DirectiveDefinitionNode, \
+    DirectiveNode, SelectionSetNode, FragmentSpreadNode
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utilities.assert_valid_name import re_name
@@ -119,15 +121,18 @@ class CascadingSuppressionError(SchemaTransformError):
     """
 
 
-_alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
+_alphanumeric_and_underscore: FrozenSet[str] = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
 
 
 # String representations for the GraphQL built-in scalar types
 # pylint produces a false positive-- see issue here: https://github.com/PyCQA/pylint/issues/3743
-builtin_scalar_type_names = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
+builtin_scalar_type_names: FrozenSet[str] = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
 
 
-def check_schema_identifier_is_valid(identifier):
+NodeT = TypeVar("NodeT", bound="Node")
+
+
+def check_schema_identifier_is_valid(identifier: str) -> None:
     """Check if input is a valid identifier, made of alphanumeric and underscore characters.
 
     Args:
@@ -150,7 +155,7 @@ def check_schema_identifier_is_valid(identifier):
         )
 
 
-def check_type_name_is_valid(name):
+def check_type_name_is_valid(name: str) -> None:
     """Check if input is a valid, nonreserved GraphQL type name.
 
     Args:
@@ -171,7 +176,7 @@ def check_type_name_is_valid(name):
         )
 
 
-def get_query_type_name(schema):
+def get_query_type_name(schema: GraphQLSchema) -> str:
     """Get the name of the query type of the input schema.
 
     Args:
@@ -180,10 +185,14 @@ def get_query_type_name(schema):
     Returns:
         str, name of the query type (e.g. RootSchemaQuery)
     """
+    if schema.query_type is None:
+        raise AssertionError(
+            f"Schema's query_type field is None, even though the compiler is read-only."
+        )
     return schema.query_type.name
 
 
-def get_custom_scalar_names(schema):
+def get_custom_scalar_names(schema: GraphQLSchema) -> Set[str]:
     """Get names of all custom scalars used in the input schema.
 
     Includes all user defined scalars; excludes builtin scalars.
@@ -204,7 +213,7 @@ def get_custom_scalar_names(schema):
     return custom_scalar_names
 
 
-def try_get_ast_by_name_and_type(asts, target_name, target_type):
+def try_get_ast_by_name_and_type(asts: Optional[List[Node]], target_name: str, target_type: Type[Node]) -> Optional[Node]:
     """Return the ast in the list with the desired name and type, if found.
 
     Args:
@@ -224,7 +233,7 @@ def try_get_ast_by_name_and_type(asts, target_name, target_type):
     return None
 
 
-def try_get_inline_fragment(selections):
+def try_get_inline_fragment(selections: Optional[List[Union[FieldNode, InlineFragmentNode]]]) -> Optional[InlineFragmentNode]:
     """Return the unique inline fragment contained in selections, or None.
 
     Args:
@@ -259,7 +268,7 @@ def try_get_inline_fragment(selections):
         )
 
 
-def get_copy_of_node_with_new_name(node, new_name):
+def get_copy_of_node_with_new_name(node: NodeT, new_name: str) -> NodeT:
     """Return a node with new_name as its name and otherwise identical to the input node.
 
     Args:
@@ -329,7 +338,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         }
     )
 
-    def enter(self, node, key, parent, path, ancestors):
+    def enter(self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
         """Raise error if node is of a invalid type or has an invalid name.
 
         Raises:
@@ -352,7 +361,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
     If not, raise SchemaStructureError.
     """
 
-    def __init__(self, query_type):
+    def __init__(self, query_type: str) -> None:
         """Create a visitor for checking query type field names.
 
         Args:
@@ -361,17 +370,17 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
         self.query_type = query_type
         self.in_query_type = False
 
-    def enter_object_type_definition(self, node, *args):
+    def enter_object_type_definition(self, node: ObjectTypeDefinitionNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_object_type_definition(self, node, *args):
+    def leave_object_type_definition(self, node: ObjectTypeDefinitionNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node, *args):
+    def enter_field_definition(self, node: FieldDefinitionNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
         """If inside the query type, check that the field and queried type names match.
 
         Raises:
@@ -389,7 +398,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
                 )
 
 
-def check_ast_schema_is_valid(ast):
+def check_ast_schema_is_valid(ast: DocumentNode) -> None:
     """Check the schema satisfies structural requirements for rename and merge.
 
     In particular, check that the schema contains no mutations, no subscriptions, no
@@ -423,7 +432,7 @@ def check_ast_schema_is_valid(ast):
     visit(ast, CheckQueryTypeFieldsNameMatchVisitor(query_type))
 
 
-def is_property_field_ast(field):
+def is_property_field_ast(field: FieldNode) -> bool:
     """Return True if selection is a property field, False if a vertex field.
 
     Args:
@@ -434,14 +443,9 @@ def is_property_field_ast(field):
         True if the selection is a property field, False if it's a vertex field.
     """
     if isinstance(field, FieldNode):
-        if (
-            field.selection_set is None
-            or field.selection_set.selections is None
-            or field.selection_set.selections == []
-        ):
-            return True
-        else:
-            return False
+        # Unfortunately, since split_query.py hasn't been type-hinted yet, we can't rely on the
+        # type-hint in this function to ensure field is a FieldNode yet.
+        return field.selection_set is None or field.selection_set.selections is None or field.selection_set.selections == []
     else:
         raise AssertionError('Input selection "{}" is not a Field.'.format(field))
 
@@ -460,7 +464,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         (FilterDirective.name, OutputDirective.name, OptionalDirective.name,)
     )
 
-    def enter_directive(self, node, *args):
+    def enter_directive(self, node: DirectiveNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
         """Check that the directive is supported."""
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
@@ -468,7 +472,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                 "supported.".format(node.name.value, self.supported_directives)
             )
 
-    def enter_selection_set(self, node, *args):
+    def enter_selection_set(self, node: SelectionSetNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
         """Check selections are valid.
 
         If selections contains an InlineFragment, check that it is the only inline fragment in
@@ -490,6 +494,18 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                             selections
                         )
                     )
+                if isinstance(field, FragmentSpreadNode):
+                    raise GraphQLValidationError(
+                        f"Fragments (not to be confused with inline fragments) are not supported "
+                        f"by the compiler. However, in SelectionSetNode {node}'s selections "
+                        f"attribute {selections}, the field {field} is a FragmentSpreadNode named "
+                        f"{field.name.value}."
+                    )
+                if not isinstance(field, FieldNode):
+                    raise AssertionError(
+                        f"The SelectionNode {field} in SelectionSetNode {node}'s selections "
+                        f"attribute is not a FieldNode but instead has type {type(field)}."
+                    )
                 if is_property_field_ast(field):
                     if seen_vertex_field:
                         raise GraphQLValidationError(
@@ -503,7 +519,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                     seen_vertex_field = True
 
 
-def check_query_is_valid_to_split(schema, query_ast):
+def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode) -> None:
     """Check the query is valid for splitting.
 
     In particular, ensure that the query validates against the schema, does not contain
