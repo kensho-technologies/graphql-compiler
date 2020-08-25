@@ -79,10 +79,10 @@ def paginate_query_ast(
 
     # See if we can and should split the query
     num_pages = 1
-    if query_analysis.classes_with_missing_counts:
+    if query_analysis._classes_with_missing_counts:
         advisories += tuple(
             MissingClassCount(class_name)
-            for class_name in query_analysis.classes_with_missing_counts
+            for class_name in query_analysis._classes_with_missing_counts
         )
     else:
         result_size = query_analysis.cardinality_estimate

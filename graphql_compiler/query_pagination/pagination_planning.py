@@ -136,7 +136,7 @@ def get_pagination_plan(
     # Get the pagination capacity
     vertex_path = (root_node,)
     property_path = PropertyPath(vertex_path, pagination_field)
-    capacity = query_analysis.pagination_capacities.get(property_path)
+    capacity = query_analysis._pagination_capacities.get(property_path)
     # If the pagination capacity is None, then there must be no quantiles for this property.
     if capacity is None:
         ideal_min_num_quantiles_per_page = 5

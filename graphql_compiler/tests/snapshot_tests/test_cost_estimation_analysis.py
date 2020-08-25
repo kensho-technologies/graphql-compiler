@@ -49,7 +49,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             }""",
             {"uuid_min": "80000000-0000-0000-0000-000000000000",},
         )
-        intervals = analyze_query_string(schema_info, query).field_value_intervals
+        intervals = analyze_query_string(schema_info, query)._field_value_intervals
         expected_intervals = {
             (("Animal",), "uuid"): Interval(
                 lower_bound="80000000-0000-0000-0000-000000000001", upper_bound=None
@@ -90,7 +90,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"uuid": "80000000-0000-0000-0000-000000000000",},
         )
 
-        estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
+        estimates = analyze_query_string(schema_info, query)._distinct_result_set_estimates
         expected_estimates = {
             ("Animal",): 1,
             ("Animal", "out_Animal_ParentOf"): 1000,
@@ -127,7 +127,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"uuid_min": "80000000-0000-0000-0000-000000000000",},
         )
 
-        capacities = analyze_query_string(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query)._pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 500}
         self.assertEqual(expected_capacities, capacities)
 
@@ -161,7 +161,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"uuid": "80000000-0000-0000-0000-000000000000",},
         )
 
-        capacities = analyze_query_string(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query)._pagination_capacities
         expected_capacities = {(("Animal",), "uuid"): 1}
         self.assertEqual(expected_capacities, capacities)
 
@@ -206,7 +206,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 ("Animal",): Selectivity(kind="absolute", value=1.0),
                 ("Animal", "out_Animal_ParentOf"): Selectivity(kind="fractional", value=0.5),
             },
-            analyze_query_string(schema_info, query).selectivities,
+            analyze_query_string(schema_info, query)._selectivities,
         )
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -241,7 +241,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {},
         )
 
-        capacities = analyze_query_string(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query)._pagination_capacities
         expected_capacities = {
             (("Species",), "limbs"): 100,
             (("Species",), "uuid"): 1000,
@@ -281,7 +281,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {"limbs_min": 10,},
         )
 
-        capacities = analyze_query_string(schema_info, query).pagination_capacities
+        capacities = analyze_query_string(schema_info, query)._pagination_capacities
         expected_capacities = {
             (("Species",), "limbs"): 91,
             (("Species",), "uuid"): 905,
@@ -326,14 +326,14 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 ("Animal",): graphql_schema.get_type("Animal"),
                 ("Animal", "out_Animal_ParentOf"): graphql_schema.get_type("Animal"),
             },
-            analysis.types,
+            analysis._types,
         )
 
         self.assertEqual(
-            {("Animal", "out_Animal_ParentOf"): ("Animal",)}, analysis.fold_scope_roots
+            {("Animal", "out_Animal_ParentOf"): ("Animal",)}, analysis._fold_scope_roots
         )
 
-        self.assertEqual({(("Animal",), "uuid"): 1000,}, analysis.pagination_capacities)
+        self.assertEqual({(("Animal",), "uuid"): 1000,}, analysis._pagination_capacities)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_eligible_fields(self) -> None:
@@ -371,7 +371,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {},
         )
         analysis = analyze_query_string(schema_info, query)
-        eligible_fields = analysis.fields_eligible_for_pagination
+        eligible_fields = analysis._fields_eligible_for_pagination
         expected_eligible_fields = {
             (("Animal",), "uuid"),
             (("Animal",), "birthday"),
@@ -413,7 +413,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         }""",
             {"animal_name": "Joe",},
         )
-        estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
+        estimates = analyze_query_string(schema_info, query)._distinct_result_set_estimates
         expected_estimates = {
             ("Animal",): 1.0,
             ("Animal", "in_Animal_ParentOf"): 1000.0,

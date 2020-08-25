@@ -404,15 +404,15 @@ class QueryPlanningAnalysis:
         return ir_and_metadata.query_metadata_table
 
     @cached_property
-    def types(self) -> Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]]:
+    def _types(self) -> Dict[VertexPath, Union[GraphQLObjectType, GraphQLInterfaceType]]:
         """Find the type at each VertexPath."""
         return get_types(self.metadata_table)
 
     @cached_property
-    def classes_with_missing_counts(self) -> Set[str]:
+    def _classes_with_missing_counts(self) -> Set[str]:
         """Return classes that don't have count statistics."""
         classes_with_missing_counts = set()
-        for vertex_path, vertex_type in self.types.items():
+        for vertex_path, vertex_type in self._types.items():
             if self.schema_info.statistics.get_class_count(vertex_type.name) is None:
                 classes_with_missing_counts.add(vertex_type.name)
             if len(vertex_path) > 1:
@@ -430,60 +430,60 @@ class QueryPlanningAnalysis:
         )
 
     @cached_property
-    def filters(self) -> Dict[VertexPath, Set[FilterInfo]]:
+    def _filters(self) -> Dict[VertexPath, Set[FilterInfo]]:
         """Get the filters at each VertexPath."""
         return get_filters(self.metadata_table)
 
     @cached_property
-    def fold_scope_roots(self) -> Dict[VertexPath, VertexPath]:
+    def _fold_scope_roots(self) -> Dict[VertexPath, VertexPath]:
         """Map each VertexPath in the query that's inside a fold to the VertexPath of the fold."""
         return get_fold_scope_roots(self.metadata_table)
 
     @cached_property
-    def single_field_filters(self) -> Dict[PropertyPath, Set[FilterInfo]]:
+    def _single_field_filters(self) -> Dict[PropertyPath, Set[FilterInfo]]:
         """Find the single field filters for each field. Filters like name_or_alias are excluded."""
-        return get_single_field_filters(self.filters)
+        return get_single_field_filters(self._filters)
 
     @cached_property
-    def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
+    def _fields_eligible_for_pagination(self) -> Set[PropertyPath]:
         """Return all the fields we can consider for pagination."""
         return get_fields_eligible_for_pagination(
-            self.schema_info, self.types, self.single_field_filters, self.fold_scope_roots,
+            self.schema_info, self._types, self._single_field_filters, self._fold_scope_roots,
         )
 
     @cached_property
-    def field_value_intervals(self) -> Dict[PropertyPath, Interval[Any]]:
+    def _field_value_intervals(self) -> Dict[PropertyPath, Interval[Any]]:
         """Return the field value intervals for this query."""
         return get_field_value_intervals(
             self.schema_info,
-            self.types,
-            self.single_field_filters,
+            self._types,
+            self._single_field_filters,
             self.ast_with_parameters.parameters,
         )
 
     @cached_property
-    def selectivities(self) -> Dict[VertexPath, Selectivity]:
+    def _selectivities(self) -> Dict[VertexPath, Selectivity]:
         """Get the combined selectivities of filters at each vertex."""
         return get_selectivities(
-            self.schema_info, self.types, self.filters, self.ast_with_parameters.parameters
+            self.schema_info, self._types, self._filters, self.ast_with_parameters.parameters
         )
 
     @cached_property
-    def distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
+    def _distinct_result_set_estimates(self) -> Dict[VertexPath, float]:
         """Return the distinct result set estimates for this query."""
         return get_distinct_result_set_estimates(
-            self.schema_info, self.types, self.selectivities, self.ast_with_parameters.parameters
+            self.schema_info, self._types, self._selectivities, self.ast_with_parameters.parameters
         )
 
     @cached_property
-    def pagination_capacities(self) -> Dict[PropertyPath, int]:
+    def _pagination_capacities(self) -> Dict[PropertyPath, int]:
         """Return the pagination capacities for this query."""
         return get_pagination_capacities(
             self.schema_info,
-            self.types,
-            self.fields_eligible_for_pagination,
-            self.field_value_intervals,
-            self.distinct_result_set_estimates,
+            self._types,
+            self._fields_eligible_for_pagination,
+            self._field_value_intervals,
+            self._distinct_result_set_estimates,
         )
 
 
