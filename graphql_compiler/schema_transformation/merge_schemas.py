@@ -440,7 +440,7 @@ def _process_generic_type_definition(
 
     Args:
         generic_type: AST node representing the definition of a type.
-        schema_id: the identifier of the schema that this type came from.
+        schema_id: identifier of the schema that this type came from.
         existing_scalars: set of names of all existing scalars.
         type_name_to_schema_id: mapping names of types to the identifier of the schema that they
                                 came from.
@@ -633,7 +633,7 @@ def _check_cross_schema_edge_is_valid(
                  defined scalars.
         union_type_names: names of all union types in the merged schema, used for informative
                           error messages.
-        cross_schema_edge: the edge that we check the validity of.
+        cross_schema_edge: edge that we check the validity of.
 
     Raises:
         - InvalidCrossSchemaEdgeError if the cross-schema edge lies within one schema, refers
@@ -739,7 +739,7 @@ def _check_field_types_are_matching_scalars(
         type_name_to_definition: mapping name of types to their definitions.
         scalars: names of all scalars in the merged_schema, including both built in and user
                  defined scalars.
-        cross_schema_edge: the edge that we check the validity of.
+        cross_schema_edge: edge that we check the validity of.
 
     Raises:
         - InvalidCrossSchemaEdgeError if the cross-schema edge stitches together fields that are
