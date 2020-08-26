@@ -27,12 +27,13 @@ from graphql.language.ast import (
 )
 from graphql.language.printer import print_ast
 from graphql.pyutils import FrozenList
-from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLSchema, GraphQLUnionType
+from graphql.type import GraphQLSchema
 import six
 
 from ..ast_manipulation import get_ast_with_non_null_stripped
 from ..compiler.helpers import INBOUND_EDGE_DIRECTION, OUTBOUND_EDGE_DIRECTION
 from ..compiler.subclass import compute_subclass_sets
+from ..schema.typedefs import TypeEquivalenceHintsType
 from .utils import (
     InvalidCrossSchemaEdgeError,
     SchemaMergeNameConflictError,
@@ -42,7 +43,7 @@ from .utils import (
 )
 
 
-@dataclass
+@dataclass(frozen=True)
 class MergedSchemaDescriptor:
     """Describes a merged schema."""
 
@@ -56,7 +57,7 @@ class MergedSchemaDescriptor:
     type_name_to_schema_id: Dict[str, str]
 
 
-@dataclass
+@dataclass(frozen=True)
 class FieldReference:
     """Describes a particular field, including the type and schema to which it belongs."""
 
@@ -70,7 +71,7 @@ class FieldReference:
     field_name: str
 
 
-@dataclass
+@dataclass(frozen=True)
 class CrossSchemaEdgeDescriptor:
     """Describes an edge that spans two schema."""
 
@@ -88,11 +89,10 @@ class CrossSchemaEdgeDescriptor:
 
 
 def merge_schemas(
+    # OrderedDict is unsubscriptable (pylint E1136)
     schema_id_to_ast: "OrderedDict[str, DocumentNode]",
     cross_schema_edges: List[CrossSchemaEdgeDescriptor],
-    type_equivalence_hints: Optional[
-        Dict[Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType]
-    ] = None,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None,
 ) -> MergedSchemaDescriptor:
     """Merge all input schemas and add all cross-schema edges.
 
@@ -478,7 +478,7 @@ def _add_cross_schema_edges(
     type_name_to_schema_id: Dict[str, str],
     scalars: Set[str],
     cross_schema_edges: List[CrossSchemaEdgeDescriptor],
-    type_equivalence_hints: Dict[Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType],
+    type_equivalence_hints: TypeEquivalenceHintsType,
     query_type: str,
 ) -> DocumentNode:
     """Add cross-schema edges into the schema AST.
