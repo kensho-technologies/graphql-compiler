@@ -2,20 +2,37 @@
 from typing import Any, ClassVar, Dict, List
 from unittest import TestCase
 
+from graphql import build_ast_schema, parse
+
 from ..schema_adapter import SchemaAdapter, execute_query
-from .test_helpers import get_schema
+from .test_helpers import SCHEMA_TEXT, get_schema
 
 
 test_schema = get_schema()
 
+# Schema with a type that has no property
+no_property_schema = build_ast_schema(
+    parse(
+        SCHEMA_TEXT
+        + (
+            """
+    type NoProperty {
+        out_NoProperty_Edge: [NoProperty]
+    }
+    """
+        )
+    )
+)
+
 
 def _ensure_query_produces_expected_output(
     test_case: "TestSchemaAdapter",
+    adapter: SchemaAdapter,
     query: str,
     args: Dict[str, Any],
     expected_results: List[Dict[str, Any]],
 ) -> None:
-    actual_results = list(execute_query(test_case.adapter, query, args))
+    actual_results = list(execute_query(adapter, query, args))
     # order-agnostic output comparison
     test_case.assertCountEqual(actual_results, expected_results)
 
@@ -47,7 +64,7 @@ class TestSchemaAdapter(TestCase):
             {"vertex_name": "Entity", "vertex_description": None, "is_vertex_interface": True}
         ]
 
-        _ensure_query_produces_expected_output(self, query, args, expected_results)
+        _ensure_query_produces_expected_output(self, self.adapter, query, args, expected_results)
 
         args: Dict[str, Any] = {"vertex_name": "Animal"}
 
@@ -55,7 +72,7 @@ class TestSchemaAdapter(TestCase):
             {"vertex_name": "Animal", "vertex_description": None, "is_vertex_interface": False}
         ]
 
-        _ensure_query_produces_expected_output(self, query, args, expected_results)
+        _ensure_query_produces_expected_output(self, self.adapter, query, args, expected_results)
 
     def test_union_types_are_not_vertex(self) -> None:
         query = """
@@ -69,7 +86,7 @@ class TestSchemaAdapter(TestCase):
 
         expected_results = []
 
-        _ensure_query_produces_expected_output(self, query, args, expected_results)
+        _ensure_query_produces_expected_output(self, self.adapter, query, args, expected_results)
 
     def test_vertex_type_property_edge(self) -> None:
         query = """
@@ -103,22 +120,44 @@ class TestSchemaAdapter(TestCase):
             },
         ]
 
-        _ensure_query_produces_expected_output(self, query, args, expected_results)
+        _ensure_query_produces_expected_output(self, self.adapter, query, args, expected_results)
 
-    # def test_vertex_type_with_no_properties(self) -> None:
-    #     query = """
-    #     {
-    #         VertexType {
-    #             name @filter(op_name: "=", value: ["$vertex_name"])
+    def test_vertex_type_with_no_properties(self) -> None:
+        # use special custom adapter with the NoProperty type
+        no_property_adapter = SchemaAdapter(no_property_schema)
 
-    #             out_VertexType_Property {
-    #                 name @output(out_name: "property_name")
-    #             }
-    #         }
-    #     }
-    #     """
-    #     args: Dict[str, Any] = {"vertex_name": "NoProperty"}
+        query = """
+        {
+            VertexType {
+                name @filter(op_name: "=", value: ["$vertex_name"])
 
-    #     expected_results = []
+                out_VertexType_Property {
+                    name @output(out_name: "property_name")
+                }
+            }
+        }
+        """
+        args: Dict[str, Any] = {"vertex_name": "NoProperty"}
 
-    #     _ensure_query_produces_expected_output(self, query, args, expected_results)
+        expected_results = []
+
+        _ensure_query_produces_expected_output(
+            self, no_property_adapter, query, args, expected_results
+        )
+
+        # make sure NoProperty vertex exists
+        query = """
+        {
+            VertexType {
+                name @filter(op_name: "=", value: ["$vertex_name"])
+                     @output(out_name: "vertex_name")
+            }
+        }
+        """
+        args: Dict[str, Any] = {"vertex_name": "NoProperty"}
+
+        expected_results = [{"vertex_name": "NoProperty"}]
+
+        _ensure_query_produces_expected_output(
+            self, no_property_adapter, query, args, expected_results
+        )
