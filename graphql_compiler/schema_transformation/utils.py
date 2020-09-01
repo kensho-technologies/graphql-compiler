@@ -6,7 +6,8 @@ from typing import Dict, Set, FrozenSet, Optional, List, Union, Any, Type, TypeV
 from graphql import build_ast_schema, specified_scalar_types, GraphQLSchema
 from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode, Node, \
     ObjectTypeDefinitionNode, FieldDefinitionNode, DocumentNode, DirectiveDefinitionNode, \
-    DirectiveNode, SelectionSetNode, FragmentSpreadNode
+    DirectiveNode, SelectionSetNode, FragmentSpreadNode, EnumTypeDefinitionNode, \
+    InterfaceTypeDefinitionNode, NamedTypeNode, UnionTypeDefinitionNode, ScalarTypeDefinitionNode
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utilities.assert_valid_name import re_name
@@ -129,7 +130,36 @@ _alphanumeric_and_underscore: FrozenSet[str] = frozenset(six.text_type(string.as
 builtin_scalar_type_names: FrozenSet[str] = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
 
 
-NodeT = TypeVar("NodeT", bound="Node")
+# Union of classes of nodes to be renamed or suppressed by an instance of RenameSchemaTypesVisitor.
+# Note that RenameSchemaTypesVisitor also has a class attribute rename_types which parallels the
+# classes here. This duplication is necessary due to language and linter constraints-- see the
+# comment in the RenameSchemaTypesVisitor class for more information.
+# Unfortunately, RenameTypes itself has to be a module attribute instead of a class attribute
+# because a bug in flake8 produces a linting error if RenameTypes is a class attribute and we type
+# hint the return value of the RenameSchemaTypesVisitor's
+# _rename_or_suppress_or_ignore_name_and_add_to_record() method as RenameTypes. More on this here:
+# https://github.com/PyCQA/pyflakes/issues/441
+RenameTypes = Union[
+    EnumTypeDefinitionNode,
+    InterfaceTypeDefinitionNode,
+    NamedTypeNode,
+    ObjectTypeDefinitionNode,
+    UnionTypeDefinitionNode,
+]
+RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
+
+# For the same reason as with RenameTypes, these types have to be written out explicitly instead of
+# relying on allowed_types in get_copy_of_node_with_new_name.
+# Unlike RenameTypes, RenameNodes also includes fields because it's used in the function
+# get_copy_of_node_with_new_name which rename_query depends on to rename the root field in a query.
+# Meanwhile, RenameTypes applies only for rename_schema and field renaming in the schema is not
+# implemented yet.
+RenameNodes = Union[
+    RenameTypes,
+    FieldNode,
+    FieldDefinitionNode,
+]
+RenameNodesT = TypeVar("RenameNodesT", bound="RenameNodes")
 
 
 def check_schema_identifier_is_valid(identifier: str) -> None:
@@ -220,7 +250,8 @@ def try_get_ast_by_name_and_type(asts: Optional[List[Node]], target_name: str, t
         asts: List[Node] or None
         target_name: str, name of the AST we're looking for
         target_type: Node, the type of the AST we're looking for. Must be a type with a .name
-                     attribute, e.g. Field, Directive
+                     attribute, e.g. Field, Directive, and its name attribute must have a .value
+                     attribute.
 
     Returns:
         Node, an element in the input list with the correct name and type, or None if not found
@@ -228,8 +259,17 @@ def try_get_ast_by_name_and_type(asts: Optional[List[Node]], target_name: str, t
     if asts is None:
         return None
     for ast in asts:
-        if isinstance(ast, target_type) and ast.name.value == target_name:
-            return ast
+        if isinstance(ast, target_type):
+            if not (hasattr(ast, "name") and hasattr(ast.name, "value")):  # type: ignore
+                # Can't type hint "has name attribute"
+                raise AssertionError(
+                    f"AST {ast} is either missing a .name attribute or its .name attribute is "
+                    f"missing a .value attribute. This should be impossible because target_type "
+                    f"{target_type} must have a .name attribute, {target_type}'s .name attribute "
+                    f"must have a .value attribute, and the ast must be of type {target_type}."
+                )
+            if ast.name.value == target_name:  # type: ignore # Can't type hint "has name attribute"
+                return ast
     return None
 
 
@@ -268,7 +308,7 @@ def try_get_inline_fragment(selections: Optional[List[Union[FieldNode, InlineFra
         )
 
 
-def get_copy_of_node_with_new_name(node: NodeT, new_name: str) -> NodeT:
+def get_copy_of_node_with_new_name(node: RenameNodesT, new_name: str) -> RenameNodesT:
     """Return a node with new_name as its name and otherwise identical to the input node.
 
     Args:
@@ -328,14 +368,12 @@ class CheckValidTypesAndNamesVisitor(Visitor):
             "VariableDefinitionNode",
         }
     )
-    check_name_validity_types = frozenset(
-        {  # nodes whose name need to be checked
-            "EnumTypeDefinitionNode",
-            "InterfaceTypeDefinitionNode",
-            "ObjectTypeDefinitionNode",
-            "ScalarTypeDefinitionNode",
-            "UnionTypeDefinitionNode",
-        }
+    check_name_validity_types = (
+        EnumTypeDefinitionNode,
+        InterfaceTypeDefinitionNode,
+        ObjectTypeDefinitionNode,
+        ScalarTypeDefinitionNode,
+        UnionTypeDefinitionNode,
     )
 
     def enter(self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
@@ -351,7 +389,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
             raise SchemaStructureError('Node type "{}" not allowed.'.format(node_type))
         elif node_type in self.unexpected_types:
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
-        elif node_type in self.check_name_validity_types:
+        elif isinstance(node, self.check_name_validity_types):
             check_type_name_is_valid(node.name.value)
 
 
