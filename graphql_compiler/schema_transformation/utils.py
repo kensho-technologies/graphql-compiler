@@ -1,13 +1,26 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
-from typing import Dict, Set, FrozenSet, Optional, List, Union, Any, Type, TypeVar
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Type, TypeVar, Union
 
-from graphql import build_ast_schema, specified_scalar_types, GraphQLSchema
-from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode, Node, \
-    ObjectTypeDefinitionNode, FieldDefinitionNode, DocumentNode, DirectiveDefinitionNode, \
-    DirectiveNode, SelectionSetNode, FragmentSpreadNode, EnumTypeDefinitionNode, \
-    InterfaceTypeDefinitionNode, NamedTypeNode, UnionTypeDefinitionNode, ScalarTypeDefinitionNode
+from graphql import GraphQLSchema, build_ast_schema, specified_scalar_types
+from graphql.language.ast import (
+    DirectiveNode,
+    DocumentNode,
+    EnumTypeDefinitionNode,
+    FieldDefinitionNode,
+    FieldNode,
+    FragmentSpreadNode,
+    InlineFragmentNode,
+    InterfaceTypeDefinitionNode,
+    NamedTypeNode,
+    NameNode,
+    Node,
+    ObjectTypeDefinitionNode,
+    ScalarTypeDefinitionNode,
+    SelectionSetNode,
+    UnionTypeDefinitionNode,
+)
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utilities.assert_valid_name import re_name
@@ -122,12 +135,16 @@ class CascadingSuppressionError(SchemaTransformError):
     """
 
 
-_alphanumeric_and_underscore: FrozenSet[str] = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
+_alphanumeric_and_underscore: FrozenSet[str] = frozenset(
+    six.text_type(string.ascii_letters + string.digits + "_")
+)
 
 
 # String representations for the GraphQL built-in scalar types
 # pylint produces a false positive-- see issue here: https://github.com/PyCQA/pylint/issues/3743
-builtin_scalar_type_names: FrozenSet[str] = frozenset(specified_scalar_types.keys())  # pylint: disable=no-member
+builtin_scalar_type_names: FrozenSet[str] = frozenset(
+    specified_scalar_types.keys()  # pylint: disable=no-member
+)
 
 
 # Union of classes of nodes to be renamed or suppressed by an instance of RenameSchemaTypesVisitor.
@@ -155,9 +172,7 @@ RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
 # Meanwhile, RenameTypes applies only for rename_schema and field renaming in the schema is not
 # implemented yet.
 RenameNodes = Union[
-    RenameTypes,
-    FieldNode,
-    FieldDefinitionNode,
+    RenameTypes, FieldNode, FieldDefinitionNode,
 ]
 RenameNodesT = TypeVar("RenameNodesT", bound="RenameNodes")
 
@@ -189,7 +204,7 @@ def check_type_name_is_valid(name: str) -> None:
     """Check if input is a valid, nonreserved GraphQL type name.
 
     Args:
-        name: str
+        name: to be checked
 
     Raises:
         - InvalidTypeNameError if the name doesn't consist of only alphanumeric characters and
@@ -207,17 +222,10 @@ def check_type_name_is_valid(name: str) -> None:
 
 
 def get_query_type_name(schema: GraphQLSchema) -> str:
-    """Get the name of the query type of the input schema.
-
-    Args:
-        schema: GraphQLSchema
-
-    Returns:
-        str, name of the query type (e.g. RootSchemaQuery)
-    """
+    """Get the name of the query type of the input schema (e.g. RootSchemaQuery)."""
     if schema.query_type is None:
         raise AssertionError(
-            f"Schema's query_type field is None, even though the compiler is read-only."
+            "Schema's query_type field is None, even though the compiler is read-only."
         )
     return schema.query_type.name
 
@@ -232,7 +240,7 @@ def get_custom_scalar_names(schema: GraphQLSchema) -> Set[str]:
     be included in the output.
 
     Returns:
-        Set[str], set of names of scalars used in the schema
+        set of names of scalars used in the schema
     """
     type_map = schema.type_map
     custom_scalar_names = {
@@ -243,44 +251,49 @@ def get_custom_scalar_names(schema: GraphQLSchema) -> Set[str]:
     return custom_scalar_names
 
 
-def try_get_ast_by_name_and_type(asts: Optional[List[Node]], target_name: str, target_type: Type[Node]) -> Optional[Node]:
+def try_get_ast_by_name_and_type(
+    asts: Optional[List[Node]], target_name: str, target_type: Type[Node]
+) -> Optional[Node]:
     """Return the ast in the list with the desired name and type, if found.
 
     Args:
-        asts: List[Node] or None
-        target_name: str, name of the AST we're looking for
-        target_type: Node, the type of the AST we're looking for. Must be a type with a .name
-                     attribute, e.g. Field, Directive, and its name attribute must have a .value
-                     attribute.
+        asts: optional list of asts to search through
+        target_name: name of the AST we're looking for
+        target_type: type of the AST we're looking for. Instances of this type must have a .name
+                     attribute, (e.g. FieldNode, DirectiveNode) and its .name attribute must have a
+                     .value attribute.
 
     Returns:
-        Node, an element in the input list with the correct name and type, or None if not found
+        element in the input list with the correct name and type, or None if not found
     """
     if asts is None:
         return None
     for ast in asts:
         if isinstance(ast, target_type):
             if not (hasattr(ast, "name") and hasattr(ast.name, "value")):  # type: ignore
-                # Can't type hint "has name attribute"
+                # Can't type hint "has .name attribute"
                 raise AssertionError(
                     f"AST {ast} is either missing a .name attribute or its .name attribute is "
                     f"missing a .value attribute. This should be impossible because target_type "
                     f"{target_type} must have a .name attribute, {target_type}'s .name attribute "
                     f"must have a .value attribute, and the ast must be of type {target_type}."
                 )
-            if ast.name.value == target_name:  # type: ignore # Can't type hint "has name attribute"
+            if ast.name.value == target_name:  # type: ignore
+                # Can't type hint "has .name attribute"
                 return ast
     return None
 
 
-def try_get_inline_fragment(selections: Optional[List[Union[FieldNode, InlineFragmentNode]]]) -> Optional[InlineFragmentNode]:
+def try_get_inline_fragment(
+    selections: Optional[List[Union[FieldNode, InlineFragmentNode]]]
+) -> Optional[InlineFragmentNode]:
     """Return the unique inline fragment contained in selections, or None.
 
     Args:
-        selections: List[Union[Field, InlineFragment]] or None
+        selections: optional list of selections to search through
 
     Returns:
-        InlineFragment if one is found in selections, None otherwise
+        inline fragment if one is found in selections, None otherwise
 
     Raises:
         GraphQLValidationError if selections contains a InlineFragment along with a nonzero
@@ -312,11 +325,11 @@ def get_copy_of_node_with_new_name(node: RenameNodesT, new_name: str) -> RenameN
     """Return a node with new_name as its name and otherwise identical to the input node.
 
     Args:
-        node: type Node, with a .name attribute. Not modified by this function
-        new_name: str, name to give to the output node
+        node: node to make a copy of
+        new_name: name to give to the output node
 
     Returns:
-        Node, with new_name as its name and otherwise identical to the input node
+        node with new_name as its name and otherwise identical to the input node
     """
     node_type = type(node).__name__
     allowed_types = frozenset(
@@ -376,7 +389,9 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         UnionTypeDefinitionNode,
     )
 
-    def enter(self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
+    def enter(
+        self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Raise error if node is of a invalid type or has an invalid name.
 
         Raises:
@@ -403,22 +418,43 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
         """Create a visitor for checking query type field names.
 
         Args:
-            query_type: str, name of the query type (e.g. RootSchemaQuery)
+            query_type: name of the query type (e.g. RootSchemaQuery)
         """
         self.query_type = query_type
         self.in_query_type = False
 
-    def enter_object_type_definition(self, node: ObjectTypeDefinitionNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
+    def enter_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_object_type_definition(self, node: ObjectTypeDefinitionNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
+    def leave_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node: FieldDefinitionNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
+    def enter_field_definition(
+        self,
+        node: FieldDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If inside the query type, check that the field and queried type names match.
 
         Raises:
@@ -445,7 +481,7 @@ def check_ast_schema_is_valid(ast: DocumentNode) -> None:
     types they query.
 
     Args:
-        ast: Document, representing a schema
+        ast: represents schema
 
     Raises:
         - SchemaStructureError if the AST cannot be built into a valid schema, if the schema
@@ -471,19 +507,15 @@ def check_ast_schema_is_valid(ast: DocumentNode) -> None:
 
 
 def is_property_field_ast(field: FieldNode) -> bool:
-    """Return True if selection is a property field, False if a vertex field.
-
-    Args:
-        field: Field object. It is considered to be a property field if it has no further
-               selections
-
-    Returns:
-        True if the selection is a property field, False if it's a vertex field.
-    """
+    """Return True iff selection is a property field (i.e. no further selections)."""
     if isinstance(field, FieldNode):
         # Unfortunately, since split_query.py hasn't been type-hinted yet, we can't rely on the
         # type-hint in this function to ensure field is a FieldNode yet.
-        return field.selection_set is None or field.selection_set.selections is None or field.selection_set.selections == []
+        return (
+            field.selection_set is None
+            or field.selection_set.selections is None
+            or field.selection_set.selections == []
+        )
     else:
         raise AssertionError('Input selection "{}" is not a Field.'.format(field))
 
@@ -502,7 +534,9 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         (FilterDirective.name, OutputDirective.name, OptionalDirective.name,)
     )
 
-    def enter_directive(self, node: DirectiveNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
+    def enter_directive(
+        self, node: DirectiveNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Check that the directive is supported."""
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
@@ -510,14 +544,22 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                 "supported.".format(node.name.value, self.supported_directives)
             )
 
-    def enter_selection_set(self, node: SelectionSetNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]) -> None:
+    def enter_selection_set(
+        self, node: SelectionSetNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Check selections are valid.
 
         If selections contains an InlineFragment, check that it is the only inline fragment in
         scope. Otherwise, check that property fields occur before vertex fields.
 
         Args:
-            node: SelectionSet
+            node: selection set
+            key: The index or key to this node from the parent node or Array.
+            parent: the parent immediately above this node, which may be an Array.
+            path: The key path to get to this node from the root node.
+            ancestors: All nodes and Arrays visited before reaching parent of this node. These
+                       correspond to array indices in ``path``. Note: ancestors includes arrays
+                       which contain the parent of visited node.
         """
         selections = node.selections
         if len(selections) == 1 and isinstance(selections[0], InlineFragmentNode):
@@ -565,8 +607,8 @@ def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode
     vertex fields.
 
     Args:
-        schema: GraphQLSchema object
-        query_ast: Document
+        schema: schema the query is written against
+        query_ast: query to split
 
     Raises:
         GraphQLValidationError if the query doesn't validate against the schema, contains

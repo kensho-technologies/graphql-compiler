@@ -72,14 +72,13 @@ Renaming constraints:
   being renamed or suppressed.
 """
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
     EnumTypeDefinitionNode,
     FieldDefinitionNode,
     InterfaceTypeDefinitionNode,
-    NamedTypeNode,
     Node,
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
@@ -91,6 +90,8 @@ import six
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
     CascadingSuppressionError,
+    RenameTypes,
+    RenameTypesT,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
@@ -98,7 +99,7 @@ from .utils import (
     check_type_name_is_valid,
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
-    get_query_type_name, RenameTypesT, RenameTypes,
+    get_query_type_name,
 )
 
 
