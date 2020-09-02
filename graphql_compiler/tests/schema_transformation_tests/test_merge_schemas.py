@@ -554,7 +554,13 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             merge_schemas(
-                OrderedDict([(42, parse(ISS.basic_schema)), ("enum", parse(ISS.enum_schema)),]), [],
+                OrderedDict(
+                    [
+                        (42, parse(ISS.basic_schema)),  # type: ignore
+                        ("enum", parse(ISS.enum_schema)),
+                    ]
+                ),
+                [],
             )
 
     def test_too_few_input_schemas(self):
