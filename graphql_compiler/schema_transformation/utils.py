@@ -174,7 +174,7 @@ RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
 RenameNodes = Union[
     RenameTypes, FieldNode, FieldDefinitionNode,
 ]
-RenameNodesT = TypeVar("RenameNodesT", bound="RenameNodes")
+RenameNodesT = TypeVar("RenameNodesT", bound=RenameNodes)
 
 
 def check_schema_identifier_is_valid(identifier: str) -> None:
