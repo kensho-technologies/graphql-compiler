@@ -72,14 +72,13 @@ Renaming constraints:
   being renamed or suppressed.
 """
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, TypeVar, Union, cast
+from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
     EnumTypeDefinitionNode,
     FieldDefinitionNode,
     InterfaceTypeDefinitionNode,
-    NamedTypeNode,
     Node,
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
@@ -91,6 +90,8 @@ import six
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from .utils import (
     CascadingSuppressionError,
+    RenameTypes,
+    RenameTypesT,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
@@ -113,23 +114,6 @@ RenamedSchemaDescriptor = namedtuple(
 )
 
 
-# Union of classes of nodes to be renamed or suppressed by an instance of RenameSchemaTypesVisitor.
-# Note that RenameSchemaTypesVisitor also has a class attribute rename_types which parallels the
-# classes here. This duplication is necessary due to language and linter constraints-- see the
-# comment in the RenameSchemaTypesVisitor class for more information.
-# Unfortunately, RenameTypes itself has to be a module attribute instead of a class attribute
-# because a bug in flake8 produces a linting error if RenameTypes is a class attribute and we type
-# hint the return value of the RenameSchemaTypesVisitor's
-# _rename_or_suppress_or_ignore_name_and_add_to_record() method as RenameTypes. More on this here:
-# https://github.com/PyCQA/pyflakes/issues/441
-RenameTypes = Union[
-    EnumTypeDefinitionNode,
-    InterfaceTypeDefinitionNode,
-    NamedTypeNode,
-    ObjectTypeDefinitionNode,
-    UnionTypeDefinitionNode,
-]
-RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
 # AST visitor functions can return a number of different things, such as returning a Node (to update
 # that node) or returning a special value specified in graphql.visitor's VisitorAction.
 VisitorReturnType = Union[Node, VisitorAction]
