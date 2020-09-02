@@ -213,10 +213,7 @@ def type_name_is_valid(name: str) -> bool:
     Returns:
         True iff name is a valid, nonreserved GraphQL type name.
     """
-    # Unfortunately, one place this function is used in the enter method of
-    # CheckValidTypesAndNamesVisitor which doesn't ensure that name is a string, so the isinstance
-    # check is still required here.
-    return isinstance(name, str) and bool(re_name.match(name)) and not name.startswith("__")
+    return bool(re_name.match(name)) and not name.startswith("__")
 
 
 def get_query_type_name(schema: GraphQLSchema) -> str:
