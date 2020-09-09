@@ -40,6 +40,11 @@ data.
         secondname: String
     }
 
+For both 1-1 or 1-many renaming, renamings only apply to types, fields, and enum values that exist
+in the original schema. For example, if a schema contains a type named "Foo" but not types named
+"Bar" or "Baz" and renamings maps "Foo" to "Bar" and "Bar" to "Baz", then exactly one type (named
+"Bar") in the renamed schema will corresponds to the type named "Foo" in the original schema.
+
 Suppressing part of the schema removes it altogether. For instance, given the following part of a
 schema:
     type Dog {
