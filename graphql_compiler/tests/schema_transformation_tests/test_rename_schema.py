@@ -301,7 +301,6 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_renaming_only_original_types(self):
-        # Ensure that renamings don't apply to type names that didn't exist in the original schema.
         renamed_schema = rename_schema(
             parse(ISS.multiple_objects_schema), {"Human": "NewHuman", "NewHuman": "OtherNewHuman"}
         )
