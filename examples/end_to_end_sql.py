@@ -1,7 +1,11 @@
-from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
+from typing import Any, Dict
+
 from sqlalchemy import MetaData, create_engine
 
-engine = create_engine('<connection string>')
+from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
+
+
+engine = create_engine("<connection string>")
 
 # Reflect the default database schema.
 metadata = MetaData(bind=engine)
@@ -11,14 +15,14 @@ metadata.reflect()
 sql_schema_info = get_sqlalchemy_schema_info(metadata.tables, {}, engine.dialect)
 
 # Write GraphQL query.
-graphql_query = '''
+graphql_query = """
 {
     Animal {
         name @output(out_name: "animal_name")
     }
 }
-'''
-parameters = {}
+"""
+parameters: Dict[str, Any] = {}
 
 # Compile and execute query.
 compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
