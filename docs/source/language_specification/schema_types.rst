@@ -316,6 +316,13 @@ In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
 However, the query only wants to return results where the related entity
 is a :code:`Species`, which :code:`... on Species` ensures is the case.
 
+Constraints and Rules
+^^^^^^^^^^^^^^^^^^^^^
+
+-  Must be the only selection in scope. No field may exist in the same
+   scope as a type coercion. No scope may contain more than one type
+   coercion.
+
 .. _meta_fields:
 
 Meta fields
