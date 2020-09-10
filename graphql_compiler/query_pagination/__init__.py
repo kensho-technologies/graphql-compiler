@@ -10,22 +10,22 @@ from .query_parameterizer import generate_parameterized_queries
 from .typedefs import PageAndRemainder
 
 
-def _estimate_number_of_pages(query: ASTWithParameters, result_size: float, page_size: int) -> int:
+def _estimate_number_of_pages(
+    query: QueryStringWithParameters, result_size: float, page_size: int
+) -> int:
     """Estimate how many pages of results we should generate to meet the desired result size.
 
     Args:
-        query: ASTWithParameters
-        result_size: The estimated result size of a query
-        page_size: The desired page size of a query
+        query: query string and parameters being analyzed for pagination
+        result_size: estimated result size of running the supplied query as-is
+        page_size: desired page size of the final paginated query
 
     Returns:
-        int, estimated number of pages if the query were executed.
-
-    Raises:
-        ValueError if page_size is below 1.
+        int, estimated number of pages of the desired size into which the supplied query
+        should be split up
     """
     if page_size < 1:
-        raise ValueError(
+        raise AssertionError(
             f"Could not estimate number of pages for query {query}"
             f" with page size lower than 1: {page_size}"
         )
@@ -64,12 +64,9 @@ def paginate_query_ast(
               - page_and_remainder.page_size == page_size
             - Tuple of PaginationAdvisory objects that communicate what can be done to improve
               pagination
-
-    Raises:
-        ValueError if page_size is below 1.
     """
     if page_size < 1:
-        raise ValueError(
+        raise AssertionError(
             "Could not page query {} with page size lower than 1: {}".format(
                 query_analysis.query_string_with_parameters, page_size
             )
@@ -139,7 +136,6 @@ def paginate_query(
     Args:
         schema_info: QueryPlanningSchemaInfo
         query: QueryStringWithParameters
-        parameters: dict, parameters with which query will be estimated.
         page_size: int, describes the desired number of result rows per page.
 
     Returns:

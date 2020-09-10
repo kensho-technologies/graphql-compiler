@@ -1,9 +1,26 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Type, TypeVar, Union
 
-from graphql import build_ast_schema
-from graphql.language.ast import FieldNode, InlineFragmentNode, NameNode
+from graphql import GraphQLSchema, build_ast_schema, specified_scalar_types
+from graphql.language.ast import (
+    DirectiveNode,
+    DocumentNode,
+    EnumTypeDefinitionNode,
+    FieldDefinitionNode,
+    FieldNode,
+    FragmentSpreadNode,
+    InlineFragmentNode,
+    InterfaceTypeDefinitionNode,
+    NamedTypeNode,
+    NameNode,
+    Node,
+    ObjectTypeDefinitionNode,
+    ScalarTypeDefinitionNode,
+    SelectionSetNode,
+    UnionTypeDefinitionNode,
+)
 from graphql.language.visitor import Visitor, visit
 from graphql.type.definition import GraphQLScalarType
 from graphql.utilities.assert_valid_name import re_name
@@ -39,14 +56,60 @@ class InvalidTypeNameError(SchemaTransformError):
     """
 
 
-class SchemaNameConflictError(SchemaTransformError):
-    """Raised when renaming or merging types or fields cause name conflicts.
+class SchemaMergeNameConflictError(SchemaTransformError):
+    """Raised when merging types or fields cause name conflicts.
 
-    This may be raised if a field or type is renamed to conflict with another field or type,
-    if two merged schemas share an identically named field or type, or if a
+    This may be raised if two merged schemas share an identically named field or type, or if a
     CrossSchemaEdgeDescriptor provided when merging schemas has an edge name that causes a
     name conflict with an existing field.
     """
+
+
+class SchemaRenameNameConflictError(SchemaTransformError):
+    """Raised when renaming causes name conflicts."""
+
+    name_conflicts: Dict[str, Set[str]]
+    renamed_to_builtin_scalar_conflicts: Dict[str, str]
+
+    def __init__(
+        self,
+        name_conflicts: Dict[str, Set[str]],
+        renamed_to_builtin_scalar_conflicts: Dict[str, str],
+    ) -> None:
+        """Record all renaming conflicts."""
+        if not name_conflicts and not renamed_to_builtin_scalar_conflicts:
+            raise ValueError(
+                "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
+                "name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both empty "
+                "dictionaries."
+            )
+        super().__init__()
+        self.name_conflicts = name_conflicts
+        self.renamed_to_builtin_scalar_conflicts = renamed_to_builtin_scalar_conflicts
+
+    def __str__(self) -> str:
+        """Explain renaming conflict and the fix."""
+        name_conflicts_message = ""
+        if self.name_conflicts:
+            name_conflicts_message = (
+                f"Applying the renaming would produce a schema in which multiple types have the "
+                f"same name, which is an illegal schema state. The name_conflicts dict describes "
+                f"these problems. For each key k in name_conflicts, name_conflicts[k] is the set "
+                f"of types in the original schema that get mapped to k in the new schema. To fix "
+                f"this, modify the renamings argument of rename_schema to ensure that no two types "
+                f"in the renamed schema have the same name. name_conflicts: {self.name_conflicts}"
+            )
+        renamed_to_builtin_scalar_conflicts_message = ""
+        if self.renamed_to_builtin_scalar_conflicts:
+            renamed_to_builtin_scalar_conflicts_message = (
+                f"Applying the renaming would rename type(s) to a name already used by a built-in "
+                f"GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
+                f"scalar's name. The following dict maps each to-be-renamed type to the scalar "
+                f"name it was mapped to: {self.renamed_to_builtin_scalar_conflicts}"
+            )
+        return "\n".join(
+            filter(None, [name_conflicts_message, renamed_to_builtin_scalar_conflicts_message])
+        )
 
 
 class InvalidCrossSchemaEdgeError(SchemaTransformError):
@@ -72,10 +135,49 @@ class CascadingSuppressionError(SchemaTransformError):
     """
 
 
-_alphanumeric_and_underscore = frozenset(six.text_type(string.ascii_letters + string.digits + "_"))
+_alphanumeric_and_underscore: FrozenSet[str] = frozenset(
+    six.text_type(string.ascii_letters + string.digits + "_")
+)
 
 
-def check_schema_identifier_is_valid(identifier):
+# String representations for the GraphQL built-in scalar types
+# pylint produces a false positive-- see issue here: https://github.com/PyCQA/pylint/issues/3743
+builtin_scalar_type_names: FrozenSet[str] = frozenset(
+    specified_scalar_types.keys()  # pylint: disable=no-member
+)
+
+
+# Union of classes of nodes to be renamed or suppressed by an instance of RenameSchemaTypesVisitor.
+# Note that RenameSchemaTypesVisitor also has a class attribute rename_types which parallels the
+# classes here. This duplication is necessary due to language and linter constraints-- see the
+# comment in the RenameSchemaTypesVisitor class for more information.
+# Unfortunately, RenameTypes itself has to be a module attribute instead of a class attribute
+# because a bug in flake8 produces a linting error if RenameTypes is a class attribute and we type
+# hint the return value of the RenameSchemaTypesVisitor's
+# _rename_or_suppress_or_ignore_name_and_add_to_record() method as RenameTypes. More on this here:
+# https://github.com/PyCQA/pyflakes/issues/441
+RenameTypes = Union[
+    EnumTypeDefinitionNode,
+    InterfaceTypeDefinitionNode,
+    NamedTypeNode,
+    ObjectTypeDefinitionNode,
+    UnionTypeDefinitionNode,
+]
+RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
+
+# For the same reason as with RenameTypes, these types have to be written out explicitly instead of
+# relying on allowed_types in get_copy_of_node_with_new_name.
+# Unlike RenameTypes, RenameNodes also includes fields because it's used in the function
+# get_copy_of_node_with_new_name which rename_query depends on to rename the root field in a query.
+# Meanwhile, RenameTypes applies only for rename_schema and field renaming in the schema is not
+# implemented yet.
+RenameNodes = Union[
+    RenameTypes, FieldNode, FieldDefinitionNode,
+]
+RenameNodesT = TypeVar("RenameNodesT", bound=RenameNodes)
+
+
+def check_schema_identifier_is_valid(identifier: str) -> None:
     """Check if input is a valid identifier, made of alphanumeric and underscore characters.
 
     Args:
@@ -98,11 +200,11 @@ def check_schema_identifier_is_valid(identifier):
         )
 
 
-def check_type_name_is_valid(name):
+def check_type_name_is_valid(name: str) -> None:
     """Check if input is a valid, nonreserved GraphQL type name.
 
     Args:
-        name: str
+        name: to be checked
 
     Raises:
         - InvalidTypeNameError if the name doesn't consist of only alphanumeric characters and
@@ -119,68 +221,79 @@ def check_type_name_is_valid(name):
         )
 
 
-def get_query_type_name(schema):
-    """Get the name of the query type of the input schema.
-
-    Args:
-        schema: GraphQLSchema
-
-    Returns:
-        str, name of the query type (e.g. RootSchemaQuery)
-    """
+def get_query_type_name(schema: GraphQLSchema) -> str:
+    """Get the name of the query type of the input schema (e.g. RootSchemaQuery)."""
+    if schema.query_type is None:
+        raise AssertionError(
+            "Schema's query_type field is None, even though the compiler is read-only."
+        )
     return schema.query_type.name
 
 
-def get_scalar_names(schema):
-    """Get names of all scalars used in the input schema.
+def get_custom_scalar_names(schema: GraphQLSchema) -> Set[str]:
+    """Get names of all custom scalars used in the input schema.
 
-    Includes all user defined scalars, as well as any builtin scalars used in the schema; excludes
-    builtin scalars not used in the schema.
+    Includes all user defined scalars; excludes builtin scalars.
 
     Note: If the user defined a scalar that shares its name with a builtin introspection type
     (such as __Schema, __Directive, etc), it will not be listed in type_map and thus will not
     be included in the output.
 
     Returns:
-        Set[str], set of names of scalars used in the schema
+        set of names of scalars used in the schema
     """
     type_map = schema.type_map
-    scalars = {
+    custom_scalar_names = {
         type_name
         for type_name, type_object in six.iteritems(type_map)
-        if isinstance(type_object, GraphQLScalarType)
+        if isinstance(type_object, GraphQLScalarType) and type_name not in builtin_scalar_type_names
     }
-    return scalars
+    return custom_scalar_names
 
 
-def try_get_ast_by_name_and_type(asts, target_name, target_type):
+def try_get_ast_by_name_and_type(
+    asts: Optional[List[Node]], target_name: str, target_type: Type[Node]
+) -> Optional[Node]:
     """Return the ast in the list with the desired name and type, if found.
 
     Args:
-        asts: List[Node] or None
-        target_name: str, name of the AST we're looking for
-        target_type: Node, the type of the AST we're looking for. Must be a type with a .name
-                     attribute, e.g. Field, Directive
+        asts: optional list of asts to search through
+        target_name: name of the AST we're looking for
+        target_type: type of the AST we're looking for. Instances of this type must have a .name
+                     attribute, (e.g. FieldNode, DirectiveNode) and its .name attribute must have a
+                     .value attribute.
 
     Returns:
-        Node, an element in the input list with the correct name and type, or None if not found
+        element in the input list with the correct name and type, or None if not found
     """
     if asts is None:
         return None
     for ast in asts:
-        if isinstance(ast, target_type) and ast.name.value == target_name:
-            return ast
+        if isinstance(ast, target_type):
+            if not (hasattr(ast, "name") and hasattr(ast.name, "value")):  # type: ignore
+                # Can't type hint "has .name attribute"
+                raise AssertionError(
+                    f"AST {ast} is either missing a .name attribute or its .name attribute is "
+                    f"missing a .value attribute. This should be impossible because target_type "
+                    f"{target_type} must have a .name attribute, {target_type}'s .name attribute "
+                    f"must have a .value attribute, and the ast must be of type {target_type}."
+                )
+            if ast.name.value == target_name:  # type: ignore
+                # Can't type hint "has .name attribute"
+                return ast
     return None
 
 
-def try_get_inline_fragment(selections):
+def try_get_inline_fragment(
+    selections: Optional[List[Union[FieldNode, InlineFragmentNode]]]
+) -> Optional[InlineFragmentNode]:
     """Return the unique inline fragment contained in selections, or None.
 
     Args:
-        selections: List[Union[Field, InlineFragment]] or None
+        selections: optional list of selections to search through
 
     Returns:
-        InlineFragment if one is found in selections, None otherwise
+        inline fragment if one is found in selections, None otherwise
 
     Raises:
         GraphQLValidationError if selections contains a InlineFragment along with a nonzero
@@ -208,15 +321,15 @@ def try_get_inline_fragment(selections):
         )
 
 
-def get_copy_of_node_with_new_name(node, new_name):
+def get_copy_of_node_with_new_name(node: RenameNodesT, new_name: str) -> RenameNodesT:
     """Return a node with new_name as its name and otherwise identical to the input node.
 
     Args:
-        node: type Node, with a .name attribute. Not modified by this function
-        new_name: str, name to give to the output node
+        node: node to make a copy of
+        new_name: name to give to the output node
 
     Returns:
-        Node, with new_name as its name and otherwise identical to the input node
+        node with new_name as its name and otherwise identical to the input node
     """
     node_type = type(node).__name__
     allowed_types = frozenset(
@@ -268,17 +381,17 @@ class CheckValidTypesAndNamesVisitor(Visitor):
             "VariableDefinitionNode",
         }
     )
-    check_name_validity_types = frozenset(
-        {  # nodes whose name need to be checked
-            "EnumTypeDefinitionNode",
-            "InterfaceTypeDefinitionNode",
-            "ObjectTypeDefinitionNode",
-            "ScalarTypeDefinitionNode",
-            "UnionTypeDefinitionNode",
-        }
+    check_name_validity_types = (
+        EnumTypeDefinitionNode,
+        InterfaceTypeDefinitionNode,
+        ObjectTypeDefinitionNode,
+        ScalarTypeDefinitionNode,
+        UnionTypeDefinitionNode,
     )
 
-    def enter(self, node, key, parent, path, ancestors):
+    def enter(
+        self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Raise error if node is of a invalid type or has an invalid name.
 
         Raises:
@@ -291,7 +404,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
             raise SchemaStructureError('Node type "{}" not allowed.'.format(node_type))
         elif node_type in self.unexpected_types:
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
-        elif node_type in self.check_name_validity_types:
+        elif isinstance(node, self.check_name_validity_types):
             check_type_name_is_valid(node.name.value)
 
 
@@ -301,26 +414,47 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
     If not, raise SchemaStructureError.
     """
 
-    def __init__(self, query_type):
+    def __init__(self, query_type: str) -> None:
         """Create a visitor for checking query type field names.
 
         Args:
-            query_type: str, name of the query type (e.g. RootSchemaQuery)
+            query_type: name of the query type (e.g. RootSchemaQuery)
         """
         self.query_type = query_type
         self.in_query_type = False
 
-    def enter_object_type_definition(self, node, *args):
+    def enter_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we entered the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = True
 
-    def leave_object_type_definition(self, node, *args):
+    def leave_object_type_definition(
+        self,
+        node: ObjectTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If the node's name matches the query type, record that we left the query type."""
         if node.name.value == self.query_type:
             self.in_query_type = False
 
-    def enter_field_definition(self, node, *args):
+    def enter_field_definition(
+        self,
+        node: FieldDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
         """If inside the query type, check that the field and queried type names match.
 
         Raises:
@@ -338,7 +472,7 @@ class CheckQueryTypeFieldsNameMatchVisitor(Visitor):
                 )
 
 
-def check_ast_schema_is_valid(ast):
+def check_ast_schema_is_valid(ast: DocumentNode) -> None:
     """Check the schema satisfies structural requirements for rename and merge.
 
     In particular, check that the schema contains no mutations, no subscriptions, no
@@ -347,7 +481,7 @@ def check_ast_schema_is_valid(ast):
     types they query.
 
     Args:
-        ast: Document, representing a schema
+        ast: represents schema
 
     Raises:
         - SchemaStructureError if the AST cannot be built into a valid schema, if the schema
@@ -372,25 +506,16 @@ def check_ast_schema_is_valid(ast):
     visit(ast, CheckQueryTypeFieldsNameMatchVisitor(query_type))
 
 
-def is_property_field_ast(field):
-    """Return True if selection is a property field, False if a vertex field.
-
-    Args:
-        field: Field object. It is considered to be a property field if it has no further
-               selections
-
-    Returns:
-        True if the selection is a property field, False if it's a vertex field.
-    """
+def is_property_field_ast(field: FieldNode) -> bool:
+    """Return True iff selection is a property field (i.e. no further selections)."""
     if isinstance(field, FieldNode):
-        if (
+        # Unfortunately, since split_query.py hasn't been type-hinted yet, we can't rely on the
+        # type-hint in this function to ensure field is a FieldNode yet.
+        return (
             field.selection_set is None
             or field.selection_set.selections is None
             or field.selection_set.selections == []
-        ):
-            return True
-        else:
-            return False
+        )
     else:
         raise AssertionError('Input selection "{}" is not a Field.'.format(field))
 
@@ -409,7 +534,9 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         (FilterDirective.name, OutputDirective.name, OptionalDirective.name,)
     )
 
-    def enter_directive(self, node, *args):
+    def enter_directive(
+        self, node: DirectiveNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Check that the directive is supported."""
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
@@ -417,14 +544,22 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                 "supported.".format(node.name.value, self.supported_directives)
             )
 
-    def enter_selection_set(self, node, *args):
+    def enter_selection_set(
+        self, node: SelectionSetNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Check selections are valid.
 
         If selections contains an InlineFragment, check that it is the only inline fragment in
         scope. Otherwise, check that property fields occur before vertex fields.
 
         Args:
-            node: SelectionSet
+            node: selection set
+            key: The index or key to this node from the parent node or Array.
+            parent: the parent immediately above this node, which may be an Array.
+            path: The key path to get to this node from the root node.
+            ancestors: All nodes and Arrays visited before reaching parent of this node. These
+                       correspond to array indices in ``path``. Note: ancestors includes arrays
+                       which contain the parent of visited node.
         """
         selections = node.selections
         if len(selections) == 1 and isinstance(selections[0], InlineFragmentNode):
@@ -439,6 +574,18 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                             selections
                         )
                     )
+                if isinstance(field, FragmentSpreadNode):
+                    raise GraphQLValidationError(
+                        f"Fragments (not to be confused with inline fragments) are not supported "
+                        f"by the compiler. However, in SelectionSetNode {node}'s selections "
+                        f"attribute {selections}, the field {field} is a FragmentSpreadNode named "
+                        f"{field.name.value}."
+                    )
+                if not isinstance(field, FieldNode):
+                    raise AssertionError(
+                        f"The SelectionNode {field} in SelectionSetNode {node}'s selections "
+                        f"attribute is not a FieldNode but instead has type {type(field)}."
+                    )
                 if is_property_field_ast(field):
                     if seen_vertex_field:
                         raise GraphQLValidationError(
@@ -452,7 +599,7 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                     seen_vertex_field = True
 
 
-def check_query_is_valid_to_split(schema, query_ast):
+def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode) -> None:
     """Check the query is valid for splitting.
 
     In particular, ensure that the query validates against the schema, does not contain
@@ -460,8 +607,8 @@ def check_query_is_valid_to_split(schema, query_ast):
     vertex fields.
 
     Args:
-        schema: GraphQLSchema object
-        query_ast: Document
+        schema: schema the query is written against
+        query_ast: query to split
 
     Raises:
         GraphQLValidationError if the query doesn't validate against the schema, contains

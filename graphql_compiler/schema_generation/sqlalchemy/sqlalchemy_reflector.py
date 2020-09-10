@@ -97,6 +97,8 @@ def get_first_column_in_table(table_name, column_metadata):
         if column["ORDINAL_POSITION"] == 1:
             return {column["COLUMN_NAME"]}
 
+    raise AssertionError(f"Unreachable state reached: {table_name} {column_metadata}")
+
 
 def _get_table_to_column_metadata(engine, database_name, schema_name):
     """Return a dict mapping the name of each table to a list of column metadata dicts."""

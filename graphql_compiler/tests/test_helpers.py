@@ -486,14 +486,14 @@ def compare_ir_blocks(
     if len(expected_blocks) != len(received_blocks):
         test_case.fail("Not the same number of blocks:\n\n{}".format(mismatch_message))
 
-    for i in six.moves.xrange(len(expected_blocks)):
-        expected = expected_blocks[i]
-        received = received_blocks[i]
+    for i, (expected, received) in enumerate(zip(expected_blocks, received_blocks)):
         test_case.assertEqual(
             expected,
             received,
-            msg="Blocks at position {} were different: {} vs {}\n\n"
-            "{}".format(i, expected, received, mismatch_message),
+            msg=(
+                "Blocks at position {} were different: {} vs {}\n\n"
+                "{}".format(i, expected, received, mismatch_message)
+            ),
         )
 
 

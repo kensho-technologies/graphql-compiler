@@ -3,7 +3,6 @@ import bisect
 from dataclasses import dataclass
 from typing import Any, Dict, Set, Union
 
-from cached_property import cached_property
 from graphql import GraphQLInterfaceType, GraphQLObjectType
 
 from ..compiler.compiler_frontend import ast_to_ir
@@ -20,7 +19,13 @@ from ..cost_estimation.int_value_conversion import (
     field_supports_range_reasoning,
 )
 from ..cost_estimation.interval import Interval
-from ..global_utils import ASTWithParameters, PropertyPath, QueryStringWithParameters, VertexPath
+from ..global_utils import (
+    ASTWithParameters,
+    PropertyPath,
+    QueryStringWithParameters,
+    VertexPath,
+    cached_property,
+)
 from ..query_formatting.common import validate_arguments
 from ..schema import is_meta_field
 from ..schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo
@@ -194,7 +199,7 @@ def get_field_value_intervals(
     Args:
         schema_info: QueryPlanningSchemaInfo
         types: the type at each node
-        filters: the set of filters at each node
+        single_field_filters: the set of filters at each node
         parameters: parameters used for the query
 
     Returns:
@@ -260,7 +265,7 @@ def get_distinct_result_set_estimates(
     Args:
         schema_info: QueryPlanningSchemaInfo
         types: the type at each node
-        filters: the set of filters at each node
+        selectivities: the selectivities at each VertexPath
         parameters: the query parameters
 
     Returns:

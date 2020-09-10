@@ -12,7 +12,7 @@ from ...schema_transformation.merge_schemas import (
     FieldReference,
     merge_schemas,
 )
-from ...schema_transformation.utils import InvalidCrossSchemaEdgeError, SchemaNameConflictError
+from ...schema_transformation.utils import InvalidCrossSchemaEdgeError, SchemaMergeNameConflictError
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -176,7 +176,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         self.assertEqual(merged_schema_string, print_ast(merged_schema.schema_ast))
 
     def test_objects_merge_conflict(self):
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("first", parse(ISS.basic_schema)), ("second", parse(ISS.basic_schema)),]
@@ -200,14 +200,14 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("basic", parse(ISS.basic_schema)), ("bad", parse(interface_conflict_schema)),]
                 ),
                 [],
             )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("bad", parse(interface_conflict_schema)), ("basic", parse(ISS.basic_schema)),]
@@ -232,14 +232,14 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("basic", parse(ISS.basic_schema)), ("bad", parse(enum_conflict_schema)),]
                 ),
                 [],
             )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("bad", parse(enum_conflict_schema)), ("basic", parse(ISS.basic_schema)),]
@@ -264,7 +264,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [
@@ -274,7 +274,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
                 ),
                 [],
             )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [
@@ -299,14 +299,14 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             scalar Human
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("basic", parse(ISS.basic_schema)), ("bad", parse(scalar_conflict_schema)),]
                 ),
                 [],
             )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("bad", parse(scalar_conflict_schema)), ("basic", parse(ISS.basic_schema)),]
@@ -328,7 +328,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             scalar Character
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [
@@ -338,7 +338,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
                 ),
                 [],
             )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [
@@ -363,14 +363,14 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             scalar Height
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("enum", parse(ISS.enum_schema)), ("bad", parse(scalar_conflict_schema)),]
                 ),
                 [],
             )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("bad", parse(scalar_conflict_schema)), ("enum", parse(ISS.enum_schema)),]
@@ -514,7 +514,7 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [
@@ -554,7 +554,13 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             merge_schemas(
-                OrderedDict([(42, parse(ISS.basic_schema)), ("enum", parse(ISS.enum_schema)),]), [],
+                OrderedDict(
+                    [
+                        (42, parse(ISS.basic_schema)),  # type: ignore
+                        ("enum", parse(ISS.enum_schema)),
+                    ]
+                ),
+                [],
             )
 
     def test_too_few_input_schemas(self):
@@ -1177,7 +1183,7 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("first", parse(ISS.basic_schema)), ("second", parse(clashing_field_schema)),]
@@ -1197,7 +1203,7 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
             )
 
     def test_invalid_edge_new_vertex_field_clash_with_previous_edge_vertex_field(self):
-        with self.assertRaises(SchemaNameConflictError):
+        with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
                     [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]

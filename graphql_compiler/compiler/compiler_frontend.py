@@ -898,10 +898,8 @@ def _validate_and_create_output_metadata(
             output_info.type, GraphQLInt
         ):
             raise AssertionError(
-                "Invalid output: received {} with type {}, but {} must always be of "
-                "type GraphQLInt".format(
-                    COUNT_META_FIELD_NAME, output_info.type, COUNT_META_FIELD_NAME
-                )
+                f"Invalid output: received {COUNT_META_FIELD_NAME} with type {output_info.type}, "
+                f"but {COUNT_META_FIELD_NAME} must always be of type Int"
             )
         # Ensure all other folded outputs are GraphQLList.
         elif output_info.location.field != COUNT_META_FIELD_NAME and not isinstance(

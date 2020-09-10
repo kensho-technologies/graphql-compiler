@@ -28,6 +28,10 @@ pylint = ">=2.4.4,<2.5"
 pytest = ">=5.1.3,<6"
 pytest-cov = ">=2.6.1,<3"
 snapshottest = ">=0.5.1,<1"
+
+# TODO: Relax this dependency and add Python >= 3.7 bound when we switch to using Poetry.
+typing-copilot = "==0.2.0"
+
 # TODO: add dependency on https://github.com/dropbox/sqlalchemy-stubs and corresponding mypy plugin
 #       when we can make everything type-check correctly with it.
 
@@ -43,7 +47,6 @@ graphql-core = ">=3.1.2,<3.2"  # minor versions sometimes contain breaking chang
 pytz = ">=2017.2"
 six = ">=1.10.0"
 sqlalchemy = ">=1.3.0,<2"
-cached-property = ">=1.5.1,<2"
 
 # The below is necessary to make a few pylint passes work properly, since pylint expects to be able
 # to run "import graphql_compiler" in the environment in which it runs.

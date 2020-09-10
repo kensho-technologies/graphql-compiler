@@ -160,7 +160,7 @@ ARBITRARY_CONCRETE_NON_GRAPH_CLASS = {
 
 
 class GraphqlSchemaGenerationTests(unittest.TestCase):
-    def test_parsed_vertex(self):
+    def test_parsed_vertex(self) -> None:
         schema_data = [
             BASE_VERTEX,
             ENTITY,
@@ -168,7 +168,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name("Entity").is_vertex)
 
-    def test_parsed_edge(self):
+    def test_parsed_edge(self) -> None:
         schema_data = [
             BASE_EDGE,
             BASE_VERTEX,
@@ -180,12 +180,12 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name("Person_LivesIn").is_edge)
 
-    def test_parsed_non_graph_class(self):
+    def test_parsed_non_graph_class(self) -> None:
         schema_data = [EXTERNAL_SOURCE]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertTrue(schema_graph.get_element_by_class_name("ExternalSource").is_non_graph)
 
-    def test_no_superclass(self):
+    def test_no_superclass(self) -> None:
         schema_data = [BASE_VERTEX]
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         self.assertEqual(
@@ -193,7 +193,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             schema_graph.get_superclass_set(ORIENTDB_BASE_VERTEX_CLASS_NAME),
         )
 
-    def test_parsed_superclass_field(self):
+    def test_parsed_superclass_field(self) -> None:
         schema_data = [
             BASE_EDGE,
             BASE_VERTEX,
@@ -208,7 +208,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             schema_graph.get_superclass_set("Person_LivesIn"),
         )
 
-    def test_parsed_superclasses_field(self):
+    def test_parsed_superclasses_field(self) -> None:
         schema_data = [
             BASE_VERTEX,
             ENTITY,
@@ -218,7 +218,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             {"Entity", ORIENTDB_BASE_VERTEX_CLASS_NAME}, schema_graph.get_superclass_set("Entity")
         )
 
-    def test_parsed_property(self):
+    def test_parsed_property(self) -> None:
         schema_data = [
             BASE_VERTEX,
             ENTITY,
@@ -227,7 +227,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         name_property = schema_graph.get_element_by_class_name("Entity").properties["name"]
         self.assertTrue(is_same_type(name_property.type, GraphQLString))
 
-    def test_native_orientdb_collection_property(self):
+    def test_native_orientdb_collection_property(self) -> None:
         schema_data = [
             BASE_VERTEX,
             ENTITY,
@@ -238,7 +238,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertTrue(is_same_type(alias_property.type, GraphQLList(GraphQLString)))
         self.assertEqual(alias_property.default, set())
 
-    def test_class_collection_property(self):
+    def test_class_collection_property(self) -> None:
         schema_data = [
             BASE_VERTEX,
             DATA_POINT,
@@ -255,7 +255,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         )
         self.assertEqual(friends_property.default, list())
 
-    def test_link_parsing(self):
+    def test_link_parsing(self) -> None:
         schema_data = [
             BASE_EDGE,
             BASE_VERTEX,
@@ -269,7 +269,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertEqual(person_lives_in_edge.base_in_connection, "Person")
         self.assertEqual(person_lives_in_edge.base_out_connection, "Location")
 
-    def test_parsed_class_fields(self):
+    def test_parsed_class_fields(self) -> None:
         schema_data = [
             BASE_EDGE,
             BASE_VERTEX,
@@ -282,7 +282,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         person_lives_in_edge = schema_graph.get_element_by_class_name("Person_LivesIn")
         self.assertEqual(PERSON_LIVES_IN_EDGE["customFields"], person_lives_in_edge.class_fields)
 
-    def test_type_equivalence_dicts(self):
+    def test_type_equivalence_dicts(self) -> None:
         schema_data = [
             BASE_EDGE,
             BASE_VERTEX,
@@ -322,7 +322,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         self.assertTrue(is_same_type(baby.fields["out_Person_LivesIn"].type, location_list_type))
         self.assertTrue(is_same_type(location.fields["in_Person_LivesIn"].type, union_list_type))
 
-    def test_filter_type_equivalences_with_no_edges(self):
+    def test_filter_type_equivalences_with_no_edges(self) -> None:
         schema_data = [
             BASE_VERTEX,
             BABY,
@@ -338,7 +338,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         person_subclass_set = schema_graph.get_subclass_set("Person")
         self.assertIsNone(schema.get_type(_get_union_type_name(person_subclass_set)))
 
-    def test_edge_inheritance(self):
+    def test_edge_inheritance(self) -> None:
         schema_data = [
             BASE_EDGE,
             BABY_LIVES_IN_EDGE,
@@ -354,7 +354,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         baby_lives_in_edge = schema_graph.get_element_by_class_name("Baby_LivesIn")
         self.assertEqual("Baby", baby_lives_in_edge.base_in_connection)
 
-    def test_ignore_properties_with_invalid_name_warning(self):
+    def test_ignore_properties_with_invalid_name_warning(self) -> None:
         schema_data = [
             BASE_VERTEX,
             CLASS_WITH_INVALID_PROPERTY_NAME,
@@ -363,7 +363,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         with pytest.warns(UserWarning):
             get_graphql_schema_from_orientdb_schema_data(schema_data)
 
-    def test_include_non_graph_classes_in_graphql_schema(self):
+    def test_include_non_graph_classes_in_graphql_schema(self) -> None:
         non_graph_classes_to_include = [
             ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES,
         ]
