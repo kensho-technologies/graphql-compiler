@@ -388,6 +388,40 @@ from being
 used <https://facebook.github.io/graphql/draft/#sec-Reserved-Names>`__
 in directives, fields, or any other artifacts.
 
+Adding the :code:`_x_count` meta field to your schema
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Since the :code:`_x_count` meta field is not currently part of the GraphQL
+standard, it has to be explicitly added to all interfaces and types in
+your schema. There are two ways to do this.
+
+The preferred way to do this is to use the
+:code:`EXTENDED_META_FIELD_DEFINITIONS` constant as a starting point for
+building your interfaces' and types' field descriptions:
+
+.. code:: python
+    from graphql import GraphQLInt, GraphQLField, GraphQLObjectType, GraphQLString
+    from graphql_compiler import EXTENDED_META_FIELD_DEFINITIONS
+    fields = EXTENDED_META_FIELD_DEFINITIONS.copy()
+    fields.update({
+        'foo': GraphQLField(GraphQLString),
+        'bar': GraphQLField(GraphQLInt),
+        # etc.
+    })
+    graphql_type = GraphQLObjectType('MyType', fields)
+    # etc.
+If you are not able to programmatically define the schema, and instead
+simply have a pre-made GraphQL schema object that you are able to
+mutate, the alternative approach is via the
+:code:`insert_meta_fields_into_existing_schema()` helper function defined by
+the compiler:
+
+.. code:: python
+
+    # assuming that existing_schema is your GraphQL schema object
+    insert_meta_fields_into_existing_schema(existing_schema)
+    # existing_schema was mutated in-place and all custom meta-fields were added
+
 Example Use
 ^^^^^^^^^^^
 
