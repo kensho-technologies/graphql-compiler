@@ -14,10 +14,9 @@ minimal configuration.
 End-to-End Example
 ------------------
 
-.. NOTE: See https://stackoverflow.com/questions/15394347/adding-a-cross-reference-to-a-subheading-or-anchor-in-another-page
-         for more info on how cross references to other pages are added.
-
-See :ref:`getting-started` for an end-to-end OrientDB example.
+.. include:: ../../../README.rst
+   :start-after: end-to-end-orientdb-example-start
+   :end-before: end-to-end-orientdb-example-end
 
 Performance Penalties
 ---------------------
