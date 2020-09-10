@@ -72,9 +72,14 @@ example of how to use the GraphQL compiler.
 License
 -------
 
-`Apache 2.0`_ © 2017-present Kensho Technologies, LLC.
+Licensed under the Apache 2.0 License. Unless required by applicable law
+or agreed to in writing, software distributed under the License is
+distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+KIND, either express or implied. See the License for the specific
+language governing permissions and limitations under the License.
 
-.. _Apache 2.0: LICENSE.txt
+Copyright 2017-present Kensho Technologies, LLC. The present date is
+determined by the timestamp of the most recent commit in the repository.
 
 .. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=main
    :target: https://travis-ci.org/kensho-technologies/graphql-compiler
