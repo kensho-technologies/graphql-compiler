@@ -23,8 +23,9 @@ To query a SQL backend simply reflect the needed schema data from the database u
 compile the GraphQL query to a SQLAlchemy :code:`Query`, and execute the query against the engine
 as in the example below:
 
-.. include:: ../../../examples/end_to_end_sql.py
-   :code: python
+.. include:: ../../../README.rst
+   :start-after: end-to-end-sql-example-start
+   :end-before: end-to-end-sql-example-end
 
 Advanced Features
 -----------------

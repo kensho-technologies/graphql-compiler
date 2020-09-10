@@ -16,6 +16,7 @@ Quick Overview
 The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
 common query language to target multiple database backends.
 
+
 For a more detailed overview and getting started guide, please see
 `our ReadTheDocs documentation <https://graphql-compiler.readthedocs.io/en/latest/>`__
 and `our blog post <https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282>`__.
@@ -27,9 +28,44 @@ Example
 Even though this example specifically targets a SQL database, it is meant to be a generic end-to-end
 example of how to use the GraphQL compiler.
 
-.. include:: examples/end_to_end_sql.py
-   :code: python
+.. HACK: To avoid duplicating the end-to-end SQL example, we use the `include` restructured text
+         directive. We add the comments below to mark the start and end of the text that the
+         `include` directive has to copy. An alternative here would be to add an examples directory
+         and "include" the examples from there in both the README and ReadTheDocs. However, github
+         does not support the `include` directive: https://github.com/github/markup/issues/172
 
+.. end-to-end-sql-example-start
+
+.. code:: python
+
+    from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
+    from sqlalchemy import MetaData, create_engine
+
+    engine = create_engine('<connection string>')
+
+    # Reflect the default database schema. Each table must have a primary key. Otherwise see:
+    # https://graphql-compiler.readthedocs.io/en/latest/supported_databases/sql.html#including-tables-without-explicitly-enforced-primary-keys
+    metadata = MetaData(bind=engine)
+    metadata.reflect()
+
+    # Wrap the schema information into a SQLAlchemySchemaInfo object.
+    sql_schema_info = get_sqlalchemy_schema_info(metadata.tables, {}, engine.dialect)
+
+    # Write GraphQL query.
+    graphql_query = '''
+    {
+        Animal {
+            name @output(out_name: "animal_name")
+        }
+    }
+    '''
+    parameters = {}
+
+    # Compile and execute query.
+    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
+    query_results = [dict(row) for row in engine.execute(compilation_result.query)]
+
+.. end-to-end-sql-example-end
 
 License
 -------
