@@ -14,8 +14,10 @@ Quick Overview
 --------------
 
 The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
-common query language to target multiple database backends.
-
+common query language written in GraphQL syntax to target multiple database backends. It currently
+supports `OrientDB <https://graphql-compiler.readthedocs.io/en/latest/supported_databases/orientdb.html>`__.
+and multiple `SQL <https://graphql-compiler.readthedocs.io/en/latest/supported_databases/sql.html>`__
+database management systems such as Postgresql, MSSQL and MySQl.
 
 For a more detailed overview and getting started guide, please see
 `our ReadTheDocs documentation <https://graphql-compiler.readthedocs.io/en/latest/>`__
