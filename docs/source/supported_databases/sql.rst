@@ -23,34 +23,8 @@ To query a SQL backend simply reflect the needed schema data from the database u
 compile the GraphQL query to a SQLAlchemy :code:`Query`, and execute the query against the engine
 as in the example below:
 
-.. code:: python
-
-    from graphql_compiler import get_sqlalchemy_schema_info, graphql_to_sql
-    from sqlalchemy import MetaData, create_engine
-
-    engine = create_engine('<connection string>')
-
-    # Reflect the default database schema. Each table must have a primary key.
-    # See "Including tables without explicitly enforced primary keys" otherwise.
-    metadata = MetaData(bind=engine)
-    metadata.reflect()
-
-    # Wrap the schema information into a SQLAlchemySchemaInfo object.
-    sql_schema_info = get_sqlalchemy_schema_info(metadata.tables, {}, engine.dialect)
-
-    # Write GraphQL query.
-    graphql_query = '''
-    {
-        Animal {
-            name @output(out_name: "animal_name")
-        }
-    }
-    '''
-    parameters = {}
-
-    # Compile and execute query.
-    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
-    query_results = [dict(row) for row in engine.execute(compilation_result.query)]
+.. include:: ../../../examples/end_to_end_sql.py
+   :code: python
 
 Advanced Features
 -----------------

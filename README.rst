@@ -14,7 +14,7 @@ Quick Overview
 --------------
 
 The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
-common query language for target multiple database backends.
+common query language to target multiple database backends.
 
 For a more detailed overview and getting started guide, please see
 `our ReadTheDocs documentation <https://graphql-compiler.readthedocs.io/en/latest/>`__
@@ -27,8 +27,8 @@ Example
 Even though this example specifically targets a SQL database, it is meant to be a generic end-to-end
 example of how to use the GraphQL compiler.
 
-
-
+.. include:: examples/end_to_end_sql.py
+   :code: python
 
 
 License
