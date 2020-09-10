@@ -36,7 +36,7 @@ License
 
 `Apache 2.0`_ © 2017-present Kensho Technologies, LLC.
 
-.. _Apache 2.0: LICENSE
+.. _Apache 2.0: LICENSE.txt
 
 .. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=main
    :target: https://travis-ci.org/kensho-technologies/graphql-compiler
