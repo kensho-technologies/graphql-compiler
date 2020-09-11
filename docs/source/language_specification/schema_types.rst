@@ -400,6 +400,7 @@ The preferred way to do this is to use the
 building your interfaces' and types' field descriptions:
 
 .. code:: python
+
     from graphql import GraphQLInt, GraphQLField, GraphQLObjectType, GraphQLString
     from graphql_compiler import EXTENDED_META_FIELD_DEFINITIONS
     fields = EXTENDED_META_FIELD_DEFINITIONS.copy()
@@ -410,6 +411,7 @@ building your interfaces' and types' field descriptions:
     })
     graphql_type = GraphQLObjectType('MyType', fields)
     # etc.
+
 If you are not able to programmatically define the schema, and instead
 simply have a pre-made GraphQL schema object that you are able to
 mutate, the alternative approach is via the
