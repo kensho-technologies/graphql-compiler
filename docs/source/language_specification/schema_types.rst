@@ -400,6 +400,7 @@ The preferred way to do this is to use the
 building your interfaces' and types' field descriptions:
 
 .. code:: python
+
     from graphql import GraphQLInt, GraphQLField, GraphQLObjectType, GraphQLString
     from graphql_compiler import EXTENDED_META_FIELD_DEFINITIONS
     fields = EXTENDED_META_FIELD_DEFINITIONS.copy()
