@@ -1,5 +1,4 @@
 from abc import ABCMeta, abstractmethod
-from dataclasses import dataclass
 from pprint import pformat
 from typing import Any, Collection, Dict, Generic, Iterable, List, Optional, Tuple, TypeVar
 

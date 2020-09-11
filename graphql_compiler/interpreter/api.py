@@ -1,5 +1,4 @@
-from itertools import chain
-from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Tuple
 
 from ..compiler.blocks import (
     Backtrack,
@@ -92,6 +91,18 @@ def _split_out_global_operations(
     return local_operations, global_operations
 
 
+def _get_initial_data_contexts(
+    adapter: InterpreterAdapter[DataToken], start_class: str, hints: InterpreterHints,
+) -> Iterable[DataContext[DataToken]]:
+    # N.B.: Do not replace the below for-yield with a generator, and do not inline this function
+    #       into the caller! It's important to have an explicit generator to start the computation.
+    #       Without this setup, get_tokens_of_type() is *immediately* called by interpret_ir(),
+    #       even if the returned generator is never advanced. That violates our minimality property:
+    #       data was loaded via a call to get_tokens_of_type(), even though it wasn't (yet) needed.
+    for token in adapter.get_tokens_of_type(start_class, **hints):
+        yield DataContext.make_empty_context_from_token(token)
+
+
 def interpret_ir(
     adapter: InterpreterAdapter[DataToken],
     ir_and_metadata: IrAndMetadata,
@@ -125,9 +136,8 @@ def interpret_ir(
     root_location_hints = construct_hints_for_location(
         query_metadata_table, query_arguments, root_location
     )
-    current_data_contexts: Iterable[DataContext[Any]] = (
-        DataContext.make_empty_context_from_token(token)
-        for token in adapter.get_tokens_of_type(start_class, **root_location_hints)
+    current_data_contexts: Iterable[DataContext[DataToken]] = _get_initial_data_contexts(
+        adapter, start_class, root_location_hints
     )
 
     current_data_contexts = print_tap("starting contexts", current_data_contexts)

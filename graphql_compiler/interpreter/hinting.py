@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, Dict, List, Set, cast
+from typing import Any, Dict, List, Set, Tuple, cast
 
 from ..compiler.helpers import BaseLocation, Location, get_edge_direction_and_name
 from ..compiler.metadata import FilterInfo, QueryMetadataTable
