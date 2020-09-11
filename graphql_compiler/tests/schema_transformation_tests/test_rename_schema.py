@@ -300,38 +300,6 @@ class TestRenameSchema(unittest.TestCase):
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
 
-    def test_renaming_only_original_types(self):
-        renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": "NewHuman", "NewHuman": "OtherNewHuman"}
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type NewHuman {
-              name: String
-            }
-
-            type Droid {
-              id: String
-            }
-
-            type Dog {
-              nickname: String
-            }
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-              Droid: Droid
-              Dog: Dog
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
-
     def test_enum_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}
