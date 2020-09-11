@@ -417,7 +417,8 @@ mutate, the alternative approach is via the
 :code:`insert_meta_fields_into_existing_schema()` helper function defined by
 the compiler:
 
-.. code:: python
+.. code::
+
     # assuming that existing_schema is your GraphQL schema object
     insert_meta_fields_into_existing_schema(existing_schema)
     # existing_schema was mutated in-place and all custom meta-fields were added
