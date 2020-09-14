@@ -21,6 +21,24 @@ class InputSchemaStrings(object):
     """
     )
 
+    type_field_directive_same_name_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+        type stitch {
+          stitch: String
+        }
+
+        type SchemaQuery {
+          stitch: stitch
+        }
+    """
+    )
+
     multiple_objects_schema = dedent(
         """\
         schema {
