@@ -183,7 +183,11 @@ def insert_arguments_into_query(compilation_result: CompilationResult, arguments
         )
 
 
-def deserialize_argument(name: str, expected_type: QueryArgumentGraphQLType, value: Any,) -> Any:
+def deserialize_argument(
+    name: str,
+    expected_type: QueryArgumentGraphQLType,
+    value: Any,
+) -> Any:
     """Deserialize a GraphQL argument, raising a GraphQLInvalidArgumentError if invalid."""
     try:
         return deserialize_value(expected_type, value)
@@ -192,7 +196,8 @@ def deserialize_argument(name: str, expected_type: QueryArgumentGraphQLType, val
 
 
 def deserialize_multiple_arguments(
-    arguments: Mapping[str, Any], expected_types: Mapping[str, QueryArgumentGraphQLType],
+    arguments: Mapping[str, Any],
+    expected_types: Mapping[str, QueryArgumentGraphQLType],
 ) -> Dict[str, Any]:
     """Deserialize GraphQL arguments, raising GraphQLInvalidArgumentError if any are invalid."""
     ensure_arguments_are_provided(expected_types, arguments)

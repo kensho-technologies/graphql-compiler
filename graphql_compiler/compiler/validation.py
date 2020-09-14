@@ -69,7 +69,13 @@ def validate_schema_and_query_ast(schema: GraphQLSchema, query_ast: DocumentNode
                     frozenset(["reason"]),
                 ]
             ),
-            frozenset(["specifiedBy", frozenset([DirectiveLocation.SCALAR]), frozenset(["url"]),]),
+            frozenset(
+                [
+                    "specifiedBy",
+                    frozenset([DirectiveLocation.SCALAR]),
+                    frozenset(["url"]),
+                ]
+            ),
         ]
     )
 

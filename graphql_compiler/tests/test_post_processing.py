@@ -27,7 +27,11 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_names": "",}]
+        query_output = [
+            {
+                "child_names": "",
+            }
+        ]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True
@@ -49,14 +53,28 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_names": "|Animal 1|Animal 2||Animal 3|",}]
+        query_output = [
+            {
+                "child_names": "|Animal 1|Animal 2||Animal 3|",
+            }
+        ]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True
             ),
         }
 
-        expected_result = [{"child_names": ["Animal 1", "Animal 2", "", "Animal 3", "",]}]
+        expected_result = [
+            {
+                "child_names": [
+                    "Animal 1",
+                    "Animal 2",
+                    "",
+                    "Animal 3",
+                    "",
+                ]
+            }
+        ]
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
@@ -73,14 +91,26 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_names": "|~|Animal 1|~",}]
+        query_output = [
+            {
+                "child_names": "|~|Animal 1|~",
+            }
+        ]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True
             ),
         }
 
-        expected_result = [{"child_names": [None, "Animal 1", None,]}]
+        expected_result = [
+            {
+                "child_names": [
+                    None,
+                    "Animal 1",
+                    None,
+                ]
+            }
+        ]
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
@@ -190,7 +220,12 @@ class MssqlXmlPathTests(TestCase):
         }
 
         expected_result = [
-            {"child_names": ["name with a \x06 (acknowledge)", "\x0Bmany\x06hex\x0F\x07name\x08",]}
+            {
+                "child_names": [
+                    "name with a \x06 (acknowledge)",
+                    "\x0Bmany\x06hex\x0F\x07name\x08",
+                ]
+            }
         ]
 
         post_process_mssql_folds(query_output, output_metadata)
@@ -208,14 +243,27 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_net_worths": "|500|1000|400|~",}]
+        query_output = [
+            {
+                "child_net_worths": "|500|1000|400|~",
+            }
+        ]
         output_metadata = {
             "child_net_worths": OutputMetadata(
                 type=GraphQLList(GraphQLDecimal), optional=False, folded=True
             )
         }
 
-        expected_result = [{"child_net_worths": [500, 1000, 400, None,],}]
+        expected_result = [
+            {
+                "child_net_worths": [
+                    500,
+                    1000,
+                    400,
+                    None,
+                ],
+            }
+        ]
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
@@ -240,7 +288,9 @@ class MssqlXmlPathTests(TestCase):
         }
 
         expected_result = [
-            {"child_birthdays": [datetime.date(2020, 1, 1), datetime.date(2000, 2, 29), None],}
+            {
+                "child_birthdays": [datetime.date(2020, 1, 1), datetime.date(2000, 2, 29), None],
+            }
         ]
 
         post_process_mssql_folds(query_output, output_metadata)
@@ -292,14 +342,22 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_int_fields": "|1|~|100",}]
+        query_output = [
+            {
+                "child_int_fields": "|1|~|100",
+            }
+        ]
         output_metadata = {
             "child_int_fields": OutputMetadata(
                 type=GraphQLList(GraphQLInt), optional=False, folded=True
             ),
         }
 
-        expected_result = [{"child_int_fields": [1, None, 100],}]
+        expected_result = [
+            {
+                "child_int_fields": [1, None, 100],
+            }
+        ]
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
@@ -316,14 +374,22 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_float_fields": "|1|~|100.12",}]
+        query_output = [
+            {
+                "child_float_fields": "|1|~|100.12",
+            }
+        ]
         output_metadata = {
             "child_float_fields": OutputMetadata(
                 type=GraphQLList(GraphQLFloat), optional=False, folded=True
             ),
         }
 
-        expected_result = [{"child_float_fields": [1.0, None, 100.12],}]
+        expected_result = [
+            {
+                "child_float_fields": [1.0, None, 100.12],
+            }
+        ]
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
@@ -340,14 +406,22 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_bool_fields": "|~|True|1|true|False|false|0",}]
+        query_output = [
+            {
+                "child_bool_fields": "|~|True|1|true|False|false|0",
+            }
+        ]
         output_metadata = {
             "child_bool_fields": OutputMetadata(
                 type=GraphQLList(GraphQLBoolean), optional=False, folded=True
             ),
         }
 
-        expected_result = [{"child_bool_fields": [None, True, True, True, False, False, False],}]
+        expected_result = [
+            {
+                "child_bool_fields": [None, True, True, True, False, False, False],
+            }
+        ]
 
         post_process_mssql_folds(query_output, output_metadata)
         self.assertEqual(query_output, expected_result)
@@ -364,7 +438,11 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_id_fields": "|1|~|100|uuids_can_be_strings_too|10.1",}]
+        query_output = [
+            {
+                "child_id_fields": "|1|~|100|uuids_can_be_strings_too|10.1",
+            }
+        ]
         output_metadata = {
             "child_id_fields": OutputMetadata(
                 type=GraphQLList(GraphQLID), optional=False, folded=True
@@ -372,7 +450,9 @@ class MssqlXmlPathTests(TestCase):
         }
 
         expected_result = [
-            {"child_id_fields": ["1", None, "100", "uuids_can_be_strings_too", "10.1"],}
+            {
+                "child_id_fields": ["1", None, "100", "uuids_can_be_strings_too", "10.1"],
+            }
         ]
 
         post_process_mssql_folds(query_output, output_metadata)
@@ -455,7 +535,11 @@ class MssqlXmlPathTests(TestCase):
             }
         }
         """
-        query_output = [{"child_names": "Animal 1|Animal 2||Animal 3|",}]
+        query_output = [
+            {
+                "child_names": "Animal 1|Animal 2||Animal 3|",
+            }
+        ]
         output_metadata = {
             "child_names": OutputMetadata(
                 type=GraphQLList(GraphQLString), optional=False, folded=True

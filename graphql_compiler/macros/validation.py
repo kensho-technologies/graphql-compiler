@@ -67,7 +67,8 @@ def _get_type_relationship_error_description_text(subclass_sets, current_type, o
         )
 
     return (" (a {relationship} of {current_type})").format(
-        relationship=relationship, current_type=current_type,
+        relationship=relationship,
+        current_type=current_type,
     )
 
 

@@ -49,9 +49,23 @@ TagInfo = namedtuple(
     ),
 )
 
-FilterInfo = namedtuple("FilterInfo", ("fields", "op_name", "args",))
+FilterInfo = namedtuple(
+    "FilterInfo",
+    (
+        "fields",
+        "op_name",
+        "args",
+    ),
+)
 
-RecurseInfo = namedtuple("RecurseInfo", ("edge_direction", "edge_name", "depth",))
+RecurseInfo = namedtuple(
+    "RecurseInfo",
+    (
+        "edge_direction",
+        "edge_name",
+        "depth",
+    ),
+)
 
 # TODO: Once input info is added to the QueryMetadataTable, make this a proper dataclass.
 #       In the meantime, this only exists for the sake of type hints.
@@ -169,7 +183,9 @@ class QueryMetadataTable(object):
         return revisited_location
 
     def record_coercion_at_location(
-        self, location: BaseLocation, coerced_to_type: GraphQLType,
+        self,
+        location: BaseLocation,
+        coerced_to_type: GraphQLType,
     ) -> None:
         """Record that a particular location is getting coerced to a different type."""
         current_info = self._locations.get(location, None)

@@ -14,7 +14,7 @@ from .name_generation import generate_disambiguations
 def _ensure_directives_on_macro_edge_are_supported(macro_edge_field):
     """Raise GraphQLCompilationError if an unsupported directive is used on the macro edge."""
     macro_name = get_ast_field_name(macro_edge_field)
-    directives_supported_at_macro_expansion = frozenset({FilterDirective.name,})
+    directives_supported_at_macro_expansion = frozenset({FilterDirective.name})
     for directive in macro_edge_field.directives:
         directive_name = directive.name.value
         if directive_name not in directives_supported_at_macro_expansion:

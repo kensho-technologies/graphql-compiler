@@ -47,7 +47,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                     uuid @filter(op_name: ">", value: ["$uuid_min"])
                 }
             }""",
-            {"uuid_min": "80000000-0000-0000-0000-000000000000",},
+            {
+                "uuid_min": "80000000-0000-0000-0000-000000000000",
+            },
         )
         intervals = analyze_query_string(schema_info, query).field_value_intervals
         expected_intervals = {
@@ -87,7 +89,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 }
             }
         }""",
-            {"uuid": "80000000-0000-0000-0000-000000000000",},
+            {
+                "uuid": "80000000-0000-0000-0000-000000000000",
+            },
         )
 
         estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
@@ -124,7 +128,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 uuid @filter(op_name: ">", value: ["$uuid_min"])
             }
         }""",
-            {"uuid_min": "80000000-0000-0000-0000-000000000000",},
+            {
+                "uuid_min": "80000000-0000-0000-0000-000000000000",
+            },
         )
 
         capacities = analyze_query_string(schema_info, query).pagination_capacities
@@ -158,7 +164,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 uuid @filter(op_name: "=", value: ["$uuid"])
             }
         }""",
-            {"uuid": "80000000-0000-0000-0000-000000000000",},
+            {
+                "uuid": "80000000-0000-0000-0000-000000000000",
+            },
         )
 
         capacities = analyze_query_string(schema_info, query).pagination_capacities
@@ -278,7 +286,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 limbs @filter(op_name: ">=", value: ["$limbs_min"])
             }
         }""",
-            {"limbs_min": 10,},
+            {
+                "limbs_min": 10,
+            },
         )
 
         capacities = analyze_query_string(schema_info, query).pagination_capacities
@@ -333,7 +343,12 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             {("Animal", "out_Animal_ParentOf"): ("Animal",)}, analysis.fold_scope_roots
         )
 
-        self.assertEqual({(("Animal",), "uuid"): 1000,}, analysis.pagination_capacities)
+        self.assertEqual(
+            {
+                (("Animal",), "uuid"): 1000,
+            },
+            analysis.pagination_capacities,
+        )
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_eligible_fields(self) -> None:
@@ -411,7 +426,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
                 }
             }
         }""",
-            {"animal_name": "Joe",},
+            {
+                "animal_name": "Joe",
+            },
         )
         estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
         expected_estimates = {

@@ -445,13 +445,15 @@ class TestRenameSchema(unittest.TestCase):
     def test_scalar_rename(self):
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.scalar_schema), {"Date": "NewDate"},
+                parse(ISS.scalar_schema),
+                {"Date": "NewDate"},
             )
 
     def test_builtin_rename(self):
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.list_schema), {"String": "NewString"},
+                parse(ISS.list_schema),
+                {"String": "NewString"},
             )
 
     def test_union_rename(self):
@@ -512,7 +514,8 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
-            {"NewDroid": "Droid"}, renamed_schema.reverse_name_map,
+            {"NewDroid": "Droid"},
+            renamed_schema.reverse_name_map,
         )
 
     def test_union_member_suppress(self):
@@ -536,7 +539,8 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
-            {}, renamed_schema.reverse_name_map,
+            {},
+            renamed_schema.reverse_name_map,
         )
 
     def test_list_rename(self):
@@ -581,7 +585,11 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
-            {"NewCharacter": "Character", "NewDroid": "Droid", "NewHeight": "Height",},
+            {
+                "NewCharacter": "Character",
+                "NewDroid": "Droid",
+                "NewHeight": "Height",
+            },
             renamed_schema.reverse_name_map,
         )
 
@@ -634,7 +642,11 @@ class TestRenameSchema(unittest.TestCase):
     def test_directive_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.directive_schema),
-            {"Human": "NewHuman", "Droid": "NewDroid", "stitch": "NewStitch",},
+            {
+                "Human": "NewHuman",
+                "Droid": "NewDroid",
+                "stitch": "NewStitch",
+            },
         )
         renamed_schema_string = dedent(
             """\

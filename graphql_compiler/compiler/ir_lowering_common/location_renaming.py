@@ -30,7 +30,8 @@ def make_revisit_location_translations(
 
 
 def translate_potential_location(
-    location_translations: Dict[Location, Location], potential_location: TranslatedLocationT,
+    location_translations: Dict[Location, Location],
+    potential_location: TranslatedLocationT,
 ) -> TranslatedLocationT:
     """If the input is a BaseLocation object, translate it, otherwise return it as-is."""
     if isinstance(potential_location, Location):

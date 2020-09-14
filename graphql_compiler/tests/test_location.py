@@ -66,24 +66,56 @@ class LocationTests(unittest.TestCase):
     def test_fold_scope_location_comparisons(self) -> None:
         sorted_locations = [
             FoldScopeLocation(
-                Location(("Animal", "in_Animal_Parent_of")), (("in", "Animal_OfSpecies",),), None
-            ),
-            FoldScopeLocation(
-                Location(("Animal", "in_Animal_Parent_of")), (("out", "Animal_OfSpecies",),), None
-            ),
-            FoldScopeLocation(
                 Location(("Animal", "in_Animal_Parent_of")),
-                (("out", "Animal_OfSpecies",), ("in", "out_Animal_FedAt"),),
+                (
+                    (
+                        "in",
+                        "Animal_OfSpecies",
+                    ),
+                ),
                 None,
             ),
             FoldScopeLocation(
                 Location(("Animal", "in_Animal_Parent_of")),
-                (("out", "Animal_OfSpecies",), ("in", "out_Animal_FedAt"),),
+                (
+                    (
+                        "out",
+                        "Animal_OfSpecies",
+                    ),
+                ),
+                None,
+            ),
+            FoldScopeLocation(
+                Location(("Animal", "in_Animal_Parent_of")),
+                (
+                    (
+                        "out",
+                        "Animal_OfSpecies",
+                    ),
+                    ("in", "out_Animal_FedAt"),
+                ),
+                None,
+            ),
+            FoldScopeLocation(
+                Location(("Animal", "in_Animal_Parent_of")),
+                (
+                    (
+                        "out",
+                        "Animal_OfSpecies",
+                    ),
+                    ("in", "out_Animal_FedAt"),
+                ),
                 "name",
             ),
             FoldScopeLocation(
                 Location(("Animal", "in_Animal_Parent_of")),
-                (("out", "Animal_OfSpecies",), ("in", "out_Animal_FedAt"),),
+                (
+                    (
+                        "out",
+                        "Animal_OfSpecies",
+                    ),
+                    ("in", "out_Animal_FedAt"),
+                ),
                 "uuid",
             ),
         ]
@@ -96,11 +128,25 @@ class LocationTests(unittest.TestCase):
     def test_mixed_location_comparisons(self) -> None:
         sorted_locations = [
             FoldScopeLocation(
-                Location(("Animal", "in_Animal_Parent_of")), (("in", "Animal_OfSpecies",),), None
+                Location(("Animal", "in_Animal_Parent_of")),
+                (
+                    (
+                        "in",
+                        "Animal_OfSpecies",
+                    ),
+                ),
+                None,
             ),
             Location(("Animal", "in_Animal_Parent_of"), "name"),
             FoldScopeLocation(
-                Location(("Animal", "out_Animal_Parent_of")), (("in", "Animal_OfSpecies",),), None
+                Location(("Animal", "out_Animal_Parent_of")),
+                (
+                    (
+                        "in",
+                        "Animal_OfSpecies",
+                    ),
+                ),
+                None,
             ),
         ]
 

@@ -107,7 +107,9 @@ def paginate_query_ast(
             first_param = next(parameter_generator, sentinel)
             if first_param is not sentinel:
                 page_query, remainder_query = generate_parameterized_queries(
-                    query_analysis, plan_vertex_partition, first_param,
+                    query_analysis,
+                    plan_vertex_partition,
+                    first_param,
                 )
                 remainder_queries = (remainder_query,)
         else:

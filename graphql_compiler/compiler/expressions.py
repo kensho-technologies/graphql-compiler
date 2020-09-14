@@ -60,7 +60,15 @@ from .helpers import (
 # we must restrict those keywords from being used as variables.
 # For consistency, we blacklist these keywords in both Gremlin and MATCH.
 RESERVED_MATCH_KEYWORDS = frozenset(
-    {"$matches", "$matched", "$paths", "$elements", "$pathElements", "$depth", "$currentMatch",}
+    {
+        "$matches",
+        "$matched",
+        "$paths",
+        "$elements",
+        "$pathElements",
+        "$depth",
+        "$currentMatch",
+    }
 )
 
 

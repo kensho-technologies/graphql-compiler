@@ -24,7 +24,9 @@ REPRESENTATIVE_DATA_FOR_EACH_TYPE = {
     GraphQLList(GraphQLString): ["foo", "bar", "baz"],
     GraphQLList(GraphQLInt): [1, 2, 3, 4, 5],
     GraphQLList(GraphQLDate): [date(2017, 1, 22), date(2017, 1, 23), date(2017, 1, 24)],
-    GraphQLList(GraphQLDateTime): [datetime(2017, 1, 22, 9, 54, 35),],
+    GraphQLList(GraphQLDateTime): [
+        datetime(2017, 1, 22, 9, 54, 35),
+    ],
 }
 
 

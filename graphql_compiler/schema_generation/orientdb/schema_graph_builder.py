@@ -307,7 +307,10 @@ def _get_class_fields(class_definition):
 def _is_abstract(class_definition):
     """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
     orientdb_base_classes = frozenset(
-        {ORIENTDB_BASE_VERTEX_CLASS_NAME, ORIENTDB_BASE_EDGE_CLASS_NAME,}
+        {
+            ORIENTDB_BASE_VERTEX_CLASS_NAME,
+            ORIENTDB_BASE_EDGE_CLASS_NAME,
+        }
     )
     return class_definition["name"] in orientdb_base_classes or class_definition["abstract"]
 

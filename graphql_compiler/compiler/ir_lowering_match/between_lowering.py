@@ -25,7 +25,9 @@ def _extract_conjuction_elements_from_expression(expression: Expression) -> Iter
 def _construct_field_operator_expression_dict(
     expression_list: List[Expression],
 ) -> Tuple[
-    Dict[str, Dict[str, List[BinaryComposition]]], Dict[str, GraphQLOutputType], Deque[Expression],
+    Dict[str, Dict[str, List[BinaryComposition]]],
+    Dict[str, GraphQLOutputType],
+    Deque[Expression],
 ]:
     """Construct a mapping from local fields to specified operators, and corresponding expressions.
 

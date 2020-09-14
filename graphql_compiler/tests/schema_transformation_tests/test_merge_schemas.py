@@ -19,7 +19,12 @@ from .input_schema_strings import InputSchemaStrings as ISS
 class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
     def test_basic_merge(self):
         merged_schema = merge_schemas(
-            OrderedDict([("basic", parse(ISS.basic_schema)), ("enum", parse(ISS.enum_schema)),]),
+            OrderedDict(
+                [
+                    ("basic", parse(ISS.basic_schema)),
+                    ("enum", parse(ISS.enum_schema)),
+                ]
+            ),
             [],
         )
         merged_schema_string = dedent(
@@ -59,7 +64,13 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         basic_ast = parse(ISS.basic_schema)
         enum_ast = parse(ISS.enum_schema)
         merge_schemas(
-            OrderedDict([("basic", basic_ast), ("enum", enum_ast),]), [],
+            OrderedDict(
+                [
+                    ("basic", basic_ast),
+                    ("enum", enum_ast),
+                ]
+            ),
+            [],
         )
         self.assertEqual(basic_ast, parse(ISS.basic_schema))
         self.assertEqual(enum_ast, parse(ISS.enum_schema))
@@ -179,7 +190,10 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.basic_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.basic_schema)),
+                    ]
                 ),
                 [],
             )
@@ -203,14 +217,20 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("basic", parse(ISS.basic_schema)), ("bad", parse(interface_conflict_schema)),]
+                    [
+                        ("basic", parse(ISS.basic_schema)),
+                        ("bad", parse(interface_conflict_schema)),
+                    ]
                 ),
                 [],
             )
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("bad", parse(interface_conflict_schema)), ("basic", parse(ISS.basic_schema)),]
+                    [
+                        ("bad", parse(interface_conflict_schema)),
+                        ("basic", parse(ISS.basic_schema)),
+                    ]
                 ),
                 [],
             )
@@ -235,14 +255,20 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("basic", parse(ISS.basic_schema)), ("bad", parse(enum_conflict_schema)),]
+                    [
+                        ("basic", parse(ISS.basic_schema)),
+                        ("bad", parse(enum_conflict_schema)),
+                    ]
                 ),
                 [],
             )
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("bad", parse(enum_conflict_schema)), ("basic", parse(ISS.basic_schema)),]
+                    [
+                        ("bad", parse(enum_conflict_schema)),
+                        ("basic", parse(ISS.basic_schema)),
+                    ]
                 ),
                 [],
             )
@@ -302,14 +328,20 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("basic", parse(ISS.basic_schema)), ("bad", parse(scalar_conflict_schema)),]
+                    [
+                        ("basic", parse(ISS.basic_schema)),
+                        ("bad", parse(scalar_conflict_schema)),
+                    ]
                 ),
                 [],
             )
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("bad", parse(scalar_conflict_schema)), ("basic", parse(ISS.basic_schema)),]
+                    [
+                        ("bad", parse(scalar_conflict_schema)),
+                        ("basic", parse(ISS.basic_schema)),
+                    ]
                 ),
                 [],
             )
@@ -366,14 +398,20 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("enum", parse(ISS.enum_schema)), ("bad", parse(scalar_conflict_schema)),]
+                    [
+                        ("enum", parse(ISS.enum_schema)),
+                        ("bad", parse(scalar_conflict_schema)),
+                    ]
                 ),
                 [],
             )
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("bad", parse(scalar_conflict_schema)), ("enum", parse(ISS.enum_schema)),]
+                    [
+                        ("bad", parse(scalar_conflict_schema)),
+                        ("enum", parse(ISS.enum_schema)),
+                    ]
                 ),
                 [],
             )
@@ -400,7 +438,10 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         )
         merged_schema = merge_schemas(
             OrderedDict(
-                [("first", parse(ISS.scalar_schema)), ("second", parse(extra_scalar_schema)),]
+                [
+                    ("first", parse(ISS.scalar_schema)),
+                    ("second", parse(extra_scalar_schema)),
+                ]
             ),
             [],
         )
@@ -456,7 +497,10 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
         )
         merged_schema = merge_schemas(
             OrderedDict(
-                [("first", parse(ISS.directive_schema)), ("second", parse(extra_directive_schema)),]
+                [
+                    ("first", parse(ISS.directive_schema)),
+                    ("second", parse(extra_directive_schema)),
+                ]
             ),
             [],
         )
@@ -528,12 +572,21 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
     def test_invalid_identifiers(self):
         with self.assertRaises(ValueError):
             merge_schemas(
-                OrderedDict([("", parse(ISS.basic_schema)), ("enum", parse(ISS.enum_schema)),]), [],
+                OrderedDict(
+                    [
+                        ("", parse(ISS.basic_schema)),
+                        ("enum", parse(ISS.enum_schema)),
+                    ]
+                ),
+                [],
             )
         with self.assertRaises(ValueError):
             merge_schemas(
                 OrderedDict(
-                    [("hello\n", parse(ISS.basic_schema)), ("enum", parse(ISS.enum_schema)),]
+                    [
+                        ("hello\n", parse(ISS.basic_schema)),
+                        ("enum", parse(ISS.enum_schema)),
+                    ]
                 ),
                 [],
             )
@@ -549,7 +602,12 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             merge_schemas(
-                OrderedDict([("\t\b", parse(ISS.basic_schema)), ("enum", parse(ISS.enum_schema)),]),
+                OrderedDict(
+                    [
+                        ("\t\b", parse(ISS.basic_schema)),
+                        ("enum", parse(ISS.enum_schema)),
+                    ]
+                ),
                 [],
             )
         with self.assertRaises(ValueError):
@@ -566,11 +624,17 @@ class TestMergeSchemasNoCrossSchemaEdges(unittest.TestCase):
     def test_too_few_input_schemas(self):
         with self.assertRaises(ValueError):
             merge_schemas(
-                OrderedDict(), [],
+                OrderedDict(),
+                [],
             )
         with self.assertRaises(ValueError):
             merge_schemas(
-                OrderedDict([("first", parse(ISS.basic_schema)),]), [],
+                OrderedDict(
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                    ]
+                ),
+                [],
             )
 
 
@@ -578,16 +642,23 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
     def test_simple_cross_schema_edge_descriptor(self):
         merged_schema = merge_schemas(
             OrderedDict(
-                [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                [
+                    ("first", parse(ISS.basic_schema)),
+                    ("second", parse(ISS.same_field_schema)),
+                ]
             ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -623,15 +694,24 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
         basic_schema_ast = parse(ISS.basic_schema)
         same_field_schema_ast = parse(ISS.same_field_schema)
         merge_schemas(
-            OrderedDict([("first", basic_schema_ast), ("second", same_field_schema_ast),]),
+            OrderedDict(
+                [
+                    ("first", basic_schema_ast),
+                    ("second", same_field_schema_ast),
+                ]
+            ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -643,16 +723,23 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
     def test_one_directional_cross_schema_edge_descriptor(self):
         merged_schema = merge_schemas(
             OrderedDict(
-                [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                [
+                    ("first", parse(ISS.basic_schema)),
+                    ("second", parse(ISS.same_field_schema)),
+                ]
             ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=True,
                 ),
@@ -704,16 +791,23 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
         )
         merged_schema = merge_schemas(
             OrderedDict(
-                [("first", parse(ISS.basic_schema)), ("second", parse(multiple_fields_schema)),]
+                [
+                    ("first", parse(ISS.basic_schema)),
+                    ("second", parse(multiple_fields_schema)),
+                ]
             ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -766,16 +860,23 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
         )
         merged_schema = merge_schemas(
             OrderedDict(
-                [("first", parse(ISS.basic_schema)), ("second", parse(non_null_field_schema)),]
+                [
+                    ("first", parse(ISS.basic_schema)),
+                    ("second", parse(non_null_field_schema)),
+                ]
             ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -828,16 +929,23 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
         )
         merged_schema = merge_schemas(
             OrderedDict(
-                [("first", parse(ISS.scalar_schema)), ("second", parse(additional_scalar_schema)),]
+                [
+                    ("first", parse(ISS.scalar_schema)),
+                    ("second", parse(additional_scalar_schema)),
+                ]
             ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="birthday",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="birthday",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="bday",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="bday",
                     ),
                     out_edge_only=False,
                 ),
@@ -890,15 +998,24 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
         """
         )
         merged_schema = merge_schemas(
-            OrderedDict([("first", parse(ISS.basic_schema)), ("second", parse(id_field_schema)),]),
+            OrderedDict(
+                [
+                    ("first", parse(ISS.basic_schema)),
+                    ("second", parse(id_field_schema)),
+                ]
+            ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -964,15 +1081,24 @@ class TestMergeSchemasCrossSchemaEdgesWithoutSubclasses(unittest.TestCase):
         """
         )
         merged_schema = merge_schemas(
-            OrderedDict([("first", parse(int_field_schema)), ("second", parse(id_field_schema)),]),
+            OrderedDict(
+                [
+                    ("first", parse(int_field_schema)),
+                    ("second", parse(id_field_schema)),
+                ]
+            ),
             [
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -1010,16 +1136,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.union_schema)), ("second", parse(ISS.interface_schema)),]
+                    [
+                        ("first", parse(ISS.union_schema)),
+                        ("second", parse(ISS.interface_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Droid", field_name="id",
+                            schema_id="first",
+                            type_name="Droid",
+                            field_name="id",
                         ),
                         out_edge_only=False,
                     ),
@@ -1030,16 +1163,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.same_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="third", type_name="Person", field_name="identifier",
+                            schema_id="third",
+                            type_name="Person",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1050,16 +1190,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.same_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Human", field_name="id",
+                            schema_id="second",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Person", field_name="identifier",
+                            schema_id="first",
+                            type_name="Person",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1070,16 +1217,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.same_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Droid", field_name="identifier",
+                            schema_id="second",
+                            type_name="Droid",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1090,16 +1244,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.same_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="String", field_name="id",
+                            schema_id="first",
+                            type_name="String",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Droid", field_name="identifier",
+                            schema_id="second",
+                            type_name="Droid",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1110,16 +1271,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.enum_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.enum_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Height", field_name="identifier",
+                            schema_id="second",
+                            type_name="Height",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1130,16 +1298,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.union_schema)), ("second", parse(ISS.interface_schema)),]
+                    [
+                        ("first", parse(ISS.union_schema)),
+                        ("second", parse(ISS.interface_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="HumanOrDroid", field_name="id",
+                            schema_id="first",
+                            type_name="HumanOrDroid",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Kid", field_name="id",
+                            schema_id="second",
+                            type_name="Kid",
+                            field_name="id",
                         ),
                         out_edge_only=False,
                     ),
@@ -1150,16 +1325,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.same_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="name",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="name",
                         ),
                         out_edge_only=False,
                     ),
@@ -1186,16 +1368,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(clashing_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(clashing_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="identifier",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1206,26 +1395,37 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(SchemaMergeNameConflictError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(ISS.same_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(ISS.same_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="identifier",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="identifier",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1260,10 +1460,14 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="friend",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="friend",
                         ),
                         out_edge_only=False,
                     ),
@@ -1298,10 +1502,14 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="friend",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="friend",
                         ),
                         out_edge_only=False,
                     ),
@@ -1336,10 +1544,14 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="id",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="id",
                         ),
                         out_edge_only=False,
                     ),
@@ -1374,10 +1586,14 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="friend",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="friend",
                         ),
                         out_edge_only=False,
                     ),
@@ -1412,10 +1628,14 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
                     CrossSchemaEdgeDescriptor(
                         edge_name="clashing_name",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="identifier",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1441,16 +1661,23 @@ class TestMergeSchemasInvalidCrossSchemaEdges(unittest.TestCase):
         with self.assertRaises(InvalidCrossSchemaEdgeError):
             merge_schemas(
                 OrderedDict(
-                    [("first", parse(ISS.basic_schema)), ("second", parse(non_null_field_schema)),]
+                    [
+                        ("first", parse(ISS.basic_schema)),
+                        ("second", parse(non_null_field_schema)),
+                    ]
                 ),
                 [
                     CrossSchemaEdgeDescriptor(
                         edge_name="example_edge",
                         outbound_field_reference=FieldReference(
-                            schema_id="first", type_name="Human", field_name="id",
+                            schema_id="first",
+                            type_name="Human",
+                            field_name="id",
                         ),
                         inbound_field_reference=FieldReference(
-                            schema_id="second", type_name="Person", field_name="identifier",
+                            schema_id="second",
+                            type_name="Person",
+                            field_name="identifier",
                         ),
                         out_edge_only=False,
                     ),
@@ -1494,10 +1721,14 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Individual", field_name="ID",
+                        schema_id="second",
+                        type_name="Individual",
+                        field_name="ID",
                     ),
                     out_edge_only=False,
                 ),
@@ -1548,10 +1779,14 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Individual", field_name="ID",
+                        schema_id="second",
+                        type_name="Individual",
+                        field_name="ID",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     out_edge_only=False,
                 ),
@@ -1625,10 +1860,14 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Individual", field_name="ID",
+                        schema_id="first",
+                        type_name="Individual",
+                        field_name="ID",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -1689,10 +1928,14 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Human", field_name="id",
+                        schema_id="first",
+                        type_name="Human",
+                        field_name="id",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
@@ -1772,10 +2015,14 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Person", field_name="identifier",
+                        schema_id="first",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Individual", field_name="ID",
+                        schema_id="second",
+                        type_name="Individual",
+                        field_name="ID",
                     ),
                     out_edge_only=False,
                 ),
@@ -1841,10 +2088,14 @@ class TestMergeSchemasCrossSchemaEdgesWithSubclasses(unittest.TestCase):
                 CrossSchemaEdgeDescriptor(
                     edge_name="example_edge",
                     outbound_field_reference=FieldReference(
-                        schema_id="first", type_name="Individual", field_name="ID",
+                        schema_id="first",
+                        type_name="Individual",
+                        field_name="ID",
                     ),
                     inbound_field_reference=FieldReference(
-                        schema_id="second", type_name="Person", field_name="identifier",
+                        schema_id="second",
+                        type_name="Person",
+                        field_name="identifier",
                     ),
                     out_edge_only=False,
                 ),
