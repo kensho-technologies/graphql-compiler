@@ -555,6 +555,123 @@ class IntegrationTests(TestCase):
         for graphql_query, expected_results in queries:
             self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
 
+    @integration_fixtures
+    def test_recurse_duplication_regression(self) -> None:
+        # Regression test for the following bug:
+        # https://github.com/kensho-technologies/graphql-compiler/pull/887
+
+        parameters: Dict[str, Any] = {}
+        # (query, expected_results) pairs. All of them running with the same parameters.
+        #
+        # The queries are ran in the order specified here. The last query checks that a
+        # many-to-one traversal before recursion does not cause duplicate results to appear.
+        # The preceding queries help justify the expected result of the last query in
+        # a more readable way, and guard against changes in the test data:
+        # - If the test data changes and breaks the last test, the preceding tests
+        #   will point out that this is not a bug in recursion, but a change in data.
+        # - If the test data changes, the last test passes, but it no longer serves as
+        #   a good regression test for this bug, the preceding tests will fail.
+        queries: List[Tuple[str, List[Dict[str, Any]]]] = [
+            # Query 1: Get all parents
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf {
+                            name @output(out_name: "father")
+                        }
+                    }
+                }""",
+                [
+                    {"animal": "Animal 1", "father": "Animal 1"},
+                    {"animal": "Animal 2", "father": "Animal 1"},
+                    {"animal": "Animal 3", "father": "Animal 1"},
+                    {"animal": "Animal 4", "father": "Animal 3"},
+                ],
+            ),
+            # Query 2: Get all grandparents
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf {
+                            in_Animal_ParentOf {
+                                name @output(out_name: "grandfather")
+                            }
+                        }
+                    }
+                }""",
+                [
+                    {"animal": "Animal 1", "grandfather": "Animal 1"},
+                    {"animal": "Animal 2", "grandfather": "Animal 1"},
+                    {"animal": "Animal 3", "grandfather": "Animal 1"},
+                    {"animal": "Animal 4", "grandfather": "Animal 1"},
+                ],
+            ),
+            # Query 3: Use recursion to get self, parent and grandparent
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf @recurse(depth: 2) {
+                            name @output(out_name: "ancestor")
+                        }
+                    }
+                }""",
+                [
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # self
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 2", "ancestor": "Animal 2"},  # self
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 3", "ancestor": "Animal 3"},  # self
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 4", "ancestor": "Animal 4"},  # self
+                    {"animal": "Animal 4", "ancestor": "Animal 3"},  # parent
+                    {"animal": "Animal 4", "ancestor": "Animal 1"},  # grandparent
+                ],
+            ),
+            # Query 4: Unfold recursion to omit self
+            (
+                """
+                {
+                    Animal {
+                        name @output(out_name: "animal")
+                        in_Animal_ParentOf {
+                            in_Animal_ParentOf @recurse(depth: 1) {
+                                name @output(out_name: "ancestor")
+                            }
+                        }
+                    }
+                }""",
+                [
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 1", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 2", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 3", "ancestor": "Animal 1"},  # grandparent
+                    {"animal": "Animal 4", "ancestor": "Animal 1"},  # parent
+                    {"animal": "Animal 4", "ancestor": "Animal 3"},  # grandparent
+                ],
+            ),
+        ]
+
+        # TODO(bojanserafimov): Only testing in MSSQL because none of our backends agree on recurse
+        #                       semantics when multiple paths to the same output are inolved:
+        #                       - Our Match backend would represent each result once, even though it
+        #                         was reached multiple times by different paths.
+        #                       - Our SQL backend would duplicate the output row once for each path
+        #                       - Our Neo4j backend would find all different paths that use each
+        #                         edge at most once, and duplicate the result for each one.
+        for graphql_query, expected_results in queries:
+            self.assertResultsEqual(graphql_query, parameters, test_backend.MSSQL, expected_results)
+
     @use_all_backends(except_backends=(test_backend.REDISGRAPH,))  # Not implemented yet
     @integration_fixtures
     def test_fold_basic(self, backend_name: str) -> None:

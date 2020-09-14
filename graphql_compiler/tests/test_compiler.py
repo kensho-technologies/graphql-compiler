@@ -1,13 +1,25 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """End-to-end tests of the GraphQL compiler."""
+from functools import partial
 import os
+from typing import Callable, Dict, Optional, Type, Union, cast
 import unittest
 
-from graphql import GraphQLID, GraphQLString
+from funcy import identity, rpartial
+from graphql import (
+    GraphQLID,
+    GraphQLInterfaceType,
+    GraphQLObjectType,
+    GraphQLScalarType,
+    GraphQLString,
+    GraphQLUnionType,
+)
 import six
+from sqlalchemy.sql.selectable import Select
 
 from . import test_input_data
 from ..compiler import (
+    CompilationResult,
     OutputMetadata,
     compile_graphql_to_cypher,
     compile_graphql_to_gremlin,
@@ -16,6 +28,7 @@ from ..compiler import (
 )
 from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..schema import TypeEquivalenceHintsType
 from ..schema.schema_info import CommonSchemaInfo
 from .test_helpers import (
     SKIP_TEST,
@@ -29,100 +42,120 @@ from .test_helpers import (
 )
 
 
+def _check_expected_output_for_language(
+    test_case: unittest.TestCase,
+    test_data: test_input_data.CommonTestData,
+    compiler_func: Callable[[str], CompilationResult],
+    query_printer_func: Callable[[Union[str, Select]], str],
+    output_equality_assertion_func: Callable[[unittest.TestCase, str, str], None],
+    expected_output: Union[str, Type[NotImplementedError]],
+) -> None:
+    """Assert that the provided GraphQL input produces the expected compiler output."""
+    graphql_query = test_data.graphql_input
+
+    if expected_output == SKIP_TEST:
+        # This test is skipped.
+        pass
+    elif expected_output == NotImplementedError:
+        # This test is expected to raise an error that indicates the functionality is unsupported.
+        unsupported_errors = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
+        with test_case.assertRaises(unsupported_errors):
+            compiler_func(graphql_query)
+    elif isinstance(expected_output, str):
+        # This test is expected to compile properly and produce the given input.
+        result = compiler_func(graphql_query)
+        compiled_query = query_printer_func(result.query)
+
+        output_equality_assertion_func(test_case, expected_output, compiled_query)
+        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
+        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    else:
+        raise AssertionError(f"Received unexpected value for expected_output: {expected_output}")
+
+
 def check_test_data(
-    test_case,
-    test_data,
-    expected_match,
-    expected_gremlin,
-    expected_mssql,
-    expected_cypher,
-    expected_postgresql,
-):
+    test_case: "CompilerTests",
+    test_data: test_input_data.CommonTestData,
+    expected_match: Union[str, Type[NotImplementedError]],
+    expected_gremlin: Union[str, Type[NotImplementedError]],
+    expected_mssql: Union[str, Type[NotImplementedError]],
+    expected_cypher: Union[str, Type[NotImplementedError]],
+    expected_postgresql: Union[str, Type[NotImplementedError]],
+) -> None:
     """Assert that the GraphQL input generates all expected output queries data."""
+    schema_based_type_equivalence_hints: Optional[TypeEquivalenceHintsType]
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
         # Here, we convert them to the required GraphQL types.
         schema_based_type_equivalence_hints = {
-            test_case.schema.get_type(key): test_case.schema.get_type(value)
+            cast(
+                Union[GraphQLInterfaceType, GraphQLObjectType], test_case.schema.get_type(key)
+            ): cast(GraphQLUnionType, test_case.schema.get_type(value))
             for key, value in six.iteritems(test_data.type_equivalence_hints)
         }
     else:
         schema_based_type_equivalence_hints = None
 
     common_schema_info = CommonSchemaInfo(test_case.schema, schema_based_type_equivalence_hints)
-    graphql_query = test_data.graphql_input
 
-    if expected_match == SKIP_TEST:
-        pass
-    else:
-        result = compile_graphql_to_match(common_schema_info, test_data.graphql_input)
-        compare_match(test_case, expected_match, result.query)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    match_compiler_func = partial(compile_graphql_to_match, common_schema_info)
+    gremlin_compiler_func = partial(compile_graphql_to_gremlin, common_schema_info)
+    cypher_compiler_func = partial(compile_graphql_to_cypher, common_schema_info)
+    mssql_compiler_func = partial(compile_graphql_to_sql, test_case.mssql_schema_info)
+    postgresql_compiler_func = partial(compile_graphql_to_sql, test_case.postgresql_schema_info)
 
-    # Allow features to not be implemented in Gremlin and SQL, and instead raise compilation errors.
-    if expected_gremlin == SKIP_TEST:
-        pass
-    elif expected_gremlin == NotImplementedError:
-        with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_gremlin(common_schema_info, graphql_query)
-    else:
-        result = compile_graphql_to_gremlin(common_schema_info, graphql_query)
-        compare_gremlin(test_case, expected_gremlin, result.query)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
+    mssql_printer_func = rpartial(
+        print_sqlalchemy_query_string, test_case.mssql_schema_info.dialect
+    )
+    postgresql_printer_func = rpartial(
+        print_sqlalchemy_query_string, test_case.postgresql_schema_info.dialect
+    )
 
-    if expected_mssql == SKIP_TEST:
-        pass
-    elif expected_mssql == NotImplementedError:
-        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
-        with test_case.assertRaises(not_supported):
-            compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
-    else:
-        result = compile_graphql_to_sql(test_case.mssql_schema_info, test_data.graphql_input)
-        string_result = print_sqlalchemy_query_string(
-            result.query, test_case.mssql_schema_info.dialect
+    # compare_match() takes an optional kwarg that means its signature is not representable
+    # using the Callable[] syntax. We don't use that kwarg, so fix the signature with a cast.
+    compare_parameterized_match = cast(Callable[[unittest.TestCase, str, str], None], compare_match)
+
+    language_configurations = [
+        ("MATCH", match_compiler_func, identity, compare_parameterized_match, expected_match),
+        ("Gremlin", gremlin_compiler_func, identity, compare_gremlin, expected_gremlin),
+        ("Cypher", cypher_compiler_func, identity, compare_cypher, expected_cypher),
+        ("MS SQL", mssql_compiler_func, mssql_printer_func, compare_sql, expected_mssql),
+        (
+            "PostgreSQL",
+            postgresql_compiler_func,
+            postgresql_printer_func,
+            compare_sql,
+            expected_postgresql,
+        ),
+    ]
+
+    for configuration in language_configurations:
+        (
+            _,
+            compiler_func,
+            query_printer_func,
+            equality_assertion_func,
+            expected_output,
+        ) = configuration
+        _check_expected_output_for_language(
+            test_case,
+            test_data,
+            compiler_func,
+            query_printer_func,
+            equality_assertion_func,
+            expected_output,
         )
-        compare_sql(test_case, expected_mssql, string_result)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-    if expected_postgresql == SKIP_TEST:
-        pass
-    elif expected_postgresql == NotImplementedError:
-        not_supported = (NotImplementedError, GraphQLValidationError, GraphQLCompilationError)
-        with test_case.assertRaises(not_supported):
-            compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
-    else:
-        result = compile_graphql_to_sql(test_case.postgresql_schema_info, test_data.graphql_input)
-        string_result = print_sqlalchemy_query_string(
-            result.query, test_case.postgresql_schema_info.dialect
-        )
-        compare_sql(test_case, expected_postgresql, string_result)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
-
-    if expected_cypher == SKIP_TEST:
-        pass
-    elif expected_cypher == NotImplementedError:
-        with test_case.assertRaises(NotImplementedError):
-            compile_graphql_to_cypher(common_schema_info, graphql_query)
-    else:
-        result = compile_graphql_to_cypher(common_schema_info, graphql_query)
-        compare_cypher(test_case, expected_cypher, result.query)
-        test_case.assertEqual(test_data.expected_output_metadata, result.output_metadata)
-        compare_input_metadata(test_case, test_data.expected_input_metadata, result.input_metadata)
 
 
 class CompilerTests(unittest.TestCase):
-    def setUp(self):
+    def setUp(self) -> None:
         """Disable max diff limits for all tests."""
         self.maxDiff = None
         self.schema = get_schema()
         self.mssql_schema_info = get_sqlalchemy_schema_info(dialect="mssql")
         self.postgresql_schema_info = get_sqlalchemy_schema_info(dialect="postgresql")
 
-    def test_immediate_output(self):
+    def test_immediate_output(self) -> None:
         test_data = test_input_data.immediate_output()
 
         expected_match = """
@@ -170,7 +203,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_immediate_output_custom_scalars(self):
+    def test_immediate_output_custom_scalars(self) -> None:
         test_data = test_input_data.immediate_output_custom_scalars()
 
         expected_match = """
@@ -219,7 +252,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_immediate_output_with_custom_scalar_filter(self):
+    def test_immediate_output_with_custom_scalar_filter(self) -> None:
         test_data = test_input_data.immediate_output_with_custom_scalar_filter()
 
         expected_match = """
@@ -269,7 +302,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_colocated_filter_and_tag(self):
+    def test_colocated_filter_and_tag(self) -> None:
         test_data = test_input_data.colocated_filter_and_tag()
 
         expected_match = """
@@ -311,7 +344,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_colocated_filter_with_differently_named_column_and_tag(self):
+    def test_colocated_filter_with_differently_named_column_and_tag(self) -> None:
         test_data = test_input_data.colocated_filter_with_differently_named_column_and_tag()
 
         expected_match = """
@@ -353,7 +386,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_colocated_filter_and_tag_sharing_name_with_other_column(self):
+    def test_colocated_filter_and_tag_sharing_name_with_other_column(self) -> None:
         test_data = test_input_data.colocated_filter_and_tag_sharing_name_with_other_column()
 
         expected_match = """
@@ -395,7 +428,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_colocated_out_of_order_filter_and_tag(self):
+    def test_colocated_out_of_order_filter_and_tag(self) -> None:
         test_data = test_input_data.colocated_out_of_order_filter_and_tag()
 
         expected_match = """
@@ -437,7 +470,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_immediate_filter_and_output(self):
+    def test_immediate_filter_and_output(self) -> None:
         # Ensure that all basic comparison operators output correct code in this simple case.
         comparison_operators = {"=", "!=", ">", "<", ">=", "<="}
 
@@ -535,7 +568,7 @@ class CompilerTests(unittest.TestCase):
                 expected_postgresql,
             )
 
-    def test_multiple_filters(self):
+    def test_multiple_filters(self) -> None:
         test_data = test_input_data.multiple_filters()
 
         expected_match = """
@@ -595,7 +628,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_traverse_and_output(self):
+    def test_traverse_and_output(self) -> None:
         test_data = test_input_data.traverse_and_output()
 
         expected_match = """
@@ -654,7 +687,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_optional_traverse_after_mandatory_traverse(self):
+    def test_optional_traverse_after_mandatory_traverse(self) -> None:
         test_data = test_input_data.optional_traverse_after_mandatory_traverse()
 
         expected_match = """
@@ -750,7 +783,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_traverse_filter_and_output(self):
+    def test_traverse_filter_and_output(self) -> None:
         test_data = test_input_data.traverse_filter_and_output()
 
         expected_match = """
@@ -800,7 +833,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_name_or_alias_filter_on_interface_type(self):
+    def test_name_or_alias_filter_on_interface_type(self) -> None:
         test_data = test_input_data.name_or_alias_filter_on_interface_type()
 
         expected_match = """
@@ -850,7 +883,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_output_source_and_complex_output(self):
+    def test_output_source_and_complex_output(self) -> None:
         test_data = test_input_data.output_source_and_complex_output()
 
         expected_match = """
@@ -899,7 +932,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_on_optional_variable_equality(self):
+    def test_filter_on_optional_variable_equality(self) -> None:
         # The operand in the @filter directive originates from an optional block.
         test_data = test_input_data.filter_on_optional_variable_equality()
 
@@ -971,7 +1004,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_on_optional_variable_name_or_alias(self):
+    def test_filter_on_optional_variable_name_or_alias(self) -> None:
         # The operand in the @filter directive originates from an optional block.
         test_data = test_input_data.filter_on_optional_variable_name_or_alias()
 
@@ -1043,7 +1076,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_in_optional_block(self):
+    def test_filter_in_optional_block(self) -> None:
         test_data = test_input_data.filter_in_optional_block()
 
         expected_match = """
@@ -1150,7 +1183,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_in_optional_and_count(self):
+    def test_filter_in_optional_and_count(self) -> None:
         test_data = test_input_data.filter_in_optional_and_count()
 
         expected_match = """
@@ -1218,7 +1251,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_between_filter_on_simple_scalar(self):
+    def test_between_filter_on_simple_scalar(self) -> None:
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a simple scalar (a String).
         test_data = test_input_data.between_filter_on_simple_scalar()
@@ -1278,7 +1311,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_between_filter_on_date(self):
+    def test_between_filter_on_date(self) -> None:
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a custom scalar (Date).
         test_data = test_input_data.between_filter_on_date()
@@ -1345,7 +1378,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_between_filter_on_datetime(self):
+    def test_between_filter_on_datetime(self) -> None:
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a custom scalar (DateTime).
         test_data = test_input_data.between_filter_on_datetime()
@@ -1413,7 +1446,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_between_lowering_on_simple_scalar(self):
+    def test_between_lowering_on_simple_scalar(self) -> None:
         # The "between" filter emits different output depending on what the compared types are.
         # This test checks for correct code generation when the type is a simple scalar (a String).
         test_data = test_input_data.between_lowering_on_simple_scalar()
@@ -1473,7 +1506,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_between_lowering_with_extra_filters(self):
+    def test_between_lowering_with_extra_filters(self) -> None:
         test_data = test_input_data.between_lowering_with_extra_filters()
 
         expected_match = """
@@ -1556,7 +1589,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_no_between_lowering_on_simple_scalar(self):
+    def test_no_between_lowering_on_simple_scalar(self) -> None:
         test_data = test_input_data.no_between_lowering_on_simple_scalar()
 
         expected_match = """
@@ -1619,7 +1652,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_complex_optional_variables(self):
+    def test_complex_optional_variables(self) -> None:
         # The operands in the @filter directives originate from an optional block,
         # in addition to having very complex filtering logic.
         test_data = test_input_data.complex_optional_variables()
@@ -1910,7 +1943,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_complex_optional_variables_with_starting_filter(self):
+    def test_complex_optional_variables_with_starting_filter(self) -> None:
         # The operands in the @filter directives originate from an optional block,
         # in addition to having very complex filtering logic.
         test_data = test_input_data.complex_optional_variables_with_starting_filter()
@@ -2148,7 +2181,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_simple_fragment(self):
+    def test_simple_fragment(self) -> None:
         test_data = test_input_data.simple_fragment()
 
         expected_match = """
@@ -2200,7 +2233,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_typename_output(self):
+    def test_typename_output(self) -> None:
         test_data = test_input_data.typename_output()
 
         expected_match = """
@@ -2242,7 +2275,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_typename_filter(self):
+    def test_typename_filter(self) -> None:
         test_data = test_input_data.typename_filter()
 
         expected_match = """
@@ -2278,7 +2311,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_simple_recurse(self):
+    def test_simple_recurse(self) -> None:
         test_data = test_input_data.simple_recurse()
 
         expected_match = """
@@ -2312,25 +2345,26 @@ class CompilerTests(unittest.TestCase):
         expected_mssql = """
             WITH anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    [Animal_1].name AS name,
-                    [Animal_1].parent AS parent,
-                    [Animal_1].uuid AS uuid,
-                    [Animal_1].uuid AS __cte_key,
+                    [Animal_2].name AS name,
+                    [Animal_2].parent AS parent,
+                    [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
                     0 AS __cte_depth
                 FROM
-                    db_1.schema_1.[Animal] AS [Animal_1]
+                    db_1.schema_1.[Animal] AS [Animal_2]
                 UNION ALL
-                    SELECT
-                        [Animal_2].name AS name,
-                        [Animal_2].parent AS parent,
-                        [Animal_2].uuid AS uuid,
-                        anon_1.__cte_key AS __cte_key,
-                        anon_1.__cte_depth + 1 AS __cte_depth
-                    FROM
-                        anon_1
-                        JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                            ON anon_1.uuid = [Animal_2].parent
-                    WHERE anon_1.__cte_depth < 1
+                SELECT
+                    [Animal_3].name AS name,
+                    [Animal_3].parent AS parent,
+                    [Animal_3].uuid AS uuid,
+                    anon_1.__cte_key AS __cte_key,
+                    anon_1.__cte_depth + 1 AS __cte_depth
+                FROM
+                    anon_1
+                    JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                        ON anon_1.uuid = [Animal_3].parent
+                WHERE
+                    anon_1.__cte_depth < 1
             )
             SELECT
                 anon_1.name AS relation_name
@@ -2347,25 +2381,25 @@ class CompilerTests(unittest.TestCase):
         expected_postgresql = """
             WITH RECURSIVE anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    "Animal_1".name AS name,
-                    "Animal_1".parent AS parent,
-                    "Animal_1".uuid AS uuid,
-                    "Animal_1".uuid AS __cte_key,
+                    "Animal_2".name AS name,
+                    "Animal_2".parent AS parent,
+                    "Animal_2".uuid AS uuid,
+                    "Animal_2".uuid AS __cte_key,
                     0 AS __cte_depth
                 FROM
-                    schema_1."Animal" AS "Animal_1"
+                    schema_1."Animal" AS "Animal_2"
                 UNION ALL
-                    SELECT
-                        "Animal_2".name AS name,
-                        "Animal_2".parent AS parent,
-                        "Animal_2".uuid AS uuid,
-                        anon_1.__cte_key AS __cte_key,
-                        anon_1.__cte_depth + 1 AS __cte_depth
-                    FROM
-                        anon_1
-                        JOIN schema_1."Animal" AS "Animal_2"
-                            ON anon_1.uuid = "Animal_2".parent
-                    WHERE anon_1.__cte_depth < 1
+                SELECT
+                    "Animal_3".name AS name,
+                    "Animal_3".parent AS parent,
+                    "Animal_3".uuid AS uuid,
+                    anon_1.__cte_key AS __cte_key,
+                    anon_1.__cte_depth + 1 AS __cte_depth
+                FROM
+                    anon_1
+                    JOIN schema_1."Animal" AS "Animal_3"
+                        ON anon_1.uuid = "Animal_3".parent
+                WHERE anon_1.__cte_depth < 1
             )
             SELECT
                 anon_1.name AS relation_name
@@ -2385,7 +2419,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_recurse_with_new_output_inside_recursion_and_filter_at_root(self):
+    def test_recurse_with_new_output_inside_recursion_and_filter_at_root(self) -> None:
         test_data = test_input_data.recurse_with_new_output_inside_recursion_and_filter_at_root()
 
         expected_match = SKIP_TEST
@@ -2403,29 +2437,30 @@ class CompilerTests(unittest.TestCase):
                     [Animal_1].name = :animal_name),
             anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    anon_2.[Animal__color] AS color,
-                    anon_2.[Animal__name] AS name,
-                    anon_2.[Animal__parent] AS parent,
-                    anon_2.[Animal__uuid] AS uuid,
-                    anon_2.[Animal__uuid] AS __cte_key,
-                    0 AS __cte_depth
-                FROM
-                    anon_2
-                UNION ALL
-                SELECT
                     [Animal_2].color AS color,
                     [Animal_2].name AS name,
                     [Animal_2].parent AS parent,
                     [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                WHERE
+                    [Animal_2].uuid IN (SELECT anon_2.[Animal__uuid] FROM anon_2)
+                UNION ALL
+                SELECT
+                    [Animal_3].color AS color,
+                    [Animal_3].name AS name,
+                    [Animal_3].parent AS parent,
+                    [Animal_3].uuid AS uuid,
                     anon_1.__cte_key AS __cte_key,
                     anon_1.__cte_depth + 1 AS __cte_depth
                 FROM
                     anon_1
-                    JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                        ON anon_1.uuid = [Animal_2].parent
+                JOIN db_1.schema_1.[Animal] AS [Animal_3] ON
+                    anon_1.uuid = [Animal_3].parent
                 WHERE
-                    anon_1.__cte_depth < 1
-            )
+                    anon_1.__cte_depth < 1)
             SELECT
                 anon_1.color AS animal_color,
                 anon_1.name AS relation_name
@@ -2447,7 +2482,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_then_recurse(self):
+    def test_filter_then_recurse(self) -> None:
         test_data = test_input_data.filter_then_recurse()
 
         expected_match = SKIP_TEST
@@ -2464,26 +2499,28 @@ class CompilerTests(unittest.TestCase):
                     [Animal_1].name = :animal_name),
             anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    anon_2.[Animal__name] AS name,
-                    anon_2.[Animal__parent] AS parent,
-                    anon_2.[Animal__uuid] AS uuid,
-                    anon_2.[Animal__uuid] AS __cte_key,
-                    0 AS __cte_depth
-                FROM
-                    anon_2
-                UNION ALL
-                SELECT
                     [Animal_2].name AS name,
                     [Animal_2].parent AS parent,
                     [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                WHERE
+                    [Animal_2].uuid IN (SELECT anon_2.[Animal__uuid] FROM anon_2)
+                UNION ALL
+                SELECT
+                    [Animal_3].name AS name,
+                    [Animal_3].parent AS parent,
+                    [Animal_3].uuid AS uuid,
                     anon_1.__cte_key AS __cte_key,
                     anon_1.__cte_depth + 1 AS __cte_depth
                 FROM
-                    anon_1 JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                        ON anon_1.uuid = [Animal_2].parent
+                    anon_1
+                    JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                        ON anon_1.uuid = [Animal_3].parent
                 WHERE
-                    anon_1.__cte_depth < 1
-            )
+                    anon_1.__cte_depth < 1)
             SELECT
                 anon_1.name AS relation_name
             FROM
@@ -2504,7 +2541,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_traverse_then_recurse(self):
+    def test_traverse_then_recurse(self) -> None:
         test_data = test_input_data.traverse_then_recurse()
 
         expected_match = """
@@ -2572,7 +2609,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_then_traverse_and_recurse(self):
+    def test_filter_then_traverse_and_recurse(self) -> None:
         test_data = test_input_data.filter_then_traverse_and_recurse()
 
         expected_match = """
@@ -2654,7 +2691,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_two_consecutive_recurses(self):
+    def test_two_consecutive_recurses(self) -> None:
         test_data = test_input_data.two_consecutive_recurses()
 
         expected_match = """
@@ -2754,7 +2791,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_recurse_within_fragment(self):
+    def test_recurse_within_fragment(self) -> None:
         test_data = test_input_data.recurse_within_fragment()
 
         expected_match = """
@@ -2811,7 +2848,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_within_recurse(self):
+    def test_filter_within_recurse(self) -> None:
         test_data = test_input_data.filter_within_recurse()
 
         expected_match = """
@@ -2849,34 +2886,34 @@ class CompilerTests(unittest.TestCase):
         expected_mssql = """
             WITH anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    [Animal_1].color AS color,
-                    [Animal_1].name AS name,
-                    [Animal_1].parent AS parent,
-                    [Animal_1].uuid AS uuid,
-                    [Animal_1].uuid AS __cte_key,
-                    0 AS __cte_depth
-                FROM
-                    db_1.schema_1.[Animal] AS [Animal_1]
-                UNION ALL
-                SELECT
                     [Animal_2].color AS color,
                     [Animal_2].name AS name,
                     [Animal_2].parent AS parent,
                     [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                UNION ALL
+                SELECT
+                    [Animal_3].color AS color,
+                    [Animal_3].name AS name,
+                    [Animal_3].parent AS parent,
+                    [Animal_3].uuid AS uuid,
                     anon_1.__cte_key AS __cte_key,
                     anon_1.__cte_depth + 1 AS __cte_depth
                 FROM
                     anon_1
-                    JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                        ON anon_1.uuid = [Animal_2].parent
-                WHERE anon_1.__cte_depth < 3
-            )
+                JOIN db_1.schema_1.[Animal] AS [Animal_3] ON
+                    anon_1.uuid = [Animal_3].parent
+                WHERE
+                    anon_1.__cte_depth < 3)
             SELECT
                 anon_1.name AS relation_name
             FROM
                 db_1.schema_1.[Animal] AS [Animal_1]
-                JOIN anon_1
-                    ON [Animal_1].uuid = anon_1.__cte_key
+                JOIN anon_1 ON
+                    [Animal_1].uuid = anon_1.__cte_key
             WHERE
                 anon_1.color = :wanted
         """
@@ -2884,28 +2921,27 @@ class CompilerTests(unittest.TestCase):
         expected_postgresql = """
             WITH RECURSIVE anon_1(color, name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    "Animal_1".color AS color,
-                    "Animal_1".name AS name,
-                    "Animal_1".parent AS parent,
-                    "Animal_1".uuid AS uuid,
-                    "Animal_1".uuid AS __cte_key,
+                    "Animal_2".color AS color,
+                    "Animal_2".name AS name,
+                    "Animal_2".parent AS parent,
+                    "Animal_2".uuid AS uuid,
+                    "Animal_2".uuid AS __cte_key,
                     0 AS __cte_depth
                 FROM
-                    schema_1."Animal" AS "Animal_1"
+                    schema_1."Animal" AS "Animal_2"
                 UNION ALL
-                    SELECT
-                        "Animal_2".color AS color,
-                        "Animal_2".name AS name,
-                        "Animal_2".parent AS parent,
-                        "Animal_2".uuid AS uuid,
-                        anon_1.__cte_key AS __cte_key,
-                        anon_1.__cte_depth + 1 AS __cte_depth
-                    FROM
-                        anon_1
-                        JOIN schema_1."Animal" AS "Animal_2"
-                            ON anon_1.uuid = "Animal_2".parent
-                    WHERE anon_1.__cte_depth < 3
-            )
+                SELECT
+                    "Animal_3".color AS color,
+                    "Animal_3".name AS name,
+                    "Animal_3".parent AS parent,
+                    "Animal_3".uuid AS uuid,
+                    anon_1.__cte_key AS __cte_key,
+                    anon_1.__cte_depth + 1 AS __cte_depth
+                FROM
+                    anon_1
+                    JOIN schema_1."Animal" AS "Animal_3"
+                        ON anon_1.uuid = "Animal_3".parent
+                WHERE anon_1.__cte_depth < 3)
             SELECT
                 anon_1.name AS relation_name
             FROM
@@ -2925,7 +2961,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_recurse_with_immediate_type_coercion(self):
+    def test_recurse_with_immediate_type_coercion(self) -> None:
         test_data = test_input_data.recurse_with_immediate_type_coercion()
 
         expected_match = """
@@ -2975,7 +3011,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_recurse_with_immediate_type_coercion_and_filter(self):
+    def test_recurse_with_immediate_type_coercion_and_filter(self) -> None:
         test_data = test_input_data.recurse_with_immediate_type_coercion_and_filter()
 
         expected_match = """
@@ -3025,7 +3061,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_in_collection_op_filter_with_variable(self):
+    def test_in_collection_op_filter_with_variable(self) -> None:
         test_data = test_input_data.in_collection_op_filter_with_variable()
 
         expected_match = """
@@ -3081,7 +3117,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_in_collection_op_filter_with_tag(self):
+    def test_in_collection_op_filter_with_tag(self) -> None:
         test_data = test_input_data.in_collection_op_filter_with_tag()
 
         expected_match = """
@@ -3128,7 +3164,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_in_collection_op_filter_with_optional_tag(self):
+    def test_in_collection_op_filter_with_optional_tag(self) -> None:
         test_data = test_input_data.in_collection_op_filter_with_optional_tag()
 
         expected_match = """
@@ -3203,7 +3239,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_not_in_collection_op_filter_with_variable(self):
+    def test_not_in_collection_op_filter_with_variable(self) -> None:
         test_data = test_input_data.not_in_collection_op_filter_with_variable()
 
         expected_match = """
@@ -3259,7 +3295,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_not_in_collection_op_filter_with_tag(self):
+    def test_not_in_collection_op_filter_with_tag(self) -> None:
         test_data = test_input_data.not_in_collection_op_filter_with_tag()
 
         expected_match = """
@@ -3305,7 +3341,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_not_in_collection_op_filter_with_optional_tag(self):
+    def test_not_in_collection_op_filter_with_optional_tag(self) -> None:
         test_data = test_input_data.not_in_collection_op_filter_with_optional_tag()
 
         expected_match = """
@@ -3381,7 +3417,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_intersects_op_filter_with_variable(self):
+    def test_intersects_op_filter_with_variable(self) -> None:
         test_data = test_input_data.intersects_op_filter_with_variable()
 
         expected_match = """
@@ -3417,7 +3453,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_intersects_op_filter_with_tag(self):
+    def test_intersects_op_filter_with_tag(self) -> None:
         test_data = test_input_data.intersects_op_filter_with_tag()
 
         expected_match = """
@@ -3458,7 +3494,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_intersects_op_filter_with_optional_tag(self):
+    def test_intersects_op_filter_with_optional_tag(self) -> None:
         test_data = test_input_data.intersects_op_filter_with_optional_tag()
 
         expected_match = """
@@ -3526,7 +3562,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_contains_op_filter_with_variable(self):
+    def test_contains_op_filter_with_variable(self) -> None:
         test_data = test_input_data.contains_op_filter_with_variable()
 
         expected_match = """
@@ -3568,7 +3604,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_contains_op_filter_with_tag(self):
+    def test_contains_op_filter_with_tag(self) -> None:
         test_data = test_input_data.contains_op_filter_with_tag()
 
         expected_match = """
@@ -3615,7 +3651,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_contains_op_filter_with_optional_tag(self):
+    def test_contains_op_filter_with_optional_tag(self) -> None:
         test_data = test_input_data.contains_op_filter_with_optional_tag()
 
         expected_match = """
@@ -3692,7 +3728,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_not_contains_op_filter_with_variable(self):
+    def test_not_contains_op_filter_with_variable(self) -> None:
         test_data = test_input_data.not_contains_op_filter_with_variable()
 
         expected_match = """
@@ -3734,7 +3770,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_not_contains_op_filter_with_tag(self):
+    def test_not_contains_op_filter_with_tag(self) -> None:
         test_data = test_input_data.not_contains_op_filter_with_tag()
 
         expected_match = """
@@ -3781,7 +3817,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_not_contains_op_filter_with_optional_tag(self):
+    def test_not_contains_op_filter_with_optional_tag(self) -> None:
         test_data = test_input_data.not_contains_op_filter_with_optional_tag()
 
         expected_match = """
@@ -3859,7 +3895,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_starts_with_op_filter(self):
+    def test_starts_with_op_filter(self) -> None:
         test_data = test_input_data.starts_with_op_filter()
 
         expected_match = """
@@ -3915,7 +3951,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_ends_with_op_filter(self):
+    def test_ends_with_op_filter(self) -> None:
         test_data = test_input_data.ends_with_op_filter()
 
         expected_match = """
@@ -3971,7 +4007,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_has_substring_op_filter(self):
+    def test_has_substring_op_filter(self) -> None:
         test_data = test_input_data.has_substring_op_filter()
 
         expected_match = """
@@ -4027,7 +4063,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_has_substring_op_filter_with_variable(self):
+    def test_has_substring_op_filter_with_variable(self) -> None:
         graphql_input = """{
             Animal {
                 name @filter(op_name: "has_substring", value: ["$wanted"])
@@ -4097,7 +4133,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_has_substring_op_filter_with_tag(self):
+    def test_has_substring_op_filter_with_tag(self) -> None:
         graphql_input = """{
             Animal {
                 name @output(out_name: "animal_name") @tag(tag_name: "root_name")
@@ -4135,7 +4171,7 @@ class CompilerTests(unittest.TestCase):
         expected_output_metadata = {
             "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
-        expected_input_metadata = {}
+        expected_input_metadata: Dict[str, GraphQLScalarType] = {}
 
         test_data = test_input_data.CommonTestData(
             graphql_input=graphql_input,
@@ -4176,7 +4212,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_has_substring_op_filter_with_optional_tag(self):
+    def test_has_substring_op_filter_with_optional_tag(self) -> None:
         graphql_input = """{
             Animal {
                 name @output(out_name: "animal_name")
@@ -4242,7 +4278,7 @@ class CompilerTests(unittest.TestCase):
         expected_output_metadata = {
             "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
-        expected_input_metadata = {}
+        expected_input_metadata: Dict[str, GraphQLScalarType] = {}
 
         test_data = test_input_data.CommonTestData(
             graphql_input=graphql_input,
@@ -4289,7 +4325,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_has_edge_degree_op_filter(self):
+    def test_has_edge_degree_op_filter(self) -> None:
         test_data = test_input_data.has_edge_degree_op_filter()
 
         expected_match = """
@@ -4339,7 +4375,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_has_edge_degree_op_filter_with_optional(self):
+    def test_has_edge_degree_op_filter_with_optional(self) -> None:
         test_data = test_input_data.has_edge_degree_op_filter_with_optional()
 
         expected_match = """
@@ -4414,7 +4450,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_has_edge_degree_op_filter_with_optional_and_between(self):
+    def test_has_edge_degree_op_filter_with_optional_and_between(self) -> None:
         test_data = test_input_data.has_edge_degree_op_filter_with_optional_and_between()
 
         expected_match = """
@@ -4524,7 +4560,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_has_edge_degree_op_filter_with_fold(self):
+    def test_has_edge_degree_op_filter_with_fold(self) -> None:
         test_data = test_input_data.has_edge_degree_op_filter_with_fold()
 
         expected_match = """
@@ -4585,7 +4621,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_is_null_op_filter(self):
+    def test_is_null_op_filter(self) -> None:
         test_data = test_input_data.is_null_op_filter()
 
         expected_match = """
@@ -4634,7 +4670,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_is_not_null_op_filter(self):
+    def test_is_not_null_op_filter(self) -> None:
         test_data = test_input_data.is_not_null_op_filter()
 
         expected_match = """
@@ -4683,7 +4719,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_is_not_null_op_filter_missing_value_argument(self):
+    def test_is_not_null_op_filter_missing_value_argument(self) -> None:
         test_data = test_input_data.is_not_null_op_filter_missing_value_argument()
 
         expected_match = """
@@ -4732,7 +4768,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_is_null_op_filter_missing_value_argument(self):
+    def test_is_null_op_filter_missing_value_argument(self) -> None:
         test_data = test_input_data.is_null_op_filter_missing_value_argument()
 
         expected_match = """
@@ -4780,7 +4816,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_simple_union(self):
+    def test_simple_union(self) -> None:
         test_data = test_input_data.simple_union()
 
         expected_match = """
@@ -4823,7 +4859,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_then_apply_fragment(self):
+    def test_filter_then_apply_fragment(self) -> None:
         test_data = test_input_data.filter_then_apply_fragment()
 
         expected_match = """
@@ -4868,7 +4904,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_then_apply_fragment_with_multiple_traverses(self):
+    def test_filter_then_apply_fragment_with_multiple_traverses(self) -> None:
         test_data = test_input_data.filter_then_apply_fragment_with_multiple_traverses()
 
         expected_match = """
@@ -4929,7 +4965,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_on_fragment_in_union(self):
+    def test_filter_on_fragment_in_union(self) -> None:
         test_data = test_input_data.filter_on_fragment_in_union()
 
         expected_match = """
@@ -4974,7 +5010,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_optional_on_union(self):
+    def test_optional_on_union(self) -> None:
         test_data = test_input_data.optional_on_union()
 
         expected_match = """
@@ -5032,7 +5068,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_gremlin_type_hints(self):
+    def test_gremlin_type_hints(self) -> None:
         graphql_input = """{
             Animal {
                 out_Entity_Related {
@@ -5072,7 +5108,7 @@ class CompilerTests(unittest.TestCase):
         expected_output_metadata = {
             "related_event": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         }
-        expected_input_metadata = {}
+        expected_input_metadata: Dict[str, GraphQLScalarType] = {}
 
         test_data = test_input_data.CommonTestData(
             graphql_input=graphql_input,
@@ -5094,7 +5130,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_unnecessary_traversal_elimination(self):
+    def test_unnecessary_traversal_elimination(self) -> None:
         # This test case caught a bug in the optimization pass that eliminates unnecessary
         # traversals, where it would fail to remove part of the dead code
         # if there were more than two @optional traversals from the same location.
@@ -5275,7 +5311,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_on_output_variable(self):
+    def test_fold_on_output_variable(self) -> None:
         test_data = test_input_data.fold_on_output_variable()
 
         expected_match = """
@@ -5371,7 +5407,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_on_many_to_one_edge(self):
+    def test_fold_on_many_to_one_edge(self) -> None:
         test_data = test_input_data.fold_on_many_to_one_edge()
 
         # Even though out_Animal_LivesIn is a many to one edge, primary key should
@@ -5436,7 +5472,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_after_recurse(self):
+    def test_fold_after_recurse(self) -> None:
         # This is a regression test, checking that:
         # - the fold subquery picks the right column of the recursive cte to join to
         # - the recursive CTE exposes the columns needed to perform the folded traverse
@@ -5446,28 +5482,29 @@ class CompilerTests(unittest.TestCase):
 
         expected_postgresql = SKIP_TEST
         expected_mssql = """
+
         WITH anon_1(lives_in, parent, uuid, __cte_key, __cte_depth) AS (
-            SELECT
-                [Animal_1].lives_in AS lives_in,
-                [Animal_1].parent AS parent,
-                [Animal_1].uuid AS uuid,
-                [Animal_1].uuid AS __cte_key,
-                0 AS __cte_depth
-            FROM
-                db_1.schema_1.[Animal] AS [Animal_1]
-            UNION ALL
             SELECT
                 [Animal_2].lives_in AS lives_in,
                 [Animal_2].parent AS parent,
                 [Animal_2].uuid AS uuid,
+                [Animal_2].uuid AS __cte_key,
+                0 AS __cte_depth
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_2]
+            UNION ALL
+            SELECT
+                [Animal_3].lives_in AS lives_in,
+                [Animal_3].parent AS parent,
+                [Animal_3].uuid AS uuid,
                 anon_1.__cte_key AS __cte_key,
                 anon_1.__cte_depth + 1 AS __cte_depth
             FROM
-                anon_1 JOIN db_1.schema_1.[Animal] AS [Animal_2]
-                    ON anon_1.uuid = [Animal_2].parent
+                anon_1
+            JOIN db_1.schema_1.[Animal] AS [Animal_3] ON
+                anon_1.uuid = [Animal_3].parent
             WHERE
-                anon_1.__cte_depth < 3
-        )
+                anon_1.__cte_depth < 3)
         SELECT
             [Animal_1].name AS animal_name,
             folded_subquery_1.fold_output_name AS homes_list
@@ -5511,7 +5548,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_on_two_output_variables(self):
+    def test_fold_on_two_output_variables(self) -> None:
         test_data = test_input_data.fold_on_two_output_variables()
 
         expected_postgresql = """
@@ -5550,7 +5587,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_same_edge_type_in_different_locations(self):
+    def test_fold_same_edge_type_in_different_locations(self) -> None:
         test_data = test_input_data.fold_same_edge_type_in_different_locations()
 
         expected_postgresql = """
@@ -5651,7 +5688,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_after_traverse(self):
+    def test_fold_after_traverse(self) -> None:
         test_data = test_input_data.fold_after_traverse()
 
         expected_match = """
@@ -5765,7 +5802,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_after_traverse_different_types(self):
+    def test_fold_after_traverse_different_types(self) -> None:
         test_data = test_input_data.fold_after_traverse_different_types()
 
         expected_mssql = """
@@ -5831,7 +5868,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_after_traverse_no_output_on_root(self):
+    def test_fold_after_traverse_no_output_on_root(self) -> None:
         test_data = test_input_data.fold_after_traverse_no_output_on_root()
 
         expected_postgresql = """
@@ -5896,7 +5933,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_and_traverse(self):
+    def test_fold_and_traverse(self) -> None:
         test_data = test_input_data.fold_and_traverse()
 
         expected_match = """
@@ -6009,7 +6046,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_and_deep_traverse(self):
+    def test_fold_and_deep_traverse(self) -> None:
         test_data = test_input_data.fold_and_deep_traverse()
 
         expected_match = """
@@ -6135,7 +6172,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_traverse_and_fold_and_traverse(self):
+    def test_traverse_and_fold_and_traverse(self) -> None:
         test_data = test_input_data.traverse_and_fold_and_traverse()
 
         expected_match = """
@@ -6264,7 +6301,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_multiple_outputs_in_same_fold(self):
+    def test_multiple_outputs_in_same_fold(self) -> None:
         test_data = test_input_data.multiple_outputs_in_same_fold()
 
         expected_match = """
@@ -6342,7 +6379,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_multiple_outputs_in_same_fold_and_traverse(self):
+    def test_multiple_outputs_in_same_fold_and_traverse(self) -> None:
         test_data = test_input_data.multiple_outputs_in_same_fold_and_traverse()
 
         expected_match = """
@@ -6443,7 +6480,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_multiple_folds(self):
+    def test_multiple_folds(self) -> None:
         test_data = test_input_data.multiple_folds()
 
         expected_match = """
@@ -6555,7 +6592,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_multiple_folds_and_traverse(self):
+    def test_multiple_folds_and_traverse(self) -> None:
         test_data = test_input_data.multiple_folds_and_traverse()
 
         expected_match = """
@@ -6712,7 +6749,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_date_and_datetime_fields(self):
+    def test_fold_date_and_datetime_fields(self) -> None:
         test_data = test_input_data.fold_date_and_datetime_fields()
 
         expected_match = """
@@ -6863,7 +6900,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_coercion_to_union_base_type_inside_fold(self):
+    def test_coercion_to_union_base_type_inside_fold(self) -> None:
         # Given type_equivalence_hints = { Event: Union__BirthEvent__Event__FeedingEvent },
         # the coercion should be optimized away as a no-op.
         test_data = test_input_data.coercion_to_union_base_type_inside_fold()
@@ -6909,7 +6946,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_no_op_coercion_inside_fold(self):
+    def test_no_op_coercion_inside_fold(self) -> None:
         # The type where the coercion is applied is already Entity, so the coercion is a no-op.
         test_data = test_input_data.no_op_coercion_inside_fold()
 
@@ -7000,7 +7037,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_no_op_coercion_with_eligible_subpath(self):
+    def test_no_op_coercion_with_eligible_subpath(self) -> None:
         test_data = test_input_data.no_op_coercion_with_eligible_subpath()
 
         expected_match = """
@@ -7078,7 +7115,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_within_fold_scope(self):
+    def test_filter_within_fold_scope(self) -> None:
         test_data = test_input_data.filter_within_fold_scope()
 
         expected_match = """
@@ -7180,7 +7217,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_and_multiple_outputs_within_fold_scope(self):
+    def test_filter_and_multiple_outputs_within_fold_scope(self) -> None:
         test_data = test_input_data.filter_and_multiple_outputs_within_fold_scope()
 
         expected_match = """
@@ -7269,7 +7306,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_on_fold_scope(self):
+    def test_filter_on_fold_scope(self) -> None:
         test_data = test_input_data.filter_on_fold_scope()
 
         expected_match = """
@@ -7329,7 +7366,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_coercion_on_interface_within_fold_scope(self):
+    def test_coercion_on_interface_within_fold_scope(self) -> None:
         test_data = test_input_data.coercion_on_interface_within_fold_scope()
 
         expected_match = """
@@ -7374,7 +7411,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_coercion_on_interface_within_fold_traversal(self):
+    def test_coercion_on_interface_within_fold_traversal(self) -> None:
         test_data = test_input_data.coercion_on_interface_within_fold_traversal()
 
         expected_match = """
@@ -7427,7 +7464,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_coercion_on_union_within_fold_scope(self):
+    def test_coercion_on_union_within_fold_scope(self) -> None:
         test_data = test_input_data.coercion_on_union_within_fold_scope()
 
         expected_match = """
@@ -7472,7 +7509,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self) -> None:
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope()
 
         expected_match = """
@@ -7537,7 +7574,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_coercion_filters_and_multiple_outputs_within_fold_traversal(self):
+    def test_coercion_filters_and_multiple_outputs_within_fold_traversal(self) -> None:
         test_data = test_input_data.coercion_filters_and_multiple_outputs_within_fold_traversal()
 
         expected_match = """
@@ -7611,7 +7648,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_output_count_in_fold_scope(self):
+    def test_output_count_in_fold_scope(self) -> None:
         test_data = test_input_data.output_count_in_fold_scope()
 
         expected_match = """
@@ -7662,7 +7699,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_count_with_runtime_parameter_in_fold_scope(self):
+    def test_filter_count_with_runtime_parameter_in_fold_scope(self) -> None:
         test_data = test_input_data.filter_count_with_runtime_parameter_in_fold_scope()
 
         expected_match = """
@@ -7716,7 +7753,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_field_with_tagged_optional_parameter_in_fold_scope(self):
+    def test_filter_field_with_tagged_optional_parameter_in_fold_scope(self) -> None:
         test_data = test_input_data.filter_field_with_tagged_optional_parameter_in_fold_scope()
 
         expected_match = """
@@ -7800,7 +7837,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_count_with_tagged_optional_parameter_in_fold_scope(self):
+    def test_filter_count_with_tagged_optional_parameter_in_fold_scope(self) -> None:
         test_data = test_input_data.filter_count_with_tagged_optional_parameter_in_fold_scope()
 
         expected_match = """
@@ -7868,7 +7905,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_count_with_tagged_parameter_in_fold_scope(self):
+    def test_filter_count_with_tagged_parameter_in_fold_scope(self) -> None:
         test_data = test_input_data.filter_count_with_tagged_parameter_in_fold_scope()
 
         expected_match = """
@@ -7924,7 +7961,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_count_and_other_filters_in_fold_scope(self):
+    def test_filter_count_and_other_filters_in_fold_scope(self) -> None:
         test_data = test_input_data.filter_count_and_other_filters_in_fold_scope()
 
         expected_match = """
@@ -7958,7 +7995,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_multiple_filters_on_count(self):
+    def test_multiple_filters_on_count(self) -> None:
         test_data = test_input_data.multiple_filters_on_count()
 
         expected_match = """
@@ -8024,7 +8061,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_filter_on_count_with_nested_filter(self):
+    def test_filter_on_count_with_nested_filter(self) -> None:
         test_data = test_input_data.filter_on_count_with_nested_filter()
 
         expected_match = """
@@ -8076,7 +8113,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_optional_and_traverse(self):
+    def test_optional_and_traverse(self) -> None:
         test_data = test_input_data.optional_and_traverse()
 
         expected_match = """
@@ -8182,7 +8219,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_optional_and_traverse_after_filter(self):
+    def test_optional_and_traverse_after_filter(self) -> None:
         test_data = test_input_data.optional_and_traverse_after_filter()
 
         expected_match = """
@@ -8300,7 +8337,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_optional_and_deep_traverse(self):
+    def test_optional_and_deep_traverse(self) -> None:
         test_data = test_input_data.optional_and_deep_traverse()
 
         expected_match = """
@@ -8439,7 +8476,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_traverse_and_optional_and_traverse(self):
+    def test_traverse_and_optional_and_traverse(self) -> None:
         test_data = test_input_data.traverse_and_optional_and_traverse()
 
         expected_match = """
@@ -8571,7 +8608,7 @@ class CompilerTests(unittest.TestCase):
             expeceted_postgresql,
         )
 
-    def test_multiple_optional_traversals_with_starting_filter(self):
+    def test_multiple_optional_traversals_with_starting_filter(self) -> None:
         test_data = test_input_data.multiple_optional_traversals_with_starting_filter()
 
         expected_match = """
@@ -8797,7 +8834,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_optional_traversal_and_optional_without_traversal(self):
+    def test_optional_traversal_and_optional_without_traversal(self) -> None:
         test_data = test_input_data.optional_traversal_and_optional_without_traversal()
 
         expected_match = """
@@ -8967,7 +9004,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_coercion_on_interface_within_optional_traversal(self):
+    def test_coercion_on_interface_within_optional_traversal(self) -> None:
         test_data = test_input_data.coercion_on_interface_within_optional_traversal()
 
         expected_match = """
@@ -9052,7 +9089,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_on_optional_traversal_equality(self):
+    def test_filter_on_optional_traversal_equality(self) -> None:
         test_data = test_input_data.filter_on_optional_traversal_equality()
 
         expected_match = """
@@ -9160,7 +9197,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_filter_on_optional_traversal_name_or_alias(self):
+    def test_filter_on_optional_traversal_name_or_alias(self) -> None:
         test_data = test_input_data.filter_on_optional_traversal_name_or_alias()
 
         expected_match = """
@@ -9264,7 +9301,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_complex_optional_traversal_variables(self):
+    def test_complex_optional_traversal_variables(self) -> None:
         test_data = test_input_data.complex_optional_traversal_variables()
 
         expected_match = """
@@ -9563,7 +9600,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_simple_optional_recurse(self):
+    def test_simple_optional_recurse(self) -> None:
         test_data = test_input_data.simple_optional_recurse()
 
         expected_match = """
@@ -9653,25 +9690,28 @@ class CompilerTests(unittest.TestCase):
             ),
             anon_2(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    anon_1.[Animal_in_Animal_ParentOf__name] AS name,
-                    anon_1.[Animal_in_Animal_ParentOf__parent] AS parent,
-                    anon_1.[Animal_in_Animal_ParentOf__uuid] AS uuid,
-                    anon_1.[Animal_in_Animal_ParentOf__uuid] AS __cte_key,
-                    0 AS __cte_depth
-                FROM
-                    anon_1
-                UNION ALL
-                SELECT
                     [Animal_3].name AS name,
                     [Animal_3].parent AS parent,
                     [Animal_3].uuid AS uuid,
+                    [Animal_3].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_3]
+                WHERE
+                    [Animal_3].uuid IN (SELECT anon_1.[Animal_in_Animal_ParentOf__uuid] FROM anon_1)
+                UNION ALL
+                SELECT
+                    [Animal_4].name AS name,
+                    [Animal_4].parent AS parent,
+                    [Animal_4].uuid AS uuid,
                     anon_2.__cte_key AS __cte_key,
                     anon_2.__cte_depth + 1 AS __cte_depth
                 FROM
                     anon_2
-                    JOIN db_1.schema_1.[Animal] AS [Animal_3]
-                        ON anon_2.uuid = [Animal_3].parent
-                    WHERE anon_2.__cte_depth < 3
+                    JOIN db_1.schema_1.[Animal] AS [Animal_4]
+                        ON anon_2.uuid = [Animal_4].parent
+                WHERE
+                    anon_2.__cte_depth < 3
             )
             SELECT
                 anon_1.[Animal_in_Animal_ParentOf__name] AS child_name,
@@ -9701,26 +9741,27 @@ class CompilerTests(unittest.TestCase):
             ),
             anon_2(name, parent, uuid, __cte_key, __cte_depth) AS (
                 SELECT
-                    anon_1."Animal_in_Animal_ParentOf__name" AS name,
-                    anon_1."Animal_in_Animal_ParentOf__parent" AS parent,
-                    anon_1."Animal_in_Animal_ParentOf__uuid" AS uuid,
-                    anon_1."Animal_in_Animal_ParentOf__uuid" AS __cte_key,
-                    0 AS __cte_depth
-                FROM
-                    anon_1
-                UNION ALL
-                SELECT
                     "Animal_3".name AS name,
                     "Animal_3".parent AS parent,
                     "Animal_3".uuid AS uuid,
+                    "Animal_3".uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    schema_1."Animal" AS "Animal_3"
+                WHERE "Animal_3".uuid IN (
+                    SELECT anon_1."Animal_in_Animal_ParentOf__uuid" FROM anon_1)
+                UNION ALL
+                SELECT
+                    "Animal_4".name AS name,
+                    "Animal_4".parent AS parent,
+                    "Animal_4".uuid AS uuid,
                     anon_2.__cte_key AS __cte_key,
                     anon_2.__cte_depth + 1 AS __cte_depth
                 FROM
                     anon_2
-                    JOIN schema_1."Animal" AS "Animal_3"
-                        ON anon_2.uuid = "Animal_3".parent
-                WHERE
-                    anon_2.__cte_depth < 3
+                    JOIN schema_1."Animal" AS "Animal_4"
+                        ON anon_2.uuid = "Animal_4".parent
+                WHERE anon_2.__cte_depth < 3
             )
             SELECT
                 anon_1."Animal_in_Animal_ParentOf__name" AS child_name,
@@ -9744,7 +9785,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_multiple_traverse_within_optional(self):
+    def test_multiple_traverse_within_optional(self) -> None:
         test_data = test_input_data.multiple_traverse_within_optional()
 
         expected_match = """
@@ -9879,7 +9920,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_optional_and_fold(self):
+    def test_optional_and_fold(self) -> None:
         test_data = test_input_data.optional_and_fold()
 
         expected_match = """
@@ -10012,7 +10053,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_and_optional(self):
+    def test_fold_and_optional(self) -> None:
         test_data = test_input_data.fold_and_optional()
 
         expected_match = """
@@ -10145,7 +10186,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_optional_traversal_and_fold_traversal(self):
+    def test_optional_traversal_and_fold_traversal(self) -> None:
         test_data = test_input_data.optional_traversal_and_fold_traversal()
 
         expected_match = """
@@ -10319,7 +10360,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_fold_traversal_and_optional_traversal(self):
+    def test_fold_traversal_and_optional_traversal(self) -> None:
         test_data = test_input_data.fold_traversal_and_optional_traversal()
 
         expected_match = """
@@ -10488,7 +10529,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_between_lowering(self):
+    def test_between_lowering(self) -> None:
         test_data = test_input_data.between_lowering()
 
         expected_match = """
@@ -10558,7 +10599,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_coercion_and_filter_with_tag(self):
+    def test_coercion_and_filter_with_tag(self) -> None:
         test_data = test_input_data.coercion_and_filter_with_tag()
 
         expected_match = """
@@ -10608,7 +10649,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_nested_optional_and_traverse(self):
+    def test_nested_optional_and_traverse(self) -> None:
         test_data = test_input_data.nested_optional_and_traverse()
 
         expected_match = """
@@ -10756,7 +10797,7 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
-    def test_complex_nested_optionals(self):
+    def test_complex_nested_optionals(self) -> None:
         test_data = test_input_data.complex_nested_optionals()
 
         # The correct MATCH output is outrageously long, and is stored in a separate file.
@@ -10853,7 +10894,7 @@ class CompilerTests(unittest.TestCase):
             expected_sql,
         )
 
-    def test_recursive_field_type_is_subtype_of_parent_field(self):
+    def test_recursive_field_type_is_subtype_of_parent_field(self) -> None:
         """Ensure recursion can occur on an edge assigned to a supertype of the current scope."""
         test_data = test_input_data.recursive_field_type_is_subtype_of_parent_field()
 

@@ -132,6 +132,8 @@ def _find_used_columns(
         used_columns.setdefault(query_path, set()).add(tag_info.location.field)
 
     # Columns used in the base case of CTE recursions should be made available from parent scope
+    # TODO(bojanserafimov): Some of these are no longer needed, since we don't select from
+    #                       the base cte, but only semijoin to its primary key now.
     for location, _ in ir.query_metadata_table.registered_locations:
         for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
             traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
@@ -996,7 +998,7 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         primary_key = self._get_current_primary_key_name("@recurse")
 
-        # Wrap the query so far into a cte if it would speed up the recursive query.
+        # Wrap the query so far into a CTE if it would speed up the recursive query.
         if self._recurse_needs_cte:
             self._wrap_into_cte()
 
@@ -1014,10 +1016,23 @@ class CompilationState(object):
         used_columns = sorted(self._used_columns[self._current_location.query_path])
 
         # The base of the recursive CTE selects all needed columns and sets the depth to 0
+        base_alias = self._current_alias.alias()
         base = sqlalchemy.select(
-            [previous_alias.c[col].label(col) for col in used_columns]
-            + [previous_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
-        ).cte(recursive=True)
+            [base_alias.c[col].label(col) for col in used_columns]
+            + [base_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
+        )
+        if self._recurse_needs_cte:
+            # Optimization: Only compute the recursion for the valid starting points -- ones that
+            # will not be discarded when the recursive CTE is joined to the rest of the query.
+            # The SQL database could do this predicate pushdown itself, but most implementations
+            # don't.
+            # This optimization is absolutely necessary for queries with highly selective filters
+            # before the recursion. It improves performance by a factor of (1 / filter selectivity),
+            # which can be 1 million times or more in common queries.
+            base = base.where(
+                base_alias.c[primary_key].in_(sqlalchemy.select([previous_alias.c[primary_key]]))
+            )
+        base = base.cte(recursive=True)
 
         # The recursive step selects all needed columns, increments the depth, and joins to the base
         step = self._current_alias.alias()

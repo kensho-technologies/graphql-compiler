@@ -4,7 +4,7 @@ from collections import namedtuple
 from inspect import getmembers, isfunction
 from pprint import pformat
 import re
-from typing import Dict, List, Optional, Set, Tuple, Union
+from typing import Dict, List, Optional, Set, Tuple, Union, cast
 from unittest import TestCase
 
 from graphql import GraphQLList, parse
@@ -486,14 +486,14 @@ def compare_ir_blocks(
     if len(expected_blocks) != len(received_blocks):
         test_case.fail("Not the same number of blocks:\n\n{}".format(mismatch_message))
 
-    for i in six.moves.xrange(len(expected_blocks)):
-        expected = expected_blocks[i]
-        received = received_blocks[i]
+    for i, (expected, received) in enumerate(zip(expected_blocks, received_blocks)):
         test_case.assertEqual(
             expected,
             received,
-            msg="Blocks at position {} were different: {} vs {}\n\n"
-            "{}".format(i, expected, received, mismatch_message),
+            msg=(
+                "Blocks at position {} were different: {} vs {}\n\n"
+                "{}".format(i, expected, received, mismatch_message)
+            ),
         )
 
 
@@ -872,9 +872,10 @@ def generate_schema(
 def get_empty_test_macro_registry() -> MacroRegistry:
     """Return a MacroRegistry with appropriate type_equivalence_hints and subclass_set."""
     schema = get_schema()
-    type_equivalence_hints = {
-        schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),
-    }
+    type_equivalence_hints = cast(
+        TypeEquivalenceHintsType,
+        {schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),},
+    )
     subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
     macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)
     return macro_registry

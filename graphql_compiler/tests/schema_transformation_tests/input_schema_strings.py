@@ -21,6 +21,24 @@ class InputSchemaStrings(object):
     """
     )
 
+    type_field_directive_same_name_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+        type stitch {
+          stitch: String
+        }
+
+        type SchemaQuery {
+          stitch: stitch
+        }
+    """
+    )
+
     multiple_objects_schema = dedent(
         """\
         schema {
@@ -329,45 +347,6 @@ class InputSchemaStrings(object):
           Human: Human
           Giraffe: Giraffe
           Dog: Dog
-        }
-    """
-    )
-
-    multiple_scalars_schema = dedent(
-        """\
-        schema {
-          query: SchemaQuery
-        }
-
-        scalar Date
-
-        scalar DateTime
-
-        scalar Decimal
-
-        enum Height {
-          TALL
-          SHORT
-        }
-
-        interface Character {
-          id: String
-        }
-
-        type Human implements Character {
-          id: String
-          name: String
-          birthday: Date
-        }
-
-        type Giraffe implements Character {
-          id: String
-          height: Height
-        }
-
-        type SchemaQuery {
-          Human: Human
-          Giraffe: Giraffe
         }
     """
     )

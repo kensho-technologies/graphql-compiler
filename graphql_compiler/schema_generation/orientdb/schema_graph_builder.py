@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
+from typing import Dict, Set
 
 from funcy.py3 import lsplit
 from graphql.type import GraphQLList, GraphQLObjectType
@@ -460,7 +461,7 @@ def _validate_link_definition(
 
 def _get_end_direction_to_superclasses(link_property_definitions):
     """Return the set of superclasses that classes at each edge end must inherit from."""
-    links = {
+    links: Dict[str, Set[str]] = {
         EDGE_SOURCE_PROPERTY_NAME: set(),
         EDGE_DESTINATION_PROPERTY_NAME: set(),
     }

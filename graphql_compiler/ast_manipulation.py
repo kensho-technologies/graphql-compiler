@@ -35,7 +35,7 @@ def get_human_friendly_ast_field_name(ast):
     return get_ast_field_name(ast)
 
 
-def safe_parse_graphql(graphql_string):
+def safe_parse_graphql(graphql_string: str) -> DocumentNode:
     """Return an AST representation of the given GraphQL input, reraising GraphQL library errors."""
     try:
         ast = parse(graphql_string)

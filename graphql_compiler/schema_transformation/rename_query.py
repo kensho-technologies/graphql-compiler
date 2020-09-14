@@ -119,3 +119,5 @@ class RenameQueryVisitor(Visitor):
                 return None
             else:  # Name changed, return new node, `visit` will make shallow copies along path
                 return renamed_node
+
+        return None

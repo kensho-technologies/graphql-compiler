@@ -3,9 +3,7 @@ import bisect
 import itertools
 from typing import Any, Iterator, List, cast
 
-from graphql.language.printer import print_ast
-
-from ..compiler.compiler_frontend import graphql_to_ir
+from ..compiler.compiler_frontend import ast_to_ir
 from ..compiler.helpers import Location
 from ..cost_estimation.filter_selectivity_utils import get_integer_interval_for_filters_on_field
 from ..cost_estimation.helpers import is_uuid4_type
@@ -218,21 +216,15 @@ def generate_parameters_for_vertex_partition(
         Returns a generator of (vertex_partition.number_of_splits - 1) values that split the
         values at vertex_partition.pagination_field into vertex_partition.number_of_splits
         almost equal chunks.
-        HACK(bojanserafimov): In some cases the number values returned is less than
-                              (vertex_partition.number_of_splits - 1). This happens when the
-                              pagination planner generates an impossible plan. This is obviously
-                              not desirable. This flaw is not visible to the end user, but shold
-                              be fixed ASAP. Fix coming in PR #738.
     """
     pagination_field = vertex_partition.pagination_field
     if vertex_partition.number_of_splits < 2:
         raise AssertionError("Invalid number of splits {}".format(vertex_partition))
 
     # Find the FilterInfos on the pagination field
-    graphql_query_string = print_ast(query.query_ast)
-    query_metadata = graphql_to_ir(
+    query_metadata = ast_to_ir(
         schema_info.schema,
-        graphql_query_string,
+        query.query_ast,
         type_equivalence_hints=schema_info.type_equivalence_hints,
     ).query_metadata_table
     query_location = Location(vertex_partition.query_path)

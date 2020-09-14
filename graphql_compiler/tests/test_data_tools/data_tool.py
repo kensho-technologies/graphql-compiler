@@ -186,7 +186,7 @@ def generate_neo4j_integration_data(client):
                 for key in vertex_props:
                     _validate_name(key)
                 command = "create (:{} {{{}}})".format(
-                    vertex_name, ", ".join("{}: ${}".format(key, key) for key in vertex_props)
+                    vertex_name, ", ".join(f"{key}: ${key}" for key in vertex_props)
                 )
                 session.run(command, vertex_props)
     with client.driver.session() as session:

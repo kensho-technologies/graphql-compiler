@@ -1770,3 +1770,65 @@ class QueryPaginationTests(unittest.TestCase):
         first_page_and_remainder, advisories = paginate_query(schema_info, query, 1)
         self.assertTrue(first_page_and_remainder.remainder == tuple())
         self.assertEqual(advisories, (MissingClassCount("Animal_LivesIn"),))
+
+    @pytest.mark.xfail(strict=True, reason="inline fragment not supported", raises=Exception)
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_pagination_with_inline_fragment(self) -> None:
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys["Species"] = "limbs"  # Force pagination on int field
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Species": 1000}
+        statistics = LocalStatistics(
+            class_counts, field_quantiles={("Species", "limbs"): list(range(100))},
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+            Species {
+                out_Entity_Related {
+                    ... on Species {
+                        name @output(out_name: "species_name")
+                    }
+                }
+            }
+        }""",
+            {},
+        )
+        analysis = analyze_query_string(schema_info, query)
+
+        vertex_partition_plan = VertexPartitionPlan(("Species", "out_Entity_Related"), "limbs", 2)
+
+        generated_parameters = generate_parameters_for_vertex_partition(
+            schema_info, analysis.ast_with_parameters, vertex_partition_plan
+        )
+
+        sentinel = object()
+        first_param = next(generated_parameters, sentinel)
+        self.assertEqual(50, first_param)
+
+        page_query, _ = generate_parameterized_queries(analysis, vertex_partition_plan, first_param)
+
+        expected_page_query_string = """{
+            Species {
+                out_Entity_Related {
+                    ... on Species {
+                        limbs @filter(op_name: "<", value: ["$__paged_param_0"])
+                        name @output(out_name: "species_name")
+                    }
+                }
+            }
+        }"""
+        compare_graphql(self, expected_page_query_string, print_ast(page_query.query_ast))

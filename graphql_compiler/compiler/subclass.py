@@ -1,9 +1,15 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
+from typing import Dict, Optional, Set
+
+from graphql import GraphQLInterfaceType, GraphQLObjectType, GraphQLSchema, GraphQLUnionType
 import six
 
+from ..schema.typedefs import TypeEquivalenceHintsType
 
-def compute_subclass_sets(schema, type_equivalence_hints=None):
+
+def compute_subclass_sets(
+    schema: GraphQLSchema, type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None
+) -> Dict[str, Set[str]]:
     """Return a dict mapping class names to the set of its subclass names.
 
     A class here means an object type or interface.
