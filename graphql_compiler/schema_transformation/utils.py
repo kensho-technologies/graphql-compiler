@@ -135,6 +135,51 @@ class CascadingSuppressionError(SchemaTransformError):
     """
 
 
+class NoOpRenamingError(SchemaTransformError):
+    """Raised if renamings argument is iterable and contains no-op renames.
+
+    This may be raised during schema renaming if renamings is iterable and:
+    * renamings contains a string type_name but there doesn't exist a type in the schema named
+      type_name
+    * renamings[type_name] == type_name
+    """
+
+    unused_renamings: Set[str]
+    renamed_to_self: Set[str]
+
+    def __init__(self, unused_renamings: Set[str], renamed_to_self: Set[str]) -> None:
+        """Record all renaming conflicts."""
+        if not unused_renamings and not renamed_to_self:
+            raise ValueError(
+                "Cannot raise NoOpRenamingError because unused_renamings and renamed_to_self were "
+                "both empty dictionaries."
+            )
+        super().__init__()
+        self.unused_renamings = unused_renamings
+        self.renamed_to_self = renamed_to_self
+
+    def __str__(self) -> str:
+        """Explain renaming conflict and the fix."""
+        explanation_message = (
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "problems exist for the renamings argument:"
+        )
+        unused_renamings_message = ""
+        if self.unused_renamings:
+            unused_renamings_message = (
+                f"Renamings contains entries for types that were not renamed because there doesn't "
+                f"exist a renamable type with that name in the schema: {self.unused_renamings}"
+            )
+        renamed_to_self_message = ""
+        if self.renamed_to_self:
+            renamed_to_self_message = (
+                f"Renamings maps the following type names to themselves: {self.renamed_to_self}"
+            )
+        return "\n".join(
+            filter(None, [explanation_message, unused_renamings_message, renamed_to_self_message])
+        )
+
+
 _alphanumeric_and_underscore: FrozenSet[str] = frozenset(
     six.text_type(string.ascii_letters + string.digits + "_")
 )
