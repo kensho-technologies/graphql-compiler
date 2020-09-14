@@ -3,13 +3,13 @@ from dataclasses import dataclass
 from typing import (
     Any,
     ClassVar,
-    Collection,
     Dict,
     Generic,
     Iterable,
     Iterator,
     List,
     Optional,
+    Sequence,
     Tuple,
     TypeVar,
     cast,
@@ -40,13 +40,13 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 
-def _enumerate_starting_at(collection: Collection[T], first_index: int,) -> Iterable[Tuple[int, T]]:
-    # N.B.: This is unlike enumerate(collection, start=first_index) in that enumerate() always
-    #       iterates the entire collection and only changes the counter's value based on the start.
-    #       In this function, we skip elements with indices in [0, first_index) in the collection,
-    #       and only iterate over elements with indices in [first_index, len(collection)).
-    for index in range(first_index, len(collection)):
-        yield index, collection[index]
+def _enumerate_starting_at(sequence: Sequence[T], first_index: int,) -> Iterable[Tuple[int, T]]:
+    # N.B.: This is unlike enumerate(sequence, start=first_index) in that enumerate() always
+    #       iterates the entire sequence and only changes the counter's value based on the start.
+    #       In this function, we skip elements with indices in [0, first_index) in the sequence,
+    #       and only iterate over elements with indices in [first_index, len(sequence)).
+    for index in range(first_index, len(sequence)):
+        yield index, sequence[index]
 
 
 def _unzip_and_yield_second(iterable: Iterable[Tuple[T, U]]) -> Iterable[U]:
@@ -501,6 +501,8 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
                 input_iterable_name, call_operation.uid, next_possible_input_yield_index
             )
             next_possible_input_yield_index = input_yield_index + 1
+            if input_operation is None:
+                return
 
             self._assert_contexts_are_equivalent(
                 cast(DataContext[DataToken], input_operation.data), data_context,
