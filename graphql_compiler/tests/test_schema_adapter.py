@@ -66,7 +66,7 @@ class TestSchemaAdapter(TestCase):
 
         _ensure_query_produces_expected_output(self, self.adapter, query, args, expected_results)
 
-        args: Dict[str, Any] = {"vertex_name": "Animal"}
+        args = {"vertex_name": "Animal"}
 
         expected_results = [
             {"vertex_name": "Animal", "vertex_description": None, "is_vertex_interface": False}
@@ -84,7 +84,7 @@ class TestSchemaAdapter(TestCase):
         """
         args: Dict[str, Any] = {"vertex_name": "Union__Food__FoodOrSpecies__Species"}
 
-        expected_results = []
+        expected_results: List[Dict[str, Any]] = []
 
         _ensure_query_produces_expected_output(self, self.adapter, query, args, expected_results)
 
@@ -139,7 +139,7 @@ class TestSchemaAdapter(TestCase):
         """
         args: Dict[str, Any] = {"vertex_name": "NoProperty"}
 
-        expected_results = []
+        expected_results: List[Dict[str, Any]] = []
 
         _ensure_query_produces_expected_output(
             self, no_property_adapter, query, args, expected_results
@@ -154,7 +154,7 @@ class TestSchemaAdapter(TestCase):
             }
         }
         """
-        args: Dict[str, Any] = {"vertex_name": "NoProperty"}
+        args = {"vertex_name": "NoProperty"}
 
         expected_results = [{"vertex_name": "NoProperty"}]
 

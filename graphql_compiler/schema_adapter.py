@@ -37,11 +37,12 @@ results = list(execute_query(adapter, query, args))
 """
 
 from dataclasses import dataclass
-from typing import Any, Callable, Dict, Generic, Iterable, List, Tuple, TypeVar
+from typing import Any, Callable, Dict, Generic, Iterable, List, Tuple, TypeVar, Union, cast
 
 from graphql import (
     GraphQLField,
-    GraphQLNamedType,
+    GraphQLObjectType,
+    GraphQLInterfaceType,
     GraphQLSchema,
     build_ast_schema,
     is_interface_type,
@@ -128,6 +129,7 @@ SCHEMA = build_ast_schema(parse(SCHEMA_TEXT))
 
 
 T = TypeVar("T")
+GraphQLVertexType = Union[GraphQLObjectType, GraphQLInterfaceType]
 
 
 @dataclass
@@ -142,7 +144,7 @@ class SchemaToken(Generic[T]):
 class VertexType:
     """Dataclass VertexType represents a GraphQL type in the schema being queried."""
 
-    named_type: GraphQLNamedType
+    named_type: GraphQLVertexType
 
 
 @dataclass
@@ -158,8 +160,8 @@ class EdgeType:
     """Dataclass EdgeType represents a directed edge between GraphQL types."""
 
     name: str
-    inbound_named_type: GraphQLNamedType
-    outbound_named_type: GraphQLNamedType
+    inbound_named_type: GraphQLVertexType
+    outbound_named_type: GraphQLVertexType
 
 
 def _project_vertex_properties(field_name: str, token: SchemaToken[VertexType]) -> Any:
@@ -313,7 +315,9 @@ def _get_vertex_tokens(schema: GraphQLSchema) -> List[SchemaToken[VertexType]]:
     for type_ in schema.type_map.values():
         # We filter out introspection types here also
         if (is_interface_type(type_) or is_object_type(type_)) and not type_.name.startswith("__"):
-            vertex_tokens.append(SchemaToken[VertexType]("VertexType", VertexType(type_)))
+            vertex_type = VertexType(cast(GraphQLVertexType, type_))
+            vertex_tokens.append(SchemaToken[VertexType]("VertexType", vertex_type))
+
     return vertex_tokens
 
 
