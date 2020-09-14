@@ -150,6 +150,32 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
 
+    def test_type_directive_same_name(self):
+        # Types, fields, and directives have different namespaces, so this schema and renaming are
+        # both valid and the renaming only affects the object type.
+        renamed_schema = rename_schema(
+            parse(ISS.type_field_directive_same_name_schema), {"stitch": "NewStitch"}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type NewStitch {
+              stitch: String
+            }
+
+            type SchemaQuery {
+              NewStitch: NewStitch
+            }
+        """
+        )
+        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({"NewStitch": "stitch"}, renamed_schema.reverse_name_map)
+
     def test_original_unmodified_rename(self):
         original_ast = parse(ISS.basic_schema)
         rename_schema(original_ast, {"Human": "NewHuman"})
