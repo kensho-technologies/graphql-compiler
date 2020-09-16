@@ -138,10 +138,10 @@ class CascadingSuppressionError(SchemaTransformError):
 class NoOpRenamingError(SchemaTransformError):
     """Raised if renamings argument is iterable and contains no-op renames.
 
-    This may be raised during schema renaming if renamings is iterable and:
+    No-op renames can occur in these ways:
     * renamings contains a string type_name but there doesn't exist a type in the schema named
       type_name
-    * renamings[type_name] == type_name
+    * renamings maps a string type_name to itself, i.e. renamings[type_name] == type_name
     """
 
     unused_renamings: Set[str]
@@ -162,18 +162,21 @@ class NoOpRenamingError(SchemaTransformError):
         """Explain renaming conflict and the fix."""
         explanation_message = (
             "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "problems exist for the renamings argument:"
+            "no-op renamings exist for the renamings argument:"
         )
         unused_renamings_message = ""
         if self.unused_renamings:
             unused_renamings_message = (
                 f"Renamings contains entries for types that were not renamed because there doesn't "
-                f"exist a renamable type with that name in the schema: {self.unused_renamings}"
+                f"exist a renamable type with that name in the schema. To fix this, check whether "
+                f"those renamings are supposed to match with any type in the schema. The unused "
+                f"entries are as follows: {self.unused_renamings}"
             )
         renamed_to_self_message = ""
         if self.renamed_to_self:
             renamed_to_self_message = (
-                f"Renamings maps the following type names to themselves: {self.renamed_to_self}"
+                f"Renamings maps some type names to themselves. To fix this, remove these entries "
+                f"from the renamings argument: {self.renamed_to_self}"
             )
         return "\n".join(
             filter(None, [explanation_message, unused_renamings_message, renamed_to_self_message])

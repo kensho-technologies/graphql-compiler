@@ -88,7 +88,10 @@ Renaming constraints:
   no way to keep arbitrary code from doing valid but inadvisable things. These rules exist
   specifically for iterables because that's the most common usage for rename_schema.
 """
-from collections import Iterable, namedtuple
+from collections import namedtuple
+# Note that importing from collections.abc instead of collections is due to a pylint issue that goes
+# away for Python 3.8: https://github.com/PyCQA/pylint/issues/2597
+from collections.abc import Iterable
 from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from graphql import (
@@ -410,15 +413,15 @@ def _rename_and_suppress_types(
     if isinstance(renamings, Iterable):
         # If renamings is iterable, then every renaming must be used and no renaming can map a
         # name to itself
-        for type_name in visitor.types_renamed:
+        for type_name in visitor.renamed_types:
             if type_name not in renamings:
                 raise AssertionError(
-                    f"types_renamed should be a subset of the set of keys in renamings, but found "
-                    f"{type_name} in types_renamed that is not a key in renamings. This is a bug."
+                    f"renamed_types should be a subset of the set of keys in renamings, but found "
+                    f"{type_name} in renamed_types that is not a key in renamings. This is a bug."
                 )
         unused_renamings: Set[str] = set()
         for type_name in renamings:
-            if type_name not in visitor.types_renamed:
+            if type_name not in visitor.renamed_types:
                 unused_renamings.add(type_name)
         if unused_renamings or visitor.renamed_to_self:
             raise NoOpRenamingError(unused_renamings, visitor.renamed_to_self)
@@ -530,9 +533,9 @@ class RenameSchemaTypesVisitor(Visitor):
     invalid_type_names: Dict[str, str]
     # Collects the type names for types that get renamed to confirm that (if renamings is iterable)
     # every renaming in renamings is used. If renaming would rename or suppress a type named "Foo"
-    # and if renamings is iterable, types_renamed will contain "Foo". This field only matters if
+    # and if renamings is iterable, renamed_types will contain "Foo". This field only matters if
     # renamings is iterable.
-    types_renamed: Set[str]
+    renamed_types: Set[str]
     # Collects the type names for types that get renamed to themselves (if renamings is iterable).
     # If renamings["Foo"] == "Foo" and renamings is iterable, then renamed_to_self will contain
     # "Foo". This field only matters if renamings is iterable.
@@ -560,7 +563,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.invalid_type_names = {}
         self.query_type = query_type
         self.custom_scalar_names = frozenset(custom_scalar_names)
-        self.types_renamed = set()
+        self.renamed_types = set()
         self.renamed_to_self = set()
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
@@ -597,7 +600,7 @@ class RenameSchemaTypesVisitor(Visitor):
             # Suppress the type and, if renamings is iterable, record that this entry in renamings
             # is used to ensure all renamings are used.
             if isinstance(self.renamings, Iterable) and type_name in self.renamings:
-                self.types_renamed.add(type_name)
+                self.renamed_types.add(type_name)
             return REMOVE
         if not type_name_is_valid(desired_type_name):
             self.invalid_type_names[type_name] = desired_type_name
@@ -650,7 +653,7 @@ class RenameSchemaTypesVisitor(Visitor):
         # renamings is performing a 1:1 renaming so if renamings is iterable, record that this entry
         # in renamings is used to ensure all renamings are used.
         if isinstance(self.renamings, Iterable) and type_name in self.renamings:
-            self.types_renamed.add(type_name)
+            self.renamed_types.add(type_name)
         if desired_type_name == type_name:
             # renamings would map type_name to itself, which is not allowed iff renamings is
             # iterable.

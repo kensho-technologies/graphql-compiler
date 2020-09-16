@@ -25,13 +25,13 @@ from .input_schema_strings import InputSchemaStrings as ISS
 def validate_error_message_component(
     error_message_component: str, expected_prefix: str, expected_data_structure: Any
 ) -> bool:
-    """Confirms that error_message_component is as expected.
+    """Confirm that error_message_component is as expected.
 
     A common pattern when checking string representations of exceptions here is to have the message
     consist of a string literal prefix, which describes the error reasoning, followed by the string
     representation of a data structure that describes which parts of the schema caused the error.
     This function validates the error message based on the expected prefix and expected data
-    structure. This is useful when the data structure's string method is not deterministic
+    structure. This is useful when the data structure's __str__() method is not deterministic
     (e.g. set).
 
     Args:
@@ -143,13 +143,18 @@ def check_no_op_renaming_error_message(
     """
     explanation_prefix = (
         "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-        "problems exist for the renamings argument:"
+        "no-op renamings exist for the renamings argument:"
     )
     unused_renamings_prefix = (
         "Renamings contains entries for types that were not renamed because there doesn't "
-        "exist a renamable type with that name in the schema: "
+        "exist a renamable type with that name in the schema. To fix this, check whether "
+        "those renamings are supposed to match with any type in the schema. The unused "
+        "entries are as follows: "
     )
-    renamed_to_self_prefix = "Renamings maps the following type names to themselves: "
+    renamed_to_self_prefix = (
+        "Renamings maps some type names to themselves. To fix this, remove these entries from the "
+        "renamings argument: "
+    )
     actual_error_message = str(error)
     unused_renamings_part = None
     renamed_to_self_part = None
@@ -162,7 +167,7 @@ def check_no_op_renaming_error_message(
     elif expected_renamed_to_self:
         explanation_part, renamed_to_self_part = actual_error_message.split("\n")
     else:
-        raise AssertionError("Illegal for NoOpRenamingError to have all arguments as empty dicts")
+        raise AssertionError("Illegal for NoOpRenamingError to have all arguments as empty sets")
 
     if explanation_prefix != explanation_part:
         return False
@@ -232,7 +237,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_rename_illegal_noop_unused_renaming(self):
         with self.assertRaises(NoOpRenamingError) as e:
-            rename_schema(parse(ISS.basic_schema), {"Dinosaur": None})
+            rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"})
         self.assertTrue(check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception))
 
     def test_rename_legal_noop_unused_renaming(self):
@@ -327,6 +332,15 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), SuppressMapping())
         self.assertEqual(ISS.multiple_objects_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_various_illegal_noop_renamings(self):
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(
+                parse(ISS.basic_schema), {"Dinosaur": None, "Human": "Human", "Bird": "Birdie"}
+            )
+        self.assertTrue(
+            check_no_op_renaming_error_message({"Dinosaur", "Bird"}, {"Human"}, e.exception)
+        )
 
     def test_swap_rename(self):
         renamed_schema = rename_schema(
