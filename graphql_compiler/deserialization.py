@@ -30,7 +30,7 @@ _ALLOWED_SCALAR_TYPES: Mapping[str, Tuple[Type, ...]] = MappingProxyType(
         GraphQLInt.name: (int, str),
         GraphQLString.name: (str,),
         GraphQLBoolean.name: (bool, int, str),
-        GraphQLID.name: (int, str,),
+        GraphQLID.name: (int, str),
     }
 )
 assert_set_equality(

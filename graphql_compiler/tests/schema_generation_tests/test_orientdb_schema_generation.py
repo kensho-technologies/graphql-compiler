@@ -29,7 +29,12 @@ ENTITY = {
     "name": "Entity",
     "abstract": True,
     "superClasses": [ORIENTDB_BASE_VERTEX_CLASS_NAME],
-    "properties": [{"name": "name", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "name",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 PERSON = {
@@ -66,10 +71,21 @@ DATA_POINT = {
 PERSON_LIVES_IN_EDGE = {
     "name": "Person_LivesIn",
     "abstract": False,
-    "customFields": {"human_name_in": "Location where person lives", "human_name_out": "Person",},
+    "customFields": {
+        "human_name_in": "Location where person lives",
+        "human_name_out": "Person",
+    },
     "properties": [
-        {"name": "in", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Location",},
-        {"name": "out", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Person",},
+        {
+            "name": "in",
+            "type": PROPERTY_TYPE_LINK_ID,
+            "linkedClass": "Location",
+        },
+        {
+            "name": "out",
+            "type": PROPERTY_TYPE_LINK_ID,
+            "linkedClass": "Person",
+        },
     ],
     "superClass": ORIENTDB_BASE_EDGE_CLASS_NAME,
 }
@@ -79,8 +95,16 @@ BABY_LIVES_IN_EDGE = {
     "name": "Baby_LivesIn",
     "abstract": False,
     "properties": [
-        {"name": "in", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Location",},
-        {"name": "out", "type": PROPERTY_TYPE_LINK_ID, "linkedClass": "Baby",},
+        {
+            "name": "in",
+            "type": PROPERTY_TYPE_LINK_ID,
+            "linkedClass": "Location",
+        },
+        {
+            "name": "out",
+            "type": PROPERTY_TYPE_LINK_ID,
+            "linkedClass": "Baby",
+        },
     ],
     "superClass": "Person_LivesIn",
 }
@@ -89,7 +113,12 @@ LOCATION = {
     "name": "Location",
     "abstract": False,
     "superClasses": ["Entity"],
-    "properties": [{"name": "description", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "description",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 CLASS_WITH_INVALID_PROPERTY_NAME = {
@@ -104,35 +133,60 @@ ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = {
     "name": "AbstractNonGraphClassWithNonVertexConcreteSubclass",
     "abstract": True,
     "superClasses": [],
-    "properties": [{"name": "arbitrary_property_1", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "arbitrary_property_1",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 ABSTRACT_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = {
     "name": "AbstractNonGraphClassWithOnlyVertexConcreteSubclasses",
     "abstract": True,
     "superClasses": [],
-    "properties": [{"name": "arbitrary_property_2", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "arbitrary_property_2",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS = {
     "name": "ConcreteNonGraphClassWithNonVertexConcreteSubclass",
     "abstract": False,
     "superClasses": [],
-    "properties": [{"name": "arbitrary_property_3", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "arbitrary_property_3",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES = {
     "name": "ConcreteNonGraphClassWithOnlyVertexConcreteSubclasses",
     "abstract": False,
     "superClasses": [],
-    "properties": [{"name": "arbitrary_property_4", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "arbitrary_property_4",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 ABSTRACT_NON_GRAPH_CLASS_WITH_NO_SUBCLASSES = {
     "name": "AbstractNonGraphClassWithNoSubclasses",
     "abstract": True,
     "superClasses": [],
-    "properties": [{"name": "arbitrary_property_5", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "arbitrary_property_5",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 ARBITRARY_CONCRETE_VERTEX_CLASS = {
@@ -145,7 +199,12 @@ ARBITRARY_CONCRETE_VERTEX_CLASS = {
         CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
         CONCRETE_NON_GRAPH_CLASS_WITH_ONLY_VERTEX_CONCRETE_SUBCLASSES["name"],
     ],
-    "properties": [{"name": "arbitrary_property_6", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "arbitrary_property_6",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 ARBITRARY_CONCRETE_NON_GRAPH_CLASS = {
@@ -155,7 +214,12 @@ ARBITRARY_CONCRETE_NON_GRAPH_CLASS = {
         ABSTRACT_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
         CONCRETE_NON_GRAPH_CLASS_WITH_NON_VERTEX_CONCRETE_SUBCLASS["name"],
     ],
-    "properties": [{"name": "arbitrary_property_7", "type": PROPERTY_TYPE_STRING_ID,}],
+    "properties": [
+        {
+            "name": "arbitrary_property_7",
+            "type": PROPERTY_TYPE_STRING_ID,
+        }
+    ],
 }
 
 

@@ -88,10 +88,16 @@ def _is_new_filter_stronger(
     """
     vertex_type = query_analysis.types[property_path.vertex_path].name
     new_int_value = convert_field_value_to_int(
-        query_analysis.schema_info, vertex_type, property_path.field_name, new_filter_value,
+        query_analysis.schema_info,
+        vertex_type,
+        property_path.field_name,
+        new_filter_value,
     )
     old_int_value = convert_field_value_to_int(
-        query_analysis.schema_info, vertex_type, property_path.field_name, old_filter_value,
+        query_analysis.schema_info,
+        vertex_type,
+        property_path.field_name,
+        old_filter_value,
     )
 
     if operation == "<":
@@ -290,7 +296,10 @@ def _make_binary_filter_directive_node(op_name: str, param_name: str) -> Directi
     return DirectiveNode(
         name=NameNode(value="filter"),
         arguments=[
-            ArgumentNode(name=NameNode(value="op_name"), value=StringValueNode(value=op_name),),
+            ArgumentNode(
+                name=NameNode(value="op_name"),
+                value=StringValueNode(value=op_name),
+            ),
             ArgumentNode(
                 name=NameNode(value="value"),
                 value=ListValueNode(values=[StringValueNode(value="$" + param_name)]),

@@ -128,7 +128,10 @@ class IntegrationTests(TestCase):
 
     @classmethod
     def compile_and_run_query(
-        cls, graphql_query: str, parameters: Dict[str, Any], backend_name: str,
+        cls,
+        graphql_query: str,
+        parameters: Dict[str, Any],
+        backend_name: str,
     ) -> Any:
         """Compiles and runs the graphql query with the supplied parameters against all backends.
 
@@ -692,7 +695,9 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
+                {
+                    "starting_animal_name": "Animal 1",
+                },
                 [
                     {"descendant_name": "Animal 1"},
                     {"descendant_name": "Animal 2"},
@@ -711,8 +716,12 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
-                [{"child_names": ["Animal 1", "Animal 2", "Animal 3"]},],
+                {
+                    "starting_animal_name": "Animal 1",
+                },
+                [
+                    {"child_names": ["Animal 1", "Animal 2", "Animal 3"]},
+                ],
                 [],
             ),
             # Query 3: Folded children's net worths of Animal 1
@@ -727,8 +736,12 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
-                [{"child_net_worths": [Decimal("100"), Decimal("200"), Decimal("300")]},],
+                {
+                    "starting_animal_name": "Animal 1",
+                },
+                [
+                    {"child_net_worths": [Decimal("100"), Decimal("200"), Decimal("300")]},
+                ],
                 [],
             ),
             # Query 4: Unfolded children of Animal 4
@@ -742,7 +755,9 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 4",},
+                {
+                    "starting_animal_name": "Animal 4",
+                },
                 [],
                 [],
             ),
@@ -757,8 +772,12 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 4",},
-                [{"child_names": []},],
+                {
+                    "starting_animal_name": "Animal 4",
+                },
+                [
+                    {"child_names": []},
+                ],
                 [],
             ),
             # Query 5: Multiple outputs in a fold scope.
@@ -773,7 +792,9 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
+                {
+                    "starting_animal_name": "Animal 1",
+                },
                 [
                     {
                         "child_names": ["Animal 1", "Animal 2", "Animal 3"],
@@ -799,8 +820,14 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
-                [{"grandchild_names": ["Animal 1", "Animal 2", "Animal 3", "Animal 4"],},],
+                {
+                    "starting_animal_name": "Animal 1",
+                },
+                [
+                    {
+                        "grandchild_names": ["Animal 1", "Animal 2", "Animal 3", "Animal 4"],
+                    },
+                ],
                 [],
             ),
             # Query 7: _x_count.
@@ -815,8 +842,15 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
-                [{"child_names": ["Animal 1", "Animal 2", "Animal 3"], "child_count": 3,},],
+                {
+                    "starting_animal_name": "Animal 1",
+                },
+                [
+                    {
+                        "child_names": ["Animal 1", "Animal 2", "Animal 3"],
+                        "child_count": 3,
+                    },
+                ],
                 [test_backend.MSSQL, test_backend.NEO4J],
             ),
         ]
@@ -845,7 +879,9 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
+                {
+                    "starting_animal_name": "Animal 1",
+                },
                 [
                     {"child_name": "Animal 1"},
                     {"child_name": "Animal 2"},
@@ -865,7 +901,9 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
+                {
+                    "starting_animal_name": "Animal 1",
+                },
                 [
                     {"grandchild_name": "Animal 1"},
                     {"grandchild_name": "Animal 2"},
@@ -887,7 +925,9 @@ class IntegrationTests(TestCase):
                     }
                 }
             }""",
-                {"starting_animal_name": "Animal 1",},
+                {
+                    "starting_animal_name": "Animal 1",
+                },
                 [
                     {"child_name": "Animal 1", "grandchild_name": "Animal 1"},
                     {"child_name": "Animal 1", "grandchild_name": "Animal 2"},

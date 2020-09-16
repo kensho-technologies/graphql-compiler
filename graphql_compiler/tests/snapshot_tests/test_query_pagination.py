@@ -172,7 +172,9 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "animal_name")
             }
         }""",
-            {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
+            {
+                "animal_uuid": "40000000-0000-0000-0000-000000000000",
+            },
         )
         number_of_pages = 10
         analysis = analyze_query_string(schema_info, query)
@@ -220,7 +222,9 @@ class QueryPaginationTests(unittest.TestCase):
                 }
             }
         }""",
-            {"animal_uuid": "40000000-0000-0000-0000-000000000000",},
+            {
+                "animal_uuid": "40000000-0000-0000-0000-000000000000",
+            },
         )
         number_of_pages = 10
         analysis = analyze_query_string(schema_info, query)
@@ -359,7 +363,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
+            {
+                "__paged_param_0": "40000000-0000-0000-0000-000000000000",
+            },
         )
 
         expected_remainder = QueryStringWithParameters(
@@ -369,7 +375,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_0": "40000000-0000-0000-0000-000000000000",},
+            {
+                "__paged_param_0": "40000000-0000-0000-0000-000000000000",
+            },
         )
 
         # Check that the correct first page and remainder are generated
@@ -410,7 +418,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_1": "80000000-0000-0000-0000-000000000000",},
+            {
+                "__paged_param_1": "80000000-0000-0000-0000-000000000000",
+            },
         )
 
         # Check that the correct queries are generated
@@ -470,7 +480,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_0": "00000000-0000-0000-0000-400000000000",},
+            {
+                "__paged_param_0": "00000000-0000-0000-0000-400000000000",
+            },
         )
 
         expected_remainder = QueryStringWithParameters(
@@ -480,7 +492,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_0": "00000000-0000-0000-0000-400000000000",},
+            {
+                "__paged_param_0": "00000000-0000-0000-0000-400000000000",
+            },
         )
 
         # Check that the correct first page and remainder are generated
@@ -521,7 +535,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "animal")
                 }
             }""",
-            {"__paged_param_1": "00000000-0000-0000-0000-800000000000",},
+            {
+                "__paged_param_1": "00000000-0000-0000-0000-800000000000",
+            },
         )
 
         # Check that the correct queries are generated
@@ -585,7 +601,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),},
+            {
+                "__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),
+            },
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -594,7 +612,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),},
+            {
+                "__paged_param_0": datetime.datetime(2010, 1, 1, 0, 0),
+            },
         )
 
         # Check that the correct queries are generated
@@ -630,7 +650,9 @@ class QueryPaginationTests(unittest.TestCase):
                     name @output(out_name: "event_name")
                 }
             }""",
-            {"__paged_param_1": datetime.datetime(2019, 1, 1, 0, 0),},
+            {
+                "__paged_param_1": datetime.datetime(2019, 1, 1, 0, 0),
+            },
         )
 
         # Check that the correct queries are generated
@@ -691,7 +713,10 @@ class QueryPaginationTests(unittest.TestCase):
                                @filter(op_name: "<", value: ["$__paged_param_0"])
                 }
             }""",
-            {"date_lower": local_datetime, "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {
+                "date_lower": local_datetime,
+                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
+            },
         )
         expected_remainder_query = QueryStringWithParameters(
             """{
@@ -700,7 +725,9 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {
+                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
+            },
         )
 
         # Check that the correct queries are generated
@@ -773,7 +800,9 @@ class QueryPaginationTests(unittest.TestCase):
                     event_date @filter(op_name: ">=", value: ["$__paged_param_0"])
                 }
             }""",
-            {"__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),},
+            {
+                "__paged_param_0": datetime.datetime(2059, 1, 1, 0, 0),
+            },
         )
 
         # Check that the correct queries are generated
@@ -795,7 +824,10 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
+            class_counts,
+            field_quantiles={
+                ("Species", "limbs"): [i for i in range(101)],
+            },
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -833,7 +865,15 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 10000000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): [0, 10, 20, 30,],}
+            class_counts,
+            field_quantiles={
+                ("Species", "limbs"): [
+                    0,
+                    10,
+                    20,
+                    30,
+                ],
+            },
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -883,7 +923,10 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
+            class_counts,
+            field_quantiles={
+                ("Species", "limbs"): [i for i in range(101)],
+            },
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -922,7 +965,8 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): list(range(0, 101, 10))},
+            class_counts,
+            field_quantiles={("Species", "limbs"): list(range(0, 101, 10))},
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -961,7 +1005,10 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
+            class_counts,
+            field_quantiles={
+                ("Species", "limbs"): [i for i in range(101)],
+            },
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1000,7 +1047,10 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): [i for i in range(101)],}
+            class_counts,
+            field_quantiles={
+                ("Species", "limbs"): [i for i in range(101)],
+            },
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1413,7 +1463,9 @@ class QueryPaginationTests(unittest.TestCase):
                 name @output(out_name: "species_name")
             }
         }""",
-            {"limbs_more_than": 100,},
+            {
+                "limbs_more_than": 100,
+            },
         )
         vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
 
@@ -1553,7 +1605,10 @@ class QueryPaginationTests(unittest.TestCase):
                 limbs @filter(op_name: "between", value: ["$limbs_lower", "$limbs_upper"])
             }
         }""",
-            {"limbs_lower": 10, "limbs_upper": 14,},
+            {
+                "limbs_lower": 10,
+                "limbs_upper": 14,
+            },
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 10)
@@ -1598,7 +1653,10 @@ class QueryPaginationTests(unittest.TestCase):
                 limbs @filter(op_name: "between", value: ["$limbs_lower", "$limbs_upper"])
             }
         }""",
-            {"limbs_lower": 10, "limbs_upper": 14,},
+            {
+                "limbs_lower": 10,
+                "limbs_upper": 14,
+            },
         )
 
         first_page_and_remainder, _ = paginate_query(schema_info, query, 10)
@@ -1784,7 +1842,8 @@ class QueryPaginationTests(unittest.TestCase):
         }
         class_counts = {"Species": 1000}
         statistics = LocalStatistics(
-            class_counts, field_quantiles={("Species", "limbs"): list(range(100))},
+            class_counts,
+            field_quantiles={("Species", "limbs"): list(range(100))},
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,

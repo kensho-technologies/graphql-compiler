@@ -237,11 +237,16 @@ def _get_in_collection_filter_directive(input_filter_name):
         name=NameNode(value=FilterDirective.name),
         arguments=[
             ArgumentNode(
-                name=NameNode(value="op_name"), value=StringValueNode(value="in_collection"),
+                name=NameNode(value="op_name"),
+                value=StringValueNode(value="in_collection"),
             ),
             ArgumentNode(
                 name=NameNode(value="value"),
-                value=ListValueNode(values=[StringValueNode(value="$" + input_filter_name),],),
+                value=ListValueNode(
+                    values=[
+                        StringValueNode(value="$" + input_filter_name),
+                    ],
+                ),
             ),
         ],
     )

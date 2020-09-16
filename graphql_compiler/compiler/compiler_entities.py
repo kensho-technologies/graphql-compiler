@@ -78,7 +78,13 @@ class CompilerEntity(object):
 
 
 AliasType = Union[Alias, CTE]
-AliasesDictType = Dict[Tuple[Tuple[str, ...], Optional[Tuple[Tuple[str, str], ...]],], AliasType]
+AliasesDictType = Dict[
+    Tuple[
+        Tuple[str, ...],
+        Optional[Tuple[Tuple[str, str], ...]],
+    ],
+    AliasType,
+]
 
 
 @six.add_metaclass(ABCMeta)

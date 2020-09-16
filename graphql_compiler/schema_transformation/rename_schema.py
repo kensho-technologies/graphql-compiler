@@ -290,7 +290,8 @@ def _ensure_no_unsupported_operations(
 
 
 def _ensure_no_unsupported_scalar_operations(
-    renamings: Mapping[str, Optional[str]], custom_scalar_names: AbstractSet[str],
+    renamings: Mapping[str, Optional[str]],
+    custom_scalar_names: AbstractSet[str],
 ) -> None:
     """Check for unsupported scalar operations."""
     unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
@@ -614,7 +615,12 @@ class RenameSchemaTypesVisitor(Visitor):
             return node_with_new_name
 
     def enter(
-        self, node: Node, key: Any, parent: Any, path: List[Any], ancestors: List[Any],
+        self,
+        node: Node,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
     ) -> VisitorReturnType:
         """Upon entering a node, operate depending on node type."""
         node_type = type(node).__name__
