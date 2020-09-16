@@ -376,7 +376,9 @@ def _compile_property_ast(
                 graphql_type = GraphQLList(graphql_type)
 
         output_info = OutputInfo(
-            location=location, type=graphql_type, optional=is_in_optional_scope(context),
+            location=location,
+            type=graphql_type,
+            optional=is_in_optional_scope(context),
         )
         context["metadata"].record_output_info(output_name, output_info)
 

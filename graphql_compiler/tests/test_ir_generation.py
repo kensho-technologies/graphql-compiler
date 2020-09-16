@@ -4524,7 +4524,9 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         "=",
                         expressions.ContextFieldExistence(optional_parent_location),
-                        expressions.Literal(False,),
+                        expressions.Literal(
+                            False,
+                        ),
                     ),
                     expressions.BinaryComposition(
                         ">=",
@@ -4585,7 +4587,9 @@ class IrGenerationTests(unittest.TestCase):
                     expressions.BinaryComposition(
                         "=",
                         expressions.ContextFieldExistence(species_location),
-                        expressions.Literal(False,),
+                        expressions.Literal(
+                            False,
+                        ),
                     ),
                     expressions.BinaryComposition(
                         ">=",

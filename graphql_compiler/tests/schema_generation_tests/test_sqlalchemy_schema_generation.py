@@ -46,7 +46,11 @@ def _get_test_vertex_name_to_table():
         Column("unique_column", Integer(), unique=True),
     )
 
-    table2 = Table("Table2", metadata, Column("destination_column", Integer(), primary_key=True),)
+    table2 = Table(
+        "Table2",
+        metadata,
+        Column("destination_column", Integer(), primary_key=True),
+    )
 
     table3 = Table(
         "Table3",
@@ -319,7 +323,9 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
 
     def test_missing_primary_key(self) -> None:
         table_without_primary_key = Table(
-            "TableWithoutPrimaryKey", MetaData(), Column("arbitrary_column", String()),
+            "TableWithoutPrimaryKey",
+            MetaData(),
+            Column("arbitrary_column", String()),
         )
         faulty_vertex_name_to_table = {table_without_primary_key.name: table_without_primary_key}
         with self.assertRaises(MissingPrimaryKeyError):
@@ -328,10 +334,14 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
     def test_missing_multiple_primary_keys(self) -> None:
         metadata: MetaData = MetaData()
         table_without_primary_key: Table = Table(
-            "TableWithoutPrimaryKey", metadata, Column("arbitrary_column", String()),
+            "TableWithoutPrimaryKey",
+            metadata,
+            Column("arbitrary_column", String()),
         )
         second_table_without_primary_key: Table = Table(
-            "SecondTableWithoutPrimaryKey", metadata, Column("second_arbitrary_column", String()),
+            "SecondTableWithoutPrimaryKey",
+            metadata,
+            Column("second_arbitrary_column", String()),
         )
         faulty_vertex_name_to_table: Dict[str, Table] = {
             table_without_primary_key.name: table_without_primary_key,

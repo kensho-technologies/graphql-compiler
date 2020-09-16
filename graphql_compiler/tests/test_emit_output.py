@@ -112,7 +112,9 @@ class EmitMatchTests(unittest.TestCase):
             MarkLocation(base_location),
             GlobalOperationsStart(),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         match_query = convert_to_match_query(ir_blocks)
@@ -245,7 +247,9 @@ class EmitGremlinTests(unittest.TestCase):
             MarkLocation(base_location),
             GlobalOperationsStart(),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
 
@@ -290,7 +294,9 @@ class EmitGremlinTests(unittest.TestCase):
             Backtrack(base_location),
             GlobalOperationsStart(),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
 

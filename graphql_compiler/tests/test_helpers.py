@@ -306,7 +306,9 @@ VALID_MACROS_TEXT = [
             }
         }
     }""",
-        {"wanted": "Nate",},
+        {
+            "wanted": "Nate",
+        },
     ),
     (
         """\
@@ -334,7 +336,9 @@ VALID_MACROS_TEXT = [
             }
         }
     }""",
-        {"num_parents": 0,},
+        {
+            "num_parents": 0,
+        },
     ),
     # Testing that @optional that doesn't include @macro_edge_target is okay.
     (
@@ -504,7 +508,10 @@ def compare_graphql(test_case: TestCase, expected: str, received: str) -> None:
 
 
 def compare_match(
-    test_case: TestCase, expected: str, received: str, parameterized: bool = True,
+    test_case: TestCase,
+    expected: str,
+    received: str,
+    parameterized: bool = True,
 ) -> None:
     """Compare the expected and received MATCH code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(
@@ -520,7 +527,11 @@ def compare_sql(test_case: TestCase, expected: str, received: str) -> None:
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_gremlin(test_case: TestCase, expected: str, received: str,) -> None:
+def compare_gremlin(
+    test_case: TestCase,
+    expected: str,
+    received: str,
+) -> None:
     """Compare the expected and received Gremlin code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(pretty_print_gremlin(expected), pretty_print_gremlin(received))
     compare_ignoring_whitespace(test_case, expected, received, msg)
@@ -560,7 +571,9 @@ def compare_ignoring_whitespace(
 
 
 def compare_schema_texts_order_independently(
-    test_case: TestCase, expected_schema_text: str, received_schema_text: str,
+    test_case: TestCase,
+    expected_schema_text: str,
+    received_schema_text: str,
 ) -> None:
     """Compare expected and received schema texts, ignoring order of definitions."""
     expected_schema_blocks = expected_schema_text.split("\n\n")
@@ -874,7 +887,9 @@ def get_empty_test_macro_registry() -> MacroRegistry:
     schema = get_schema()
     type_equivalence_hints = cast(
         TypeEquivalenceHintsType,
-        {schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),},
+        {
+            schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),
+        },
     )
     subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
     macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)

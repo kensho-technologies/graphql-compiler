@@ -200,7 +200,10 @@ def _get_basic_schema_ast(query_type: str) -> DocumentNode:
                 directives=[],
             ),
             ObjectTypeDefinitionNode(
-                name=NameNode(value=query_type), fields=[], interfaces=[], directives=[],
+                name=NameNode(value=query_type),
+                fields=[],
+                interfaces=[],
+                directives=[],
             ),
         ]
     )
@@ -534,7 +537,13 @@ def _add_cross_schema_edges(
             isinstance(definition, ObjectTypeDefinitionNode) and definition.name.value == query_type
         ):  # query type definition
             continue
-        if isinstance(definition, (InterfaceTypeDefinitionNode, ObjectTypeDefinitionNode,)):
+        if isinstance(
+            definition,
+            (
+                InterfaceTypeDefinitionNode,
+                ObjectTypeDefinitionNode,
+            ),
+        ):
             type_name_to_definition[definition.name.value] = definition
         elif isinstance(definition, (UnionTypeDefinitionNode,)):
             union_type_names.add(definition.name.value)
@@ -605,7 +614,13 @@ def _add_cross_schema_edges(
             isinstance(definition, ObjectTypeDefinitionNode) and definition.name.value == query_type
         ):  # query type definition
             new_definitions.append(definition)
-        elif isinstance(definition, (InterfaceTypeDefinitionNode, ObjectTypeDefinitionNode,)):
+        elif isinstance(
+            definition,
+            (
+                InterfaceTypeDefinitionNode,
+                ObjectTypeDefinitionNode,
+            ),
+        ):
             new_definitions.append(type_name_to_definition[definition.name.value])
         else:
             new_definitions.append(definition)
@@ -865,8 +880,14 @@ def _add_edge_field(
     new_edge_field_node = FieldDefinitionNode(
         name=NameNode(value=new_edge_field_name),
         arguments=[],
-        type=ListTypeNode(type=NamedTypeNode(name=NameNode(value=sink_type_name),),),
-        directives=[_build_stitch_directive(source_field_name, sink_field_name),],
+        type=ListTypeNode(
+            type=NamedTypeNode(
+                name=NameNode(value=sink_type_name),
+            ),
+        ),
+        directives=[
+            _build_stitch_directive(source_field_name, sink_field_name),
+        ],
     )
 
     new_type_fields = list(type_fields)
@@ -890,7 +911,9 @@ def _add_edge_field(
     else:
         raise AssertionError(
             'Input "source_type_node" must be of type {} or {}. Received type {}'.format(
-                ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode, type(source_type_node),
+                ObjectTypeDefinitionNode,
+                InterfaceTypeDefinitionNode,
+                type(source_type_node),
             )
         )
     return new_source_type_node
@@ -902,10 +925,12 @@ def _build_stitch_directive(source_field_name: str, sink_field_name: str) -> Dir
         name=NameNode(value="stitch"),
         arguments=[
             ArgumentNode(
-                name=NameNode(value="source_field"), value=StringValueNode(value=source_field_name),
+                name=NameNode(value="source_field"),
+                value=StringValueNode(value=source_field_name),
             ),
             ArgumentNode(
-                name=NameNode(value="sink_field"), value=StringValueNode(value=sink_field_name),
+                name=NameNode(value="sink_field"),
+                value=StringValueNode(value=sink_field_name),
             ),
         ],
     )
