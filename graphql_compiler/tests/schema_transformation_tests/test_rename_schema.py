@@ -682,7 +682,11 @@ class TestRenameSchema(unittest.TestCase):
     def test_list_rename(self):
         renamed_schema = rename_schema(
             parse(ISS.list_schema),
-            {"Droid": "NewDroid", "Character": "NewCharacter", "Height": "NewHeight",},
+            {
+                "Droid": "NewDroid",
+                "Character": "NewCharacter",
+                "Height": "NewHeight",
+            },
         )
         renamed_schema_string = dedent(
             """\
@@ -775,7 +779,10 @@ class TestRenameSchema(unittest.TestCase):
         # "stitch" -> "NewStitch" mapping is a no-op which is not allowed for iterable renamings.
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(
-                parse(ISS.directive_schema), {"stitch": "NewStitch",},
+                parse(ISS.directive_schema),
+                {
+                    "stitch": "NewStitch",
+                },
             )
         self.assertTrue(check_no_op_renaming_error_message({"stitch"}, set(), e.exception))
 

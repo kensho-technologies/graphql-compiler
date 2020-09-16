@@ -88,9 +88,9 @@ Renaming constraints:
   no way to keep arbitrary code from doing valid but inadvisable things. These rules exist
   specifically for iterables because that's the most common usage for rename_schema.
 """
-from collections import namedtuple
 # Note that importing from collections.abc instead of collections is due to a pylint issue that goes
 # away for Python 3.8: https://github.com/PyCQA/pylint/issues/2597
+from collections import namedtuple
 from collections.abc import Iterable
 from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
