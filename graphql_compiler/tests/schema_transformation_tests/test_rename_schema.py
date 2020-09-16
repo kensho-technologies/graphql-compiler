@@ -247,15 +247,15 @@ class TestRenameSchema(unittest.TestCase):
         rename_schema(original_ast, {"Human": None})
         self.assertEqual(original_ast, parse(ISS.multiple_objects_schema))
 
-    def test_rename_illegal_noop(self):
+    def test_rename_illegal_noop_unused_renaming(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.basic_schema), {"Dinosaur": None})
         self.assertTrue(
             check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception)
         )
 
-    def test_rename_legal_noop(self):
-        # Unlike with test_rename_illegal_noop, here the renaming is not
+    def test_rename_legal_noop_unused_renaming(self):
+        # Unlike with test_rename_illegal_noop_unused_renaming, here the renaming is not
         # iterable. As a result, this renaming is inadvisable but it is technically legal to
         # write a renaming like this since the intended "Dinosaur" -> "NewDinosaur" mapping is
         # unused and will silently do nothing when applied to the given schema.
@@ -271,6 +271,13 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(parse(ISS.basic_schema), RenameMapping())
         self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_rename_illegal_noop_renamed_to_self(self):
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
+        self.assertTrue(
+            check_no_op_renaming_error_message(set(), {"Human"}, e.exception)
+        )
 
     def test_basic_suppress(self):
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
@@ -319,15 +326,15 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_suppress_illegal_noop(self):
+    def test_suppress_illegal_noop_unused_suppression(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
         self.assertTrue(
             check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception)
         )
 
-    def test_suppress_legal_noop(self):
-        # Unlike with test_suppress_illegal_noop, here the renaming is not
+    def test_suppress_legal_noop_unused_suppression(self):
+        # Unlike with test_suppress_illegal_noop_unused_suppression, here the renaming is not
         # iterable. As a result, this renaming is inadvisable but it is technically legal to
         # write a renaming like this since the intended "Dinosaur" -> None mapping is unused and
         # will silently do nothing when applied to the given schema.
