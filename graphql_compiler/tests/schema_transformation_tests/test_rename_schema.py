@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ast import literal_eval
 from textwrap import dedent
-from typing import Dict, Set
+from typing import Any, Dict, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -21,6 +21,37 @@ from ...schema_transformation.utils import (
 )
 from .input_schema_strings import InputSchemaStrings as ISS
 
+
+def validate_error_message_component(
+    error_message_component: str, expected_prefix: str, expected_data_structure: Any
+) -> bool:
+    """Confirms that error_message_component is as expected.
+
+    A common pattern when checking string representations of exceptions here is to have the message
+    consist of a string literal prefix, which describes the error reasoning, followed by the string
+    representation of a data structure that describes which parts of the schema caused the error.
+    This function validates the error message based on the expected prefix and expected data
+    structure. This is useful when the data structure's string method is not deterministic
+    (e.g. set).
+
+    Args:
+        error_message_component: error message part to validate
+        expected_prefix: explanation of why the error was raised
+        expected_data_structure: description of which parts of the schema caused the error
+
+    Returns:
+        True iff the error message correctly consists of the prefix followed by the expected data
+        structure.
+    """
+    if not error_message_component.startswith(expected_prefix):
+        return False
+    try:
+        if literal_eval(error_message_component[len(expected_prefix) :]) != expected_data_structure:
+            return False
+    except SyntaxError:
+        # In case it's syntactically invalid
+        return False
+    return True
 
 
 def check_rename_conflict_error_message(
@@ -76,37 +107,16 @@ def check_rename_conflict_error_message(
             "Illegal for SchemaRenameNameConflictError to have all arguments as empty dicts"
         )
 
-    if name_conflicts_part:
-        if not name_conflicts_part.startswith(name_conflicts_prefix):
-            return False
-        # Then check the string representation of name_conflicts
-        try:
-            if (
-                literal_eval(name_conflicts_part[len(name_conflicts_prefix) :])
-                != expected_name_conflicts
-            ):
-                return False
-        except SyntaxError:
-            # In case it's syntactically invalid
-            return False
-    if renamed_to_builtin_scalar_conflicts_part:
-        if not renamed_to_builtin_scalar_conflicts_part.startswith(
-            renamed_to_builtin_scalar_conflicts_prefix
-        ):
-            return False
-        # Then check the string representation of renamed_to_builtin_scalar_conflicts
-        try:
-            if (
-                literal_eval(
-                    renamed_to_builtin_scalar_conflicts_part[
-                        len(renamed_to_builtin_scalar_conflicts_prefix) :
-                    ]
-                )
-                != expected_renamed_to_builtin_scalar_conflicts
-            ):
-                return False
-        except SyntaxError:
-            return False
+    if name_conflicts_part and not validate_error_message_component(
+        name_conflicts_part, name_conflicts_prefix, expected_name_conflicts
+    ):
+        return False
+    if renamed_to_builtin_scalar_conflicts_part and not validate_error_message_component(
+        renamed_to_builtin_scalar_conflicts_part,
+        renamed_to_builtin_scalar_conflicts_prefix,
+        expected_renamed_to_builtin_scalar_conflicts,
+    ):
+        return False
     return True
 
 
@@ -139,9 +149,7 @@ def check_no_op_renaming_error_message(
         "Renamings contains entries for types that were not renamed because there doesn't "
         "exist a renamable type with that name in the schema: "
     )
-    renamed_to_self_prefix = (
-        "Renamings maps the following type names to themselves: "
-    )
+    renamed_to_self_prefix = "Renamings maps the following type names to themselves: "
     actual_error_message = str(error)
     unused_renamings_part = None
     renamed_to_self_part = None
@@ -154,44 +162,19 @@ def check_no_op_renaming_error_message(
     elif expected_renamed_to_self:
         explanation_part, renamed_to_self_part = actual_error_message.split("\n")
     else:
-        raise AssertionError(
-            "Illegal for NoOpRenamingError to have all arguments as empty dicts"
-        )
+        raise AssertionError("Illegal for NoOpRenamingError to have all arguments as empty dicts")
 
     if explanation_prefix != explanation_part:
         return False
 
-    if unused_renamings_part:
-        if not unused_renamings_part.startswith(unused_renamings_prefix):
-            return False
-        # Then check the string representation of unused_renamings
-        try:
-            if (
-                literal_eval(unused_renamings_part[len(unused_renamings_prefix) :])
-                != expected_unused_renamings
-            ):
-                return False
-        except SyntaxError:
-            # In case it's syntactically invalid
-            return False
-    if renamed_to_self_part:
-        if not renamed_to_self_part.startswith(
-            renamed_to_self_prefix
-        ):
-            return False
-        # Then check the string representation of renamed_to_self
-        try:
-            if (
-                literal_eval(
-                    renamed_to_self_part[
-                        len(renamed_to_self_prefix) :
-                    ]
-                )
-                != expected_renamed_to_self
-            ):
-                return False
-        except SyntaxError:
-            return False
+    if unused_renamings_part and not validate_error_message_component(
+        unused_renamings_part, unused_renamings_prefix, expected_unused_renamings
+    ):
+        return False
+    if renamed_to_self_part and not validate_error_message_component(
+        renamed_to_self_part, renamed_to_self_prefix, expected_renamed_to_self
+    ):
+        return False
     return True
 
 
@@ -250,9 +233,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_rename_illegal_noop_unused_renaming(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.basic_schema), {"Dinosaur": None})
-        self.assertTrue(
-            check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception)
-        )
+        self.assertTrue(check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception))
 
     def test_rename_legal_noop_unused_renaming(self):
         # Unlike with test_rename_illegal_noop_unused_renaming, here the renaming is not
@@ -275,9 +256,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_rename_illegal_noop_renamed_to_self(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
-        self.assertTrue(
-            check_no_op_renaming_error_message(set(), {"Human"}, e.exception)
-        )
+        self.assertTrue(check_no_op_renaming_error_message(set(), {"Human"}, e.exception))
 
     def test_basic_suppress(self):
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
@@ -329,9 +308,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_suppress_illegal_noop_unused_suppression(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
-        self.assertTrue(
-            check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception)
-        )
+        self.assertTrue(check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception))
 
     def test_suppress_legal_noop_unused_suppression(self):
         # Unlike with test_suppress_illegal_noop_unused_suppression, here the renaming is not
@@ -752,9 +729,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(
                 parse(ISS.directive_schema), {"stitch": "NewStitch",},
             )
-        self.assertTrue(
-            check_no_op_renaming_error_message({"stitch"}, set(), e.exception)
-        )
+        self.assertTrue(check_no_op_renaming_error_message({"stitch"}, set(), e.exception))
 
     def test_directive_renaming_legal_noop(self):
         # Unlike with test_directive_renaming_illegal_noop, here the renaming is not iterable.
@@ -794,9 +769,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(schema_string), {"id": "Id"})
-        self.assertTrue(
-            check_no_op_renaming_error_message({"id"}, set(), e.exception)
-        )
+        self.assertTrue(check_no_op_renaming_error_message({"id"}, set(), e.exception))
 
     def test_query_type_field_argument_legal_noop(self):
         # Unlike with test_query_type_field_argument_illegal_noop, here the renaming is not
