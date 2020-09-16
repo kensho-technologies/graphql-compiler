@@ -69,7 +69,9 @@ class ExplainInfoTests(unittest.TestCase):
     def test_immediate_output(self) -> None:
         out_name = "animal_name"
         out_info = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         self.check(test_input_data.immediate_output, [], [], [(out_name, out_info)])
@@ -82,7 +84,9 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "animal_name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "parent_name"
@@ -132,7 +136,11 @@ class ExplainInfoTests(unittest.TestCase):
         ]
         out_name1 = "parent_fed_at"
         out_loc1 = Location(("Animal", "out_Animal_ParentOf", "out_Animal_FedAt"), "event_date", 1)
-        out_info1 = OutputInfo(location=out_loc1, type=GraphQLDateTime, optional=True,)
+        out_info1 = OutputInfo(
+            location=out_loc1,
+            type=GraphQLDateTime,
+            optional=True,
+        )
 
         out_name2 = "other_child_fed_at"
         out_loc2 = Location(
@@ -140,11 +148,19 @@ class ExplainInfoTests(unittest.TestCase):
             "event_date",
             1,
         )
-        out_info2 = OutputInfo(location=out_loc2, type=GraphQLDateTime, optional=True,)
+        out_info2 = OutputInfo(
+            location=out_loc2,
+            type=GraphQLDateTime,
+            optional=True,
+        )
 
         out_name3 = "grandchild_fed_at"
         out_loc3 = Location(("Animal", "in_Animal_ParentOf", "out_Animal_FedAt"), "event_date", 1)
-        out_info3 = OutputInfo(location=out_loc3, type=GraphQLDateTime, optional=False,)
+        out_info3 = OutputInfo(
+            location=out_loc3,
+            type=GraphQLDateTime,
+            optional=False,
+        )
 
         self.check(
             test_input_data.complex_optional_traversal_variables,
@@ -162,20 +178,30 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "related_animals"
         out_loc2 = FoldScopeLocation(
             Location(("Animal",), None, 1), (("out", "Entity_Related"),), "name"
         )
-        out_info2 = OutputInfo(location=out_loc2, type=GraphQLList(GraphQLString), optional=False,)
+        out_info2 = OutputInfo(
+            location=out_loc2,
+            type=GraphQLList(GraphQLString),
+            optional=False,
+        )
 
         out_name3 = "related_birthdays"
         out_loc3 = FoldScopeLocation(
             Location(("Animal",), None, 1), (("out", "Entity_Related"),), "birthday"
         )
-        out_info3 = OutputInfo(location=out_loc3, type=GraphQLList(GraphQLDate), optional=False,)
+        out_info3 = OutputInfo(
+            location=out_loc3,
+            type=GraphQLList(GraphQLDate),
+            optional=False,
+        )
 
         self.check(
             test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
@@ -193,7 +219,9 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name = "animal_name"
         out_info = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         self.check(test_input_data.multiple_filters, [(loc, filters)], [], [(out_name, out_info)])
@@ -208,7 +236,9 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "animal_name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "child_name"
@@ -252,7 +282,9 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "animal_name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "important_event"

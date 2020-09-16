@@ -448,7 +448,10 @@ class QueryPlanningAnalysis:
     def fields_eligible_for_pagination(self) -> Set[PropertyPath]:
         """Return all the fields we can consider for pagination."""
         return get_fields_eligible_for_pagination(
-            self.schema_info, self.types, self.single_field_filters, self.fold_scope_roots,
+            self.schema_info,
+            self.types,
+            self.single_field_filters,
+            self.fold_scope_roots,
         )
 
     @cached_property

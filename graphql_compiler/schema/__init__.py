@@ -63,7 +63,10 @@ FilterDirective = GraphQLDirective(
         ]
     ),
     is_repeatable=True,
-    locations=[DirectiveLocation.FIELD, DirectiveLocation.INLINE_FRAGMENT,],
+    locations=[
+        DirectiveLocation.FIELD,
+        DirectiveLocation.INLINE_FRAGMENT,
+    ],
 )
 
 
@@ -85,7 +88,9 @@ TagDirective = GraphQLDirective(
             ),
         ]
     ),
-    locations=[DirectiveLocation.FIELD,],
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
 )
 
 
@@ -108,7 +113,9 @@ OutputDirective = GraphQLDirective(
             ),
         ]
     ),
-    locations=[DirectiveLocation.FIELD,],
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
 )
 
 
@@ -135,7 +142,12 @@ OutputDirective = GraphQLDirective(
 # - can exist at most once, and only on a vertex field;
 # - if it exists, has to be on the last vertex visited by the query;
 # - may not exist at or within a vertex marked @optional or @fold.
-OutputSourceDirective = GraphQLDirective(name="output_source", locations=[DirectiveLocation.FIELD,])
+OutputSourceDirective = GraphQLDirective(
+    name="output_source",
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
+)
 
 
 # Constraints:
@@ -144,7 +156,12 @@ OutputSourceDirective = GraphQLDirective(name="output_source", locations=[Direct
 # - when filtering is applied on or within an @optional vertex field, evaluation is sequential:
 #   the @optional is resolved first, and if a satisfactory edge exists, it is taken;
 #   then, filtering is applied and eliminates results that don't match from the result set.
-OptionalDirective = GraphQLDirective(name="optional", locations=[DirectiveLocation.FIELD,])
+OptionalDirective = GraphQLDirective(
+    name="optional",
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
+)
 
 
 # Consider the following query:
@@ -187,7 +204,12 @@ OptionalDirective = GraphQLDirective(name="optional", locations=[DirectiveLocati
 # - may not exist at the same vertex field as @recurse, @optional, @output_source, or @filter;
 # - traversals and filtering within a vertex field marked @fold are prohibited;
 # - @tag or @fold may not be used within a scope marked @fold.
-FoldDirective = GraphQLDirective(name="fold", locations=[DirectiveLocation.FIELD,])
+FoldDirective = GraphQLDirective(
+    name="fold",
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
+)
 
 
 # Constraints:
@@ -216,7 +238,9 @@ RecurseDirective = GraphQLDirective(
             ),
         ]
     ),
-    locations=[DirectiveLocation.FIELD,],
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
 )
 
 # TODO(selene): comments for the macro directives
@@ -236,18 +260,24 @@ MacroEdgeDefinitionDirective = GraphQLDirective(
             (
                 "name",
                 GraphQLArgument(
-                    type_=GraphQLNonNull(GraphQLString), description="Name of the macro edge.",
+                    type_=GraphQLNonNull(GraphQLString),
+                    description="Name of the macro edge.",
                 ),
             ),
         ]
     ),
-    locations=[DirectiveLocation.FIELD,],
+    locations=[
+        DirectiveLocation.FIELD,
+    ],
 )
 
 
 MacroEdgeTargetDirective = GraphQLDirective(
     name="macro_edge_target",
-    locations=[DirectiveLocation.FIELD, DirectiveLocation.INLINE_FRAGMENT,],
+    locations=[
+        DirectiveLocation.FIELD,
+        DirectiveLocation.INLINE_FRAGMENT,
+    ],
 )
 
 # TODO(selene): comment for the stitch directive
@@ -255,8 +285,20 @@ StitchDirective = GraphQLDirective(
     name="stitch",
     args=OrderedDict(
         [
-            ("source_field", GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",)),
-            ("sink_field", GraphQLArgument(type_=GraphQLNonNull(GraphQLString), description="",),),
+            (
+                "source_field",
+                GraphQLArgument(
+                    type_=GraphQLNonNull(GraphQLString),
+                    description="",
+                ),
+            ),
+            (
+                "sink_field",
+                GraphQLArgument(
+                    type_=GraphQLNonNull(GraphQLString),
+                    description="",
+                ),
+            ),
         ]
     ),
     locations=[DirectiveLocation.FIELD_DEFINITION],
@@ -374,10 +416,20 @@ GraphQLDecimal = GraphQLScalarType(
 )
 
 CUSTOM_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
-    {GraphQLDecimal, GraphQLDate, GraphQLDateTime,}
+    {
+        GraphQLDecimal,
+        GraphQLDate,
+        GraphQLDateTime,
+    }
 )
 SUPPORTED_SCALAR_TYPES: FrozenSet[GraphQLScalarType] = frozenset(
-    {GraphQLInt, GraphQLString, GraphQLBoolean, GraphQLFloat, GraphQLID,}
+    {
+        GraphQLInt,
+        GraphQLString,
+        GraphQLBoolean,
+        GraphQLFloat,
+        GraphQLID,
+    }
 ).union(CUSTOM_SCALAR_TYPES)
 
 DIRECTIVES = (
@@ -397,7 +449,12 @@ TYPENAME_META_FIELD_NAME = "__typename"  # This meta field is built-in.
 COUNT_META_FIELD_NAME = "_x_count"
 
 
-ALL_SUPPORTED_META_FIELDS = frozenset((TYPENAME_META_FIELD_NAME, COUNT_META_FIELD_NAME,))
+ALL_SUPPORTED_META_FIELDS = frozenset(
+    (
+        TYPENAME_META_FIELD_NAME,
+        COUNT_META_FIELD_NAME,
+    )
+)
 
 
 EXTENDED_META_FIELD_DEFINITIONS = OrderedDict(((COUNT_META_FIELD_NAME, GraphQLField(GraphQLInt)),))

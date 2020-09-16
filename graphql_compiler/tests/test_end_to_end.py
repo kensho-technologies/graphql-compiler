@@ -197,7 +197,14 @@ class QueryFormattingTests(unittest.TestCase):
             (GraphQLID, ("13d72846-1777-6c3a-5743-5d9ced3032ed", "asf"), (4, 4.4, True)),
             (GraphQLFloat, (4.1, 4.0), ("4.3", 5)),
             (GraphQLInt, (3, 4), (4.0, 4.1, True, False, "4")),
-            (GraphQLBoolean, (True, False,), ("True", 0, 1, 0.4)),
+            (
+                GraphQLBoolean,
+                (
+                    True,
+                    False,
+                ),
+                ("True", 0, 1, 0.4),
+            ),
             (GraphQLDecimal, (Decimal(4), 0.4, 4), (True, "sdfsdf")),
             (
                 GraphQLDate,
@@ -206,7 +213,10 @@ class QueryFormattingTests(unittest.TestCase):
                     datetime.date(2008, 12, 6),
                     datetime.date(2009, 12, 6),
                 ),
-                ("2007-12-06", datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),),
+                (
+                    "2007-12-06",
+                    datetime.datetime(2007, 12, 6, 16, 29, 43, 79043),
+                ),
             ),
             (
                 GraphQLDateTime,

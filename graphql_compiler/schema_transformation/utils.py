@@ -220,7 +220,9 @@ RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
 # Meanwhile, RenameTypes applies only for rename_schema and field renaming in the schema is not
 # implemented yet.
 RenameNodes = Union[
-    RenameTypes, FieldNode, FieldDefinitionNode,
+    RenameTypes,
+    FieldNode,
+    FieldDefinitionNode,
 ]
 RenameNodesT = TypeVar("RenameNodesT", bound=RenameNodes)
 
@@ -580,7 +582,11 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
     # This is very restrictive for now. Other cases (e.g. tags not crossing boundaries) are
     # also ok, but temporarily not allowed
     supported_directives = frozenset(
-        (FilterDirective.name, OutputDirective.name, OptionalDirective.name,)
+        (
+            FilterDirective.name,
+            OutputDirective.name,
+            OptionalDirective.name,
+        )
     )
 
     def enter_directive(

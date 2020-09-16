@@ -125,7 +125,12 @@ class SchemaTests(unittest.TestCase):
     def test_meta_fields_from_constant(self) -> None:
         fields = schema.EXTENDED_META_FIELD_DEFINITIONS.copy()
         fields.update(
-            OrderedDict((("foo", GraphQLField(GraphQLString)), ("bar", GraphQLField(GraphQLInt)),))
+            OrderedDict(
+                (
+                    ("foo", GraphQLField(GraphQLString)),
+                    ("bar", GraphQLField(GraphQLInt)),
+                )
+            )
         )
         graphql_type = GraphQLObjectType("MyType", fields)
         custom_schema = GraphQLSchema(graphql_type, directives=schema.DIRECTIVES)
