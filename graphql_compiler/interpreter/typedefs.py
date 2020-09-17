@@ -76,7 +76,9 @@ class DataContext(Generic[DataToken]):
 
     def get_context_for_location(self, location: Location) -> "DataContext":
         return DataContext(
-            self.token_at_location[location], dict(self.token_at_location), self.expression_stack,
+            self.token_at_location[location],
+            dict(self.token_at_location),
+            self.expression_stack,
         )
 
     def add_piggyback_context(self, piggyback: "DataContext") -> None:

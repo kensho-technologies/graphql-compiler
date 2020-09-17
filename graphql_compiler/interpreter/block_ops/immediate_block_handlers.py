@@ -98,7 +98,9 @@ def handle_coerce_type_block(
     location_info = query_metadata_table.get_location_info(post_block_location)
 
     interpreter_hints = construct_hints_for_location(
-        query_metadata_table, query_arguments, post_block_location,
+        query_metadata_table,
+        query_arguments,
+        post_block_location,
     )
 
     coercion_type = get_only_element_from_collection(block.target_class)
@@ -124,7 +126,9 @@ def handle_mark_location_block(
         token_at_location = dict(data_context.token_at_location)
         token_at_location[current_location] = data_context.current_token
         yield DataContext(
-            data_context.current_token, token_at_location, data_context.expression_stack,
+            data_context.current_token,
+            token_at_location,
+            data_context.expression_stack,
         )
 
 

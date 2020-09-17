@@ -7,7 +7,9 @@ from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 
 
-def _handle_already_inactive_tokens(data_contexts: Iterable[DataContext],) -> Iterable[DataContext]:
+def _handle_already_inactive_tokens(
+    data_contexts: Iterable[DataContext],
+) -> Iterable[DataContext]:
     for data_context in data_contexts:
         current_token = data_context.current_token
         if current_token is None:
@@ -26,7 +28,9 @@ def _iterative_recurse_handler(
     current_depth: int,
 ) -> Iterable[DataContext]:
     neighbor_data = adapter.project_neighbors(
-        data_contexts, current_type_name, (block.direction, block.edge_name),
+        data_contexts,
+        current_type_name,
+        (block.direction, block.edge_name),
     )
     for data_context, neighbor_tokens in neighbor_data:
         # Deal with the current context. It needs to be deactivated (it might already be so),
@@ -101,7 +105,12 @@ def handle_recurse_block(
 
     current_depth = 0
     data_contexts = _iterative_recurse_handler(
-        adapter, query_arguments, start_type_name, block, data_contexts, current_depth,
+        adapter,
+        query_arguments,
+        start_type_name,
+        block,
+        data_contexts,
+        current_depth,
     )
 
     for current_depth in range(1, block.depth):

@@ -55,7 +55,9 @@ def evaluate_context_field(
     return (
         (moved_data_context.pop_value_from_stack(), value)
         for moved_data_context, value in adapter.project_property(
-            moved_contexts, context_type_name, field_name,
+            moved_contexts,
+            context_type_name,
+            field_name,
         )
     )
 

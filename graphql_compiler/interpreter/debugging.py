@@ -40,7 +40,10 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 
-def _enumerate_starting_at(sequence: Sequence[T], first_index: int,) -> Iterable[Tuple[int, T]]:
+def _enumerate_starting_at(
+    sequence: Sequence[T],
+    first_index: int,
+) -> Iterable[Tuple[int, T]]:
     # N.B.: This is unlike enumerate(sequence, start=first_index) in that enumerate() always
     #       iterates the entire sequence and only changes the counter's value based on the start.
     #       In this function, we skip elements with indices in [0, first_index) in the sequence,
@@ -141,14 +144,20 @@ class InterpreterAdapterTap(InterpreterAdapter[DataToken], Generic[DataToken]):
         self.inner_adapter = inner_adapter
         self.recorder = TraceRecorder()
 
-    def get_tokens_of_type(self, type_name: str, **hints: Any,) -> Iterable[DataToken]:
+    def get_tokens_of_type(
+        self,
+        type_name: str,
+        **hints: Any,
+    ) -> Iterable[DataToken]:
         operation_name = "get_tokens_of_type"
         call_uid = self.recorder.record_call(
             operation_name, self.recorder.root_uid, (type_name,), hints
         )
         return _unzip_and_yield_second(
             self.recorder.record_iterable(
-                operation_name, call_uid, self.inner_adapter.get_tokens_of_type(type_name, **hints),
+                operation_name,
+                call_uid,
+                self.inner_adapter.get_tokens_of_type(type_name, **hints),
             )
         )
 
@@ -274,7 +283,10 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
         self._used_operations[operation_index] = True
 
     def _find_next_top_level_function_call(
-        self, function_name: str, positional_args: Tuple[Any, ...], kwargs: Dict[str, Any],
+        self,
+        function_name: str,
+        positional_args: Tuple[Any, ...],
+        kwargs: Dict[str, Any],
     ) -> Tuple[int, AdapterOperation]:
         for index, operation in self._next_possible_function_call:
             if operation.kind != "call":
@@ -353,7 +365,11 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
         #                They currently don't have an equality operation defined.
         pass
 
-    def get_tokens_of_type(self, type_name: str, **hints: Any,) -> Iterable[DataToken]:
+    def get_tokens_of_type(
+        self,
+        type_name: str,
+        **hints: Any,
+    ) -> Iterable[DataToken]:
         operation_name = "get_tokens_of_type"
         call_index, call_operation = self._find_next_top_level_function_call(
             operation_name, (type_name,), hints
@@ -396,7 +412,8 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
             next_possible_input_yield_index = input_yield_index + 1
 
             self._assert_contexts_are_equivalent(
-                cast(DataContext[DataToken], input_operation.data), data_context,
+                cast(DataContext[DataToken], input_operation.data),
+                data_context,
             )
 
             # The output of a given operation is always after its input.
@@ -447,7 +464,8 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
             next_possible_input_yield_index = input_yield_index + 1
 
             self._assert_contexts_are_equivalent(
-                cast(DataContext[DataToken], input_operation.data), data_context,
+                cast(DataContext[DataToken], input_operation.data),
+                data_context,
             )
 
             # The output of a given operation is always after its input.
@@ -505,7 +523,8 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
                 return
 
             self._assert_contexts_are_equivalent(
-                cast(DataContext[DataToken], input_operation.data), data_context,
+                cast(DataContext[DataToken], input_operation.data),
+                data_context,
             )
 
             # The output of a given operation is always after its input.

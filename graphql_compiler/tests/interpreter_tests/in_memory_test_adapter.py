@@ -5,37 +5,33 @@ from ...interpreter import DataContext, EdgeInfo, InterpreterAdapter
 
 
 vertices = {
-    'Animal': [
-        {'name': 'Scooby Doo', 'uuid': '1001'},
-        {'name': 'Hedwig', 'uuid': '1002'},
-        {'name': 'Beethoven', 'uuid': '1003'},
-
+    "Animal": [
+        {"name": "Scooby Doo", "uuid": "1001"},
+        {"name": "Hedwig", "uuid": "1002"},
+        {"name": "Beethoven", "uuid": "1003"},
         # 101 Dalmatians and sequels
-        {'name': 'Pongo', 'uuid': '1004'},
-        {'name': 'Perdy', 'uuid': '1005'},
-        {'name': 'Dipstick', 'uuid': '1006'},
-        {'name': 'Dottie', 'uuid': '1007'},
-        {'name': 'Domino', 'uuid': '1008'},
-        {'name': 'Little Dipper', 'uuid': '1009'},
-        {'name': 'Oddball', 'uuid': '1010'},
+        {"name": "Pongo", "uuid": "1004"},
+        {"name": "Perdy", "uuid": "1005"},
+        {"name": "Dipstick", "uuid": "1006"},
+        {"name": "Dottie", "uuid": "1007"},
+        {"name": "Domino", "uuid": "1008"},
+        {"name": "Little Dipper", "uuid": "1009"},
+        {"name": "Oddball", "uuid": "1010"},
     ],
 }
 edges = {
-    'Animal_ParentOf': [
-        ('1004', '1006'),
-        ('1005', '1006'),
-        ('1006', '1008'),
-        ('1006', '1009'),
-        ('1006', '1010'),
-        ('1007', '1008'),
-        ('1007', '1009'),
-        ('1007', '1010'),
+    "Animal_ParentOf": [
+        ("1004", "1006"),
+        ("1005", "1006"),
+        ("1006", "1008"),
+        ("1006", "1009"),
+        ("1006", "1010"),
+        ("1007", "1008"),
+        ("1007", "1009"),
+        ("1007", "1010"),
     ],
 }
-vertices_by_uuid = {
-    vertex['uuid']: vertex
-    for vertex in chain.from_iterable(vertices.values())
-}
+vertices_by_uuid = {vertex["uuid"]: vertex for vertex in chain.from_iterable(vertices.values())}
 
 
 class InMemoryTestAdapter(InterpreterAdapter[dict]):
@@ -84,14 +80,14 @@ class InMemoryTestAdapter(InterpreterAdapter[dict]):
             neighbor_tokens = []
             current_token = data_context.current_token
             if current_token is not None:
-                uuid = current_token['uuid']
-                if direction == 'out':
+                uuid = current_token["uuid"]
+                if direction == "out":
                     neighbor_tokens = [
                         vertices_by_uuid[destination_uuid]
                         for source_uuid, destination_uuid in edge_data
                         if source_uuid == uuid
                     ]
-                elif direction == 'in':
+                elif direction == "in":
                     neighbor_tokens = [
                         vertices_by_uuid[source_uuid]
                         for source_uuid, destination_uuid in edge_data

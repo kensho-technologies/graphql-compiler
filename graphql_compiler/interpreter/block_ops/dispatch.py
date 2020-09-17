@@ -54,5 +54,10 @@ def generate_block_outputs(
     handler = handler_functions[type(block)]
 
     return handler(
-        adapter, query_metadata_table, query_arguments, post_block_location, block, data_contexts,
+        adapter,
+        query_metadata_table,
+        query_arguments,
+        post_block_location,
+        block,
+        data_contexts,
     )

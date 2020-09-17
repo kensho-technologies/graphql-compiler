@@ -49,9 +49,9 @@ def apply_operator(operator: str, left_value: Any, right_value: Any) -> Any:
         return False
     elif not left_none and not right_none:
         # Neither side of the operator is None, apply operator normally.
-        operator_handler: Optional[Callable[[Any, Any], Any]] = (
-            _operator_definitions_for_non_null_values.get(operator, None)
-        )
+        operator_handler: Optional[
+            Callable[[Any, Any], Any]
+        ] = _operator_definitions_for_non_null_values.get(operator, None)
         if operator_handler is not None:
             return operator_handler(left_value, right_value)
         else:

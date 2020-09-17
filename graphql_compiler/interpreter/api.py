@@ -92,7 +92,9 @@ def _split_out_global_operations(
 
 
 def _get_initial_data_contexts(
-    adapter: InterpreterAdapter[DataToken], start_class: str, hints: InterpreterHints,
+    adapter: InterpreterAdapter[DataToken],
+    start_class: str,
+    hints: InterpreterHints,
 ) -> Iterable[DataContext[DataToken]]:
     # N.B.: Do not replace the below for-yield with a generator, and do not inline this function
     #       into the caller! It's important to have an explicit generator to start the computation.
@@ -158,7 +160,12 @@ def interpret_ir(
     # Process all global operations except the last block, which constructs the final result.
     for block in global_operations[:-1]:
         current_data_contexts = generate_block_outputs(
-            adapter, query_metadata_table, query_arguments, None, block, current_data_contexts,
+            adapter,
+            query_metadata_table,
+            query_arguments,
+            None,
+            block,
+            current_data_contexts,
         )
 
     current_data_contexts = print_tap("ending contexts", current_data_contexts)
