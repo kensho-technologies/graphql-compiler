@@ -1,7 +1,9 @@
-from typing import Any, NamedTuple, Optional, Tuple
+from dataclasses import dataclass
+from typing import Any, Optional, Tuple
 
 
-class ImmutableStack(NamedTuple):
+@dataclass(frozen=True)
+class ImmutableStack:
     value: Any
     depth: int
     tail: Optional["ImmutableStack"]  # type: ignore # https://github.com/python/mypy/issues/731

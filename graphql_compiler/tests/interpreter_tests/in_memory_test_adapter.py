@@ -43,7 +43,7 @@ class InMemoryTestAdapter(InterpreterAdapter[dict]):
     def get_tokens_of_type(
         self,
         type_name: str,
-        **hints,
+        **hints: Any,
     ) -> Iterable[dict]:
         """Return an iterable of vertices of the given type."""
         return vertices.get(type_name, [])  # vertex types without specified data have no instances
@@ -53,7 +53,7 @@ class InMemoryTestAdapter(InterpreterAdapter[dict]):
         data_contexts: Iterable[DataContext],
         current_type_name: str,
         field_name: str,
-        **hints,
+        **hints: Any,
     ) -> Iterable[Tuple[DataContext, Any]]:
         """Look up and return the property value for each given DataContext."""
         for data_context in data_contexts:
@@ -70,7 +70,7 @@ class InMemoryTestAdapter(InterpreterAdapter[dict]):
         data_contexts: Iterable[DataContext],
         current_type_name: str,
         edge_info: EdgeInfo,
-        **hints,
+        **hints: Any,
     ) -> Iterable[Tuple[DataContext, Iterable[dict]]]:
         """Look up and return the neighbor tokens for the given edge of each DataContext."""
         direction, edge_name = edge_info
@@ -103,7 +103,7 @@ class InMemoryTestAdapter(InterpreterAdapter[dict]):
         data_contexts: Iterable[DataContext],
         current_type_name: str,
         coerce_to_type_name: str,
-        **hints,
+        **hints: Any,
     ) -> Iterable[Tuple[DataContext, bool]]:
         """Return whether the specified type coercion may be performed on each DataContext."""
         return zip(data_contexts, repeat(False))  # there currently is no inheritance

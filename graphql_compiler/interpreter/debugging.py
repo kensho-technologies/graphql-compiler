@@ -1,7 +1,8 @@
 from copy import deepcopy
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import (
     Any,
+    Callable,
     ClassVar,
     Dict,
     Generic,
@@ -14,7 +15,6 @@ from typing import (
     TypeVar,
     cast,
 )
-from uuid import uuid4
 
 from typing_extensions import Literal
 
@@ -61,14 +61,16 @@ def _unzip_and_yield_second(iterable: Iterable[Tuple[T, U]]) -> Iterable[U]:
 class AdapterOperation:
     kind: Literal["call", "yield", "return"]
     name: str
-    uid: str
-    parent_uid: str
+    uid: int
+    parent_uid: int
     data: Any
 
 
 @dataclass(frozen=True)
 class RecordedTrace(Generic[DataToken]):
-    root_uid: str
+    DEFAULT_ROOT_UID: ClassVar[int] = -1
+
+    root_uid: int = field(init=False, default=DEFAULT_ROOT_UID)
     operations: Tuple[AdapterOperation, ...]
 
 
@@ -77,20 +79,20 @@ class TraceRecorder(Generic[DataToken]):
     # We expose an immutable (copied) version of the operation log through get_trace().
     # Other attributes are considered public.
     _operation_log: List[AdapterOperation]
-    root_uid: str
+    root_uid: int
 
     def __init__(self) -> None:
         self._operation_log = []
-        self.root_uid = str(uuid4())
+        self.root_uid = RecordedTrace[DataToken].DEFAULT_ROOT_UID
 
     def record_call(
         self,
         operation_name: str,
-        parent_uid: str,
+        parent_uid: int,
         call_args: Tuple[Any, ...],
         call_kwargs: Dict[str, Any],
-    ) -> str:
-        uid = str(uuid4())
+    ) -> int:
+        uid = len(self._operation_log)
         call_args = deepcopy(call_args)
         call_kwargs = deepcopy(call_kwargs)
         self._operation_log.append(
@@ -99,10 +101,10 @@ class TraceRecorder(Generic[DataToken]):
         return uid
 
     def record_iterable(
-        self, operation_name: str, parent_uid: str, iterable: Iterable[T]
-    ) -> Iterable[Tuple[str, T]]:
+        self, operation_name: str, parent_uid: int, iterable: Iterable[T]
+    ) -> Iterable[Tuple[int, T]]:
         for item in iterable:
-            item_uid = str(uuid4())
+            item_uid = len(self._operation_log)
             self._operation_log.append(
                 AdapterOperation("yield", operation_name, item_uid, parent_uid, deepcopy(item))
             )
@@ -111,11 +113,11 @@ class TraceRecorder(Generic[DataToken]):
     def record_compound_iterable(
         self,
         operation_name: str,
-        parent_uid: str,
+        parent_uid: int,
         compound_iterable: Iterable[Tuple[U, Iterable[T]]],
-    ) -> Iterable[Tuple[str, Tuple[U, Iterable[T]]]]:
+    ) -> Iterable[Tuple[int, Tuple[U, Iterable[T]]]]:
         for item_index, item in enumerate(compound_iterable):
-            item_uid = str(uuid4())
+            item_uid = len(self._operation_log)
             iterable_name = f"__output_iterable_{item_index}"
             non_iterable_data, iterable_data = item
             non_iterable_data = deepcopy(non_iterable_data)
@@ -131,7 +133,7 @@ class TraceRecorder(Generic[DataToken]):
             yield item_uid, (non_iterable_data, inner_iterable)
 
     def get_trace(self) -> RecordedTrace[DataToken]:
-        return RecordedTrace(self.root_uid, tuple(self._operation_log))
+        return RecordedTrace(tuple(self._operation_log))
 
 
 class InterpreterAdapterTap(InterpreterAdapter[DataToken], Generic[DataToken]):
@@ -327,7 +329,7 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
         )
 
     def _find_yield_with_parent_uid(
-        self, operation_name: str, parent_uid: str, trace_index: int
+        self, operation_name: str, parent_uid: int, trace_index: int
     ) -> Tuple[int, Optional[AdapterOperation]]:
         for index, operation in _enumerate_starting_at(self._recording.operations, trace_index):
             if operation.kind != "yield":
@@ -342,7 +344,7 @@ class TraceReplayAdapter(InterpreterAdapter[DataToken], Generic[DataToken]):
         return len(self._recording.operations), None
 
     def _make_neighbors_iterable(
-        self, iterable_name: str, parent_uid: str, trace_index: int
+        self, iterable_name: str, parent_uid: int, trace_index: int
     ) -> Iterable[DataToken]:
         next_index = trace_index
         while next_index < len(self._recording.operations):
