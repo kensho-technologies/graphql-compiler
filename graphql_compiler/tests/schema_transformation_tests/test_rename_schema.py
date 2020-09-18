@@ -203,7 +203,9 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"})
         self.assertEqual(
             "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "no-op renamings exist for the renamings argument: ['Dinosaur']",
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Dinosaur']",
             str(e.exception),
         )
 
@@ -228,7 +230,9 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
         self.assertEqual(
             "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "no-op renamings exist for the renamings argument: ['Human']",
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Human']",
             str(e.exception),
         )
 
@@ -284,7 +288,9 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
         self.assertEqual(
             "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "no-op renamings exist for the renamings argument: ['Dinosaur']",
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Dinosaur']",
             str(e.exception),
         )
 
@@ -311,7 +317,9 @@ class TestRenameSchema(unittest.TestCase):
             )
         self.assertEqual(
             "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "no-op renamings exist for the renamings argument: ['Bird', 'Dinosaur', 'Human']",
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Bird', 'Dinosaur', 'Human']",
             str(e.exception),
         )
 
@@ -733,7 +741,9 @@ class TestRenameSchema(unittest.TestCase):
             )
         self.assertEqual(
             "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "no-op renamings exist for the renamings argument: ['stitch']",
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['stitch']",
             str(e.exception),
         )
 
@@ -775,7 +785,9 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(schema_string), {"id": "Id"})
         self.assertEqual(
             "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "no-op renamings exist for the renamings argument: ['id']",
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['id']",
             str(e.exception),
         )
 

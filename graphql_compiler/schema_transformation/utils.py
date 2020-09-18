@@ -155,7 +155,9 @@ class NoOpRenamingError(SchemaTransformError):
         """Explain renaming conflict and the fix."""
         return (
             f"Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            f"no-op renamings exist for the renamings argument: {sorted(self.no_op_renames)}"
+            f"entries exist in the renamings argument, which either rename a type to itself or "
+            f"would rename a type that doesn't exist in the schema, both of which are invalid: "
+            f"{sorted(self.no_op_renames)}"
         )
 
 
