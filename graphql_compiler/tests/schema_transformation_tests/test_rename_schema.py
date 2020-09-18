@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ast import literal_eval
 from textwrap import dedent
-from typing import Any, Dict, Set
+from typing import Any, Dict, Set, Optional
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -120,69 +120,6 @@ def check_rename_conflict_error_message(
     return True
 
 
-def check_no_op_renaming_error_message(
-    expected_unused_renamings: Set[str],
-    expected_renamed_to_self: Set[str],
-    error: NoOpRenamingError,
-) -> bool:
-    """Check NoOpRenamingError's error message contains the expected data structures.
-
-    Since NoOpRenamingError's fields are sets, its __str__ method is not fully deterministic. This
-    function checks that the __str__ method contains valid string representations of
-    NoOpRenamingError's unused_renamings and renamed_to_self fields.
-
-    Args:
-        expected_unused_renamings: expected renamings that don't have a corresponding renamable type
-                                   in the schema
-        expected_renamed_to_self: expected renamings that map a type name to itself in renamings
-        error: exception object raised during schema renaming due to name conflict
-
-    Returns:
-        True iff the error message correctly represents the data structures and matches the
-        expected NoOpRenamingError error message format.
-    """
-    explanation_prefix = (
-        "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-        "no-op renamings exist for the renamings argument:"
-    )
-    unused_renamings_prefix = (
-        "Renamings contains entries for types that were not renamed because there doesn't "
-        "exist a renamable type with that name in the schema. To fix this, check whether "
-        "those renamings are supposed to match with any type in the schema. The unused "
-        "entries are as follows: "
-    )
-    renamed_to_self_prefix = (
-        "Renamings maps some type names to themselves. To fix this, remove these entries from the "
-        "renamings argument: "
-    )
-    actual_error_message = str(error)
-    unused_renamings_part = None
-    renamed_to_self_part = None
-    if expected_unused_renamings and expected_renamed_to_self:
-        explanation_part, unused_renamings_part, renamed_to_self_part = actual_error_message.split(
-            "\n"
-        )
-    elif expected_unused_renamings:
-        explanation_part, unused_renamings_part = actual_error_message.split("\n")
-    elif expected_renamed_to_self:
-        explanation_part, renamed_to_self_part = actual_error_message.split("\n")
-    else:
-        raise AssertionError("Illegal for NoOpRenamingError to have all arguments as empty sets")
-
-    if explanation_prefix != explanation_part:
-        return False
-
-    if unused_renamings_part and not validate_error_message_component(
-        unused_renamings_part, unused_renamings_prefix, expected_unused_renamings
-    ):
-        return False
-    if renamed_to_self_part and not validate_error_message_component(
-        renamed_to_self_part, renamed_to_self_prefix, expected_renamed_to_self
-    ):
-        return False
-    return True
-
-
 class TestRenameSchema(unittest.TestCase):
     def test_rename_visitor_type_coverage(self):
         """Check that all types are covered without overlap."""
@@ -264,18 +201,20 @@ class TestRenameSchema(unittest.TestCase):
     def test_rename_illegal_noop_unused_renaming(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"})
-        self.assertTrue(check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception))
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "no-op renamings exist for the renamings argument: ['Dinosaur']",
+            str(e.exception),
+        )
 
     def test_rename_legal_noop_unused_renaming(self):
         # Unlike with test_rename_illegal_noop_unused_renaming, here the renaming is not
         # iterable. As a result, this renaming is inadvisable but it is technically legal to
         # write a renaming like this since the intended "Dinosaur" -> "NewDinosaur" mapping is
         # unused and will silently do nothing when applied to the given schema.
-        class RenameMapping(object):
-            def __init__(self):
-                pass
-
-            def get(self, key, default=None):
+        class RenameMapping:
+            def get(self, key: str, default=None) -> Optional[str]:
+                """Define mapping for renaming object."""
                 if key == "Dinosaur":
                     return "NewDinosaur"
                 return key
@@ -287,7 +226,11 @@ class TestRenameSchema(unittest.TestCase):
     def test_rename_illegal_noop_renamed_to_self(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
-        self.assertTrue(check_no_op_renaming_error_message(set(), {"Human"}, e.exception))
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "no-op renamings exist for the renamings argument: ['Human']",
+            str(e.exception),
+        )
 
     def test_basic_suppress(self):
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
@@ -339,18 +282,20 @@ class TestRenameSchema(unittest.TestCase):
     def test_suppress_illegal_noop_unused_suppression(self):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
-        self.assertTrue(check_no_op_renaming_error_message({"Dinosaur"}, set(), e.exception))
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "no-op renamings exist for the renamings argument: ['Dinosaur']",
+            str(e.exception),
+        )
 
     def test_suppress_legal_noop_unused_suppression(self):
         # Unlike with test_suppress_illegal_noop_unused_suppression, here the renaming is not
         # iterable. As a result, this renaming is inadvisable but it is technically legal to
         # write a renaming like this since the intended "Dinosaur" -> None mapping is unused and
         # will silently do nothing when applied to the given schema.
-        class SuppressMapping(object):
-            def __init__(self):
-                pass
-
-            def get(self, key, default=None):
+        class SuppressMapping:
+            def get(self, key: str, default=None) -> Optional[str]:
+                """Define mapping for renaming object."""
                 if key == "Dinosaur":
                     return None
                 return key
@@ -364,8 +309,10 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(
                 parse(ISS.basic_schema), {"Dinosaur": None, "Human": "Human", "Bird": "Birdie"}
             )
-        self.assertTrue(
-            check_no_op_renaming_error_message({"Dinosaur", "Bird"}, {"Human"}, e.exception)
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "no-op renamings exist for the renamings argument: ['Bird', 'Dinosaur', 'Human']",
+            str(e.exception),
         )
 
     def test_swap_rename(self):
@@ -784,18 +731,20 @@ class TestRenameSchema(unittest.TestCase):
                     "stitch": "NewStitch",
                 },
             )
-        self.assertTrue(check_no_op_renaming_error_message({"stitch"}, set(), e.exception))
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "no-op renamings exist for the renamings argument: ['stitch']",
+            str(e.exception),
+        )
 
     def test_directive_renaming_legal_noop(self):
         # Unlike with test_directive_renaming_illegal_noop, here the renaming is not iterable.
         # As a result, this renaming is inadvisable but it is technically legal to write a
         # renaming like this since the intended "stitch" -> "NewStitch" mapping is unused and will
         # silently do nothing when applied to ISS.directive_schema.
-        class DirectiveRenamingMapping(object):
-            def __init__(self):
-                pass
-
-            def get(self, key, default=None):
+        class DirectiveRenamingMapping:
+            def get(self, key: str, default=None) -> Optional[str]:
+                """Define mapping for renaming object."""
                 if key == "stitch":
                     return "NewStitch"
                 return key
@@ -824,7 +773,11 @@ class TestRenameSchema(unittest.TestCase):
         )
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(schema_string), {"id": "Id"})
-        self.assertTrue(check_no_op_renaming_error_message({"id"}, set(), e.exception))
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "no-op renamings exist for the renamings argument: ['id']",
+            str(e.exception),
+        )
 
     def test_query_type_field_argument_legal_noop(self):
         # Unlike with test_query_type_field_argument_illegal_noop, here the renaming is not
@@ -847,11 +800,9 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        class QueryTypeFieldArgumentMapping(object):
-            def __init__(self):
-                pass
-
-            def get(self, key, default=None):
+        class QueryTypeFieldArgumentMapping:
+            def get(self, key: str, default=None) -> Optional[str]:
+                """Define mapping for renaming object."""
                 if key == "id":
                     return "Id"
                 return key
@@ -1090,11 +1041,12 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.list_schema), {"Height": None})
 
     def test_rename_using_dict_like_prefixer_class(self):
-        class PrefixNewDict(object):
+        class PrefixNewDict:
             def __init__(self, schema: GraphQLSchema):
                 self.schema = schema
 
-            def get(self, key, default=None):
+            def get(self, key: str, default=None) -> Optional[str]:
+                """Define mapping for renaming object."""
                 if key in get_custom_scalar_names(self.schema) or key in builtin_scalar_type_names:
                     # Making an exception for scalar types because renaming and suppressing them
                     # hasn't been implemented yet

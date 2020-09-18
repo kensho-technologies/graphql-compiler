@@ -144,42 +144,18 @@ class NoOpRenamingError(SchemaTransformError):
     * renamings maps a string type_name to itself, i.e. renamings[type_name] == type_name
     """
 
-    unused_renamings: Set[str]
-    renamed_to_self: Set[str]
+    no_op_renames: Set[str]
 
-    def __init__(self, unused_renamings: Set[str], renamed_to_self: Set[str]) -> None:
+    def __init__(self, no_op_renames: Set[str]) -> None:
         """Record all renaming conflicts."""
-        if not unused_renamings and not renamed_to_self:
-            raise ValueError(
-                "Cannot raise NoOpRenamingError because unused_renamings and renamed_to_self were "
-                "both empty dictionaries."
-            )
         super().__init__()
-        self.unused_renamings = unused_renamings
-        self.renamed_to_self = renamed_to_self
+        self.no_op_renames = no_op_renames
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
-        explanation_message = (
-            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "no-op renamings exist for the renamings argument:"
-        )
-        unused_renamings_message = ""
-        if self.unused_renamings:
-            unused_renamings_message = (
-                f"Renamings contains entries for types that were not renamed because there doesn't "
-                f"exist a renamable type with that name in the schema. To fix this, check whether "
-                f"those renamings are supposed to match with any type in the schema. The unused "
-                f"entries are as follows: {self.unused_renamings}"
-            )
-        renamed_to_self_message = ""
-        if self.renamed_to_self:
-            renamed_to_self_message = (
-                f"Renamings maps some type names to themselves. To fix this, remove these entries "
-                f"from the renamings argument: {self.renamed_to_self}"
-            )
-        return "\n".join(
-            filter(None, [explanation_message, unused_renamings_message, renamed_to_self_message])
+        return (
+            f"Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            f"no-op renamings exist for the renamings argument: {sorted(self.no_op_renames)}"
         )
 
 
