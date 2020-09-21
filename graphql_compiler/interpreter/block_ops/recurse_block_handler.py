@@ -1,5 +1,5 @@
 from itertools import chain
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ...compiler.blocks import Recurse
 from ...compiler.helpers import BaseLocation
@@ -9,7 +9,7 @@ from ..typedefs import DataContext, DataToken, InterpreterAdapter
 
 def _handle_already_inactive_tokens(
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     for data_context in data_contexts:
         current_token = data_context.current_token
         if current_token is None:
@@ -26,7 +26,7 @@ def _iterative_recurse_handler(
     block: Recurse,
     data_contexts: Iterable[DataContext],
     current_depth: int,
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     neighbor_data = adapter.project_neighbors(
         data_contexts,
         current_type_name,
@@ -57,7 +57,7 @@ def _iterative_recurse_handler(
             yield data_context_to_piggyback
 
 
-def _unwrap_recursed_data_context(data_context: DataContext) -> Iterable[DataContext]:
+def _unwrap_recursed_data_context(data_context: DataContext) -> Iterator[DataContext]:
     # If any deactivated contexts were piggybacking on this one, unpack and yield them.
     for piggyback_context in data_context.consume_piggyback_contexts():
         yield from _unwrap_recursed_data_context(piggyback_context)
@@ -76,7 +76,7 @@ def handle_recurse_block(
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Recurse,
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     if post_block_location is None:
         raise AssertionError()
 

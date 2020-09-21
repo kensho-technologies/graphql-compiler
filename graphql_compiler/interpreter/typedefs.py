@@ -2,11 +2,9 @@ from abc import ABCMeta, abstractmethod
 from pprint import pformat
 from typing import Any, Collection, Dict, Generic, Iterable, List, Optional, Tuple, TypeVar
 
-# TODO(predrag): In 3.8+ these should be imported from typing. Make a shim module.
-from typing_extensions import Literal, TypedDict
-
 from ..compiler.helpers import Location
 from ..compiler.metadata import FilterInfo
+from ..typedefs import Literal, TypedDict
 from .immutable_stack import ImmutableStack, make_empty_stack
 
 
@@ -28,9 +26,7 @@ class DataContext(Generic[DataToken]):
     current_token: Optional[DataToken]
     token_at_location: Dict[Location, Optional[DataToken]]
     expression_stack: ImmutableStack
-
-    # https://github.com/python/mypy/issues/731
-    piggyback_contexts: Optional[List["DataContext"]]  # type: ignore
+    piggyback_contexts: Optional[List["DataContext"]]
 
     def __init__(
         self,

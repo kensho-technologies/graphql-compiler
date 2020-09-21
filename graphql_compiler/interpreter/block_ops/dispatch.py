@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterator, Optional
 
 from ...compiler.blocks import (
     Backtrack,
@@ -6,7 +6,6 @@ from ...compiler.blocks import (
     CoerceType,
     EndOptional,
     Filter,
-    Fold,
     GlobalOperationsStart,
     MarkLocation,
     Recurse,
@@ -15,7 +14,7 @@ from ...compiler.blocks import (
 from ...compiler.helpers import BaseLocation
 from ...compiler.metadata import QueryMetadataTable
 from ..debugging import print_tap
-from ..typedefs import GLOBAL_LOCATION_TYPE_NAME, DataContext, DataToken, InterpreterAdapter
+from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .immediate_block_handlers import (
     handle_backtrack_block,
     handle_coerce_type_block,
@@ -32,8 +31,8 @@ def generate_block_outputs(
     query_arguments: Dict[str, Any],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: BasicBlock,
-    data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+    data_contexts: Iterator[DataContext],
+) -> Iterator[DataContext]:
     no_op_types = (
         EndOptional,
         GlobalOperationsStart,

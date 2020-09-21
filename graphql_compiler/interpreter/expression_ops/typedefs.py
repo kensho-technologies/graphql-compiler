@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Iterable, Tuple
+from typing import Any, Callable, Dict, Iterable, Iterator, Tuple
 
 from ...compiler.expressions import Expression
 from ...compiler.metadata import QueryMetadataTable
@@ -10,8 +10,9 @@ ExpressionEvaluatorFunc = Callable[
         InterpreterAdapter[DataToken],
         QueryMetadataTable,
         Dict[str, Any],
+        str,
         Expression,
         Iterable[DataContext],
     ],
-    Iterable[Tuple[DataContext, Any]],
+    Iterator[Tuple[DataContext, Any]],
 ]

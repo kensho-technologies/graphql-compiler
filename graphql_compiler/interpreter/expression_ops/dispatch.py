@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, Iterator, Tuple
 
 from ...compiler.expressions import (
     BinaryComposition,
@@ -33,7 +33,7 @@ def evaluate_expression(
     current_type_name: str,
     expression: Expression,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     type_to_handler = {
         BinaryComposition: evaluate_binary_composition,
         TernaryConditional: evaluate_ternary_conditional,

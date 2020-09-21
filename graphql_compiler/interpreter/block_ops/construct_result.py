@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable
+from typing import Any, Dict, Iterable, Iterator
 
 from ...compiler.blocks import ConstructResult
 from ...compiler.expressions import Expression
@@ -15,7 +15,7 @@ def _produce_output(
     output_name: str,
     output_expression: Expression,
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     data_contexts = print_tap("outputting " + output_name, data_contexts)
 
     contexts_and_values = evaluate_expression(
@@ -38,7 +38,7 @@ def generate_construct_result_outputs(
     query_arguments: Dict[str, Any],
     block: ConstructResult,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Dict[str, Any]]:
+) -> Iterator[Dict[str, Any]]:
     output_fields = block.fields
 
     data_contexts = (data_context.push_value_onto_stack(dict()) for data_context in data_contexts)

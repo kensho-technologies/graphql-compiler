@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Optional
+from typing import Any, Dict, Iterable, Iterator, Optional
 
 from ...compiler.blocks import Backtrack, CoerceType, Filter, MarkLocation, Traverse
 from ...compiler.helpers import BaseLocation, get_only_element_from_collection
@@ -15,7 +15,7 @@ def handle_filter_block(
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Filter,
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     if post_block_location is None:
         raise AssertionError()
 
@@ -50,7 +50,7 @@ def handle_traverse_block(
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Traverse,
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     if post_block_location is None:
         raise AssertionError()
 
@@ -94,7 +94,7 @@ def handle_coerce_type_block(
     post_block_location: Optional[BaseLocation],  # None means global location
     block: CoerceType,
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     location_info = query_metadata_table.get_location_info(post_block_location)
 
     interpreter_hints = construct_hints_for_location(
@@ -120,7 +120,7 @@ def handle_mark_location_block(
     post_block_location: Optional[BaseLocation],  # None means global location
     block: MarkLocation,
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     current_location = block.location
     for data_context in data_contexts:
         token_at_location = dict(data_context.token_at_location)
@@ -139,7 +139,7 @@ def handle_backtrack_block(
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Backtrack,
     data_contexts: Iterable[DataContext],
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     backtrack_location = block.location
     for data_context in data_contexts:
         yield DataContext(

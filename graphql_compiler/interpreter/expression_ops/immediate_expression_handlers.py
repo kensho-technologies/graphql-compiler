@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, Tuple, Union
 
 from ...compiler.expressions import (
     ContextField,
@@ -22,11 +22,11 @@ def evaluate_local_field(
     current_type_name: str,
     expression: LocalField,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     # TODO(predrag): Add hints here.
 
     field_name = expression.field_name
-    return adapter.project_property(data_contexts, current_type_name, field_name)
+    return iter(adapter.project_property(data_contexts, current_type_name, field_name))
 
 
 def evaluate_context_field(
@@ -37,9 +37,15 @@ def evaluate_context_field(
     current_type_name: str,
     expression: Union[ContextField, OutputContextField],
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     location = expression.location.at_vertex()
     field_name = expression.location.field
+
+    if field_name is None:
+        raise AssertionError(
+            f"Unexpectedly attempted to evaluate a context field without a field name, "
+            f"this is a bug: {expression}"
+        )
 
     moved_contexts = (
         data_context.get_context_for_location(location).push_value_onto_stack(data_context)
@@ -70,7 +76,7 @@ def evaluate_context_field_existence(
     current_type_name: str,
     expression: ContextFieldExistence,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     location = expression.location.at_vertex()
 
     for data_context in data_contexts:
@@ -86,7 +92,7 @@ def evaluate_variable(
     current_type_name: str,
     expression: Variable,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     variable_value = query_arguments[expression.variable_name[1:]]
     return ((data_context, variable_value) for data_context in data_contexts)
 
@@ -99,5 +105,5 @@ def evaluate_literal(
     current_type_name: str,
     expression: Literal,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     return ((data_context, expression.value) for data_context in data_contexts)

@@ -6,7 +6,7 @@ from typing import Any, Optional, Tuple
 class ImmutableStack:
     value: Any
     depth: int
-    tail: Optional["ImmutableStack"]  # type: ignore # https://github.com/python/mypy/issues/731
+    tail: Optional["ImmutableStack"]
 
     def peek(self) -> Any:
         return self.value

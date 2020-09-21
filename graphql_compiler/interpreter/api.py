@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, List, Tuple
+from typing import Any, Dict, Iterator, List, Tuple
 
 from ..compiler.blocks import (
     Backtrack,
@@ -95,7 +95,7 @@ def _get_initial_data_contexts(
     adapter: InterpreterAdapter[DataToken],
     start_class: str,
     hints: InterpreterHints,
-) -> Iterable[DataContext[DataToken]]:
+) -> Iterator[DataContext[DataToken]]:
     # N.B.: Do not replace the below for-yield with a generator, and do not inline this function
     #       into the caller! It's important to have an explicit generator to start the computation.
     #       Without this setup, get_tokens_of_type() is *immediately* called by interpret_ir(),
@@ -109,7 +109,7 @@ def interpret_ir(
     adapter: InterpreterAdapter[DataToken],
     ir_and_metadata: IrAndMetadata,
     query_arguments: Dict[str, Any],
-) -> Iterable[Dict[str, Any]]:
+) -> Iterator[Dict[str, Any]]:
     ir_blocks = ir_and_metadata.ir_blocks
     query_metadata_table = ir_and_metadata.query_metadata_table
 
@@ -138,7 +138,7 @@ def interpret_ir(
     root_location_hints = construct_hints_for_location(
         query_metadata_table, query_arguments, root_location
     )
-    current_data_contexts: Iterable[DataContext[DataToken]] = _get_initial_data_contexts(
+    current_data_contexts: Iterator[DataContext[DataToken]] = _get_initial_data_contexts(
         adapter, start_class, root_location_hints
     )
 

@@ -2,7 +2,6 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import (
     Any,
-    Callable,
     ClassVar,
     Dict,
     Generic,
@@ -16,14 +15,13 @@ from typing import (
     cast,
 )
 
-from typing_extensions import Literal
-
+from ..typedefs import Literal
 from .typedefs import DataContext, DataToken, EdgeInfo, InterpreterAdapter
 
 
-def print_tap(info: str, data_contexts: Iterable[DataContext]) -> Iterable[DataContext]:
+def print_tap(info: str, data_contexts: Iterable[DataContext]) -> Iterator[DataContext]:
     # TODO(predrag): Debug-only code. Remove before merging.
-    return data_contexts
+    return iter(data_contexts)
 
 
 #     print('\n')

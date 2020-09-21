@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Tuple
+from typing import Any, Dict, Iterable, Iterator, Tuple
 
 from ...compiler.expressions import BinaryComposition, TernaryConditional
 from ...compiler.metadata import QueryMetadataTable
@@ -9,7 +9,7 @@ from .typedefs import ExpressionEvaluatorFunc
 
 def _push_values_onto_data_context_stack(
     contexts_and_values: Iterable[Tuple[DataContext, Any]]
-) -> Iterable[DataContext]:
+) -> Iterator[DataContext]:
     return (
         data_context.push_value_onto_stack(value) for data_context, value in contexts_and_values
     )
@@ -23,7 +23,7 @@ def evaluate_binary_composition(
     current_type_name: str,
     expression: BinaryComposition,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     data_contexts = _push_values_onto_data_context_stack(
         expression_evaluator_func(
             adapter,
@@ -64,7 +64,7 @@ def evaluate_ternary_conditional(
     current_type_name: str,
     expression: TernaryConditional,
     data_contexts: Iterable[DataContext],
-) -> Iterable[Tuple[DataContext, Any]]:
+) -> Iterator[Tuple[DataContext, Any]]:
     # TODO(predrag): Try to optimize this to avoid evaluating sides of expressions we might not use.
     data_contexts = _push_values_onto_data_context_stack(
         expression_evaluator_func(
