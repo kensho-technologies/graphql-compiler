@@ -1469,10 +1469,13 @@ class IrGenerationErrorTests(unittest.TestCase):
             "BirthEvent": "Union__BirthEvent__Event__FeedingEvent",
         }
 
-        invalid_type_equivalence_hints: TypeEquivalenceHintsType = cast(TypeEquivalenceHintsType, {
-            self.schema.get_type(key): self.schema.get_type(value)
-            for key, value in invalid_type_equivalence_hint_data.items()
-        })
+        invalid_type_equivalence_hints: TypeEquivalenceHintsType = cast(
+            TypeEquivalenceHintsType,
+            {
+                self.schema.get_type(key): self.schema.get_type(value)
+                for key, value in invalid_type_equivalence_hint_data.items()
+            },
+        )
         with self.assertRaises(TypeError):
             graphql_to_ir(
                 self.schema,

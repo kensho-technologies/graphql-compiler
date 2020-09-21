@@ -1102,10 +1102,9 @@ def ast_to_ir(
     """Convert the given GraphQL AST object into compiler IR, using the given schema object.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
-        ast: AST object to be compiled to IR
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
+        schema: schema object created using the GraphQL library for which the query must be valid
+        ast: query in AST form to transform into compiler IR
+        type_equivalence_hints: optional, used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
                                 workaround for Gremlin's total lack of inheritance-awareness.
                                 The key-value pairs in the dict specify that the "key" type
@@ -1150,10 +1149,9 @@ def graphql_to_ir(
     """Convert the given GraphQL string into compiler IR, using the given schema object.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
-        graphql_string: string containing the GraphQL to compile to compiler IR
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
+        schema: schema object created using the GraphQL library for which the query must be valid
+        graphql_string: GraphQL query to transform into compiler IR
+        type_equivalence_hints: optional, used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
                                 workaround for Gremlin's total lack of inheritance-awareness.
                                 The key-value pairs in the dict specify that the "key" type
@@ -1169,7 +1167,7 @@ def graphql_to_ir(
                                 *****
 
     Returns:
-        IrAndMetadata for the given schema and graphql_string
+        IrAndMetadata for the given schema and GraphQL query string
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
