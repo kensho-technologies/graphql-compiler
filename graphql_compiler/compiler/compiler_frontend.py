@@ -59,13 +59,15 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from typing import Dict, List, NamedTuple
+from typing import Dict, List, NamedTuple, Optional
 
 from graphql import (
+    DocumentNode,
     GraphQLInt,
     GraphQLInterfaceType,
     GraphQLList,
     GraphQLObjectType,
+    GraphQLSchema,
     GraphQLType,
     GraphQLUnionType,
 )
@@ -80,7 +82,8 @@ from ..ast_manipulation import (
 )
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
 from ..global_utils import is_same_type
-from ..schema import COUNT_META_FIELD_NAME, is_vertex_field_name
+from ..schema import COUNT_META_FIELD_NAME, TypeEquivalenceHintsType, is_vertex_field_name
+from ..typedefs import QueryArgumentGraphQLType
 from .compiler_entities import BasicBlock
 from .context_helpers import (
     get_context_fold_info,
@@ -165,7 +168,7 @@ class IrAndMetadata(NamedTuple):
     ir_blocks: List[BasicBlock]
 
     # Mapping of expected input parameters -> inferred GraphQL type.
-    input_metadata: Dict[str, GraphQLType]
+    input_metadata: Dict[str, QueryArgumentGraphQLType]
 
     # Mapping output name -> output metadata.
     output_metadata: Dict[str, OutputMetadata]
@@ -1091,7 +1094,11 @@ def _compile_output_step(query_metadata_table):
 ##############
 
 
-def ast_to_ir(schema, ast, type_equivalence_hints=None):
+def ast_to_ir(
+    schema: GraphQLSchema,
+    ast: DocumentNode,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None,
+) -> IrAndMetadata:
     """Convert the given GraphQL AST object into compiler IR, using the given schema object.
 
     Args:
@@ -1135,7 +1142,11 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
     return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
 
 
-def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
+def graphql_to_ir(
+    schema: GraphQLSchema,
+    graphql_string: str,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None,
+) -> IrAndMetadata:
     """Convert the given GraphQL string into compiler IR, using the given schema object.
 
     Args:

@@ -1,5 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import string
+from typing import cast
 import unittest
 
 from graphql import parse
@@ -8,6 +9,7 @@ import six
 
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from ..schema import TypeEquivalenceHintsType
 from .test_helpers import get_schema
 
 
@@ -1462,10 +1464,15 @@ class IrGenerationErrorTests(unittest.TestCase):
                 }
             }
         }"""
-        invalid_type_equivalence_hints = {
+        invalid_type_equivalence_hint_data = {
             "Event": "Union__BirthEvent__Event__FeedingEvent",
             "BirthEvent": "Union__BirthEvent__Event__FeedingEvent",
         }
+
+        invalid_type_equivalence_hints: TypeEquivalenceHintsType = cast(TypeEquivalenceHintsType, {
+            self.schema.get_type(key): self.schema.get_type(value)
+            for key, value in invalid_type_equivalence_hint_data.items()
+        })
         with self.assertRaises(TypeError):
             graphql_to_ir(
                 self.schema,
