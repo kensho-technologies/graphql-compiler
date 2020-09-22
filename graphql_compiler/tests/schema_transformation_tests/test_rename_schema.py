@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ast import literal_eval
 from textwrap import dedent
-from typing import Dict, Set, Optional, Mapping
+from typing import Dict, Optional, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -9,7 +9,11 @@ from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
-from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
+from ...schema_transformation.rename_schema import (
+    RenameSchemaTypesVisitor,
+    RenamingMapping,
+    rename_schema,
+)
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
@@ -941,26 +945,18 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.list_schema), {"Height": None})
 
     def test_rename_using_dict_like_prefixer_class(self) -> None:
-        class PrefixNewDict(Mapping[str, Optional[str]]):
+        class PrefixNewDict(RenamingMapping):
             def __init__(self, schema: GraphQLSchema):
                 self.schema = schema
+                super().__init__()
 
-            def get(self, key: str, default=None) -> Optional[str]:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
                 """Define mapping for renaming object."""
                 if key in get_custom_scalar_names(self.schema) or key in builtin_scalar_type_names:
                     # Making an exception for scalar types because renaming and suppressing them
                     # hasn't been implemented yet
                     return key
                 return "New" + key
-
-            def __getitem__(self, key: str) -> Optional[str]:
-                return self.get(key)
-
-            def __iter__(self) -> None:
-                raise NotImplementedError("Mapping not iterable")
-
-            def __len__(self) -> None:
-                raise NotImplementedError("Mapping has no length")
 
         schema = parse(ISS.various_types_schema)
         renamed_schema = rename_schema(schema, PrefixNewDict(build_ast_schema(schema)))
