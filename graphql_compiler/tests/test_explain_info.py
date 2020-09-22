@@ -30,7 +30,7 @@ class ExplainInfoTests(unittest.TestCase):
         self,
         graphql_test: Callable[[], test_input_data.CommonTestData],
         expected_filter_list: List[Tuple[BaseLocation, List[FilterInfo]]],
-        expected_recurse_list: List[Tuple[Location, List[RecurseInfo]]],
+        expected_recurse_list: List[Tuple[BaseLocation, List[RecurseInfo]]],
         expected_output_list: List[Tuple[str, OutputInfo]],
     ) -> None:
         """Verify query produces expected explain infos."""
