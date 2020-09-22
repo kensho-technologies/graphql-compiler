@@ -6,7 +6,7 @@ from graphql import GraphQLList, GraphQLNonNull, GraphQLScalarType
 
 
 # The below code is an import shim for TypedDict and Literal: we don't want to conditionally import
-# then from every file that needs them. Instead, we conditionally import them here and then import
+# them from every file that needs them. Instead, we conditionally import them here and then import
 # from this file in every other location where they are needed.
 #
 # We prefer the explicit sys.version_info check instead of the more common try-except ImportError
