@@ -79,7 +79,8 @@ Renaming constraints:
   being renamed or suppressed.
 """
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Optional, Protocol, Set, Tuple, Union, cast
+import sys
+from typing import AbstractSet, Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -109,6 +110,16 @@ from .utils import (
     get_query_type_name,
     type_name_is_valid,
 )
+
+
+# We prefer the explicit sys.version_info check instead of the more common try-except ImportError
+# approach, because at the moment mypy seems to have an easier time with the sys.version_info check:
+# https://github.com/python/mypy/issues/1393
+if sys.version_info[:2] >= (3, 8):
+    # Protocol was only added to typing in Python 3.8
+    from typing import Protocol
+else:
+    from typing_extensions import Protocol
 
 
 RenamedSchemaDescriptor = namedtuple(
