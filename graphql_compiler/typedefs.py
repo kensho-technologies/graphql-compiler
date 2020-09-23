@@ -1,24 +1,24 @@
 # Copyright 2020-present Kensho Technologies, LLC.
+import sys
 from typing import Union
 
 from graphql import GraphQLList, GraphQLNonNull, GraphQLScalarType
 
 
-# The below code contains import shims for typing constructs introduced after Python 3.6:
-# we don't want to conditionally import them from every file that needs them. Instead, we
-# conditionally import them here and then import from this file in every other location where
-# they is needed.
+# The below code is an import shim for TypedDict and Literal: we don't want to conditionally import
+# them from every file that needs them. Instead, we conditionally import them here and then import
+# from this file in every other location where they are needed.
+#
+# We prefer the explicit sys.version_info check instead of the more common try-except ImportError
+# approach, because at the moment mypy seems to have an easier time with the sys.version_info check:
+# https://github.com/python/mypy/issues/1393
 #
 # Hence, the "unused import" warnings here are false-positives.
-try:
-    from typing import TypedDict  # noqa  # pylint: disable=unused-import
-except ImportError:  # TypedDict was only added to typing in Python 3.8
-    from typing_extensions import TypedDict  # noqa  # pylint: disable=unused-import
-
-try:
-    from typing import Literal  # noqa  # pylint: disable=unused-import
-except ImportError:
-    from typing_extensions import Literal  # type: ignore  # noqa  # pylint: disable=unused-import
+if sys.version_info[:2] >= (3, 8):
+    # TypedDict and Literal were only added to typing in Python 3.8
+    from typing import Literal, TypedDict  # noqa  # pylint: disable=unused-import
+else:
+    from typing_extensions import Literal, TypedDict  # noqa  # pylint: disable=unused-import
 
 # #####################
 # End of import shims #
