@@ -8,9 +8,6 @@ class ImmutableStack:
     depth: int
     tail: Optional["ImmutableStack"]
 
-    def peek(self) -> Any:
-        return self.value
-
     def push(self, value: Any) -> "ImmutableStack":
         return ImmutableStack(value, self.depth + 1, self)
 

@@ -58,7 +58,7 @@ class DataContext(Generic[DataToken]):
         return self  # for chaining
 
     def peek_value_on_stack(self) -> Any:
-        return self.expression_stack.peek()
+        return self.expression_stack.value
 
     def pop_value_from_stack(self) -> Any:
         value, remaining_stack = self.expression_stack.pop()
