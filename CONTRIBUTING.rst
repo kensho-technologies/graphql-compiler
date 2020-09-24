@@ -17,7 +17,6 @@ depending on chosen flavor of Linux.
 
     sudo apt-get install python3.8-dev
 
-
 Database Driver Installations
 -----------------------------
 
