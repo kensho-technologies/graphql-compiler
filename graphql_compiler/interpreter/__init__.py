@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 """Tools for constructing high-performance query interpreters over arbitrary schemas.
 
 While GraphQL compiler's database querying capabilities are sufficient for many use cases, there are
