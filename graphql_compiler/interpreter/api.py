@@ -1,5 +1,7 @@
 from typing import Any, Dict, Iterator, List, Tuple
 
+from graphql import GraphQLSchema
+
 from ..compiler.blocks import (
     Backtrack,
     CoerceType,
@@ -16,7 +18,7 @@ from ..compiler.blocks import (
     Unfold,
 )
 from ..compiler.compiler_entities import BasicBlock
-from ..compiler.compiler_frontend import IrAndMetadata
+from ..compiler.compiler_frontend import IrAndMetadata, graphql_to_ir
 from ..compiler.helpers import BaseLocation, get_only_element_from_collection
 from ..compiler.metadata import QueryMetadataTable
 from .block_ops import generate_block_outputs, generate_construct_result_outputs
@@ -105,6 +107,11 @@ def _get_initial_data_contexts(
         yield DataContext.make_empty_context_from_token(token)
 
 
+# ##############
+# # Public API #
+# ##############
+
+
 def interpret_ir(
     adapter: InterpreterAdapter[DataToken],
     ir_and_metadata: IrAndMetadata,
@@ -174,3 +181,13 @@ def interpret_ir(
     return generate_construct_result_outputs(
         adapter, query_metadata_table, query_arguments, last_block, current_data_contexts
     )
+
+
+def interpret_query(
+    adapter: InterpreterAdapter[DataToken],
+    schema: GraphQLSchema,
+    query: str,
+    query_arguments: Dict[str, Any],
+) -> Iterator[Dict[str, Any]]:
+    ir_and_metadata = graphql_to_ir(schema, query)
+    return interpret_ir(adapter, ir_and_metadata, query_arguments)

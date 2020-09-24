@@ -6,9 +6,8 @@ from graphql import GraphQLSchema
 
 from .in_memory_test_adapter import InMemoryTestAdapter
 from ..test_helpers import get_schema
-from ...compiler.compiler_frontend import graphql_to_ir
 from ...compiler.helpers import Location
-from ...interpreter import DataContext, interpret_ir
+from ...interpreter import DataContext, interpret_query
 from ...interpreter.debugging import AdapterOperation, RecordedTrace, InterpreterAdapterTap
 from ...interpreter.immutable_stack import ImmutableStack, make_empty_stack
 
@@ -146,11 +145,9 @@ class InterpreterBehaviorTests(TestCase):
         }"""
         args: Dict[str, Any] = {}
 
-        ir_and_metadata = graphql_to_ir(self.schema, query)
-
         # Make but do not consume or advance the generator produced here!
         # This should not result in any calls to the adapter.
-        interpret_ir(adapter, ir_and_metadata, args)
+        interpret_query(adapter, self.schema, query, args)
 
         # We expect the trace to contain no operations, since nothing should have been called.
         trace = adapter.recorder.get_trace()
@@ -167,8 +164,7 @@ class InterpreterBehaviorTests(TestCase):
         }"""
         args: Dict[str, Any] = {}
 
-        ir_and_metadata = graphql_to_ir(self.schema, query)
-        result_gen = interpret_ir(adapter, ir_and_metadata, args)
+        result_gen = interpret_query(adapter, self.schema, query, args)
 
         next_row = next(result_gen)  # advance the generator one step
         expected_next_row = {
