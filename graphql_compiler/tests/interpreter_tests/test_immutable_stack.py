@@ -1,8 +1,8 @@
 # Copyright 2020-present Kensho Technologies, LLC.
-from typing import Any, Tuple
+from typing import Any, Tuple, cast
 import unittest
 
-from ...interpreter.immutable_stack import make_empty_stack
+from ...interpreter.immutable_stack import ImmutableStack, make_empty_stack
 
 
 class ImmutableStackTests(unittest.TestCase):
@@ -28,7 +28,12 @@ class ImmutableStackTests(unittest.TestCase):
 
         stack = new_stack
         for expected_pop_value in reversed(values_to_push):
-            actual_pop_value, stack = stack.pop()
+            actual_pop_value, popped_stack = stack.pop()
+
+            # The popped stack isn't None because it should still have leftover values.
+            self.assertIsNotNone(popped_stack)
+            # Cast because mypy doesn't realize the previous line will raise on None.
+            stack = cast(ImmutableStack, popped_stack)
 
             # The popped value is referentially equal to the value we originally pushed.
             self.assertIs(expected_pop_value, actual_pop_value)
