@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 """Tools for constructing high-performance query interpreters over arbitrary schemas.
 
 While GraphQL compiler's database querying capabilities are sufficient for many use cases, there are
@@ -22,11 +23,11 @@ subclassed to create a new interpreter over a new dataset.
 
 As a result, the development of a new interpreter looks like this:
 - Construct the schema of the data your new interpreter will be querying.
-- Construct a subclass InterpreterAdapter class -- let's call it MyCustomInterpreter.
+- Construct a subclass InterpreterAdapter class -- let's call it MyCustomAdapter.
 - Add long-lived interpreter state such as API keys, connection pools, etc. as instance attributes
   of the MyCustomAdapter class.
 - Implement the four simple functions that form the InterpreterAdapter API.
-- Construct an instance of MyCustomInterpreter and pass it to the schema-agnostic portion of
+- Construct an instance of MyCustomAdapter and pass it to the schema-agnostic portion of
   the interpreter implemented in this library, such as the interpret_ir() function.
 - You now have a way to execute queries over your schema! Then, profit!
 
