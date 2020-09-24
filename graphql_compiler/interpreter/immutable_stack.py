@@ -1,6 +1,7 @@
 # Copyright 2020-present Kensho Technologies, LLC.
+from copy import deepcopy
 from dataclasses import dataclass
-from typing import Any, Optional, Tuple
+from typing import Any, Dict, Optional, Tuple
 
 
 @dataclass(frozen=True, init=False)
@@ -14,6 +15,11 @@ class ImmutableStack:
     __slots__ = ("value", "depth", "tail")
 
     # The following attributes are considered visible and safe for direct external use.
+    #
+    # N.B.: Keep "depth" defined before "tail"! The default "==" implementation for dataclasses
+    #       compares instances as if they were tuples with their attribute values in the order in
+    #       which they were declared. The "depth" is much cheaper to check for equality, so it must
+    #       be checked first.
     value: Any  # The value contained within this stack node.
     depth: int  # The number of stack nodes contained in the tail of the stack.
     tail: Optional["ImmutableStack"]  # The node that represents the rest of the stack, if any.
@@ -28,6 +34,18 @@ class ImmutableStack:
 
         depth = 0 if tail is None else tail.depth + 1
         object.__setattr__(self, "depth", depth)
+
+    def __copy__(self) -> "ImmutableStack":
+        """Produce a shallow copy of the ImmutableStack. Required because depth is not settable."""
+        return ImmutableStack(self.value, self.tail)
+
+    def __deepcopy__(self, memo: Optional[Dict[int, Any]]) -> "ImmutableStack":
+        """Produce a deep copy of the ImmutableStack. Required because depth is not settable."""
+        # ImmutableStack objects cannot have reference cycles among each other,
+        # so we don't need to check the memo dict or write to it.
+        value_copy = deepcopy(self.value, memo)
+        tail_copy = deepcopy(self.tail, memo)
+        return ImmutableStack(value_copy, tail_copy)
 
     def push(self, value: Any) -> "ImmutableStack":
         """Create a new ImmutableStack with the given value at its top."""
