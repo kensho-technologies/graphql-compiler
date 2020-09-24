@@ -15,7 +15,7 @@ from graphql import GraphQLList, GraphQLNonNull, GraphQLScalarType
 #
 # Hence, the "unused import" warnings here are false-positives.
 if sys.version_info[:2] >= (3, 8):
-    # TypedDict and Literal were only added to typing in Python 3.8
+    # These were only added to typing in Python 3.8
     from typing import Literal, TypedDict, Protocol  # noqa  # pylint: disable=unused-import
 else:
     from typing_extensions import (  # noqa  # pylint: disable=unused-import
