@@ -9,7 +9,7 @@ from .typedefs import EdgeInfo, InterpreterHints, NeighborHint
 def construct_hints_for_location(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
-    location: BaseLocation,
+    location: Location,
 ) -> InterpreterHints:
     result: InterpreterHints = {
         "runtime_arg_hints": dict(query_arguments),  # defensive copy
