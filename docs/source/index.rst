@@ -1,4 +1,4 @@
-GraphQL Compiler
+GraphQL compiler
 ================
 
 .. EDUCATIONAL: The toctree (Table Of Contents Tree) specifies the table of contents at the left
@@ -222,7 +222,7 @@ To learn more about the advanced features in the GraphQL compiler see:
    Schema Graph <advanced_features/schema_graph>
    Additional Tools <advanced_features/additional_tools>
 
-About GraphQL Compiler
+About GraphQL compiler
 ~~~~~~~~~~~~~~~~~~~~~~
 
 To learn more about the GraphQL compiler project see:
