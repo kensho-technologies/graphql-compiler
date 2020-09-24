@@ -22,7 +22,7 @@ database management systems, such as PostgreSQL, MSSQL and MySQL.
 For a more detailed overview and getting started guide, please see
 `our ReadTheDocs documentation <https://graphql-compiler.readthedocs.io/en/latest/>`__
 and `our blog post <https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282>`__.
-For contributing please see `our contributing guide <https://graphql-compiler.readthedocs.io/en/latest/about/contributing.html>`__.
+To contribute, please see `our contributing guide <https://graphql-compiler.readthedocs.io/en/latest/about/contributing.html>`__.
 
 Examples
 ~~~~~~~~
