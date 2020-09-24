@@ -86,7 +86,7 @@ teardown. These can be optionally skipped during development by running:
 
    pytest -m 'not slow'
 
-If you run into any issues, please consult the `troubleshooting guide <troubleshooting>`__.
+If you run into any issues, please consult the `troubleshooting guide <troubleshooting-guide>`__.
 If you encounter and resolve an issue that is not already part of the
 troubleshooting guide, we'd appreciate it if you open a pull request and
 update the guide to make future development easier.
@@ -164,8 +164,6 @@ To build the website run:
    make html
 
 Then open :code:`docs/build/index.html` with a web browser to view it.
-
-.. _troubleshooting:
 
 Troubleshooting Guide
 ---------------------
