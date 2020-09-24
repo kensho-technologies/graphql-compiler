@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 from typing import Any, Tuple
 import unittest
 

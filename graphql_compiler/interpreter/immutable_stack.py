@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 from dataclasses import dataclass
 from typing import Any, Optional, Tuple
 
