@@ -20,7 +20,7 @@ and multiple `SQL <https://graphql-compiler.readthedocs.io/en/latest/supported_d
 database management systems, such as PostgreSQL, MSSQL and MySQL.
 
 For a detailed overview, see `our blog post <https://blog.kensho.com/compiled-graphql-as-a-database-query-language-72e106844282>`__.
-To get started, see `our ReadTheDocs documentation <https://graphql-compiler.readthedocs.io/en/latest/>`__.
+To get started, see `our Read the Docs documentation <https://graphql-compiler.readthedocs.io/en/latest/>`__.
 To contribute, please see `our contributing guide <https://graphql-compiler.readthedocs.io/en/latest/about/contributing.html>`__.
 
 Examples
@@ -29,7 +29,7 @@ Examples
 .. HACK: To avoid duplicating the end-to-end examples, we use the `include` restructured text
          directive. We add the comments below to mark the start and end of the text that the
          `include` directive has to copy. An alternative here would be to add an examples directory
-         and "include" the examples from there in both the README and ReadTheDocs. However, github
+         and "include" the examples from there in both the README and Read the Docs. However, github
          does not support the `include` directive: https://github.com/github/markup/issues/172
 
 OrientDB

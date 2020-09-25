@@ -96,9 +96,10 @@ fashion by decorating with the :code:`@pytest.mark.slow` flag.
 Code of Conduct
 ---------------
 
-.. We use an external link that points to the ReadTheDocs webpage instead of an internal link below
-   since this file is also "included" in ReadTheDocs through the :include: directive and there is
-   no syntax for linking to another file that works in both "sphinx" and "native" reStructuredText.
+.. We use an external link that points to the Read the Docs webpage instead of an internal link
+   below since this file is also "included" in Read the Docs through the :include: directive and
+   there is no syntax for linking to another file that works in both "sphinx" and "native"
+   reStructuredText.
 
 This project adheres to the Contributor Covenant `code of
 conduct <https://graphql-compiler.readthedocs.io/en/latest/about/code_of_conduct.html>`__. By
