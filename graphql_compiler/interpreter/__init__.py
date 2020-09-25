@@ -18,7 +18,7 @@ Some parts of the interpreter (e.g. "fetch the value of this field") obviously n
 the schema and the underlying data source. Other parts (e.g. "filter out this data point") are
 schema-agnostic -- they work in the same way regardless of the schema and data source. This library
 provides efficient implementations of all schema-agnostic interpreter components. All schema-aware
-logic is abstracted into the straightforward API of the InterpreterAdapter class, which should be
+logic is abstracted into the straightforward, four-method API of the InterpreterAdapter class, which should be
 subclassed to create a new interpreter over a new dataset.
 
 As a result, the development of a new interpreter looks like this:
