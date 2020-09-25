@@ -97,7 +97,7 @@ Code of Conduct
 ---------------
 
 This project adheres to the Contributor Covenant `code of
-conduct <https://graphql-compiler.readthedocs.io/en/latest/about/code_of_conduct.html>`__. By
+conduct <CODE_OF_CONDUCT.rst>`__. By
 participating, you are expected to uphold this code. Please report unacceptable behavior at
 graphql-compiler-maintainer@kensho.com.
 
