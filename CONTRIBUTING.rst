@@ -147,9 +147,9 @@ documentation.
 
 We have taken measures so that the hosted documentation is updated, tested and monitored
 automatically. We configured a Github webhook so that the hosted documentation is updated
-every time the main branch gets updated, build and test the documentation during CI and
-configured Read the Docs to send notifications to graphql-compiler-maintainer@kensho.com in case
-there were any issues with building the documentation that were not caught during CI.
+every time the main branch gets updated, test the documentation during CI and configured Read the
+Docs to send notifications to graphql-compiler-maintainer@kensho.com in case there were any issues
+with building the documentation that were not caught during CI.
 
 Since Read the Docs does not currently `support Pipfiles
 <https://github.com/readthedocs/readthedocs.org/issues/3181>`__, we must keep the
