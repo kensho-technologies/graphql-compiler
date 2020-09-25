@@ -96,9 +96,10 @@ fashion by decorating with the :code:`@pytest.mark.slow` flag.
 Code of Conduct
 ---------------
 
-.. We use an external link that points to the ReadTheDocs webpage instead of an internal link below
-   since this file is also "included" in ReadTheDocs through the :include: directive and there is
-   no syntax for linking to another file that works in both "sphinx" and "native" reStructuredText.
+.. We use an external link that points to the Read the Docs webpage instead of an internal link
+   below since this file is also "included" in Read the Docs through the :include: directive and
+   there is no syntax for linking to another file that works in both "sphinx" and "native"
+   reStructuredText.
 
 This project adheres to the Contributor Covenant `code of
 conduct <https://graphql-compiler.readthedocs.io/en/latest/about/code_of_conduct.html>`__. By
@@ -141,9 +142,14 @@ that your files start with a line like:
 Read the Docs
 -------------
 
-We are currently in the process of moving most of our documentation to
-Read the Docs, a web utility that makes it easy to view and present
+To host our documentation we use Read the Docs, a web utility that makes it easy to view and present
 documentation.
+
+We have taken measures so that the hosted documentation is updated, tested and monitored
+automatically. We configured a Github webhook so that the hosted documentation is updated
+every time the main branch gets updated, test the documentation during CI and configured Read the
+Docs to send notifications to graphql-compiler-maintainer@kensho.com in case there are any issues
+with building the documentation that were not caught during CI.
 
 Since Read the Docs does not currently `support Pipfiles
 <https://github.com/readthedocs/readthedocs.org/issues/3181>`__, we must keep the

@@ -18,7 +18,7 @@ GraphQL compiler
             this solution.
          -  Another way is to write "Home <index>" instead of "Home <self>". This is a hack
             that fixes the issue, but leads to some error messages that will be confusing for
-            GraphQL compiler Readthedocs contributors.
+            GraphQL compiler Read the Docs contributors.
 
 .. toctree::
    :hidden:
@@ -34,7 +34,7 @@ GraphQL compiler is a library that simplifies data querying and exploration by e
 simple query language to target multiple database backends. The query language is:
 
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
-   The "terms" get special rendering in the readthedocs html file.
+   The "terms" get special rendering in the Read the Docs html file.
 
 Written in valid GraphQL syntax
    Since it uses GraphQL syntax, the user get access to the entire GraphQL ecosystem,
