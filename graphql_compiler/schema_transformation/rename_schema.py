@@ -427,13 +427,13 @@ def _rename_and_suppress_types(
                     f"found {type_name} in suppressed_types that is not a key in renamings. This "
                     f"is a bug."
                 )
-        renamed_types = set(
+        renamed_types = {
             visitor.reverse_name_map[type_name]
             for type_name in visitor.reverse_name_map
             if type_name != visitor.reverse_name_map[type_name]
-        )
+        }
         no_op_renames: Set[str] = (
-            set(key for key in renamings) - renamed_types - set(visitor.suppressed_types)
+            set(renamings) - renamed_types - set(visitor.suppressed_types)
         )
         if no_op_renames:
             raise NoOpRenamingError(no_op_renames)
