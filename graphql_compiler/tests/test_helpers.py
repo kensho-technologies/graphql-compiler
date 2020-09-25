@@ -571,16 +571,14 @@ def compare_schema_texts_order_independently(
     sorted_received_schema_text = _lexicographic_sort_schema_text(received_schema_text)
     msg = "\n{}\n\n!=\n\n{}".format(sorted_expected_schema_text, sorted_received_schema_text)
     compare_ignoring_whitespace(
-        test_case,
-        sorted_expected_schema_text,
-        sorted_received_schema_text,
-        msg
+        test_case, sorted_expected_schema_text, sorted_received_schema_text, msg
     )
 
 
 def get_schema() -> GraphQLSchema:
     """Get a schema object for testing."""
     return build_schema(SCHEMA_TEXT)
+
 
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
