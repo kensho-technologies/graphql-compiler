@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ast import literal_eval
 from textwrap import dedent
-from typing import Any, Dict, Optional, Set
+from typing import Dict, Optional, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -24,38 +24,6 @@ from ...schema_transformation.utils import (
     get_custom_scalar_names,
 )
 from .input_schema_strings import InputSchemaStrings as ISS
-
-
-def validate_error_message_component(
-    error_message_component: str, expected_prefix: str, expected_data_structure: Any
-) -> bool:
-    """Confirm that error_message_component is as expected.
-
-    A common pattern when checking string representations of exceptions here is to have the message
-    consist of a string literal prefix, which describes the error reasoning, followed by the string
-    representation of a data structure that describes which parts of the schema caused the error.
-    This function validates the error message based on the expected prefix and expected data
-    structure. This is useful when the data structure's __str__() method is not deterministic
-    (e.g. set).
-
-    Args:
-        error_message_component: error message part to validate
-        expected_prefix: explanation of why the error was raised
-        expected_data_structure: description of which parts of the schema caused the error
-
-    Returns:
-        True iff the error message correctly consists of the prefix followed by the expected data
-        structure.
-    """
-    if not error_message_component.startswith(expected_prefix):
-        return False
-    try:
-        if literal_eval(error_message_component[len(expected_prefix) :]) != expected_data_structure:
-            return False
-    except SyntaxError:
-        # In case it's syntactically invalid
-        return False
-    return True
 
 
 def check_rename_conflict_error_message(
@@ -111,16 +79,37 @@ def check_rename_conflict_error_message(
             "Illegal for SchemaRenameNameConflictError to have all arguments as empty dicts"
         )
 
-    if name_conflicts_part and not validate_error_message_component(
-        name_conflicts_part, name_conflicts_prefix, expected_name_conflicts
-    ):
-        return False
-    if renamed_to_builtin_scalar_conflicts_part and not validate_error_message_component(
-        renamed_to_builtin_scalar_conflicts_part,
-        renamed_to_builtin_scalar_conflicts_prefix,
-        expected_renamed_to_builtin_scalar_conflicts,
-    ):
-        return False
+    if name_conflicts_part:
+        if not name_conflicts_part.startswith(name_conflicts_prefix):
+            return False
+        # Then check the string representation of name_conflicts
+        try:
+            if (
+                literal_eval(name_conflicts_part[len(name_conflicts_prefix) :])
+                != expected_name_conflicts
+            ):
+                return False
+        except SyntaxError:
+            # In case it's syntactically invalid
+            return False
+    if renamed_to_builtin_scalar_conflicts_part:
+        if not renamed_to_builtin_scalar_conflicts_part.startswith(
+            renamed_to_builtin_scalar_conflicts_prefix
+        ):
+            return False
+        # Then check the string representation of renamed_to_builtin_scalar_conflicts
+        try:
+            if (
+                literal_eval(
+                    renamed_to_builtin_scalar_conflicts_part[
+                        len(renamed_to_builtin_scalar_conflicts_prefix) :
+                    ]
+                )
+                != expected_renamed_to_builtin_scalar_conflicts
+            ):
+                return False
+        except SyntaxError:
+            return False
     return True
 
 
