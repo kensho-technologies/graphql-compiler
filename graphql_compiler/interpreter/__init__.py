@@ -10,7 +10,7 @@ many types of data querying for which the compilation-based approach is unsuitab
 The data in each of these cases can be described by a valid schema, and users could write
 well-defined and legal queries against that schema. However, the execution of such queries cannot
 proceed by compiling them to another query language -- no such target query language exists.
-Instead, the queries need to be executed using an *interpreter*: a sophisticated piece of code
+Instead, the queries need to be executed using an *interpreter*: a piece of code
 that executes queries incrementally in a series of steps, such as "fetch the value of this field"
 or "filter out this data point if its value is less than 5."
 
