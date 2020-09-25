@@ -5,9 +5,9 @@ from typing import Union
 from graphql import GraphQLList, GraphQLNonNull, GraphQLScalarType
 
 
-# The below code is an import shim for TypedDict and Literal: we don't want to conditionally import
-# them from every file that needs them. Instead, we conditionally import them here and then import
-# from this file in every other location where they are needed.
+# The below code is an import shim for libraries added in Python 3.8: we don't want to conditionally
+# import them from every file that needs them. Instead, we conditionally import them here and then
+# import from this file in every other location where they are needed.
 #
 # We prefer the explicit sys.version_info check instead of the more common try-except ImportError
 # approach, because at the moment mypy seems to have an easier time with the sys.version_info check:
@@ -15,10 +15,14 @@ from graphql import GraphQLList, GraphQLNonNull, GraphQLScalarType
 #
 # Hence, the "unused import" warnings here are false-positives.
 if sys.version_info[:2] >= (3, 8):
-    # TypedDict and Literal were only added to typing in Python 3.8
-    from typing import Literal, TypedDict  # noqa  # pylint: disable=unused-import
+    # These were only added to typing in Python 3.8
+    from typing import Literal, TypedDict, Protocol  # noqa  # pylint: disable=unused-import
 else:
-    from typing_extensions import Literal, TypedDict  # noqa  # pylint: disable=unused-import
+    from typing_extensions import (  # noqa  # pylint: disable=unused-import
+        Literal,
+        TypedDict,
+        Protocol,
+    )
 
 # #####################
 # End of import shims #
