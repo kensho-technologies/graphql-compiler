@@ -1,5 +1,5 @@
-The GraphQL Compiler
-====================
+GraphQL compiler
+================
 
 .. EDUCATIONAL: The toctree (Table Of Contents Tree) specifies the table of contents at the left
    side of the page. The maxdepth indicates which headers to include in the table of contents.
@@ -18,7 +18,7 @@ The GraphQL Compiler
             this solution.
          -  Another way is to write "Home <index>" instead of "Home <self>". This is a hack
             that fixes the issue, but leads to some error messages that will be confusing for
-            GraphQL Compiler Readthedocs contributors.
+            GraphQL compiler Readthedocs contributors.
 
 .. toctree::
    :hidden:
@@ -30,8 +30,8 @@ The GraphQL Compiler
    :description: Turn complex GraphQL queries into optimized database queries.
    :keywords: graphql compiler, database, orientdb, sql
 
-The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
-common query language for multiple database backends. The query language is:
+GraphQL compiler is a library that simplifies data querying and exploration by exposing one
+simple query language to target multiple database backends. The query language is:
 
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
    The "terms" get special rendering in the readthedocs html file.
@@ -58,7 +58,7 @@ Generating the necessary schema info
 
 ..  TODO: Encapsulate all schema info in a SchemaInfo class.
 
-To use the GraphQL compiler the first thing one needs to do is to generate the schema info from the
+To use GraphQL compiler the first thing one needs to do is to generate the schema info from the
 underlying database as in the example below. Even though the example targets an OrientDB
 database, it is meant as a generic schema info generation example. See the homepage of your target
 database for more instructions on how to generate the necessary schema info.
@@ -222,10 +222,10 @@ To learn more about the advanced features in the GraphQL compiler see:
    Schema Graph <advanced_features/schema_graph>
    Additional Tools <advanced_features/additional_tools>
 
-About the GraphQL Compiler
-~~~~~~~~~~~~~~~~~~~~~~~~~~
+About GraphQL compiler
+~~~~~~~~~~~~~~~~~~~~~~
 
-To learn more about the GraphQL project see:
+To learn more about the GraphQL compiler project see:
 
 - :doc:`Contributing <about/contributing>` for instructions on how you can contribute.
 - :doc:`Code of Conduct <about/code_of_conduct>` for the contributor code of conduct.
@@ -235,7 +235,7 @@ To learn more about the GraphQL project see:
   the development of the compiler and the guarantees the compiler provides.
 
 .. toctree::
-   :caption: About the GraphQL Compiler
+   :caption: About GraphQL compiler
    :hidden:
 
    Contributing <about/contributing>

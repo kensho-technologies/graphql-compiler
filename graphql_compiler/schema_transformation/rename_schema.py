@@ -79,7 +79,7 @@ Renaming constraints:
   being renamed or suppressed.
 """
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
+from typing import AbstractSet, Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -95,6 +95,7 @@ from graphql.language.visitor import IDLE, REMOVE, Visitor, VisitorAction, visit
 import six
 
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
+from ..typedefs import Protocol
 from .utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
@@ -127,9 +128,13 @@ RenamedSchemaDescriptor = namedtuple(
 VisitorReturnType = Union[Node, VisitorAction]
 
 
-def rename_schema(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
-) -> RenamedSchemaDescriptor:
+class RenamingMapping(Protocol):
+    def get(self, key: str, default: Optional[str]) -> Optional[str]:
+        """Define mapping for renaming object."""
+        ...
+
+
+def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; rename/suppress types and root type fields using renamings.
 
     Any type, interface, enum, or fields of the root type/query type whose name
@@ -203,7 +208,7 @@ def rename_schema(
 
 def _validate_renamings(
     schema_ast: DocumentNode,
-    renamings: Mapping[str, Optional[str]],
+    renamings: RenamingMapping,
     query_type: str,
     custom_scalar_names: AbstractSet[str],
 ) -> None:
@@ -236,7 +241,7 @@ def _validate_renamings(
 
 
 def _ensure_no_cascading_type_suppressions(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+    schema_ast: DocumentNode, renamings: RenamingMapping, query_type: str
 ) -> None:
     """Check for fields with suppressed types or unions whose members were all suppressed."""
     visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
@@ -281,7 +286,7 @@ def _ensure_no_cascading_type_suppressions(
 
 def _ensure_no_unsupported_operations(
     schema_ast: DocumentNode,
-    renamings: Mapping[str, Optional[str]],
+    renamings: RenamingMapping,
     custom_scalar_names: AbstractSet[str],
 ) -> None:
     """Check for unsupported renaming or suppression operations."""
@@ -290,20 +295,26 @@ def _ensure_no_unsupported_operations(
 
 
 def _ensure_no_unsupported_scalar_operations(
-    renamings: Mapping[str, Optional[str]],
+    renamings: RenamingMapping,
     custom_scalar_names: AbstractSet[str],
 ) -> None:
     """Check for unsupported scalar operations."""
     unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
     for scalar_name in custom_scalar_names:
-        if renamings.get(scalar_name, scalar_name) != scalar_name:
-            # renamings.get(scalar_name, scalar_name) returns something that is not scalar iff it
-            # attempts to do something with the scalar (i.e. renaming or suppressing it)
-            unsupported_scalar_operations[scalar_name] = renamings[scalar_name]
+        possibly_renamed_scalar_name = renamings.get(scalar_name, scalar_name)
+        # renamings.get(scalar_name, scalar_name) returns something that is not scalar iff it
+        # attempts to do something with the scalar (i.e. renaming or suppressing it)
+        if possibly_renamed_scalar_name != scalar_name:
+            unsupported_scalar_operations[scalar_name] = possibly_renamed_scalar_name
     for builtin_scalar_name in builtin_scalar_type_names:
-        if renamings.get(builtin_scalar_name, builtin_scalar_name) != builtin_scalar_name:
+        possibly_renamed_builtin_scalar_name = renamings.get(
+            builtin_scalar_name, builtin_scalar_name
+        )
+        if possibly_renamed_builtin_scalar_name != builtin_scalar_name:
             # Check that built-in scalar types remain unchanged during renaming.
-            unsupported_scalar_operations[builtin_scalar_name] = renamings[builtin_scalar_name]
+            unsupported_scalar_operations[
+                builtin_scalar_name
+            ] = possibly_renamed_builtin_scalar_name
     if unsupported_scalar_operations:
         raise NotImplementedError(
             f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
@@ -313,7 +324,7 @@ def _ensure_no_unsupported_scalar_operations(
 
 
 def _ensure_no_unsupported_suppressions(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]]
+    schema_ast: DocumentNode, renamings: RenamingMapping
 ) -> None:
     """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
     visitor = SuppressionNotImplementedVisitor(renamings)
@@ -356,7 +367,7 @@ def _ensure_no_unsupported_suppressions(
 
 def _rename_and_suppress_types(
     schema_ast: DocumentNode,
-    renamings: Mapping[str, Optional[str]],
+    renamings: RenamingMapping,
     query_type: str,
     custom_scalar_names: AbstractSet[str],
 ) -> Tuple[DocumentNode, Dict[str, str]]:
@@ -401,7 +412,7 @@ def _rename_and_suppress_types(
 
 
 def _rename_and_suppress_query_type_fields(
-    schema_ast: DocumentNode, renamings: Mapping[str, Optional[str]], query_type: str
+    schema_ast: DocumentNode, renamings: RenamingMapping, query_type: str
 ) -> DocumentNode:
     """Rename or suppress all fields of the query type.
 
@@ -506,7 +517,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
     def __init__(
         self,
-        renamings: Mapping[str, Optional[str]],
+        renamings: RenamingMapping,
         query_type: str,
         custom_scalar_names: AbstractSet[str],
     ) -> None:
@@ -639,7 +650,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
-    def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+    def __init__(self, renamings: RenamingMapping, query_type: str) -> None:
         """Create a visitor for renaming or suppressing fields of the query type in a schema AST.
 
         Args:
@@ -727,7 +738,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
     fields_to_suppress: Dict[str, Dict[str, str]]
     union_types_to_suppress: List[UnionTypeDefinitionNode]
 
-    def __init__(self, renamings: Mapping[str, Optional[str]], query_type: str) -> None:
+    def __init__(self, renamings: RenamingMapping, query_type: str) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
 
         Args:
@@ -836,7 +847,7 @@ class SuppressionNotImplementedVisitor(Visitor):
     unsupported_interface_suppressions: Set[str]
     unsupported_interface_implementation_suppressions: Set[str]
 
-    def __init__(self, renamings: Mapping[str, Optional[str]]) -> None:
+    def __init__(self, renamings: RenamingMapping) -> None:
         """Confirm renamings does not attempt to suppress enum/interface/interface implementation.
 
         Args:
