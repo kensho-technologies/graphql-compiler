@@ -558,7 +558,7 @@ def compare_ignoring_whitespace(
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
 
 
-def _lexicographic_sort_schema_text(schema_text: str):
+def _lexicographic_sort_schema_text(schema_text: str) -> str:
     """Sort the schema types and fields in a lexicographic order."""
     return print_schema(lexicographic_sort_schema(build_schema(schema_text)))
 
