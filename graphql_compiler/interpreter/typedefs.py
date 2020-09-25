@@ -130,6 +130,32 @@ class InterpreterHints(TypedDict):
 
 
 class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
+    """Base class defining the API for schema-aware interpreter functionality over a given schema.
+
+    This ABC is the abstraction through which the rest of the interpreter is schema-agnostic:
+    the rest of the interpreter code simply takes an instance of InterpreterAdapter and performs
+    all schema-aware operations through it.
+
+    This class is generic on an implementer-chosen DataToken type. In the rest of the library,
+    instances of DataToken simply represent opaque references to the data contained by some vertex
+    whose type is part of the schema that corresponds to the interpreter.
+
+    Here are a few common examples of DataTokens in practice:
+    - a dict containing the type name of the vertex and the values of all its properties;
+    - a dataclass containing the type name of the vertex, and the collection name and primary key
+      of the database entry using which the property values can be looked up, or
+    - an instance of a custom class which has *some* of the values of the vertex properties, and
+      has sufficient information to look up the rest of them if they are ever requested.
+
+    The best choice of DataToken type is dependent on the specific use case, e.g. whether the data
+    is already available in Python memory, or is on a local disk, or is a network hop away.
+
+    Implementers are free to choose any DataToken type and the interpreter code will happily use it.
+    However, for the sake of easier debugging and testing using the built-in functionality in
+    this library, it is desirable to make DataToken be a deep-copyable type that implements
+    equality beyond a simple referential equality check.
+    """
+
     @abstractmethod
     def get_tokens_of_type(
         self,
