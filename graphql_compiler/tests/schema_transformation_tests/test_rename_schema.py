@@ -214,12 +214,12 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_rename_legal_noop_unused_renaming(self) -> None:
-        # Unlike with test_rename_illegal_noop_unused_renaming, here the renaming is not
+        # Unlike with test_rename_illegal_noop_unused_renaming, here renamings is not
         # iterable. As a result, this renaming is technically legal but it is inadvisable to
         # write a renaming like this since the intended "Dinosaur" -> "NewDinosaur" mapping is
         # unused and will silently do nothing when applied to the given schema.
         class RenameMapping:
-            def get(self, key: str, default=None) -> Optional[str]:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
                 """Define mapping for renaming object."""
                 if key == "Dinosaur":
                     return "NewDinosaur"
@@ -299,12 +299,12 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_suppress_legal_noop_unused_suppression(self) -> None:
-        # Unlike with test_suppress_illegal_noop_unused_suppression, here the renaming is not
+        # Unlike with test_suppress_illegal_noop_unused_suppression, here renamings is not
         # iterable. As a result, this renaming is technically legal but it is inadvisable to
         # write a renaming like this since the intended "Dinosaur" -> None mapping is unused and
         # will silently do nothing when applied to the given schema.
         class SuppressMapping:
-            def get(self, key: str, default=None) -> Optional[str]:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
                 """Define mapping for renaming object."""
                 if key == "Dinosaur":
                     return None
@@ -751,13 +751,14 @@ class TestRenameSchema(unittest.TestCase):
             str(e.exception),
         )
 
-    def test_directive_renaming_legal_noop(self):
-        # Unlike with test_directive_renaming_illegal_noop, here the renaming is not iterable.
+    def test_directive_renaming_legal_noop(self) -> None:
+        # Unlike with test_directive_renaming_illegal_noop, here renamings is not iterable.
         # As a result, this renaming is technically legal but it is inadvisable to write a
-        # renaming like this since the intended "stitch" -> "NewStitch" mapping is unused and will
-        # silently do nothing when applied to ISS.directive_schema.
+        # renaming like this since directives cannot be renamed so the intended
+        # "stitch" -> "NewStitch" mapping is unused and will silently do nothing when applied to
+        #  ISS.directive_schema.
         class DirectiveRenamingMapping:
-            def get(self, key: str, default=None) -> Optional[str]:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
                 """Define mapping for renaming object."""
                 if key == "stitch":
                     return "NewStitch"
@@ -767,7 +768,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(ISS.directive_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_query_type_field_argument_illegal_noop(self):
+    def test_query_type_field_argument_illegal_noop(self) -> None:
         # This renaming is illegal because query type field arguments can't be renamed, so the
         # "id" -> "Id" mapping is a no-op which is not allowed for iterable renamings.
         schema_string = dedent(
@@ -796,7 +797,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_query_type_field_argument_legal_noop(self) -> None:
-        # Unlike with test_query_type_field_argument_illegal_noop, here the renaming is not
+        # Unlike with test_query_type_field_argument_illegal_noop, here renamings is not
         # iterable. As a result, this renaming is technically legal but it is inadvisable to
         # write a renaming like this since the intended "id" -> "Id" mapping is unused and will
         # silently do nothing when applied to the given schema.
@@ -817,7 +818,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         class QueryTypeFieldArgumentMapping:
-            def get(self, key: str, default=None) -> Optional[str]:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
                 """Define mapping for renaming object."""
                 if key == "id":
                     return "Id"

@@ -433,7 +433,7 @@ def _rename_and_suppress_types(
             if type_name != visitor.reverse_name_map[type_name]
         )
         no_op_renames: Set[str] = (
-            set(renamings.keys()) - renamed_types - set(visitor.suppressed_types)
+            set(key for key in renamings) - renamed_types - set(visitor.suppressed_types)
         )
         if no_op_renames:
             raise NoOpRenamingError(no_op_renames)
@@ -602,6 +602,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
         desired_type_name = self.renamings.get(type_name, type_name)  # Default use original
         if desired_type_name is None:
+            # Suppress the type
             self.suppressed_types.add(type_name)
             return REMOVE
         if not type_name_is_valid(desired_type_name):
