@@ -30,7 +30,7 @@ pytest-cov = ">=2.6.1,<3"
 snapshottest = ">=0.5.1,<1"
 
 # TODO: Relax this dependency and add Python >= 3.7 bound when we switch to using Poetry.
-typing-copilot = "==0.2.0"
+typing-copilot = "==0.4.0"
 
 # TODO: add dependency on https://github.com/dropbox/sqlalchemy-stubs and corresponding mypy plugin
 #       when we can make everything type-check correctly with it.
