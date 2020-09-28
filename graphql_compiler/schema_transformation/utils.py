@@ -135,6 +135,32 @@ class CascadingSuppressionError(SchemaTransformError):
     """
 
 
+class NoOpRenamingError(SchemaTransformError):
+    """Raised if renamings argument is iterable and contains no-op renames.
+
+    No-op renames can occur in these ways:
+    * renamings contains a string type_name but there doesn't exist a type in the schema named
+      type_name
+    * renamings maps a string type_name to itself, i.e. renamings[type_name] == type_name
+    """
+
+    no_op_renames: Set[str]
+
+    def __init__(self, no_op_renames: Set[str]) -> None:
+        """Record all renaming conflicts."""
+        super().__init__()
+        self.no_op_renames = no_op_renames
+
+    def __str__(self) -> str:
+        """Explain renaming conflict and the fix."""
+        return (
+            f"Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            f"entries exist in the renamings argument, which either rename a type to itself or "
+            f"would rename a type that doesn't exist in the schema, both of which are invalid: "
+            f"{sorted(self.no_op_renames)}"
+        )
+
+
 _alphanumeric_and_underscore: FrozenSet[str] = frozenset(
     six.text_type(string.ascii_letters + string.digits + "_")
 )
