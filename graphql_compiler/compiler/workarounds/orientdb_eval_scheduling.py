@@ -10,7 +10,10 @@ More details: https://github.com/orientechnologies/orientdb/issues/7160
 This workaround doesn't work in OrientDB <2.2.17 due to another bug.
 The workaround should fix the problem starting with OrientDB 2.2.18.
 """
+from typing import List
+
 from ..blocks import Filter
+from ..compiler_entities import BasicBlock, Expression
 from ..expressions import (
     BinaryComposition,
     ContextField,
@@ -18,13 +21,19 @@ from ..expressions import (
     NullLiteral,
     TernaryConditional,
 )
+from ..helpers import Location
+from ..metadata import QueryMetadataTable
 
 
-def workaround_lowering_pass(ir_blocks, query_metadata_table):
+def workaround_lowering_pass(
+    ir_blocks: List[BasicBlock],
+    query_metadata_table: QueryMetadataTable,
+) -> List[BasicBlock]:
     """Extract locations from TernaryConditionals and rewrite their Filter blocks as necessary."""
-    new_ir_blocks = []
+    new_ir_blocks: List[BasicBlock] = []
 
     for block in ir_blocks:
+        new_block: BasicBlock
         if isinstance(block, Filter):
             new_block = _process_filter_block(query_metadata_table, block)
         else:
@@ -34,7 +43,7 @@ def workaround_lowering_pass(ir_blocks, query_metadata_table):
     return new_ir_blocks
 
 
-def _process_filter_block(query_metadata_table, block):
+def _process_filter_block(query_metadata_table: QueryMetadataTable, block: Filter) -> Filter:
     """Rewrite the provided Filter block if necessary."""
     # For a given Filter block with BinaryComposition predicate expression X,
     # let L be the set of all Locations referenced in any TernaryConditional
@@ -46,20 +55,20 @@ def _process_filter_block(query_metadata_table, block):
     base_predicate = block.predicate
 
     # These variables are used by the visitor functions below.
-    ternary_conditionals = []
+    ternary_conditionals: List[TernaryConditional] = []
     # "problematic_locations" is a list and not a set,
     # to preserve ordering and generate a deterministic order of added clauses.
     # We expect the maximum size of this list to be a small constant number,
     # so the linear "in" operator is really not a concern.
-    problematic_locations = []
+    problematic_locations: List[Location] = []
 
-    def find_ternary_conditionals(expression):
+    def find_ternary_conditionals(expression: Expression) -> Expression:
         """Visitor function that extracts all enclosed TernaryConditional expressions."""
         if isinstance(expression, TernaryConditional):
             ternary_conditionals.append(expression)
         return expression
 
-    def extract_locations_visitor(expression):
+    def extract_locations_visitor(expression: Expression) -> Expression:
         """Visitor function that extracts all the problematic locations."""
         if isinstance(expression, (ContextField, ContextFieldExistence)):
             # We get the location at the vertex, ignoring property fields.
@@ -106,7 +115,10 @@ def _process_filter_block(query_metadata_table, block):
     return Filter(final_predicate)
 
 
-def _create_tautological_expression_for_location(query_metadata_table, location):
+def _create_tautological_expression_for_location(
+    query_metadata_table: QueryMetadataTable,
+    location: Location,
+) -> BinaryComposition:
     """For a given location, create a BinaryComposition that always evaluates to 'true'."""
     location_type = query_metadata_table.get_location_info(location).type
 
