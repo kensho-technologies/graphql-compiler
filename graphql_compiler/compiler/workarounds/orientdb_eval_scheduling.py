@@ -10,7 +10,7 @@ More details: https://github.com/orientechnologies/orientdb/issues/7160
 This workaround doesn't work in OrientDB <2.2.17 due to another bug.
 The workaround should fix the problem starting with OrientDB 2.2.18.
 """
-from typing import List, TypeVar
+from typing import List
 
 from ..blocks import Filter
 from ..compiler_entities import BasicBlock, Expression
