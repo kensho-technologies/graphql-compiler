@@ -7,10 +7,9 @@ import re
 from typing import Dict, List, Optional, Set, Tuple, Union, cast
 from unittest import TestCase
 
-from graphql import GraphQLList, parse
+from graphql import GraphQLList, build_schema, lexicographic_sort_schema, print_schema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
-from graphql.utilities.build_ast_schema import build_ast_schema
 from pyorient.orient import OrientDB
 import six
 import sqlalchemy
@@ -570,25 +569,28 @@ def compare_ignoring_whitespace(
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
 
 
+def _lexicographic_sort_schema_text(schema_text: str) -> str:
+    """Sort the schema types and fields in a lexicographic order."""
+    return print_schema(lexicographic_sort_schema(build_schema(schema_text)))
+
+
 def compare_schema_texts_order_independently(
     test_case: TestCase,
     expected_schema_text: str,
     received_schema_text: str,
 ) -> None:
     """Compare expected and received schema texts, ignoring order of definitions."""
-    expected_schema_blocks = expected_schema_text.split("\n\n")
-    received_schema_blocks = expected_schema_text.split("\n\n")
-
-    # This is the preferred order-independent comparison method in Python:
-    # https://docs.python.org/3/library/unittest.html#unittest.TestCase.assertCountEqual
-    test_case.assertCountEqual(expected_schema_blocks, received_schema_blocks)
+    sorted_expected_schema_text = _lexicographic_sort_schema_text(expected_schema_text)
+    sorted_received_schema_text = _lexicographic_sort_schema_text(received_schema_text)
+    msg = "\n{}\n\n!=\n\n{}".format(sorted_expected_schema_text, sorted_received_schema_text)
+    compare_ignoring_whitespace(
+        test_case, sorted_expected_schema_text, sorted_received_schema_text, msg
+    )
 
 
 def get_schema() -> GraphQLSchema:
     """Get a schema object for testing."""
-    ast = parse(SCHEMA_TEXT)
-    schema = build_ast_schema(ast)
-    return schema
+    return build_schema(SCHEMA_TEXT)
 
 
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
