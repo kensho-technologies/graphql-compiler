@@ -93,7 +93,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     optimizations to either happen automatically or be available with minimal additional work.
     A few simple examples:
     - Interpreters perform lazy evaluation by default: if exactly 3 query results are requested,
-      then only the minimal data necessary to produce *exactly 3 rows' worth* of outputs is loaded.
+      then only the minimal data necessary to produce *exactly 3 results' worth* of outputs is loaded.
     - When computing a particular result, data loading for output fields is deferred
       until *after* all filtering operations have been completed, to minimize data loads.
     - Data caching is easy to implement within this API -- simply have
