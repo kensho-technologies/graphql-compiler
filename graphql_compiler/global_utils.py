@@ -127,7 +127,8 @@ def checked_cast(target_type: Type[T_A], value: Any) -> T_A:
 
 
 def checked_cast_to_union2(
-    target_types: Tuple[Type[T_A], Type[T_B]], value: Any,
+    target_types: Tuple[Type[T_A], Type[T_B]],
+    value: Any,
 ) -> Union[T_A, T_B]:
     """Assert that the value is one of the two specified types."""
     # N.B.: If we ever need a union of more than two types, feel free to make functions like

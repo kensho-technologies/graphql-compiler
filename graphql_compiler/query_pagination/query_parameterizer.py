@@ -27,12 +27,7 @@ from ..compiler.helpers import get_parameter_name
 from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..cost_estimation.int_value_conversion import convert_field_value_to_int
 from ..exceptions import GraphQLError
-from ..global_utils import (
-    ASTWithParameters,
-    PropertyPath,
-    VertexPath,
-    checked_cast,
-)
+from ..global_utils import ASTWithParameters, PropertyPath, VertexPath, checked_cast
 from .pagination_planning import VertexPartitionPlan
 
 
