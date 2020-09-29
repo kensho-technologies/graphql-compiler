@@ -127,7 +127,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     The set of hints (and the information each hint provides) could grow in the future. Currently,
     the following hints are offered:
     - runtime_arg_hints: the values of any runtime arguments provided to the query for use in
-      filtering operations (recall queries' "$foo" filter parameter syntax).
+      filtering operations (e.g. "$foo").
     - used_property_hints: the property names within the scope relevant to the called function that
       the query will eventually need, e.g. for filtering on, or to output as the final result.
     - filter_hints: information about the filters applied within the scope relevant to the called
