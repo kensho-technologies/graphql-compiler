@@ -126,6 +126,8 @@ EdgeInfo = Tuple[EdgeDirection, str]  # direction + edge name
 # TODO(predrag): Figure out a better type here. We need to balance between finding something
 #                easy and lightweight, and letting the user know about things like:
 #                optional edges, recursive edges, used fields/filters at the neighbor, etc.
+#                Will probably punt on this until the API is stabilized, since defining something
+#                here is not a breaking change.
 NeighborHint = Any
 
 
