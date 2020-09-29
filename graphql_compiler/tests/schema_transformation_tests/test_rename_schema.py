@@ -11,7 +11,7 @@ from graphql.pyutils import snake_to_camel
 
 from ...schema_transformation.rename_schema import (
     RenameSchemaTypesVisitor,
-    RenamingMapping,
+    TypeRenamingMapping,
     rename_schema,
 )
 from ...schema_transformation.utils import (
@@ -54,7 +54,7 @@ def check_rename_conflict_error_message(
         "same name, which is an illegal schema state. The name_conflicts dict describes "
         "these problems. For each key k in name_conflicts, name_conflicts[k] is the set "
         "of types in the original schema that get mapped to k in the new schema. To fix "
-        "this, modify the renamings argument of rename_schema to ensure that no two types "
+        "this, modify the type_renamings argument of rename_schema to ensure that no two types "
         "in the renamed schema have the same name. name_conflicts: "
     )
     renamed_to_builtin_scalar_conflicts_prefix = (
@@ -195,15 +195,15 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"})
         self.assertEqual(
-            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "entries exist in the renamings argument, which either rename a type to itself or "
+            "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the type_renamings argument, which either rename a type to itself or "
             "would rename a type that doesn't exist in the schema, both of which are invalid: "
             "['Dinosaur']",
             str(e.exception),
         )
 
     def test_rename_legal_noop_unused_renaming(self) -> None:
-        # Unlike with test_rename_illegal_noop_unused_renaming, here renamings is not
+        # Unlike with test_rename_illegal_noop_unused_renaming, here type_renamings is not
         # iterable. As a result, this renaming is technically legal but it is inadvisable to
         # write a renaming like this since the intended "Dinosaur" -> "NewDinosaur" mapping is
         # unused and will silently do nothing when applied to the given schema.
@@ -222,8 +222,8 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
         self.assertEqual(
-            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "entries exist in the renamings argument, which either rename a type to itself or "
+            "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the type_renamings argument, which either rename a type to itself or "
             "would rename a type that doesn't exist in the schema, both of which are invalid: "
             "['Human']",
             str(e.exception),
@@ -280,15 +280,15 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
         self.assertEqual(
-            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "entries exist in the renamings argument, which either rename a type to itself or "
+            "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the type_renamings argument, which either rename a type to itself or "
             "would rename a type that doesn't exist in the schema, both of which are invalid: "
             "['Dinosaur']",
             str(e.exception),
         )
 
     def test_suppress_legal_noop_unused_suppression(self) -> None:
-        # Unlike with test_suppress_illegal_noop_unused_suppression, here renamings is not
+        # Unlike with test_suppress_illegal_noop_unused_suppression, here type_renamings is not
         # iterable. As a result, this renaming is technically legal but it is inadvisable to
         # write a renaming like this since the intended "Dinosaur" -> None mapping is unused and
         # will silently do nothing when applied to the given schema.
@@ -303,14 +303,14 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(ISS.multiple_objects_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_various_illegal_noop_renamings(self) -> None:
+    def test_various_illegal_noop_type_renamings(self) -> None:
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(
                 parse(ISS.basic_schema), {"Dinosaur": None, "Human": "Human", "Bird": "Birdie"}
             )
         self.assertEqual(
-            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "entries exist in the renamings argument, which either rename a type to itself or "
+            "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the type_renamings argument, which either rename a type to itself or "
             "would rename a type that doesn't exist in the schema, both of which are invalid: "
             "['Bird', 'Dinosaur', 'Human']",
             str(e.exception),
@@ -724,7 +724,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_directive_renaming_illegal_noop(self) -> None:
         # This renaming is illegal because directives can't be renamed, so the
-        # "stitch" -> "NewStitch" mapping is a no-op which is not allowed for iterable renamings.
+        # "stitch" -> "NewStitch" mapping is a no-op which is not allowed for iterable type_renamings.
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(
                 parse(ISS.directive_schema),
@@ -733,15 +733,15 @@ class TestRenameSchema(unittest.TestCase):
                 },
             )
         self.assertEqual(
-            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "entries exist in the renamings argument, which either rename a type to itself or "
+            "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the type_renamings argument, which either rename a type to itself or "
             "would rename a type that doesn't exist in the schema, both of which are invalid: "
             "['stitch']",
             str(e.exception),
         )
 
     def test_directive_renaming_legal_noop(self) -> None:
-        # Unlike with test_directive_renaming_illegal_noop, here renamings is not iterable.
+        # Unlike with test_directive_renaming_illegal_noop, here type_renamings is not iterable.
         # As a result, this renaming is technically legal but it is inadvisable to write a
         # renaming like this since directives cannot be renamed so the intended
         # "stitch" -> "NewStitch" mapping is unused and will silently do nothing when applied to
@@ -759,7 +759,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_query_type_field_argument_illegal_noop(self) -> None:
         # This renaming is illegal because query type field arguments can't be renamed, so the
-        # "id" -> "Id" mapping is a no-op which is not allowed for iterable renamings.
+        # "id" -> "Id" mapping is a no-op which is not allowed for iterable type_renamings.
         schema_string = dedent(
             """\
             schema {
@@ -778,15 +778,15 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(schema_string), {"id": "Id"})
         self.assertEqual(
-            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            "entries exist in the renamings argument, which either rename a type to itself or "
+            "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the type_renamings argument, which either rename a type to itself or "
             "would rename a type that doesn't exist in the schema, both of which are invalid: "
             "['id']",
             str(e.exception),
         )
 
     def test_query_type_field_argument_legal_noop(self) -> None:
-        # Unlike with test_query_type_field_argument_illegal_noop, here renamings is not
+        # Unlike with test_query_type_field_argument_illegal_noop, here type_renamings is not
         # iterable. As a result, this renaming is technically legal but it is inadvisable to
         # write a renaming like this since the intended "id" -> "Id" mapping is unused and will
         # silently do nothing when applied to the given schema.
@@ -1047,7 +1047,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.list_schema), {"Height": None})
 
     def test_rename_using_dict_like_prefixer_class(self) -> None:
-        class PrefixNewDict(RenamingMapping):
+        class PrefixNewDict(TypeRenamingMapping):
             def __init__(self, schema: GraphQLSchema):
                 self.schema = schema
                 super().__init__()

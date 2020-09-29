@@ -96,7 +96,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                 f"same name, which is an illegal schema state. The name_conflicts dict describes "
                 f"these problems. For each key k in name_conflicts, name_conflicts[k] is the set "
                 f"of types in the original schema that get mapped to k in the new schema. To fix "
-                f"this, modify the renamings argument of rename_schema to ensure that no two types "
+                f"this, modify the type_renamings argument of rename_schema to ensure that no two types "
                 f"in the renamed schema have the same name. name_conflicts: {self.name_conflicts}"
             )
         renamed_to_builtin_scalar_conflicts_message = ""
@@ -136,12 +136,12 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if renamings argument is iterable and contains no-op renames.
+    """Raised if type_renamings argument is iterable and contains no-op renames.
 
     No-op renames can occur in these ways:
-    * renamings contains a string type_name but there doesn't exist a type in the schema named
+    * type_renamings contains a string type_name but there doesn't exist a type in the schema named
       type_name
-    * renamings maps a string type_name to itself, i.e. renamings[type_name] == type_name
+    * type_renamings maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
     """
 
     no_op_renames: Set[str]
@@ -154,8 +154,8 @@ class NoOpRenamingError(SchemaTransformError):
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
         return (
-            f"Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            f"entries exist in the renamings argument, which either rename a type to itself or "
+            f"type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            f"entries exist in the type_renamings argument, which either rename a type to itself or "
             f"would rename a type that doesn't exist in the schema, both of which are invalid: "
             f"{sorted(self.no_op_renames)}"
         )
