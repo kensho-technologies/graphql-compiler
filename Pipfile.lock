@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "13fe50b3a49f20b32177a322235bfdc36064fc95ae62a64b9b6e51ace196c73d"
+            "sha256": "93c3c5d34c9404030f8b4eba5cb8607a74ed127b17f6fa4b50bb940c67bc35d2"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -26,10 +26,11 @@
         },
         "funcy": {
             "hashes": [
-                "sha256:75ee84c3b446f92e68a857c2267b15a1b49c631c9d5a87a5f063cd2d6761a5c4"
+                "sha256:65b746fed572b392d886810a98d56939c6e0d545abb750527a717c21ced21008",
+                "sha256:c247c3d085e03a89974e0c9e8331e9a79db3768a263556ba896d6c92d665bba2"
             ],
             "index": "pypi",
-            "version": "==1.14"
+            "version": "==1.15"
         },
         "graphql-compiler": {
             "editable": true,
@@ -570,11 +571,11 @@
         },
         "pygments": {
             "hashes": [
-                "sha256:2594e8fdb06fef91552f86f4fd3a244d148ab24b66042036e64f29a291515048",
-                "sha256:2df50d16b45b977217e02cba6c8422aaddb859f3d0570a88e09b00eafae89c6e"
+                "sha256:307543fe65c0947b126e83dd5a61bd8acbd84abec11f43caebaf5534cbc17998",
+                "sha256:926c3f319eda178d1bd90851e4317e6d8cdb5e292a3386aac9bd75eca29cf9c7"
             ],
             "markers": "python_version >= '3.5'",
-            "version": "==2.7.0"
+            "version": "==2.7.1"
         },
         "pylint": {
             "hashes": [
@@ -819,11 +820,12 @@
         },
         "typing-copilot": {
             "hashes": [
-                "sha256:007bc248759f20beebaec4354f2b62e17fda983373b07208ddef701a2d0a258a",
-                "sha256:0e29f3577a595d91a670e997ee612649a784f05d06d72a61c09249446c80a191"
+                "sha256:3c7516f2ded57c27b03eb2f83c59c10113d8f58b7358b8cbfba015665a263551",
+                "sha256:a1b3872fcda6b35402e6cb09b9f4b468bf69182f635b94e01de3dfe2ea911307"
             ],
             "index": "pypi",
-            "version": "==0.2.0"
+            "markers": "python_version >= '3.7'",
+            "version": "==0.4.0"
         },
         "typing-extensions": {
             "hashes": [

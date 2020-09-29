@@ -10,7 +10,7 @@ many types of data querying for which the compilation-based approach is unsuitab
 The data in each of these cases can be described by a valid schema, and users could write
 well-defined and legal queries against that schema. However, the execution of such queries cannot
 proceed by compiling them to another query language -- no such target query language exists.
-Instead, the queries need to be executed using an *interpreter*: a sophisticated piece of code
+Instead, the queries need to be executed using an *interpreter*: a piece of code
 that executes queries incrementally in a series of steps, such as "fetch the value of this field"
 or "filter out this data point if its value is less than 5."
 
@@ -20,6 +20,8 @@ schema-agnostic -- they work in the same way regardless of the schema and data s
 provides efficient implementations of all schema-agnostic interpreter components. All schema-aware
 logic is abstracted into the straightforward API of the InterpreterAdapter class, which should be
 subclassed to create a new interpreter over a new dataset.
+logic is abstracted into the straightforward, four-method API of the InterpreterAdapter class,
+which should be subclassed to create a new interpreter over a new dataset.
 
 As a result, the development of a new interpreter looks like this:
 - Construct the schema of the data your new interpreter will be querying.
