@@ -135,8 +135,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     - neighbor_hints: information about the edges originating from the scope relevant to the called
       function that the query will eventually need to expand.
 
-    More details on these hints, and suggestions for their use, can be found in the API methods
-    docstrings available below.
+    More details on these hints, and suggestions for their use, can be found in the methods'
+    docstrings, available below.
     """
 
     @abstractmethod
