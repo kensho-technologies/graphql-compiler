@@ -17,6 +17,7 @@ from ...schema_transformation.rename_schema import (
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
+    NoOpRenamingError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
@@ -190,6 +191,44 @@ class TestRenameSchema(unittest.TestCase):
         rename_schema(original_ast, {"Human": None})
         self.assertEqual(original_ast, parse(ISS.multiple_objects_schema))
 
+    def test_rename_illegal_noop_unused_renaming(self) -> None:
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"})
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Dinosaur']",
+            str(e.exception),
+        )
+
+    def test_rename_legal_noop_unused_renaming(self) -> None:
+        # Unlike with test_rename_illegal_noop_unused_renaming, here renamings is not
+        # iterable. As a result, this renaming is technically legal but it is inadvisable to
+        # write a renaming like this since the intended "Dinosaur" -> "NewDinosaur" mapping is
+        # unused and will silently do nothing when applied to the given schema.
+        class RenameMapping:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+                """Define mapping for renaming object."""
+                if key == "Dinosaur":
+                    return "NewDinosaur"
+                return key
+
+        renamed_schema = rename_schema(parse(ISS.basic_schema), RenameMapping())
+        self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_rename_illegal_noop_renamed_to_self(self) -> None:
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Human']",
+            str(e.exception),
+        )
+
     def test_basic_suppress(self) -> None:
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
         renamed_schema_string = dedent(
@@ -236,6 +275,46 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_suppress_illegal_noop_unused_suppression(self) -> None:
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Dinosaur']",
+            str(e.exception),
+        )
+
+    def test_suppress_legal_noop_unused_suppression(self) -> None:
+        # Unlike with test_suppress_illegal_noop_unused_suppression, here renamings is not
+        # iterable. As a result, this renaming is technically legal but it is inadvisable to
+        # write a renaming like this since the intended "Dinosaur" -> None mapping is unused and
+        # will silently do nothing when applied to the given schema.
+        class SuppressMapping:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+                """Define mapping for renaming object."""
+                if key == "Dinosaur":
+                    return None
+                return key
+
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), SuppressMapping())
+        self.assertEqual(ISS.multiple_objects_schema, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_various_illegal_noop_renamings(self) -> None:
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(
+                parse(ISS.basic_schema), {"Dinosaur": None, "Human": "Human", "Bird": "Birdie"}
+            )
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['Bird', 'Dinosaur', 'Human']",
+            str(e.exception),
+        )
 
     def test_swap_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -413,7 +492,7 @@ class TestRenameSchema(unittest.TestCase):
     def test_multiple_interfaces_rename(self) -> None:
         renamed_schema = rename_schema(
             parse(ISS.multiple_interfaces_schema),
-            {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "Creature"},
+            {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "NewCreature"},
         )
         renamed_schema_string = dedent(
             """\
@@ -425,25 +504,26 @@ class TestRenameSchema(unittest.TestCase):
               id: String
             }
 
-            interface Creature {
+            interface NewCreature {
               age: Int
             }
 
-            type NewHuman implements NewCharacter & Creature {
+            type NewHuman implements NewCharacter & NewCreature {
               id: String
               age: Int
             }
 
             type SchemaQuery {
               NewCharacter: NewCharacter
-              Creature: Creature
+              NewCreature: NewCreature
               NewHuman: NewHuman
             }
         """
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual(
-            {"NewHuman": "Human", "NewCharacter": "Character"}, renamed_schema.reverse_name_map
+            {"NewHuman": "Human", "NewCharacter": "Character", "NewCreature": "Creature"},
+            renamed_schema.reverse_name_map,
         )
 
     def test_scalar_rename(self) -> None:
@@ -554,7 +634,6 @@ class TestRenameSchema(unittest.TestCase):
                 "Droid": "NewDroid",
                 "Character": "NewCharacter",
                 "Height": "NewHeight",
-                "id": "NewId",
             },
         )
         renamed_schema_string = dedent(
@@ -643,44 +722,44 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
 
-    def test_directive_rename(self) -> None:
-        renamed_schema = rename_schema(
-            parse(ISS.directive_schema),
-            {
-                "Human": "NewHuman",
-                "Droid": "NewDroid",
-                "stitch": "NewStitch",
-            },
-        )
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type NewHuman {
-              id: String
-            }
-
-            type NewDroid {
-              id: String
-              friend: NewHuman @stitch(source_field: "id", sink_field: "id")
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-              NewDroid: NewDroid
-            }
-        """
-        )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+    def test_directive_renaming_illegal_noop(self) -> None:
+        # This renaming is illegal because directives can't be renamed, so the
+        # "stitch" -> "NewStitch" mapping is a no-op which is not allowed for iterable renamings.
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(
+                parse(ISS.directive_schema),
+                {
+                    "stitch": "NewStitch",
+                },
+            )
         self.assertEqual(
-            {"NewHuman": "Human", "NewDroid": "Droid"}, renamed_schema.reverse_name_map
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['stitch']",
+            str(e.exception),
         )
 
-    def test_query_type_field_argument(self) -> None:
+    def test_directive_renaming_legal_noop(self) -> None:
+        # Unlike with test_directive_renaming_illegal_noop, here renamings is not iterable.
+        # As a result, this renaming is technically legal but it is inadvisable to write a
+        # renaming like this since directives cannot be renamed so the intended
+        # "stitch" -> "NewStitch" mapping is unused and will silently do nothing when applied to
+        #  ISS.directive_schema.
+        class DirectiveRenamingMapping:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+                """Define mapping for renaming object."""
+                if key == "stitch":
+                    return "NewStitch"
+                return key
+
+        renamed_schema = rename_schema(parse(ISS.directive_schema), DirectiveRenamingMapping())
+        self.assertEqual(ISS.directive_schema, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+
+    def test_query_type_field_argument_illegal_noop(self) -> None:
+        # This renaming is illegal because query type field arguments can't be renamed, so the
+        # "id" -> "Id" mapping is a no-op which is not allowed for iterable renamings.
         schema_string = dedent(
             """\
             schema {
@@ -696,24 +775,47 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        renamed_schema = rename_schema(parse(schema_string), {"Human": "NewHuman", "id": "Id"})
-        renamed_schema_string = dedent(
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(schema_string), {"id": "Id"})
+        self.assertEqual(
+            "Renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "entries exist in the renamings argument, which either rename a type to itself or "
+            "would rename a type that doesn't exist in the schema, both of which are invalid: "
+            "['id']",
+            str(e.exception),
+        )
+
+    def test_query_type_field_argument_legal_noop(self) -> None:
+        # Unlike with test_query_type_field_argument_illegal_noop, here renamings is not
+        # iterable. As a result, this renaming is technically legal but it is inadvisable to
+        # write a renaming like this since the intended "id" -> "Id" mapping is unused and will
+        # silently do nothing when applied to the given schema.
+        schema_string = dedent(
             """\
             schema {
               query: SchemaQuery
             }
 
             type SchemaQuery {
-              NewHuman(id: String!): NewHuman
+              Human(id: String!): Human
             }
 
-            type NewHuman {
+            type Human {
               name: String
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
+
+        class QueryTypeFieldArgumentMapping:
+            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
+                """Define mapping for renaming object."""
+                if key == "id":
+                    return "Id"
+                return key
+
+        renamed_schema = rename_schema(parse(schema_string), QueryTypeFieldArgumentMapping())
+        self.assertEqual(schema_string, print_ast(renamed_schema.schema_ast))
+        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_clashing_type_rename(self) -> None:
         schema_string = dedent(
@@ -794,9 +896,9 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(parse(schema_string), {"Human": "Human", "Human2": "Human"})
+            rename_schema(parse(schema_string), {"Human": "Human3", "Human2": "Human3"})
         self.assertTrue(
-            check_rename_conflict_error_message({"Human": {"Human", "Human2"}}, {}, e.exception)
+            check_rename_conflict_error_message({"Human3": {"Human", "Human2"}}, {}, e.exception)
         )
 
     def test_clashing_scalar_type_rename(self) -> None:

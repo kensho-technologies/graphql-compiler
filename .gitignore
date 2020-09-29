@@ -32,11 +32,12 @@ nosetests.xml
 *.egg-info
 *.egg-ignore
 
-# Any IDE-generated files (pycharm, Sublime)
+# Any IDE-generated files (pycharm, Sublime, VSCode)
 .idea
 .idea/
 .idea/*
 *.sublime-*
+.vscode/
 
 # Sphinx docs
 tools/sphinx_docgen/docs_rst

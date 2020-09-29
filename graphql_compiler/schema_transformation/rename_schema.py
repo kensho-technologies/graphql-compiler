@@ -77,8 +77,16 @@ Renaming constraints:
 - Names may not conflict with each other. For instance, you may not rename both "Foo" and "Bar" to
   "Baz". You also may not rename anything to "Baz" if a type "Baz" already exists and is not also
   being renamed or suppressed.
+- Special rules apply to the renamings argument if it's iterable (e.g. if a dict). If iterable,
+  renamings may not contain no-op entries. In other words:
+    - A string type_name may be in renamings only if there exists a type in the schema named
+      type_name (since otherwise that entry would not affect any type in the schema).
+    - A string type_name is in renamings, then renamings[type_name] != type_name (since applying the
+      renaming would not change the type named type_name).
+  If not iterable, then these no-op rules don't apply.
 """
 from collections import namedtuple
+from collections.abc import Iterable
 from typing import AbstractSet, Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from graphql import (
@@ -99,6 +107,7 @@ from ..typedefs import Protocol
 from .utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
+    NoOpRenamingError,
     RenameTypes,
     RenameTypesT,
     SchemaRenameNameConflictError,
@@ -408,6 +417,24 @@ def _rename_and_suppress_types(
         raise SchemaRenameNameConflictError(
             visitor.name_conflicts, visitor.renamed_to_builtin_scalar_conflicts
         )
+    if isinstance(renamings, Iterable):
+        # If renamings is iterable, then every renaming must be used and no renaming can map a
+        # name to itself
+        for type_name in visitor.suppressed_types:
+            if type_name not in renamings:
+                raise AssertionError(
+                    f"suppressed_types should be a subset of the set of keys in renamings, but "
+                    f"found {type_name} in suppressed_types that is not a key in renamings. This "
+                    f"is a bug."
+                )
+        renamed_types = {
+            visitor.reverse_name_map[type_name]
+            for type_name in visitor.reverse_name_map
+            if type_name != visitor.reverse_name_map[type_name]
+        }
+        no_op_renames: Set[str] = set(renamings) - renamed_types - set(visitor.suppressed_types)
+        if no_op_renames:
+            raise NoOpRenamingError(no_op_renames)
     return renamed_schema_ast, visitor.reverse_name_map
 
 
@@ -514,6 +541,9 @@ class RenameSchemaTypesVisitor(Visitor):
     # type_name_is_valid function in utils), invalid_type_names will map "Foo" to the invalid type
     # name.
     invalid_type_names: Dict[str, str]
+    # Collects the type names for types that get suppressed. If renaming would suppress a type named
+    # "Foo", renamed_types will contain "Foo".
+    suppressed_types: Set[str]
 
     def __init__(
         self,
@@ -537,6 +567,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.invalid_type_names = {}
         self.query_type = query_type
         self.custom_scalar_names = frozenset(custom_scalar_names)
+        self.suppressed_types = set()
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -570,6 +601,7 @@ class RenameSchemaTypesVisitor(Visitor):
         desired_type_name = self.renamings.get(type_name, type_name)  # Default use original
         if desired_type_name is None:
             # Suppress the type
+            self.suppressed_types.add(type_name)
             return REMOVE
         if not type_name_is_valid(desired_type_name):
             self.invalid_type_names[type_name] = desired_type_name

@@ -127,7 +127,7 @@ Lets go over a toy example of a GraphQL object type:
 
 Here are some of the details:
 
-- :code:`_x_count`: is a `meta field <meta_fields>`__. Meta fields are an advanced compiler
+- :code:`_x_count`: is a :ref:`meta field <meta_fields>`. Meta fields are an advanced compiler
   feature.
 - :code:`name` is a **property field** that represents concrete data.
 - :code:`in_Animal_PlaysWith` is a **vertex field** representing an inbound edge.

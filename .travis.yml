@@ -34,6 +34,10 @@ matrix:
     script:
       - pipenv run ./scripts/copyright_line_check.sh
       - pipenv run ./scripts/lint.sh
+  - name: "typing_copilot check for tightest possible mypy.ini file"
+    python: "3.8"
+    script:
+      - pipenv run typing_copilot tighten --error-if-can-tighten
   - name: "Python 3.6 unit tests"
     python: "3.6"
     script:
