@@ -89,7 +89,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
     ## Performance and optimization opportunities
 
-    The design of the API, including its generator-style operation, enable a variety of
+    The design of the API, including its generator-style operation, enables a variety of
     optimizations to either happen automatically or be available with minimal additional work.
     A few simple examples:
     - Interpreters perform lazy evaluation by default: if exactly 3 query results are requested,
