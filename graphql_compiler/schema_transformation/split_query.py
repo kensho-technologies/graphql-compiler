@@ -631,7 +631,10 @@ def _get_property_field(existing_field, field_name, directives_from_edge):
                     "was not caught in a prior validation step.".format(directive)
                 )
 
-    new_field = FieldNode(name=NameNode(value=field_name), directives=new_field_directives,)
+    new_field = FieldNode(
+        name=NameNode(value=field_name),
+        directives=new_field_directives,
+    )
     return new_field
 
 
@@ -681,7 +684,10 @@ def _get_output_directive(out_name):
     return DirectiveNode(
         name=NameNode(value=OutputDirective.name),
         arguments=[
-            ArgumentNode(name=NameNode(value="out_name"), value=StringValueNode(value=out_name),),
+            ArgumentNode(
+                name=NameNode(value="out_name"),
+                value=StringValueNode(value=out_name),
+            ),
         ],
     )
 
@@ -696,7 +702,9 @@ def _get_query_document(root_vertex_field_name, root_selections):
                     selections=[
                         FieldNode(
                             name=NameNode(value=root_vertex_field_name),
-                            selection_set=SelectionSetNode(selections=root_selections,),
+                            selection_set=SelectionSetNode(
+                                selections=root_selections,
+                            ),
                             directives=[],
                         )
                     ]

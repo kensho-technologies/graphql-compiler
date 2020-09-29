@@ -69,8 +69,14 @@ def get_integration_data():
             },
         ),
         "Species": (
-            {"uuid": uuids["S1"], "name": "Species 1",},
-            {"uuid": uuids["S2"], "name": "Species 2",},
+            {
+                "uuid": uuids["S1"],
+                "name": "Species 1",
+            },
+            {
+                "uuid": uuids["S2"],
+                "name": "Species 2",
+            },
         ),
         "BirthEvent": (
             {
@@ -86,12 +92,29 @@ def get_integration_data():
         ),
     }
     edge_values = {
-        "Entity_Related": ({"from_uuid": uuids["S1"], "to_uuid": uuids["S2"],},),
+        "Entity_Related": (
+            {
+                "from_uuid": uuids["S1"],
+                "to_uuid": uuids["S2"],
+            },
+        ),
         "Animal_ParentOf": (
-            {"from_uuid": uuids["A1"], "to_uuid": uuids["A1"],},
-            {"from_uuid": uuids["A1"], "to_uuid": uuids["A2"],},
-            {"from_uuid": uuids["A1"], "to_uuid": uuids["A3"],},
-            {"from_uuid": uuids["A3"], "to_uuid": uuids["A4"],},
+            {
+                "from_uuid": uuids["A1"],
+                "to_uuid": uuids["A1"],
+            },
+            {
+                "from_uuid": uuids["A1"],
+                "to_uuid": uuids["A2"],
+            },
+            {
+                "from_uuid": uuids["A1"],
+                "to_uuid": uuids["A3"],
+            },
+            {
+                "from_uuid": uuids["A3"],
+                "to_uuid": uuids["A4"],
+            },
         ),
     }
 
@@ -186,7 +209,7 @@ def generate_neo4j_integration_data(client):
                 for key in vertex_props:
                     _validate_name(key)
                 command = "create (:{} {{{}}})".format(
-                    vertex_name, ", ".join("{}: ${}".format(key, key) for key in vertex_props)
+                    vertex_name, ", ".join(f"{key}: ${key}" for key in vertex_props)
                 )
                 session.run(command, vertex_props)
     with client.driver.session() as session:

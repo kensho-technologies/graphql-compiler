@@ -974,7 +974,8 @@ class CostEstimationTests(unittest.TestCase):
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     @pytest.mark.xfail(
-        strict=True, reason="Not implemented",
+        strict=True,
+        reason="Not implemented",
     )
     def test_ast_rotation_invariance_with_equality(self):
         """Test that rotating the query preserves the estimate."""
@@ -1180,7 +1181,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             sampling_summaries={
                 "Animal": VertexSamplingSummary(
                     vertex_name="Animal",
-                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
                     sample_ratio=1000,
                 )
             },
@@ -1204,7 +1210,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             sampling_summaries={
                 "Animal": VertexSamplingSummary(
                     vertex_name="Animal",
-                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
                     sample_ratio=1000,
                 )
             },
@@ -1230,7 +1241,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         nonunique_filter = FilterInfo(
             fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
         )
-        nonunique_params = {"birthday_collection": [date(2017, 3, 22), date(1999, 12, 31),]}
+        nonunique_params = {
+            "birthday_collection": [
+                date(2017, 3, 22),
+                date(1999, 12, 31),
+            ]
+        }
         # If we use an in_collection-filter on a property that is not uniquely indexed, with no
         # distinct_field_values_count statistic, return a fractional selectivity of 1.
         selectivity = _make_schema_info_and_get_filter_selectivity(
@@ -1302,7 +1318,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             sampling_summaries={
                 "Animal": VertexSamplingSummary(
                     vertex_name="Animal",
-                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
                     sample_ratio=1000,
                 )
             },
@@ -1313,7 +1334,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             FilterInfo(
                 fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
             ),
-            {"birthday_collection": [date(2017, 3, 22), date(1999, 12, 31),]},
+            {
+                "birthday_collection": [
+                    date(2017, 3, 22),
+                    date(1999, 12, 31),
+                ]
+            },
             "Animal",
         )
         # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
@@ -1327,7 +1353,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             sampling_summaries={
                 "Animal": VertexSamplingSummary(
                     vertex_name="Animal",
-                    value_counts={"birthday": {date(2019, 3, 1): 100, date(2019, 4, 6): 80,}},
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
                     sample_ratio=1000,
                 )
             },
@@ -1338,7 +1369,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             FilterInfo(
                 fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
             ),
-            {"birthday_collection": [date(2019, 4, 6), date(1999, 12, 31),]},
+            {
+                "birthday_collection": [
+                    date(2019, 4, 6),
+                    date(1999, 12, 31),
+                ]
+            },
             "Animal",
         )
         # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
@@ -1359,7 +1395,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         }
         classname = "Animal"
         between_filter = FilterInfo(
-            fields=("uuid",), op_name="between", args=("$uuid_lower", "$uuid_upper",)
+            fields=("uuid",),
+            op_name="between",
+            args=(
+                "$uuid_lower",
+                "$uuid_upper",
+            ),
         )
         filter_info_list = [between_filter]
         # The number of UUIDs between the two parameter values is effectively a quarter of all valid
@@ -1413,7 +1454,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertAlmostEqual(expected_counts, result_counts)
 
         between_filter = FilterInfo(
-            fields=("uuid",), op_name="between", args=("$uuid_lower", "$uuid_upper",)
+            fields=("uuid",),
+            op_name="between",
+            args=(
+                "$uuid_lower",
+                "$uuid_upper",
+            ),
         )
         filter_info_list = [between_filter]
         # Note that the the lower bound parameter is higher than the upper bound parameter, so the
@@ -1442,7 +1488,10 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             for vertex_name in schema_graph.vertex_class_names
         }
         statistics = LocalStatistics(
-            dict(), field_quantiles={("Species", "limbs"): [3, 6, 7, 9, 11, 55, 80],}
+            dict(),
+            field_quantiles={
+                ("Species", "limbs"): [3, 6, 7, 9, 11, 55, 80],
+            },
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1532,7 +1581,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertAlmostEqual(expected_counts, result_counts)
 
         # Test with small quantile list
-        small_statistics = LocalStatistics(dict(), field_quantiles={("Species", "limbs"): [3, 80],})
+        small_statistics = LocalStatistics(
+            dict(),
+            field_quantiles={
+                ("Species", "limbs"): [3, 80],
+            },
+        )
         small_schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
             type_equivalence_hints=type_equivalence_hints,

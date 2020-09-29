@@ -280,7 +280,10 @@ def _construct_traversal_joins(traversals: List[SQLFoldTraversalDescriptor]) -> 
     return join_clause
 
 
-def _get_array_agg_column(output_column: Column, intermediate_fold_output_name: str,) -> Label:
+def _get_array_agg_column(
+    output_column: Column,
+    intermediate_fold_output_name: str,
+) -> Label:
     """Select an array_agg of the fold output field, labeled as requested."""
     return sqlalchemy.func.array_agg(output_column).label(intermediate_fold_output_name)
 
@@ -586,7 +589,10 @@ class FoldSubqueryBuilder(object):
         return sorted(outputs, key=lambda column: column.name, reverse=True)
 
     def add_traversal(
-        self, join_descriptor: DirectJoinDescriptor, from_table: Alias, to_table: Alias,
+        self,
+        join_descriptor: DirectJoinDescriptor,
+        from_table: Alias,
+        to_table: Alias,
     ) -> None:
         """Add a new SQLFoldTraversalDescriptor."""
         if self._ended:
@@ -1019,7 +1025,10 @@ class CompilationState(object):
         base_alias = self._current_alias.alias()
         base = sqlalchemy.select(
             [base_alias.c[col].label(col) for col in used_columns]
-            + [base_alias.c[primary_key].label(CTE_KEY_NAME), literal_0.label(CTE_DEPTH_NAME),]
+            + [
+                base_alias.c[primary_key].label(CTE_KEY_NAME),
+                literal_0.label(CTE_DEPTH_NAME),
+            ]
         )
         if self._recurse_needs_cte:
             # Optimization: Only compute the recursion for the valid starting points -- ones that

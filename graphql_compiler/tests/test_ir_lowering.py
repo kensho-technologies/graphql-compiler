@@ -210,7 +210,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             ),
             MarkLocation(second_child_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
@@ -240,7 +242,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             ),
             MarkLocation(second_child_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
 
@@ -271,7 +275,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             MarkLocation(child_location),
             Backtrack(base_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
@@ -289,7 +295,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({"Animal"}),
             MarkLocation(base_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
@@ -326,7 +334,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             MarkLocation(child_location_2),
             Backtrack(base_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
@@ -348,7 +358,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({"Animal"}),
             MarkLocation(base_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
@@ -380,7 +392,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             Backtrack(base_location, optional=True),
             MarkLocation(base_location_revisited),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
@@ -399,7 +413,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             QueryRoot({"Animal"}),
             MarkLocation(base_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         expected_final_query = convert_to_match_query(expected_final_blocks)
@@ -633,7 +649,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             ),
             MarkLocation(base_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
         ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
@@ -666,7 +684,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             ),
             MarkLocation(base_location),
             ConstructResult(
-                {"animal_name": OutputContextField(base_name_location, GraphQLString),}
+                {
+                    "animal_name": OutputContextField(base_name_location, GraphQLString),
+                }
             ),
         ]
 
@@ -789,7 +809,9 @@ class MatchIrLoweringTests(unittest.TestCase):
             BinaryComposition(
                 "&&",
                 BinaryComposition(
-                    ">=", Variable("$upper", GraphQLString), LocalField("name", GraphQLString),
+                    ">=",
+                    Variable("$upper", GraphQLString),
+                    LocalField("name", GraphQLString),
                 ),
                 BinaryComposition(
                     ">=", LocalField("name", GraphQLString), Variable("$lower", GraphQLString)

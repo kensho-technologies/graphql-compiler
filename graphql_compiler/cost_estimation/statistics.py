@@ -170,10 +170,11 @@ class LocalStatistics(Statistics):
                              values. The number N can be different for each entry. N has to be at
                              least 2 for every entry present in the dict.
             sampling_summaries: optional SamplingSummaries for some classes
-            TODO(bojanserafimov): Enforce a canonical representation for quantile values and
-                                  sampling summaries. Datetimes should be in utc, decimals should
-                                  have type float, etc.
-            TODO(bojanserafimov): Sanity-check class_counts against sample_ratio * num_samples
+
+        TODO(bojanserafimov): Enforce a canonical representation for quantile values and
+                              sampling summaries. Datetimes should be in utc, decimals should
+                              have type float, etc.
+        TODO(bojanserafimov): Sanity-check class_counts against sample_ratio * num_samples
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
