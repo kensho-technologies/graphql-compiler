@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 from typing import (
     AbstractSet,
@@ -151,7 +152,6 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     ) -> Iterable[DataToken]:
         """Produce an iterable of tokens for the specified type name."""
         # TODO(predrag): Add more docs in an upcoming PR.
-        pass
 
     @abstractmethod
     def project_property(
@@ -190,7 +190,6 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         # the generator from the outside does not change, or that bug will be hard to find.
         # Remember: it's always safer to use a function to produce the generator, since
         # that will explicitly preserve all the external values passed into it.
-        pass
 
     @abstractmethod
     def can_coerce_to_type(
@@ -207,4 +206,3 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
         """Determine if each of an iterable of input DataTokens can be coerced to another type."""
         # TODO(predrag): Add more docs in an upcoming PR.
-        pass
