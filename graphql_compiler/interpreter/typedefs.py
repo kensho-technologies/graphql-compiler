@@ -85,7 +85,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     - can_coerce_to_type() is used to check whether a DataToken corresponding to one vertex type
       can be safely converted into one representing a different vertex type. Given an iterable of
       DataContexts and the name of the type to which the conversion is attempted, it produces
-      an iterable of tuples (data_context, can_coerce) where can_coerce is a boolean.
+      an iterable of tuples (data_context, can_coerce), where can_coerce is a boolean.
 
     ## Performance and optimization opportunities
 
