@@ -53,8 +53,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
     Here are a few common examples of DataToken types in practice:
     - a dict containing the type name of the vertex and the values of all its properties;
-    - a dataclass containing the type name of the vertex, and the collection name and primary key
-      of the database entry using which the property values can be looked up, or
+    - a dataclass containing the type name of the vertex, and a collection name and primary key
+      that can be used to retrieve its property values from a database, or
     - an instance of a custom class which has *some* of the values of the vertex properties, and
       has sufficient information to look up the rest of them if they are ever requested.
 
