@@ -53,8 +53,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
     Here are a few common examples of DataToken types in practice:
     - a dict containing the type name of the vertex and the values of all its properties;
-    - a dataclass containing the type name of the vertex, and the collection name and primary key
-      of the database entry using which the property values can be looked up, or
+    - a dataclass containing the type name of the vertex, and a collection name and primary key
+      that can be used to retrieve its property values from a database, or
     - an instance of a custom class which has *some* of the values of the vertex properties, and
       has sufficient information to look up the rest of them if they are ever requested.
 
@@ -62,8 +62,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     is already available in Python memory, or is on a local disk, or is a network hop away.
 
     Implementers are free to choose any DataToken type and the interpreter code will happily use it.
-    However, for the sake of easier debugging and testing using the built-in functionality in
-    this library, it is desirable to make DataToken be a deep-copyable type that implements
+    However, certain debugging and testing tools provided by this library will work best
+    when DataToken is a deep-copyable type that implements
     equality beyond a simple referential equality check.
 
     ## The InterpreterAdapter API
@@ -79,9 +79,9 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
       in each DataContext; project_property() therefore returns an iterable of
       tuples (data_context, value).
     - project_neighbors() is similar: for an iterable of DataContexts and a specific edge name,
-      it returns an iterable (data_context, iterable_of_neighbor_tokens) where each result
-      contains the DataTokens of the neighboring vertices along that edge for the vertex whose
-      DataToken is currently active in that DataContext.
+      it returns an iterable (data_context, iterable_of_neighbor_tokens) where
+      iterable_of_neighbor_tokens yields a DataToken for each vertex that can be reached by
+      following the specified edge from data_context's vertex. 
     - can_coerce_to_type() is used to check whether a DataToken corresponding to one vertex type
       can be safely converted into one representing a different vertex type. Given an iterable of
       DataContexts and the name of the type to which the conversion is attempted, it produces
@@ -185,11 +185,9 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         """Produce the neighbors along a given edge for each of an iterable of input DataTokens."""
         # TODO(predrag): Add more docs in an upcoming PR.
         #
-        # If using a generator instead of a list for the Iterable[DataToken] part,
-        # be careful -- generators are not closures! Make sure any state you pull into
-        # the generator from the outside does not change, or that bug will be hard to find.
-        # Remember: it's always safer to use a function to produce the generator, since
-        # that will explicitly preserve all the external values passed into it.
+        # If using a generator or a mutable data type for the Iterable[DataToken] part,
+        # be careful! Make sure any state it depends upon
+        # does not change, or that bug will be hard to find.
 
     @abstractmethod
     def can_coerce_to_type(
