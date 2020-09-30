@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ast import literal_eval
 from textwrap import dedent
-from typing import Dict, Optional, Set
+from typing import Dict, Optional, Set, List
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -532,7 +532,7 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(
             parse(ISS.many_fields_schema), {}, FieldRenamingNoOpMapping()
         )
-        self.assertEqual(ISS.directive_schema, print_ast(renamed_schema.schema_ast))
+        self.assertEqual(ISS.many_fields_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -1156,7 +1156,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_illegal_rename_field_to_double_underscore(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": "__id"}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": ["__id"]}})
 
     def test_illegal_rename_type_to_reserved_name_type(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
@@ -1164,7 +1164,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_illegal_rename_field_to_reserved_name_type(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": "__Type"}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": ["__Type"]}})
 
     def test_suppress_every_type(self) -> None:
         with self.assertRaises(SchemaTransformError):
