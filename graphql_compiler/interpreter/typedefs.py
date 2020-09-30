@@ -62,8 +62,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     is already available in Python memory, or is on a local disk, or is a network hop away.
 
     Implementers are free to choose any DataToken type and the interpreter code will happily use it.
-    However, for the sake of easier debugging and testing using the built-in functionality in
-    this library, it is desirable to make DataToken be a deep-copyable type that implements
+    However, certain debugging and testing tools provided by this library will work best
+    when DataToken is a deep-copyable type that implements
     equality beyond a simple referential equality check.
 
     ## The InterpreterAdapter API
