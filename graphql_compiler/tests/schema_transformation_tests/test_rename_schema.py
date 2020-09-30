@@ -132,6 +132,7 @@ class TestRenameSchema(unittest.TestCase):
 
         self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_basic_rename(self) -> None:
         renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": "NewHuman"}, {})
@@ -154,6 +155,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_type_directive_same_name(self) -> None:
         # Types, fields, and directives have different namespaces, so this schema and renaming are
@@ -180,6 +182,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewStitch": "stitch"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_original_unmodified_rename(self) -> None:
         original_ast = parse(ISS.basic_schema)
@@ -217,6 +220,7 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(parse(ISS.basic_schema), RenameMapping(), {})
         self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_rename_illegal_noop_renamed_to_self(self) -> None:
         with self.assertRaises(NoOpRenamingError) as e:
@@ -253,6 +257,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_multiple_type_suppress(self) -> None:
         renamed_schema = rename_schema(
@@ -275,6 +280,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_illegal_noop_unused_suppression(self) -> None:
         with self.assertRaises(NoOpRenamingError) as e:
@@ -302,6 +308,7 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), SuppressMapping(), {})
         self.assertEqual(ISS.multiple_objects_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_various_illegal_noop_type_renamings(self) -> None:
         with self.assertRaises(NoOpRenamingError) as e:
@@ -347,6 +354,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"Human": "Droid", "Droid": "Human"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_rename_into_suppressed(self) -> None:
         renamed_schema = rename_schema(
@@ -374,6 +382,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"Human": "Droid"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_cyclic_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -408,6 +417,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -437,6 +447,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(
             {"NewDroid": "Droid", "NewHeight": "Height"}, renamed_schema.reverse_name_map
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_enum_suppression(self) -> None:
         with self.assertRaises(NotImplementedError):
@@ -470,6 +481,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(
             {"NewKid": "Kid", "NewCharacter": "Character"}, renamed_schema.reverse_name_map
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_interface_implementation(self) -> None:
         with self.assertRaises(NotImplementedError):
@@ -526,6 +538,7 @@ class TestRenameSchema(unittest.TestCase):
             {"NewHuman": "Human", "NewCharacter": "Character", "NewCreature": "Creature"},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_scalar_rename(self) -> None:
         with self.assertRaises(NotImplementedError):
@@ -572,6 +585,7 @@ class TestRenameSchema(unittest.TestCase):
             {"NewDroid": "Droid", "NewHumanOrDroid": "HumanOrDroid"},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_entire_union_suppress(self) -> None:
         renamed_schema = rename_schema(
@@ -602,6 +616,7 @@ class TestRenameSchema(unittest.TestCase):
             {"NewDroid": "Droid"},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_union_member_suppress(self) -> None:
         renamed_schema = rename_schema(parse(ISS.union_schema), {"Droid": None}, {})
@@ -627,6 +642,7 @@ class TestRenameSchema(unittest.TestCase):
             {},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_list_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -676,6 +692,7 @@ class TestRenameSchema(unittest.TestCase):
             },
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_non_null_rename(self) -> None:
         renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "NewDog"}, {})
@@ -702,6 +719,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_non_null_suppress(self) -> None:
         renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": None}, {})
@@ -722,6 +740,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_directive_renaming_illegal_noop(self) -> None:
         # This renaming is illegal because directives can't be renamed, so the
@@ -757,6 +776,7 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(parse(ISS.directive_schema), DirectiveRenamingMapping(), {})
         self.assertEqual(ISS.directive_schema, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_query_type_field_argument_illegal_noop(self) -> None:
         # This renaming is illegal because query type field arguments can't be renamed, so the
@@ -817,6 +837,7 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(parse(schema_string), QueryTypeFieldArgumentMapping(), {})
         self.assertEqual(schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_clashing_type_rename(self) -> None:
         schema_string = dedent(
@@ -1042,6 +1063,7 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_field_in_list_still_depends_on_suppressed_type(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
@@ -1115,3 +1137,4 @@ class TestRenameSchema(unittest.TestCase):
             },
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)

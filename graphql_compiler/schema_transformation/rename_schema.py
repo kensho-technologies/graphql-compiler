@@ -128,6 +128,8 @@ RenamedSchemaDescriptor = namedtuple(
         "schema",  # GraphQLSchema, representing the same schema as schema_ast
         "reverse_name_map",  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
+        "reverse_field_name_map",  # Dict[str, Dict[str, str]], maps type name to a dict that maps each of the type's fields f (in the renamed schema) to the name of the field in the original schema.
+        # reverse_field_name_map only contains names that were changed
     ),
 )
 
@@ -225,6 +227,7 @@ def rename_schema(schema_ast: DocumentNode, type_renamings: TypeRenamingMapping,
         schema_ast=schema_ast,
         schema=build_ast_schema(schema_ast),
         reverse_name_map=reverse_name_map_changed_names_only,
+        reverse_field_name_map={}
     )
 
 
