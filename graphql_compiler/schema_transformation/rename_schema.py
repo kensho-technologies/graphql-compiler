@@ -129,7 +129,8 @@ RenamedSchemaDescriptor = namedtuple(
         "reverse_name_map",  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
         "reverse_field_name_map",  # Dict[str, Dict[str, str]], maps type name to a dict that maps each of the type's fields f (in the renamed schema) to the name of the field in the original schema.
-        # reverse_field_name_map only contains names that were changed
+        # reverse_field_name_map.get(type_name) is not None iff the type named type_name has different fields in the original schema vs. the renamed schema.
+        # if type_name in reverse_field_name_map, reverse_field_name_map[type_name].get(new_field_name) is not None iff the new_field_name is the name of a field in the renamed schema that corresponds to a field in the original schema that is not also named new_field_name. e.g. if the field "id" is renamed to "id" and "new_id", only "new_id" -> "id" mapping will show up here because it's needed to rename the query as well.
     ),
 )
 
