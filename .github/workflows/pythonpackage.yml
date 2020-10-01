@@ -65,18 +65,20 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools pipenv
           echo "${pythonLocation}/lib/python${{ matrix.python-version }}/site-packages"
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "::set-output name=dir::$(pip cache dir)"
       - name: Cache the Python dependencies
-        id: cache-deps
         uses: actions/cache@v2
         with:
-          path: ${pythonLocation}/lib/python${{ matrix.python-version }}/site-packages
-          key: ${{ runner.os }}-${{ matrix.python-version }}
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
       - name: Install Python dependencies
-        if: steps.cache-deps.outputs.cache-hit != 'true'
         run: |
           pipenv install --dev --deploy --system
-      - name: Install the package itself
-        run: |
           pip install -e .
       - name: Test with pytest
         run: |
