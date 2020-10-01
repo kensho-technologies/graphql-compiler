@@ -11,6 +11,19 @@ shopt -s globstar nullglob
 # Break on first error.
 set -e
 
+
+function get_physical_cores() {
+    if [[ -f /proc/cpuinfo ]]
+    then
+        grep "core id" /proc/cpuinfo  |
+        sort -u |
+        wc -l
+    else
+        sysctl -n hw.physicalcpu 2>/dev/null || echo 4
+    fi
+}
+
+
 # Parse input arguments.
 diff_only=0
 any_run_only_set=0
@@ -153,7 +166,8 @@ fi
 
 if [ "$run_pylint" -eq 1 ]; then
     echo -e '\n*** Running pylint... ***\n'
-    pylint $pylint_lintable_locations
+    echo "Using $(get_physical_cores) cores for pylint."
+    pylint --jobs="$(get_physical_cores)" $pylint_lintable_locations
     pylint_exit_code=$?
     echo -e "\n*** End of pylint run, exit: $pylint_exit_code ***\n"
 fi
@@ -213,10 +227,10 @@ if  [[
     if [ "$run_mypy" -eq 1 ]; then
         echo -e "mypy exit: $mypy_exit_code"
     fi
-    if [ "$run_pylint" -eq 1]; then
+    if [ "$run_pylint" -eq 1 ]; then
         echo -e "pylint exit: $pylint_exit_code"
     fi
-    if [ "$run_bandit" -eq 1]; then
+    if [ "$run_bandit" -eq 1 ]; then
         echo -e "bandit exit: $bandit_exit_code"
     fi
     if [ "$run_sphinx_build" -eq 1 ]; then
