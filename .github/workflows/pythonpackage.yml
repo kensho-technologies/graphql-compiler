@@ -3,12 +3,12 @@ name: Test and lint Python package
 on:
   push:
     branches:
-      - *
+      - "*"
     tags:
       - v*
   pull_request:
     branches:
-      - *
+      - "*"
 jobs:
   lint:
     runs-on: ubuntu-latest
