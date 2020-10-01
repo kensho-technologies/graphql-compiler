@@ -28,9 +28,14 @@ done
 # Make sure the current working directory for this script is the root directory.
 cd "$(git -C "$(dirname "${0}")" rev-parse --show-toplevel )"
 
-# Get into the graphql-compiler virtualenv. "pipenv shell" returns exit code 1 if already there,
-# which doesn't matter to us so we avoid crashing the script by adding "|| true".
-pipenv shell || true
+# Assert script is running inside pipenv shell
+set +u
+if [[ "$VIRTUAL_ENV" == "" ]]
+then
+    echo "Please run pipenv shell first"
+    exit 1
+fi
+set -u
 
 # Get all python files or directories that need to be linted.
 lintable_locations="."
@@ -40,7 +45,7 @@ lintable_locations="."
 pylint_lintable_locations="**/*.py *.py"
 if [ "$diff_only" -eq 1 ] ; then
     # Quotes don't need to be escaped because they nest with $( ).
-    lintable_locations="$(git diff --name-only master... | grep ".*\.py$")"
+    lintable_locations="$(git diff --name-only main... | grep ".*\.py$")"
     pylint_lintable_locations="$lintable_locations"
 fi
 

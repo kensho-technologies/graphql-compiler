@@ -127,7 +127,7 @@ Lets go over a toy example of a GraphQL object type:
 
 Here are some of the details:
 
-- :code:`_x_count`: is a `meta field <meta_fields>`__. Meta fields are an advanced compiler
+- :code:`_x_count`: is a :ref:`meta field <meta_fields>`. Meta fields are an advanced compiler
   feature.
 - :code:`name` is a **property field** that represents concrete data.
 - :code:`in_Animal_PlaysWith` is a **vertex field** representing an inbound edge.
@@ -158,7 +158,7 @@ The compiler uses the built-in GraphQL
 `scalar types <https://graphql.org/learn/schema/#scalar-types>`__ as well as three custom scalar
 types:
 
-- :code:`DateTime` represents timezone-aware second-accuracy timestamps.
+- :code:`DateTime` represents timezone-naive second-accuracy timestamps.
 - :code:`Date` represents day-accuracy date objects.
 - :code:`Decimal` is an arbitrary-precision decimal number object useful for representing values
   that should never be rounded, such as currency amounts.
@@ -316,6 +316,13 @@ In this query, the :code:`out_Entity_Related` is of :code:`Entity` type.
 However, the query only wants to return results where the related entity
 is a :code:`Species`, which :code:`... on Species` ensures is the case.
 
+Constraints and Rules
+^^^^^^^^^^^^^^^^^^^^^
+
+-  Must be the only selection in scope. No field may exist in the same
+   scope as a type coercion. No scope may contain more than one type
+   coercion.
+
 .. _meta_fields:
 
 Meta fields
@@ -380,6 +387,42 @@ since all names with that prefix are `explicitly reserved and prohibited
 from being
 used <https://facebook.github.io/graphql/draft/#sec-Reserved-Names>`__
 in directives, fields, or any other artifacts.
+
+Adding the :code:`_x_count` meta field to your schema
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Since the :code:`_x_count` meta field is not currently part of the GraphQL
+standard, it has to be explicitly added to all interfaces and types in
+your schema. There are two ways to do this.
+
+The preferred way to do this is to use the
+:code:`EXTENDED_META_FIELD_DEFINITIONS` constant as a starting point for
+building your interfaces' and types' field descriptions:
+
+.. code:: python
+
+    from graphql import GraphQLInt, GraphQLField, GraphQLObjectType, GraphQLString
+    from graphql_compiler import EXTENDED_META_FIELD_DEFINITIONS
+    fields = EXTENDED_META_FIELD_DEFINITIONS.copy()
+    fields.update({
+        'foo': GraphQLField(GraphQLString),
+        'bar': GraphQLField(GraphQLInt),
+        # etc.
+    })
+    graphql_type = GraphQLObjectType('MyType', fields)
+    # etc.
+
+If you are not able to programmatically define the schema, and instead
+simply have a pre-made GraphQL schema object that you are able to
+mutate, the alternative approach is via the
+:code:`insert_meta_fields_into_existing_schema()` helper function defined by
+the compiler:
+
+.. code:: python
+
+    # assuming that existing_schema is your GraphQL schema object
+    insert_meta_fields_into_existing_schema(existing_schema)
+    # existing_schema was mutated in-place and all custom meta-fields were added
 
 Example Use
 ^^^^^^^^^^^

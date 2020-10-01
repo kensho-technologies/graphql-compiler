@@ -12,13 +12,13 @@ def load_schema(client: OrientDB) -> None:
     sql_files = glob(file_path)
     if len(sql_files) > 1:
         raise AssertionError(
-            u"Multiple schema files found. Expected single `schema.sql` "
-            u"in graphql-compiler/graphql_compiler/tests/test_data_tools/"
+            "Multiple schema files found. Expected single `schema.sql` "
+            "in graphql-compiler/graphql_compiler/tests/test_data_tools/"
         )
     if len(sql_files) == 0 or sql_files[0] != file_path:
         raise AssertionError(
-            u"Schema file not found. Expected graphql-compiler/graphql_compiler/"
-            u"tests/test_data_tools/schema.sql"
+            "Schema file not found. Expected graphql-compiler/graphql_compiler/"
+            "tests/test_data_tools/schema.sql"
         )
 
     with open(file_path, "r") as update_file:

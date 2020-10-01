@@ -12,7 +12,7 @@ class SubclassTests(unittest.TestCase):
         """Initialize the test schema once for all tests."""
         self.schema = get_schema()
 
-    def test_compute_subclass_sets(self):
+    def test_compute_subclass_sets(self) -> None:
         type_equivalence_hints = {
             self.schema.get_type("Event"): self.schema.get_type(
                 "Union__BirthEvent__Event__FeedingEvent"
@@ -35,7 +35,7 @@ class SubclassTests(unittest.TestCase):
             self.assertEqual(
                 expected,
                 is_subclass,
-                u"{} is subclass of {} evaluates to {}. Expected: {}".format(
+                "{} is subclass of {} evaluates to {}. Expected: {}".format(
                     cls1, cls2, is_subclass, expected
                 ),
             )

@@ -4,6 +4,15 @@ Changelog
 Current development version
 ---------------------------
 
+v2.0.0 (upcoming release)
+-------------------------
+
+- **BREAKING** Change the :code:`GraphQLDateTime` scalar type from being timezone-aware to
+  being timezone-naive to follow the usual database convention of naming the timezone-naive
+  type "datetime" and avoid confusion after we've added both timezone-aware and timezone-naive
+  types.
+  `#827 <https://github.com/kensho-technologies/graphql-compiler/pull/827>`__
+
 v1.11.0
 -------
 
@@ -182,8 +191,7 @@ This feature implements a workaround for a limitation of OrientDB, where
 subsequent traversals from them. To work around this issue, the compiler
 rewrites the query into several disjoint queries whose union produces
 the exact same results as a single query that allows optional
-traversals. See `the documentation in the
-README <https://github.com/kensho-technologies/graphql-compiler/blob/3c79cd97744b7f3f842c2d32ddc2a072c7fa7898/README.md#expanding-optional-vertex-fields>`__
+traversals. See this `link <https://graphql-compiler.readthedocs.io/en/latest/supported_databases/orientdb.html#compound-optional-performance-penalty>`__
 for more details.
 
 v1.4.1

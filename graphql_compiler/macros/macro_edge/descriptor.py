@@ -28,9 +28,9 @@ def create_descriptor_from_ast_and_args(
 ):
     """Remove macro edge definition directive, and return a MacroEdgeDescriptor."""
     if not is_vertex_field_name(macro_edge_name):
-        raise AssertionError(u"Received illegal macro edge name: {}".format(macro_edge_name))
+        raise AssertionError("Received illegal macro edge name: {}".format(macro_edge_name))
 
-    directives_to_remove = {MacroEdgeDefinitionDirective}
+    directives_to_remove = {MacroEdgeDefinitionDirective.name}
     new_ast = remove_directives_from_ast(macro_definition_ast, directives_to_remove)
     return MacroEdgeDescriptor(
         class_name, target_class_name, macro_edge_name, new_ast, macro_edge_args

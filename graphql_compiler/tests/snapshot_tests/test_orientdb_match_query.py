@@ -1,8 +1,9 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 from collections import Counter
 from decimal import Decimal
-from typing import Any, Dict, FrozenSet, Optional, Tuple, Union
+from typing import Any, Dict, FrozenSet, Tuple, Union
 
+from graphql.type import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
 from pyorient.orient import OrientDB
 import pytest
@@ -12,7 +13,6 @@ from snapshottest import TestCase
 from .. import test_input_data
 from ... import graphql_to_match
 from ...schema.schema_info import CommonSchemaInfo
-from ...schema.typedefs import TypeEquivalenceHintsType
 from ..test_helpers import get_schema
 from ..test_input_data import CommonTestData
 
@@ -29,8 +29,8 @@ def convert_decimals_to_strings(
         return value
     else:
         raise AssertionError(
-            u"Received unexpected type {}. Expected one of tuple, Decimal or "
-            u"string: {}".format(type(value).__name__, value)
+            "Received unexpected type {}. Expected one of tuple, Decimal or "
+            "string: {}".format(type(value).__name__, value)
         )
 
 
@@ -41,14 +41,31 @@ def execute_graphql(
     sample_parameters: Dict[str, Any],
 ) -> FrozenSet[Tuple[FrozenSet[Tuple[str, Any]], int]]:
     """Compile the GraphQL query to MATCH, execute it agains the test_db, and return the results."""
-    schema_based_type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None
+    schema_based_type_equivalence_hints: Dict[
+        Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
+    ] = {}
     if test_data.type_equivalence_hints:
         # For test convenience, we accept the type equivalence hints in string form.
         # Here, we convert them to the required GraphQL types.
-        schema_based_type_equivalence_hints = {
-            schema.get_type(key): schema.get_type(value)
-            for key, value in six.iteritems(test_data.type_equivalence_hints)
-        }
+        for key, value in six.iteritems(test_data.type_equivalence_hints):
+            key_type = schema.get_type(key)
+            value_type = schema.get_type(value)
+            if (
+                key_type
+                and value_type
+                and (
+                    isinstance(key_type, GraphQLInterfaceType)
+                    or isinstance(key_type, GraphQLObjectType)
+                )
+                and isinstance(value_type, GraphQLUnionType)
+            ):
+                schema_based_type_equivalence_hints[key_type] = value_type
+            else:
+                raise AssertionError(
+                    "Expected key_type to be of type GraphQLInterfaceType or GraphQLObject Type, "
+                    "but received {}; and value_type to be of type GraphQLUnionType, but "
+                    "received {}.".format(type(key_type), type(value_type))
+                )
 
     common_schema_info = CommonSchemaInfo(schema, schema_based_type_equivalence_hints)
     result = graphql_to_match(common_schema_info, test_data.graphql_input, sample_parameters)
@@ -61,7 +78,7 @@ def execute_graphql(
     # - convert the multi-set to a frozenset of its items
     row_dicts = [row.oRecordData for row in client.command(result.query)]
     if len(row_dicts) == 0:
-        raise AssertionError(u"Zero records returned. Trivial snapshot not allowed.")
+        raise AssertionError("Zero records returned. Trivial snapshot not allowed.")
     row_dicts_using_tuples = [
         {
             column_name: convert_decimals_to_strings(
@@ -874,8 +891,8 @@ class OrientDBParameterizedMatchQueryTests(TestCase):
         self.assertMatchSnapshot(rows)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def test_filter_within_fold_scope(self) -> None:
-        test_data = test_input_data.filter_within_fold_scope()
+    def test_filter_and_multiple_outputs_within_fold_scope(self) -> None:
+        test_data = test_input_data.filter_and_multiple_outputs_within_fold_scope()
         sample_parameters = {"desired": "Nazgul__2"}
 
         rows = execute_graphql(self.schema, test_data, self.orientdb_client, sample_parameters)

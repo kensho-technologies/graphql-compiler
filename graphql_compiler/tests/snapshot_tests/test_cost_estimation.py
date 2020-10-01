@@ -1,28 +1,43 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from datetime import date
+from datetime import date, datetime
+import math
 from typing import Any, Dict, List
 import unittest
 
 import pytest
+import pytz
 
 from .. import test_input_data
 from ...compiler.metadata import FilterInfo
-from ...cost_estimation.cardinality_estimator import estimate_query_result_cardinality
+from ...cost_estimation.analysis import analyze_query_string
 from ...cost_estimation.filter_selectivity_utils import (
     ABSOLUTE_SELECTIVITY,
     FRACTIONAL_SELECTIVITY,
     Selectivity,
     _combine_filter_selectivities,
-    _create_integer_interval,
-    _get_intersection_of_intervals,
     adjust_counts_for_filters,
     get_selectivity_of_filters_at_vertex,
 )
-from ...cost_estimation.statistics import LocalStatistics, Statistics
-from ...schema.schema_info import QueryPlanningSchemaInfo
+from ...cost_estimation.int_value_conversion import (
+    convert_field_value_to_int,
+    convert_int_to_field_value,
+    swap_uuid_prefix_and_suffix,
+)
+from ...cost_estimation.interval import Interval, intersect_int_intervals
+from ...cost_estimation.statistics import LocalStatistics, Statistics, VertexSamplingSummary
+from ...global_utils import QueryStringWithParameters
+from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ...schema_generation.schema_graph import SchemaGraph
 from ..test_helpers import generate_schema_graph
+
+
+def _intersect_and_check_int_intervals(test_case, interval_a, interval_b):
+    """Run intersect_int_intervals and assert commutativity."""
+    result_1 = intersect_int_intervals(interval_a, interval_b)
+    result_2 = intersect_int_intervals(interval_b, interval_a)
+    test_case.assertEqual(result_1, result_2)
+    return result_1
 
 
 def _make_schema_info_and_estimate_cardinality(
@@ -30,16 +45,20 @@ def _make_schema_info_and_estimate_cardinality(
 ) -> float:
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-    uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+    uuid4_field_info = {
+        vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+        for vertex_name in schema_graph.vertex_class_names
+    }
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
         pagination_keys=pagination_keys,
-        uuid4_fields=uuid4_fields,
+        uuid4_field_info=uuid4_field_info,
     )
-    return estimate_query_result_cardinality(schema_info, graphql_input, args)
+    analysis = analyze_query_string(schema_info, QueryStringWithParameters(graphql_input, args))
+    return analysis.cardinality_estimate
 
 
 # The following TestCase class uses the 'snapshot_orientdb_client' fixture
@@ -87,6 +106,25 @@ class CostEstimationTests(unittest.TestCase):
         # For each Animal, there are on average 5.0 / 3.0 Animal_ParentOf edges, so we expect
         # 3.0 * (5.0 / 3.0) results.
         expected_cardinality_estimate = 5.0
+
+        self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_traverse_zero_edge_case(self) -> None:
+        """Ensure we correctly estimate cardinality over edges."""
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        test_data = test_input_data.traverse_and_output()
+
+        count_data = {
+            "Animal": 0,
+            "Animal_ParentOf": 0,
+        }
+        statistics = LocalStatistics(count_data)
+
+        cardinality_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, test_data.graphql_input, dict()
+        )
+        expected_cardinality_estimate = 0.0
 
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
@@ -597,6 +635,7 @@ class CostEstimationTests(unittest.TestCase):
             }
         }"""
         params = {
+            "name": "Joe",
             "uuid": "00000000-0000-0000-0000-000000000000",
             "worth": 100.0,
         }
@@ -884,6 +923,103 @@ class CostEstimationTests(unittest.TestCase):
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1.0) * 1.0
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)
 
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_ast_rotation_invariance_with_inequality(self):
+        """Test that rotating the query preserves the estimate."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        original_graphql = """{
+            BirthEvent {
+                name @output(out_name: "birth_event")
+                uuid @filter(op_name: "<=", value: ["$uuid_upper"])
+                in_Animal_BornAt {
+                    out_Animal_FedAt {
+                        name @output(out_name: "feeding_event")
+                    }
+                }
+            }
+        }"""
+        rotated_graphql = """{
+            Animal {
+                out_Animal_BornAt {
+                    name @output(out_name: "birth_event")
+                    uuid @filter(op_name: "<=", value: ["$uuid_upper"])
+                }
+                out_Animal_FedAt {
+                    name @output(out_name: "feeding_event")
+                }
+            }
+        }"""
+        params = {
+            "uuid_upper": "7fffffff-ffff-ffff-ffff-ffffffffffff",
+        }
+
+        count_data = {
+            "BirthEvent": 8,
+            "Animal": 8,
+            "Animal_BornAt": 8,
+            "Animal_FedAt": 8,
+        }
+        statistics = LocalStatistics(count_data)
+
+        original_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, original_graphql, params
+        )
+        rotated_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, rotated_graphql, params
+        )
+
+        expected_cardinality_estimate = (8.0 / 2.0) * (8.0 / 8.0) * (8.0 / 8.0)
+        self.assertAlmostEqual(expected_cardinality_estimate, original_query_estimate)
+        self.assertAlmostEqual(expected_cardinality_estimate, rotated_query_estimate)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    @pytest.mark.xfail(
+        strict=True,
+        reason="Not implemented",
+    )
+    def test_ast_rotation_invariance_with_equality(self):
+        """Test that rotating the query preserves the estimate."""
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        original_graphql = """{
+            Animal {
+                uuid @filter(op_name: "=", value:["$uuid"])
+                     @output(out_name: "animal_uuid")
+                out_Animal_ParentOf {
+                    uuid
+                }
+            }
+        }"""
+        rotated_graphql = """{
+            Animal {
+                in_Animal_ParentOf {
+                    uuid @filter(op_name: "=", value:["$uuid"])
+                         @output(out_name: "animal_uuid")
+                }
+            }
+        }"""
+        params = {
+            "uuid": "00000000-0000-0000-0000-000000000000",
+        }
+
+        count_data = {
+            "Animal": 8,
+            "Animal_ParentOf": 8,
+        }
+        statistics = LocalStatistics(count_data)
+
+        original_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, original_graphql, params
+        )
+        rotated_query_estimate = _make_schema_info_and_estimate_cardinality(
+            schema_graph, statistics, rotated_graphql, params
+        )
+
+        # There's 8 animals and 8 Animal_ParentOf edges. We expect an arbitrary animal to have
+        # one Animal_ParentOf edge.
+        expected_cardinality_estimate = 8.0 / 8.0
+        self.assertAlmostEqual(expected_cardinality_estimate, original_query_estimate)
+        self.assertAlmostEqual(expected_cardinality_estimate, rotated_query_estimate)
+
 
 def _make_schema_info_and_get_filter_selectivity(
     schema_graph: SchemaGraph,
@@ -894,20 +1030,24 @@ def _make_schema_info_and_get_filter_selectivity(
 ) -> Selectivity:
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
     pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-    uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+    uuid4_field_info = {
+        vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+        for vertex_name in schema_graph.vertex_class_names
+    }
     schema_info = QueryPlanningSchemaInfo(
         schema=graphql_schema,
         type_equivalence_hints=type_equivalence_hints,
         schema_graph=schema_graph,
         statistics=statistics,
         pagination_keys=pagination_keys,
-        uuid4_fields=uuid4_fields,
+        uuid4_field_info=uuid4_field_info,
     )
     return get_selectivity_of_filters_at_vertex(
         schema_info, [filter_info], parameters, location_name
     )
 
 
+@pytest.mark.slow
 class FilterSelectivityUtilsTests(unittest.TestCase):
     def test_combine_filter_selectivities(self) -> None:
         """Test filter combination function."""
@@ -967,7 +1107,11 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         classname = "Animal"
 
         empty_statistics = LocalStatistics(dict())
-        params: Dict[str, Any] = {}
+        params: Dict[str, Any] = {
+            "uuid": "00000000-0000-0000-0000-000000000000",
+            "description": "big animal",
+            "birthday": date(2019, 3, 1),
+        }
 
         # If we '='-filter on a property that isn't an index, with no distinct-field-values-count
         # statistics, return a fractional selectivity of 1.
@@ -1031,6 +1175,64 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=1.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+        # Test with sampling data, where desired value is common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
+                    sample_ratio=1000,
+                )
+            },
+        )
+        nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            nonunique_filter,
+            {"birthday": date(2019, 4, 6)},
+            classname,
+        )
+        # There are 1M animals. We sampled 1K, and 80 of them had the desired birthday. We estimate
+        # that 80K all animals have the desired birthday.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=80000)
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # Test with sampling data, where desired value is not common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
+                    sample_ratio=1000,
+                )
+            },
+        )
+        nonunique_filter = FilterInfo(fields=("birthday",), op_name="=", args=("$birthday",))
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            nonunique_filter,
+            {"birthday": date(2020, 9, 7)},
+            classname,
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=math.sqrt(3000))
+        self.assertEqual(expected_selectivity, selectivity)
+
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_get_in_collection_filter_selectivity(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
@@ -1039,7 +1241,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         nonunique_filter = FilterInfo(
             fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
         )
-        nonunique_params = {"birthday_collection": [date(2017, 3, 22), date(1999, 12, 31),]}
+        nonunique_params = {
+            "birthday_collection": [
+                date(2017, 3, 22),
+                date(1999, 12, 31),
+            ]
+        }
         # If we use an in_collection-filter on a property that is not uniquely indexed, with no
         # distinct_field_values_count statistic, return a fractional selectivity of 1.
         selectivity = _make_schema_info_and_get_filter_selectivity(
@@ -1066,7 +1273,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertEqual(expected_selectivity, selectivity)
 
         statistics_with_distinct_birthday_values_data = LocalStatistics(
-            dict(), distinct_birthday_values_data
+            dict(), distinct_field_values_counts=distinct_birthday_values_data
         )
         # If we use an in_collection-filter with 4 elements on a property that is not uniquely
         # indexed, but has 3 distinct values, return a fractional selectivity of 1.0.
@@ -1074,7 +1281,14 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph,
             statistics_with_distinct_birthday_values_data,
             nonunique_filter,
-            nonunique_params,
+            {
+                "birthday_collection": [
+                    date(2017, 3, 22),
+                    date(1999, 12, 31),
+                    date(2317, 3, 22),
+                    date(1399, 12, 31),
+                ]
+            },
             classname,
         )
         expected_selectivity = Selectivity(kind=FRACTIONAL_SELECTIVITY, value=1.0)
@@ -1098,15 +1312,95 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=3.0)
         self.assertEqual(expected_selectivity, selectivity)
 
+        # Test with sampling data, where none of the collection values are common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
+                    sample_ratio=1000,
+                )
+            },
+        )
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            FilterInfo(
+                fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
+            ),
+            {
+                "birthday_collection": [
+                    date(2017, 3, 22),
+                    date(1999, 12, 31),
+                ]
+            },
+            "Animal",
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(kind=ABSOLUTE_SELECTIVITY, value=(2 * math.sqrt(3000)))
+        self.assertEqual(expected_selectivity, selectivity)
+
+        # Test with sampling data, where some of the collection values are common
+        statistics_with_birthday_samples = LocalStatistics(
+            {"Animal": 1000000},
+            sampling_summaries={
+                "Animal": VertexSamplingSummary(
+                    vertex_name="Animal",
+                    value_counts={
+                        "birthday": {
+                            date(2019, 3, 1): 100,
+                            date(2019, 4, 6): 80,
+                        }
+                    },
+                    sample_ratio=1000,
+                )
+            },
+        )
+        selectivity = _make_schema_info_and_get_filter_selectivity(
+            schema_graph,
+            statistics_with_birthday_samples,
+            FilterInfo(
+                fields=("birthday",), op_name="in_collection", args=("$birthday_collection",)
+            ),
+            {
+                "birthday_collection": [
+                    date(2019, 4, 6),
+                    date(1999, 12, 31),
+                ]
+            },
+            "Animal",
+        )
+        # This is a white-box snapshot test asserting that the rule of 3 is followed to estimate
+        # the count of uncommon values. See get_value_count in statistics.py for justification.
+        expected_selectivity = Selectivity(
+            kind=ABSOLUTE_SELECTIVITY, value=(80000 + math.sqrt(3000))
+        )
+        self.assertEqual(expected_selectivity, selectivity)
+
     @pytest.mark.usefixtures("snapshot_orientdb_client")
     def test_inequality_filters_on_uuid(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         classname = "Animal"
         between_filter = FilterInfo(
-            fields=("uuid",), op_name="between", args=("$uuid_lower", "$uuid_upper",)
+            fields=("uuid",),
+            op_name="between",
+            args=(
+                "$uuid_lower",
+                "$uuid_upper",
+            ),
         )
         filter_info_list = [between_filter]
         # The number of UUIDs between the two parameter values is effectively a quarter of all valid
@@ -1122,7 +1416,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=empty_statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         result_counts = adjust_counts_for_filters(
@@ -1160,7 +1454,12 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertAlmostEqual(expected_counts, result_counts)
 
         between_filter = FilterInfo(
-            fields=("uuid",), op_name="between", args=("$uuid_lower", "$uuid_upper",)
+            fields=("uuid",),
+            op_name="between",
+            args=(
+                "$uuid_lower",
+                "$uuid_upper",
+            ),
         )
         filter_info_list = [between_filter]
         # Note that the the lower bound parameter is higher than the upper bound parameter, so the
@@ -1184,9 +1483,15 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        uuid4_fields = {vertex_name: {"uuid"} for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
         statistics = LocalStatistics(
-            dict(), field_quantiles={("Species", "limbs"): [3, 6, 7, 9, 11, 55, 80],}
+            dict(),
+            field_quantiles={
+                ("Species", "limbs"): [3, 6, 7, 9, 11, 55, 80],
+            },
         )
         schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
@@ -1194,7 +1499,7 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
             schema_graph=schema_graph,
             statistics=statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Test <= filter in the middle
@@ -1276,14 +1581,19 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         self.assertAlmostEqual(expected_counts, result_counts)
 
         # Test with small quantile list
-        small_statistics = LocalStatistics(dict(), field_quantiles={("Species", "limbs"): [3, 80],})
+        small_statistics = LocalStatistics(
+            dict(),
+            field_quantiles={
+                ("Species", "limbs"): [3, 80],
+            },
+        )
         small_schema_info = QueryPlanningSchemaInfo(
             schema=graphql_schema,
             type_equivalence_hints=type_equivalence_hints,
             schema_graph=schema_graph,
             statistics=small_statistics,
             pagination_keys=pagination_keys,
-            uuid4_fields=uuid4_fields,
+            uuid4_field_info=uuid4_field_info,
         )
 
         # Test with <=
@@ -1307,94 +1617,290 @@ class FilterSelectivityUtilsTests(unittest.TestCase):
         expected_counts = 32.0 * (1.0 / 3.0)
         self.assertAlmostEqual(expected_counts, result_counts)
 
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_inequality_filters_on_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        statistics = LocalStatistics(
+            dict(),
+            field_quantiles={
+                ("Event", "event_date"): [
+                    datetime(2019, 3, 1),
+                    datetime(2019, 6, 1),
+                    datetime(2019, 8, 1),
+                    datetime(2019, 9, 1),
+                ],
+            },
+        )
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        # Test <= filter in the middle
+        filter_info_list = [
+            FilterInfo(fields=("event_date",), op_name="<=", args=("$event_date_upper",))
+        ]
+        params = {"event_date_upper": datetime(2019, 7, 1)}
+        result_counts = adjust_counts_for_filters(
+            schema_info, filter_info_list, params, "Event", 32.0
+        )
+        expected_counts = 32.0 * (1.5 / 3.0)
+        self.assertAlmostEqual(expected_counts, result_counts)
+
 
 # pylint: enable=no-member
 
 
+# The following TestCase class uses the 'snapshot_orientdb_client' fixture
+# which pylint does not recognize as a class member.
+# pylint: disable=no-member
+@pytest.mark.slow
 class IntegerIntervalTests(unittest.TestCase):
     """Test methods that create IntegerIntervals."""
 
     def test_interval_creation(self) -> None:
         """Test that intervals are created correctly, and that empty intervals are detected."""
-        interval = _create_integer_interval(5, 1000)
-        self.assertTrue(interval is not None)
+        interval = Interval[int](5, 1000)
+        self.assertTrue(not interval.is_empty())
 
-        interval = _create_integer_interval(5, 5)
-        self.assertTrue(interval is not None)
+        interval = Interval[int](5, 5)
+        self.assertTrue(not interval.is_empty())
 
-        interval = _create_integer_interval(5, 1)
-        self.assertTrue(interval is None)
+        interval = Interval[int](5, 1)
+        self.assertTrue(interval.is_empty())
 
     def test_intersection_when_overlapping(self) -> None:
         """Test intersection computation for non-disjoint intervals."""
-        interval_a = _create_integer_interval(1, 3)
-        interval_b = _create_integer_interval(2, 4)
+        interval_a = Interval[int](1, 3)
+        interval_b = Interval[int](2, 4)
 
-        expected_intersection = _create_integer_interval(2, 3)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](2, 3)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(4, 6)
-        interval_b = _create_integer_interval(2, 4)
+        interval_a = Interval[int](4, 6)
+        interval_b = Interval[int](2, 4)
 
-        expected_intersection = _create_integer_interval(4, 4)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](4, 4)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(4, 6)
-        interval_b = _create_integer_interval(4, 6)
+        interval_a = Interval[int](4, 6)
+        interval_b = Interval[int](4, 6)
 
-        expected_intersection = _create_integer_interval(4, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](4, 6)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(0, None)
-        interval_b = _create_integer_interval(4, 6)
+        interval_a = Interval[int](0, None)
+        interval_b = Interval[int](4, 6)
 
-        expected_intersection = _create_integer_interval(4, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](4, 6)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(0, None)
-        interval_b = _create_integer_interval(None, 6)
+        interval_a = Interval[int](0, None)
+        interval_b = Interval[int](None, 6)
 
-        expected_intersection = _create_integer_interval(0, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](0, 6)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(None, None)
-        interval_b = _create_integer_interval(None, 6)
+        interval_a = Interval[int](None, None)
+        interval_b = Interval[int](None, 6)
 
-        expected_intersection = _create_integer_interval(None, 6)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](None, 6)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(None, None)
-        interval_b = _create_integer_interval(None, None)
+        interval_a = Interval[int](None, None)
+        interval_b = Interval[int](None, None)
 
-        expected_intersection = _create_integer_interval(None, None)
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](None, None)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
     def test_disjoint_intervals(self) -> None:
         """Test intersection computation when disjoint intervals are given."""
-        interval_a = _create_integer_interval(1, 3)
-        interval_b = _create_integer_interval(5, 7)
+        interval_a = Interval[int](1, 3)
+        interval_b = Interval[int](5, 7)
 
-        expected_intersection = None
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](1, 0)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(8, 10)
-        interval_b = _create_integer_interval(5, 7)
+        interval_a = Interval[int](8, 10)
+        interval_b = Interval[int](5, 7)
 
-        expected_intersection = None
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](1, 0)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
 
-        interval_a = _create_integer_interval(0, 0)
-        interval_b = _create_integer_interval(1, 1)
+        interval_a = Interval[int](0, 0)
+        interval_b = Interval[int](1, 1)
 
-        expected_intersection = None
-        received_intersection = _get_intersection_of_intervals(interval_a, interval_b)
+        expected_intersection = Interval[int](1, 0)
+        received_intersection = _intersect_and_check_int_intervals(self, interval_a, interval_b)
         self.assertEqual(expected_intersection, received_intersection)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_int_value_conversion_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        uuid_values = [
+            "00000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000001",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        ]
+        for uuid_value in uuid_values:
+            int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
+            recovered_uuid = convert_int_to_field_value(schema_info, "Event", "uuid", int_value)
+            self.assertEqual(uuid_value, recovered_uuid)
+
+        invalid_uuid_values = [
+            "80000000-0000-",
+        ]
+        for uuid_value in invalid_uuid_values:
+            with self.assertRaises(Exception):
+                int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_int_value_conversion_mssql_uuid(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        uuid_values = [
+            "00000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000000",
+            "80000000-0000-0000-0000-000000000001",
+            "ffffffff-ffff-ffff-ffff-ffffffffffff",
+        ]
+        for uuid_value in uuid_values:
+            int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
+            recovered_uuid = convert_int_to_field_value(schema_info, "Event", "uuid", int_value)
+            self.assertEqual(uuid_value, recovered_uuid)
+
+        invalid_uuid_values = [
+            "80000000-0000-",
+        ]
+        for uuid_value in invalid_uuid_values:
+            with self.assertRaises(Exception):
+                int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_int_value_conversion_datetime(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        datetime_values = [
+            datetime(2000, 1, 1),
+            datetime(3000, 1, 1, tzinfo=None),
+            datetime(1000, 1, 1, tzinfo=pytz.utc),
+            datetime(1, 1, 1, tzinfo=pytz.utc),
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.utc),
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("GMT")),
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("America/New_York")),
+        ]
+        for datetime_value in datetime_values:
+            int_value = convert_field_value_to_int(
+                schema_info, "Event", "event_date", datetime_value
+            )
+            recovered_datetime = convert_int_to_field_value(
+                schema_info, "Event", "event_date", int_value
+            )
+            self.assertEqual(datetime_value.replace(tzinfo=None), recovered_datetime)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_int_value_conversion_date(self):
+        schema_graph = generate_schema_graph(self.orientdb_client)
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        statistics = LocalStatistics({})
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        date_values = [
+            date(2000, 1, 1),
+            date(3000, 1, 1),
+            date(1000, 1, 1),
+            date(1, 1, 1),
+        ]
+        for date_value in date_values:
+            int_value = convert_field_value_to_int(schema_info, "Animal", "birthday", date_value)
+            recovered_date = convert_int_to_field_value(
+                schema_info, "Animal", "birthday", int_value
+            )
+            self.assertEqual(date_value, recovered_date)
+
+    def test_swap_uuid_prefix_and_suffix(self):
+        uuid_string = "01234567-89ab-cdef-0123-456789abcdef"
+        flipped_uuid = swap_uuid_prefix_and_suffix(uuid_string)
+        self.assertEqual("456789ab-cdef-cdef-0123-0123456789ab", flipped_uuid)
+
+        uuid_string = "01234567-89ab-cdef-fedc-ba9876543210"
+        flipped_uuid = swap_uuid_prefix_and_suffix(uuid_string)
+        self.assertEqual("ba987654-3210-cdef-fedc-0123456789ab", flipped_uuid)

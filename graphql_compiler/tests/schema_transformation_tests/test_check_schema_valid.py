@@ -24,7 +24,7 @@ class TestCheckSchemaValid(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(SchemaStructureError):
+        with self.assertRaises(TypeError):
             check_ast_schema_is_valid(parse(schema_string))
 
     def test_schema_extension(self):

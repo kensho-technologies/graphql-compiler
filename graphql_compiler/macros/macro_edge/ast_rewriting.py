@@ -4,15 +4,16 @@ from copy import copy
 from itertools import chain
 
 from graphql.language.ast import (
-    Argument,
-    Field,
-    InlineFragment,
-    ListValue,
-    Name,
-    OperationDefinition,
-    SelectionSet,
-    StringValue,
+    ArgumentNode,
+    FieldNode,
+    InlineFragmentNode,
+    ListValueNode,
+    NameNode,
+    OperationDefinitionNode,
+    SelectionSetNode,
+    StringValueNode,
 )
+from graphql.pyutils import FrozenList
 import six
 
 from ...compiler.helpers import (
@@ -47,7 +48,9 @@ def _replace_tag_names_in_tag_directive(name_change_map, tag_directive):
         return tag_directive
 
     renamed_tag_directive = copy(tag_directive)
-    renamed_tag_directive.arguments = [Argument(Name("tag_name"), StringValue(new_name))]
+    renamed_tag_directive.arguments = [
+        ArgumentNode(name=NameNode(value="tag_name"), value=StringValueNode(value=new_name))
+    ]
     return renamed_tag_directive
 
 
@@ -84,19 +87,21 @@ def _replace_tag_names_in_filter_directive(name_change_map, filter_directive):
                     new_name = name_change_map[current_name]
                     if new_name != current_name:
                         made_changes = True
-                        new_value = StringValue("%" + new_name)
+                        new_value = StringValueNode(value="%" + new_name)
 
                 new_value_list.append(new_value)
 
             if made_changes:
-                new_argument = Argument(Name("value"), value=ListValue(new_value_list))
+                new_argument = ArgumentNode(
+                    name=NameNode(value="value"), value=ListValueNode(values=new_value_list)
+                )
             else:
                 new_argument = argument
             new_arguments.append(new_argument)
         else:
             raise AssertionError(
-                u"Unknown argument name {} in filter directive {}, this should "
-                u"have been caught in an earlier validation step.".format(
+                "Unknown argument name {} in filter directive {}, this should "
+                "have been caught in an earlier validation step.".format(
                     argument.name.value, filter_directive
                 )
             )
@@ -167,7 +172,7 @@ def replace_tag_names(name_change_map, ast):
         according to the name_change_map. If no changes were made, this is the same object
         as the input.
     """
-    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+    if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         return ast
 
     made_changes = False
@@ -185,7 +190,7 @@ def replace_tag_names(name_change_map, ast):
                 made_changes = True
 
             new_selections.append(new_selection_ast)
-        new_selection_set = SelectionSet(new_selections)
+        new_selection_set = SelectionSetNode(selections=new_selections)
 
     # Process the current node's directives.
     directives = ast.directives
@@ -214,7 +219,7 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
         the named directives omitted. If the specified directives do not appear in the input AST,
         the returned object is the exact same object as the input.
     """
-    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+    if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         return ast
 
     made_changes = False
@@ -231,13 +236,15 @@ def remove_directives_from_ast(ast, directive_names_to_omit):
                 made_changes = True
 
             new_selections.append(new_selection_ast)
-        new_selection_set = SelectionSet(new_selections)
+        new_selection_set = SelectionSetNode(selections=new_selections)
 
-    directives_to_keep = [
-        directive
-        for directive in ast.directives
-        if directive.name.value not in directive_names_to_omit
-    ]
+    directives_to_keep = FrozenList(
+        [
+            directive
+            for directive in ast.directives
+            if directive.name.value not in directive_names_to_omit
+        ]
+    )
     if len(directives_to_keep) != len(ast.directives):
         made_changes = True
 
@@ -282,7 +289,7 @@ def find_target_and_copy_path_to_it(ast):
     # Recurse
     new_selections = []
     target_ast = None
-    if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+    if isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         if ast.selection_set is not None:
             for selection in ast.selection_set.selections:
                 new_selection, possible_target_ast = find_target_and_copy_path_to_it(selection)
@@ -290,13 +297,13 @@ def find_target_and_copy_path_to_it(ast):
                 if possible_target_ast is not None:
                     target_ast = possible_target_ast
     else:
-        raise AssertionError(u"Unexpected AST type received: {} {}".format(type(ast), ast))
+        raise AssertionError("Unexpected AST type received: {} {}".format(type(ast), ast))
 
     if target_ast is None:
         return ast, None
     else:
         new_ast = copy(ast)
-        new_ast.selection_set = SelectionSet(new_selections)
+        new_ast.selection_set = SelectionSetNode(selections=new_selections)
         return new_ast, target_ast
 
 
@@ -339,8 +346,8 @@ def merge_selection_sets(selection_set_a, selection_set_b):
         field_b = selection_dict_b[field_name]
         if field_a.selection_set is not None or field_b.selection_set is not None:
             raise GraphQLCompilationError(
-                u"Macro edge expansion results in a query traversing the "
-                u"same edge {} twice, which is disallowed.".format(field_name)
+                "Macro edge expansion results in a query traversing the "
+                "same edge {} twice, which is disallowed.".format(field_name)
             )
 
         # TODO(predrag): Find a way to avoid this situation by making the rewriting smarter.
@@ -352,8 +359,8 @@ def merge_selection_sets(selection_set_a, selection_set_b):
         )
         if field_a_has_tag_directive and field_b_has_tag_directive:
             raise GraphQLCompilationError(
-                u"Macro edge expansion results in field {} having two "
-                u"@tag directives, which is disallowed.".format(field_name)
+                "Macro edge expansion results in field {} having two "
+                "@tag directives, which is disallowed.".format(field_name)
             )
 
         merged_field = copy(field_a)
@@ -402,4 +409,6 @@ def merge_selection_sets(selection_set_a, selection_set_b):
         for name in selection_name_order
         if name in merged_selection_dict
     ]
-    return SelectionSet(sorted(merged_selections, key=lambda ast: ast.selection_set is not None))
+    return SelectionSetNode(
+        selections=sorted(merged_selections, key=lambda ast: ast.selection_set is not None)
+    )

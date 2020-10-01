@@ -18,7 +18,7 @@
 # -- Project information -----------------------------------------------------
 
 project = "GraphQL Compiler"
-# readthedocs uses the variable named copyright for the copyright message.
+# Read the Docs uses the variable named copyright for the copyright message.
 # pylint: disable=redefined-builtin
 copyright = "2017-present Kensho Technologies, LLC."
 # pylint: enable=redefined-builtin

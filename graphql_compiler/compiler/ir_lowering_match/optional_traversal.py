@@ -58,8 +58,8 @@ def _prune_traverse_using_omitted_locations(
 
             if optional_root_location is None:
                 raise AssertionError(
-                    u"Found optional Traverse location {} that was not present "
-                    u"in location_to_optional_roots dict: {}".format(
+                    "Found optional Traverse location {} that was not present "
+                    "in location_to_optional_roots dict: {}".format(
                         current_location, location_to_optional_roots
                     )
                 )
@@ -75,7 +75,7 @@ def _prune_traverse_using_omitted_locations(
 
                 old_filter = new_match_traversal[-1].where_block
                 if old_filter is not None:
-                    new_predicate = BinaryComposition(u"&&", old_filter.predicate, new_predicate)
+                    new_predicate = BinaryComposition("&&", old_filter.predicate, new_predicate)
                 new_match_step = new_match_traversal[-1]._replace(where_block=Filter(new_predicate))
                 new_match_traversal[-1] = new_match_step
 
@@ -207,8 +207,8 @@ def _get_present_locations(match_traversals):
 
     if not present_non_optional_locations.issubset(present_locations):
         raise AssertionError(
-            u"present_non_optional_locations {} was not a subset of "
-            u"present_locations {}. THis hould never happen.".format(
+            "present_non_optional_locations {} was not a subset of "
+            "present_locations {}. THis hould never happen.".format(
                 present_non_optional_locations, present_locations
             )
         )
@@ -234,7 +234,7 @@ def prune_non_existent_outputs(compound_match_query):
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
         raise AssertionError(
-            u"Received CompoundMatchQuery with " u"an empty list of MatchQuery objects."
+            "Received CompoundMatchQuery with an empty list of MatchQuery objects."
         )
     else:
         match_queries = []
@@ -254,8 +254,8 @@ def prune_non_existent_outputs(compound_match_query):
                     location_name, _ = expression.location.get_location_name()
                     if location_name not in present_locations:
                         raise AssertionError(
-                            u"Non-optional output location {} was not found in "
-                            u"present_locations: {}".format(expression.location, present_locations)
+                            "Non-optional output location {} was not found in "
+                            "present_locations: {}".format(expression.location, present_locations)
                         )
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, FoldedContextField):
@@ -266,8 +266,8 @@ def prune_non_existent_outputs(compound_match_query):
                     location_name, _ = base_location.get_location_name()
                     if location_name not in present_locations:
                         raise AssertionError(
-                            u"Folded output location {} was found in "
-                            u"present_locations: {}".format(base_location, present_locations)
+                            "Folded output location {} was found in "
+                            "present_locations: {}".format(base_location, present_locations)
                         )
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, TernaryConditional):
@@ -281,8 +281,8 @@ def prune_non_existent_outputs(compound_match_query):
                             new_output_fields[output_name] = expression
                 else:
                     raise AssertionError(
-                        u"Invalid expression of type {} in output block: "
-                        u"{}".format(type(expression).__name__, output_block)
+                        "Invalid expression of type {} in output block: "
+                        "{}".format(type(expression).__name__, output_block)
                     )
 
             match_queries.append(
@@ -324,9 +324,9 @@ def _construct_location_to_filter_list(match_query):
 def _filter_list_to_conjunction_expression(filter_list):
     """Convert a list of filters to an Expression that is the conjunction of all of them."""
     if not isinstance(filter_list, list):
-        raise AssertionError(u"Expected `list`, Received: {}.".format(filter_list))
+        raise AssertionError("Expected `list`, Received: {}.".format(filter_list))
     if any((not isinstance(filter_block, Filter) for filter_block in filter_list)):
-        raise AssertionError(u"Expected list of Filter objects. Received: {}".format(filter_list))
+        raise AssertionError("Expected list of Filter objects. Received: {}".format(filter_list))
 
     expression_list = [filter_block.predicate for filter_block in filter_list]
     return expression_list_to_conjunction(expression_list)
@@ -359,8 +359,8 @@ def _apply_filters_to_first_location_occurrence(
 
         if current_location in newly_filtered_locations:
             raise AssertionError(
-                u"The same location {} was encountered twice in a single "
-                u"match traversal: {}. This should never happen.".format(
+                "The same location {} was encountered twice in a single "
+                "match traversal: {}. This should never happen.".format(
                     current_location, match_traversal
                 )
             )
@@ -454,8 +454,8 @@ def _update_context_field_binary_composition(present_locations, expression):
         (isinstance(expression.left, ContextField), isinstance(expression.right, ContextField))
     ):
         raise AssertionError(
-            u"Received a BinaryComposition {} without any ContextField "
-            u"operands. This should never happen.".format(expression)
+            "Received a BinaryComposition {} without any ContextField "
+            "operands. This should never happen.".format(expression)
         )
 
     if isinstance(expression.left, ContextField):
@@ -486,16 +486,16 @@ def _simplify_non_context_field_binary_composition(expression):
     """
     if any((isinstance(expression.left, ContextField), isinstance(expression.right, ContextField))):
         raise AssertionError(
-            u"Received a BinaryComposition {} with a ContextField "
-            u"operand. This should never happen.".format(expression)
+            "Received a BinaryComposition {} with a ContextField "
+            "operand. This should never happen.".format(expression)
         )
 
-    if expression.operator == u"||":
+    if expression.operator == "||":
         if expression.left == TrueLiteral or expression.right == TrueLiteral:
             return TrueLiteral
         else:
             return expression
-    elif expression.operator == u"&&":
+    elif expression.operator == "&&":
         if expression.left == TrueLiteral:
             return expression.right
         if expression.right == TrueLiteral:
@@ -537,21 +537,21 @@ def _update_context_field_expression(present_locations, expression):
         upper_bound = expression.upper_bound
         if isinstance(lower_bound, ContextField) or isinstance(upper_bound, ContextField):
             raise AssertionError(
-                u"Found BetweenClause with ContextFields as lower/upper bounds. "
-                u"This should never happen: {}".format(expression)
+                "Found BetweenClause with ContextFields as lower/upper bounds. "
+                "This should never happen: {}".format(expression)
             )
         return expression
     elif isinstance(expression, (OutputContextField, FoldedContextField)):
         raise AssertionError(
-            u"Found unexpected expression of type {}. This should never happen: "
-            u"{}".format(type(expression).__name__, expression)
+            "Found unexpected expression of type {}. This should never happen: "
+            "{}".format(type(expression).__name__, expression)
         )
     elif isinstance(expression, no_op_blocks):
         return expression
 
     raise AssertionError(
-        u"Found unhandled expression of type {}. This should never happen: "
-        u"{}".format(type(expression).__name__, expression)
+        "Found unhandled expression of type {}. This should never happen: "
+        "{}".format(type(expression).__name__, expression)
     )
 
 
@@ -560,7 +560,7 @@ def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
 
     Expressions involving non-existent ContextFields are evaluated to TrueLiteral.
     BinaryCompositions, where one of the operands is lowered to a TrueLiteral,
-    are lowered appropriately based on the present operator (u'||' and u'&&' are affected).
+    are lowered appropriately based on the present operator ('||' and '&&' are affected).
     TernaryConditionals, where the predicate is lowered to a TrueLiteral,
     are replaced by their if_true predicate.
     The `visitor_fn` implements these behaviors (see `_update_context_field_expression`).
@@ -595,7 +595,7 @@ def lower_context_field_expressions(compound_match_query):
     """Lower Expressons involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
         raise AssertionError(
-            u"Received CompoundMatchQuery {} with no MatchQuery objects.".format(
+            "Received CompoundMatchQuery {} with no MatchQuery objects.".format(
                 compound_match_query
             )
         )

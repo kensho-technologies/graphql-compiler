@@ -2,11 +2,12 @@
 from functools import partial, wraps
 
 from graphql import GraphQLInt, GraphQLList, GraphQLScalarType, GraphQLString, GraphQLUnionType
-from graphql.language.ast import InlineFragment, ListValue
+from graphql.language.ast import InlineFragmentNode, ListValueNode
 from graphql.type.definition import is_leaf_type
 
 from . import blocks, expressions
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
+from ..global_utils import is_same_type
 from ..schema import is_vertex_field_name
 from .helpers import (
     get_uniquely_named_objects_by_name,
@@ -37,8 +38,8 @@ def scalar_leaf_only(operator):
 
             if not is_leaf_type(filter_operation_info.field_type):
                 raise GraphQLCompilationError(
-                    u'Cannot apply "{}" filter to non-leaf type'
-                    u"{}".format(current_operator, filter_operation_info)
+                    'Cannot apply "{}" filter to non-leaf type'
+                    "{}".format(current_operator, filter_operation_info)
                 )
             return f(filter_operation_info, context, parameters, *args, **kwargs)
 
@@ -64,8 +65,8 @@ def vertex_field_only(operator):
 
             if not is_vertex_field_type(filter_operation_info.field_type):
                 raise GraphQLCompilationError(
-                    u'Cannot apply "{}" filter to non-vertex field: '
-                    u"{}".format(current_operator, filter_operation_info.field_name)
+                    'Cannot apply "{}" filter to non-vertex field: '
+                    "{}".format(current_operator, filter_operation_info.field_name)
                 )
             return f(filter_operation_info, context, parameters, *args, **kwargs)
 
@@ -85,8 +86,8 @@ def takes_parameters(count):
             """Check that the supplied number of parameters equals the expected number."""
             if len(parameters) != count:
                 raise GraphQLCompilationError(
-                    u"Incorrect number of parameters, expected {} got "
-                    u"{}: {}".format(count, len(parameters), parameters)
+                    "Incorrect number of parameters, expected {} got "
+                    "{}: {}".format(count, len(parameters), parameters)
                 )
 
             return f(filter_operation_info, location, context, parameters, *args, **kwargs)
@@ -121,11 +122,11 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         # in order to possibly raise an error with a better explanation.
         validate_runtime_argument_name(argument_name)
         existing_type = context["inputs"].get(argument_name, inferred_type)
-        if not inferred_type.is_same_type(existing_type):
+        if not is_same_type(inferred_type, existing_type):
             raise GraphQLCompilationError(
-                u"Incompatible types inferred for argument {}. "
-                u"The argument cannot simultaneously be "
-                u"{} and {}.".format(argument, existing_type, inferred_type)
+                "Incompatible types inferred for argument {}. "
+                "The argument cannot simultaneously be "
+                "{} and {}.".format(argument, existing_type, inferred_type)
             )
         context["inputs"][argument_name] = inferred_type
 
@@ -136,23 +137,23 @@ def _represent_argument(directive_location, context, argument, inferred_type):
         validate_tagged_argument_name(argument_name)
         tag_info = context["metadata"].get_tag_info(argument_name)
         if tag_info is None:
-            raise GraphQLCompilationError(u"Undeclared argument used: {}".format(argument))
+            raise GraphQLCompilationError("Undeclared argument used: {}".format(argument))
 
         location = tag_info.location
         optional = tag_info.optional
         tag_inferred_type = tag_info.type
 
         if location is None:
-            raise AssertionError(u"Argument declared without location: {}".format(argument_name))
+            raise AssertionError("Argument declared without location: {}".format(argument_name))
 
         if location.field is None:
-            raise AssertionError(u"Argument location is not a property field: {}".format(location))
+            raise AssertionError("Argument location is not a property field: {}".format(location))
 
-        if not inferred_type.is_same_type(tag_inferred_type):
+        if not is_same_type(inferred_type, tag_inferred_type):
             raise GraphQLCompilationError(
-                u"The inferred type of the matching @tag directive does "
-                u"not match the inferred required type for this filter: "
-                u"{} vs {}".format(tag_inferred_type, inferred_type)
+                "The inferred type of the matching @tag directive does "
+                "not match the inferred required type for this filter: "
+                "{} vs {}".format(tag_inferred_type, inferred_type)
             )
 
         # Check whether the argument is a field on the vertex on which the directive is applied.
@@ -164,7 +165,7 @@ def _represent_argument(directive_location, context, argument, inferred_type):
                 non_existence_expression = expressions.FalseLiteral
             else:
                 non_existence_expression = expressions.BinaryComposition(
-                    u"=",
+                    "=",
                     expressions.ContextFieldExistence(location.at_vertex()),
                     expressions.FalseLiteral,
                 )
@@ -179,17 +180,17 @@ def _represent_argument(directive_location, context, argument, inferred_type):
     else:
         # If we want to support literal arguments, add them here.
         raise GraphQLCompilationError(
-            u"Invalid argument found: {}. The compiler supports only "
-            u"runtime arguments, which must begin with the $ character, "
-            u"and tagged arguments, which must begin with the % "
-            u"character. Literal arguments, (e.g. 10, 'Kensho "
-            u"Technologies', '2018-01-01'), are currently not "
-            u"supported. Please use runtime arguments and pass in the "
-            u"corresponding literal values as query parameters.".format(argument)
+            "Invalid argument found: {}. The compiler supports only "
+            "runtime arguments, which must begin with the $ character, "
+            "and tagged arguments, which must begin with the % "
+            "character. Literal arguments, (e.g. 10, 'Kensho "
+            "Technologies', '2018-01-01'), are currently not "
+            "supported. Please use runtime arguments and pass in the "
+            "corresponding literal values as query parameters.".format(argument)
         )
 
 
-@scalar_leaf_only(u"comparison operator")
+@scalar_leaf_only("comparison operator")
 @takes_parameters(1)
 def _process_comparison_filter_directive(
     filter_operation_info, location, context, parameters, operator=None
@@ -212,11 +213,11 @@ def _process_comparison_filter_directive(
     Returns:
         a Filter basic block that performs the requested comparison
     """
-    comparison_operators = {u"=", u"!=", u">", u"<", u">=", u"<="}
+    comparison_operators = {"=", "!=", ">", "<", ">=", "<="}
     if operator not in comparison_operators:
         raise AssertionError(
-            u"Expected a valid comparison operator ({}), but got "
-            u"{}".format(comparison_operators, operator)
+            "Expected a valid comparison operator ({}), but got "
+            "{}".format(comparison_operators, operator)
         )
 
     filtered_field_type = filter_operation_info.field_type
@@ -238,7 +239,7 @@ def _process_comparison_filter_directive(
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         final_expression = expressions.BinaryComposition(
-            u"||", non_existence_expression, comparison_expression
+            "||", non_existence_expression, comparison_expression
         )
     else:
         final_expression = comparison_expression
@@ -246,7 +247,7 @@ def _process_comparison_filter_directive(
     return blocks.Filter(final_expression)
 
 
-@vertex_field_only(u"has_edge_degree")
+@vertex_field_only("has_edge_degree")
 @takes_parameters(1)
 def _process_has_edge_degree_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks the degree of the edge to the given vertex field.
@@ -263,33 +264,33 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     Returns:
         a Filter basic block that performs the check
     """
-    if isinstance(filter_operation_info.field_ast, InlineFragment):
+    if isinstance(filter_operation_info.field_ast, InlineFragmentNode):
         raise AssertionError(
-            u'Received InlineFragment AST node in "has_edge_degree" filter '
-            u"handler. This should have been caught earlier: "
-            u"{}".format(filter_operation_info.field_ast)
+            'Received InlineFragment AST node in "has_edge_degree" filter '
+            "handler. This should have been caught earlier: "
+            "{}".format(filter_operation_info.field_ast)
         )
 
     filtered_field_name = filter_operation_info.field_name
     if filtered_field_name is None or not is_vertex_field_name(filtered_field_name):
         raise AssertionError(
-            u'Invalid value for "filtered_field_name" in "has_edge_degree" '
-            u"filter: {}".format(filtered_field_name)
+            'Invalid value for "filtered_field_name" in "has_edge_degree" '
+            "filter: {}".format(filtered_field_name)
         )
 
     filtered_field_type = filter_operation_info.field_type
     if not is_vertex_field_type(filtered_field_type):
         raise AssertionError(
-            u'Invalid value for "filter_operation_info.field_type" in '
-            u'"has_edge_degree" filter: {}'.format(filter_operation_info)
+            'Invalid value for "filter_operation_info.field_type" in '
+            '"has_edge_degree" filter: {}'.format(filter_operation_info)
         )
 
     argument = parameters[0]
     if not is_runtime_parameter(argument):
         raise GraphQLCompilationError(
-            u'The "has_edge_degree" filter only supports runtime '
-            u"variable arguments. Tagged values are not supported."
-            u"Argument name: {}".format(argument)
+            'The "has_edge_degree" filter only supports runtime '
+            "variable arguments. Tagged values are not supported."
+            "Argument name: {}".format(argument)
         )
 
     argument_inferred_type = GraphQLInt
@@ -299,9 +300,9 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
 
     if non_existence_expression is not None:
         raise AssertionError(
-            u"Since we do not support tagged values, non_existence_expression "
-            u"should have been None. However, it was: "
-            u"{}".format(non_existence_expression)
+            "Since we do not support tagged values, non_existence_expression "
+            "should have been None. However, it was: "
+            "{}".format(non_existence_expression)
         )
 
     # HACK(predrag): Make the handling of vertex field types consistent. Currently, sometimes we
@@ -317,40 +318,40 @@ def _process_has_edge_degree_filter_directive(filter_operation_info, location, c
     # We construct the following expression to check if the edge degree is zero:
     #   ({argument} == 0) && (edge_field == null)
     argument_is_zero = expressions.BinaryComposition(
-        u"=", argument_expression, expressions.ZeroLiteral
+        "=", argument_expression, expressions.ZeroLiteral
     )
     edge_field_is_null = expressions.BinaryComposition(
-        u"=",
+        "=",
         expressions.LocalField(filtered_field_name, hacked_field_type),
         expressions.NullLiteral,
     )
-    edge_degree_is_zero = expressions.BinaryComposition(u"&&", argument_is_zero, edge_field_is_null)
+    edge_degree_is_zero = expressions.BinaryComposition("&&", argument_is_zero, edge_field_is_null)
 
     # The following expression will check for a non-zero edge degree equal to the argument.
     #  (edge_field != null) && (edge_field.size() == {argument})
     edge_field_is_not_null = expressions.BinaryComposition(
-        u"!=",
+        "!=",
         expressions.LocalField(filtered_field_name, hacked_field_type),
         expressions.NullLiteral,
     )
     edge_degree = expressions.UnaryTransformation(
-        u"size", expressions.LocalField(filtered_field_name, hacked_field_type)
+        "size", expressions.LocalField(filtered_field_name, hacked_field_type)
     )
     edge_degree_matches_argument = expressions.BinaryComposition(
-        u"=", edge_degree, argument_expression
+        "=", edge_degree, argument_expression
     )
     edge_degree_is_non_zero = expressions.BinaryComposition(
-        u"&&", edge_field_is_not_null, edge_degree_matches_argument
+        "&&", edge_field_is_not_null, edge_degree_matches_argument
     )
 
     # We combine the two cases with a logical-or to handle both situations:
     filter_predicate = expressions.BinaryComposition(
-        u"||", edge_degree_is_zero, edge_degree_is_non_zero
+        "||", edge_degree_is_zero, edge_degree_is_non_zero
     )
     return blocks.Filter(filter_predicate)
 
 
-@vertex_field_only(u"name_or_alias")
+@vertex_field_only("name_or_alias")
 @takes_parameters(1)
 def _process_name_or_alias_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks for a match against an Entity's name or alias.
@@ -371,7 +372,7 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     filtered_field_type = filter_operation_info.field_type
     if isinstance(filtered_field_type, GraphQLUnionType):
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to union type ' u"{}".format(filtered_field_type)
+            'Cannot apply "name_or_alias" to union type ' "{}".format(filtered_field_type)
         )
 
     current_type_fields = filtered_field_type.fields
@@ -381,13 +382,13 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     alias_field = current_type_fields.get(alias_field_name, None)
     if name_field is None:
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because it lacks a '
-            u'"{}" field.'.format(filtered_field_type, name_field_name)
+            'Cannot apply "name_or_alias" to type {} because it lacks a '
+            '"{}" field.'.format(filtered_field_type, name_field_name)
         )
     if alias_field is None:
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because it lacks a '
-            u'"{}" field.'.format(filtered_field_type, alias_field_name)
+            'Cannot apply "name_or_alias" to type {} because it lacks a '
+            '"{}" field.'.format(filtered_field_type, alias_field_name)
         )
 
     name_field_type = strip_non_null_from_type(name_field.type)
@@ -395,21 +396,21 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
 
     if not isinstance(name_field_type, GraphQLScalarType):
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because its "name" '
-            u"field is not a scalar.".format(filtered_field_type)
+            'Cannot apply "name_or_alias" to type {} because its "name" '
+            "field is not a scalar.".format(filtered_field_type)
         )
     if not isinstance(alias_field_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because its '
-            u'"alias" field is not a list.'.format(filtered_field_type)
+            'Cannot apply "name_or_alias" to type {} because its '
+            '"alias" field is not a list.'.format(filtered_field_type)
         )
 
     alias_field_inner_type = strip_non_null_from_type(alias_field_type.of_type)
     if alias_field_inner_type != name_field_type:
         raise GraphQLCompilationError(
-            u'Cannot apply "name_or_alias" to type {} because the '
-            u'"{}" field and the inner type of the "{}" field '
-            u"do not match: {} vs {}".format(
+            'Cannot apply "name_or_alias" to type {} because the '
+            '"{}" field and the inner type of the "{}" field '
+            "do not match: {} vs {}".format(
                 filtered_field_type,
                 name_field_name,
                 alias_field_name,
@@ -424,24 +425,24 @@ def _process_name_or_alias_filter_directive(filter_operation_info, location, con
     )
 
     check_against_name = expressions.BinaryComposition(
-        u"=", expressions.LocalField(name_field_name, name_field.type), argument_expression
+        "=", expressions.LocalField(name_field_name, name_field.type), argument_expression
     )
     check_against_alias = expressions.BinaryComposition(
-        u"contains", expressions.LocalField(alias_field_name, alias_field.type), argument_expression
+        "contains", expressions.LocalField(alias_field_name, alias_field.type), argument_expression
     )
-    filter_predicate = expressions.BinaryComposition(u"||", check_against_name, check_against_alias)
+    filter_predicate = expressions.BinaryComposition("||", check_against_name, check_against_alias)
 
     if non_existence_expression is not None:
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
 
 
-@scalar_leaf_only(u"between")
+@scalar_leaf_only("between")
 @takes_parameters(2)
 def _process_between_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks that a field is between two values, inclusive.
@@ -471,28 +472,28 @@ def _process_between_filter_directive(filter_operation_info, location, context, 
     )
 
     lower_bound_clause = expressions.BinaryComposition(
-        u">=", expressions.LocalField(filtered_field_name, filtered_field_type), arg1_expression
+        ">=", expressions.LocalField(filtered_field_name, filtered_field_type), arg1_expression
     )
     if arg1_non_existence is not None:
         # The argument is optional, and if it doesn't exist, this side of the check should pass.
         lower_bound_clause = expressions.BinaryComposition(
-            u"||", arg1_non_existence, lower_bound_clause
+            "||", arg1_non_existence, lower_bound_clause
         )
 
     upper_bound_clause = expressions.BinaryComposition(
-        u"<=", expressions.LocalField(filtered_field_name, filtered_field_type), arg2_expression
+        "<=", expressions.LocalField(filtered_field_name, filtered_field_type), arg2_expression
     )
     if arg2_non_existence is not None:
         # The argument is optional, and if it doesn't exist, this side of the check should pass.
         upper_bound_clause = expressions.BinaryComposition(
-            u"||", arg2_non_existence, upper_bound_clause
+            "||", arg2_non_existence, upper_bound_clause
         )
 
-    filter_predicate = expressions.BinaryComposition(u"&&", lower_bound_clause, upper_bound_clause)
+    filter_predicate = expressions.BinaryComposition("&&", lower_bound_clause, upper_bound_clause)
     return blocks.Filter(filter_predicate)
 
 
-@scalar_leaf_only(u"in_collection")
+@scalar_leaf_only("in_collection")
 @takes_parameters(1)
 def _process_in_collection_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks for a value's existence in a collection.
@@ -519,7 +520,7 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"contains",
+        "contains",
         argument_expression,
         expressions.LocalField(filtered_field_name, filtered_field_type),
     )
@@ -527,13 +528,13 @@ def _process_in_collection_filter_directive(filter_operation_info, location, con
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
 
 
-@scalar_leaf_only(u"not_in_collection")
+@scalar_leaf_only("not_in_collection")
 @takes_parameters(1)
 def _process_not_in_collection_filter_directive(
     filter_operation_info, location, context, parameters
@@ -562,7 +563,7 @@ def _process_not_in_collection_filter_directive(
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"not_contains",
+        "not_contains",
         argument_expression,
         expressions.LocalField(filtered_field_name, filtered_field_type),
     )
@@ -570,13 +571,13 @@ def _process_not_in_collection_filter_directive(
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
 
 
-@scalar_leaf_only(u"has_substring")
+@scalar_leaf_only("has_substring")
 @takes_parameters(1)
 def _process_has_substring_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg is a substring of the field.
@@ -597,9 +598,9 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
+    if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "has_substring" to non-string ' u"type {}".format(filtered_field_type)
+            'Cannot apply "has_substring" to non-string ' "type {}".format(filtered_field_type)
         )
     argument_inferred_type = GraphQLString
 
@@ -608,7 +609,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"has_substring",
+        "has_substring",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         argument_expression,
     )
@@ -616,13 +617,13 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
 
 
-@scalar_leaf_only(u"ends_with")
+@scalar_leaf_only("ends_with")
 @takes_parameters(1)
 def _process_ends_with_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg is the string suffix of the field.
@@ -643,9 +644,9 @@ def _process_ends_with_filter_directive(filter_operation_info, location, context
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
+    if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "ends_with" to non-string ' u"type {}".format(filtered_field_type)
+            'Cannot apply "ends_with" to non-string ' "type {}".format(filtered_field_type)
         )
     argument_inferred_type = GraphQLString
 
@@ -654,7 +655,7 @@ def _process_ends_with_filter_directive(filter_operation_info, location, context
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"ends_with",
+        "ends_with",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         argument_expression,
     )
@@ -662,13 +663,13 @@ def _process_ends_with_filter_directive(filter_operation_info, location, context
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
 
 
-@scalar_leaf_only(u"starts_with")
+@scalar_leaf_only("starts_with")
 @takes_parameters(1)
 def _process_starts_with_filter_directive(filter_operation_info, location, context, parameters):
     """Return a Filter basic block that checks if the directive arg is the string prefix of the field.
@@ -689,9 +690,9 @@ def _process_starts_with_filter_directive(filter_operation_info, location, conte
     filtered_field_type = filter_operation_info.field_type
     filtered_field_name = filter_operation_info.field_name
 
-    if not strip_non_null_from_type(filtered_field_type).is_same_type(GraphQLString):
+    if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "starts_with" to non-string ' u"type {}".format(filtered_field_type)
+            'Cannot apply "starts_with" to non-string ' "type {}".format(filtered_field_type)
         )
     argument_inferred_type = GraphQLString
 
@@ -700,7 +701,7 @@ def _process_starts_with_filter_directive(filter_operation_info, location, conte
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"starts_with",
+        "starts_with",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         argument_expression,
     )
@@ -708,7 +709,7 @@ def _process_starts_with_filter_directive(filter_operation_info, location, conte
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
@@ -736,16 +737,16 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
 
     base_field_type = strip_non_null_from_type(filtered_field_type)
 
-    if base_field_type.is_same_type(GraphQLString):
+    if is_same_type(base_field_type, GraphQLString):
         raise GraphQLCompilationError(
-            u'Cannot apply "contains" to non-list '
-            u'type String. Consider using the "has_substring" '
-            u"operator instead."
+            'Cannot apply "contains" to non-list '
+            'type String. Consider using the "has_substring" '
+            "operator instead."
         )
 
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "contains" to non-list ' u"type {}".format(filtered_field_type)
+            'Cannot apply "contains" to non-list ' "type {}".format(filtered_field_type)
         )
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
@@ -754,7 +755,7 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"contains",
+        "contains",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         argument_expression,
     )
@@ -762,7 +763,7 @@ def _process_contains_filter_directive(filter_operation_info, location, context,
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
@@ -791,7 +792,7 @@ def _process_not_contains_filter_directive(filter_operation_info, location, cont
     base_field_type = strip_non_null_from_type(filtered_field_type)
     if not isinstance(base_field_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "not_contains" to non-list ' u"type {}".format(filtered_field_type)
+            'Cannot apply "not_contains" to non-list ' "type {}".format(filtered_field_type)
         )
 
     argument_inferred_type = strip_non_null_from_type(base_field_type.of_type)
@@ -800,7 +801,7 @@ def _process_not_contains_filter_directive(filter_operation_info, location, cont
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"not_contains",
+        "not_contains",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         argument_expression,
     )
@@ -808,7 +809,7 @@ def _process_not_contains_filter_directive(filter_operation_info, location, cont
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
@@ -837,7 +838,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
     argument_inferred_type = strip_non_null_from_type(filtered_field_type)
     if not isinstance(argument_inferred_type, GraphQLList):
         raise GraphQLCompilationError(
-            u'Cannot apply "intersects" to non-list ' u"type {}".format(filtered_field_type)
+            'Cannot apply "intersects" to non-list ' "type {}".format(filtered_field_type)
         )
 
     argument_expression, non_existence_expression = _represent_argument(
@@ -845,7 +846,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
     )
 
     filter_predicate = expressions.BinaryComposition(
-        u"intersects",
+        "intersects",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         argument_expression,
     )
@@ -853,7 +854,7 @@ def _process_intersects_filter_directive(filter_operation_info, location, contex
         # The argument comes from an optional block and might not exist,
         # in which case the filter expression should evaluate to True.
         filter_predicate = expressions.BinaryComposition(
-            u"||", non_existence_expression, filter_predicate
+            "||", non_existence_expression, filter_predicate
         )
 
     return blocks.Filter(filter_predicate)
@@ -879,12 +880,12 @@ def _process_is_null_filter_directive(filter_operation_info, location, context, 
 
     if len(parameters) != 0:
         raise GraphQLCompilationError(
-            u'No parameters should be passed to "is_null" filter. '
-            u"Received parameter(s) {}".format(parameters)
+            'No parameters should be passed to "is_null" filter. '
+            "Received parameter(s) {}".format(parameters)
         )
 
     comparison_expression = expressions.BinaryComposition(
-        u"=",
+        "=",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         expressions.NullLiteral,
     )
@@ -912,12 +913,12 @@ def _process_is_not_null_filter_directive(filter_operation_info, location, conte
 
     if len(parameters) != 0:
         raise GraphQLCompilationError(
-            u'No parameters should be passed to "is_not_null" filter. '
-            u"Received parameter(s) {}".format(parameters)
+            'No parameters should be passed to "is_not_null" filter. '
+            "Received parameter(s) {}".format(parameters)
         )
 
     comparison_expression = expressions.BinaryComposition(
-        u"!=",
+        "!=",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         expressions.NullLiteral,
     )
@@ -930,16 +931,16 @@ def _get_filter_op_name_and_values(directive):
     args = get_uniquely_named_objects_by_name(directive.arguments)
     if "op_name" not in args:
         raise AssertionError(
-            u"op_name not found in filter directive arguments!"
-            u"Validation should have caught this: {}".format(directive)
+            "op_name not found in filter directive arguments!"
+            "Validation should have caught this: {}".format(directive)
         )
 
     op_name = args["op_name"].value.value
     if "value" not in args and args["op_name"].value.value not in UNARY_FILTERS:
         raise GraphQLValidationError(
-            u"Filter directive value argument omitted for non-unary "
-            u"filter operation: {}. Please provide a value argument "
-            u"for all filters not in the following list: {}".format(
+            "Filter directive value argument omitted for non-unary "
+            "filter operation: {}. Please provide a value argument "
+            "for all filters not in the following list: {}".format(
                 args["op_name"].value.value, list(UNARY_FILTERS)
             )
         )
@@ -948,9 +949,9 @@ def _get_filter_op_name_and_values(directive):
     else:
         # HACK(predrag): Workaround for graphql-core validation issue
         #                https://github.com/graphql-python/graphql-core/issues/97
-        if not isinstance(args["value"].value, ListValue):
+        if not isinstance(args["value"].value, ListValueNode):
             raise GraphQLValidationError(
-                u"Filter directive value was " u"not a list: {}".format(directive)
+                "Filter directive value was not a list: {}".format(directive)
             )
         operator_params = [x.value for x in args["value"].value.values]
 
@@ -961,24 +962,24 @@ def _get_filter_op_name_and_values(directive):
 # Public API
 ###
 
-COMPARISON_OPERATORS = frozenset({u"=", u"!=", u">", u"<", u">=", u"<="})
+COMPARISON_OPERATORS = frozenset({"=", "!=", ">", "<", ">=", "<="})
 PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset(
     {
-        u"between",
-        u"in_collection",
-        u"not_in_collection",
-        u"contains",
-        u"not_contains",
-        u"intersects",
-        u"has_substring",
-        u"starts_with",
-        u"ends_with",
-        u"has_edge_degree",
-        u"is_null",
-        u"is_not_null",
+        "between",
+        "in_collection",
+        "not_in_collection",
+        "contains",
+        "not_contains",
+        "intersects",
+        "has_substring",
+        "starts_with",
+        "ends_with",
+        "has_edge_degree",
+        "is_null",
+        "is_not_null",
     }
 )
-UNARY_FILTERS = frozenset({u"is_null", u"is_not_null"})
+UNARY_FILTERS = frozenset({"is_null", "is_not_null"})
 
 # Vertex field filtering operators can apply to the inner scope or the outer scope.
 # Consider:
@@ -992,8 +993,8 @@ UNARY_FILTERS = frozenset({u"is_null", u"is_not_null"})
 #
 # If the filter on out_Foo_Bar filters the Foo, we say that it filters the outer scope.
 # Instead, if the filter filters the Bar connected to the Foo, it filters the inner scope.
-INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u"name_or_alias"})
-OUTER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({u"has_edge_degree"})
+INNER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({"name_or_alias"})
+OUTER_SCOPE_VERTEX_FIELD_OPERATORS = frozenset({"has_edge_degree"})
 
 VERTEX_FIELD_OPERATORS = INNER_SCOPE_VERTEX_FIELD_OPERATORS | OUTER_SCOPE_VERTEX_FIELD_OPERATORS
 
@@ -1025,26 +1026,26 @@ def process_filter_directive(filter_operation_info, location, context):
     op_name, operator_params = _get_filter_op_name_and_values(filter_operation_info.directive)
 
     non_comparison_filters = {
-        u"name_or_alias": _process_name_or_alias_filter_directive,
-        u"between": _process_between_filter_directive,
-        u"in_collection": _process_in_collection_filter_directive,
-        u"not_in_collection": _process_not_in_collection_filter_directive,
-        u"has_substring": _process_has_substring_filter_directive,
-        u"starts_with": _process_starts_with_filter_directive,
-        u"ends_with": _process_ends_with_filter_directive,
-        u"contains": _process_contains_filter_directive,
-        u"not_contains": _process_not_contains_filter_directive,
-        u"intersects": _process_intersects_filter_directive,
-        u"has_edge_degree": _process_has_edge_degree_filter_directive,
-        u"is_null": _process_is_null_filter_directive,
-        u"is_not_null": _process_is_not_null_filter_directive,
+        "name_or_alias": _process_name_or_alias_filter_directive,
+        "between": _process_between_filter_directive,
+        "in_collection": _process_in_collection_filter_directive,
+        "not_in_collection": _process_not_in_collection_filter_directive,
+        "has_substring": _process_has_substring_filter_directive,
+        "starts_with": _process_starts_with_filter_directive,
+        "ends_with": _process_ends_with_filter_directive,
+        "contains": _process_contains_filter_directive,
+        "not_contains": _process_not_contains_filter_directive,
+        "intersects": _process_intersects_filter_directive,
+        "has_edge_degree": _process_has_edge_degree_filter_directive,
+        "is_null": _process_is_null_filter_directive,
+        "is_not_null": _process_is_not_null_filter_directive,
     }
     all_recognized_filters = frozenset(non_comparison_filters.keys()) | COMPARISON_OPERATORS
     if all_recognized_filters != ALL_OPERATORS:
         unrecognized_filters = ALL_OPERATORS - all_recognized_filters
         raise AssertionError(
-            u"Some filtering operators are defined but do not have an associated "
-            u"processing function. This is a bug: {}".format(unrecognized_filters)
+            "Some filtering operators are defined but do not have an associated "
+            "processing function. This is a bug: {}".format(unrecognized_filters)
         )
 
     if op_name in COMPARISON_OPERATORS:
@@ -1053,7 +1054,7 @@ def process_filter_directive(filter_operation_info, location, context):
         process_func = non_comparison_filters.get(op_name, None)
 
     if process_func is None:
-        raise GraphQLCompilationError(u"Unknown op_name for filter directive: {}".format(op_name))
+        raise GraphQLCompilationError("Unknown op_name for filter directive: {}".format(op_name))
 
     # Operators that do not affect the inner scope require a field name to which they apply.
     # There is no field name on InlineFragment ASTs, which is why only operators that affect
@@ -1065,8 +1066,8 @@ def process_filter_directive(filter_operation_info, location, context):
         and op_name not in INNER_SCOPE_VERTEX_FIELD_OPERATORS
     ):
         raise GraphQLCompilationError(
-            u'The filter with op_name "{}" must be applied on a field. '
-            u"It may not be applied on a type coercion.".format(op_name)
+            'The filter with op_name "{}" must be applied on a field. '
+            "It may not be applied on a type coercion.".format(op_name)
         )
 
     fields = (

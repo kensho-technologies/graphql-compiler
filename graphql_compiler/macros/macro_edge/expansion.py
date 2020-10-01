@@ -1,5 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from graphql.language.ast import Field, InlineFragment, SelectionSet
+from graphql.language.ast import FieldNode, InlineFragmentNode, SelectionSetNode
 
 from ...ast_manipulation import get_ast_field_name
 from ...exceptions import GraphQLCompilationError
@@ -14,14 +14,14 @@ from .name_generation import generate_disambiguations
 def _ensure_directives_on_macro_edge_are_supported(macro_edge_field):
     """Raise GraphQLCompilationError if an unsupported directive is used on the macro edge."""
     macro_name = get_ast_field_name(macro_edge_field)
-    directives_supported_at_macro_expansion = frozenset({FilterDirective.name,})
+    directives_supported_at_macro_expansion = frozenset({FilterDirective.name})
     for directive in macro_edge_field.directives:
         directive_name = directive.name.value
         if directive_name not in directives_supported_at_macro_expansion:
             raise GraphQLCompilationError(
-                u"Encountered a {} directive applied to the {} macro edge, which is "
-                u"not currently supported by the macro system. Please alter your query to not use "
-                u"unsupported directives on macro edges. Supported directives are: {}".format(
+                "Encountered a {} directive applied to the {} macro edge, which is "
+                "not currently supported by the macro system. Please alter your query to not use "
+                "unsupported directives on macro edges. Supported directives are: {}".format(
                     directive_name, macro_name, set(directives_supported_at_macro_expansion)
                 )
             )
@@ -45,7 +45,7 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
     """
     if selection_ast.selection_set is None or not selection_ast.selection_set.selections:
         raise AssertionError(
-            u"Precondition violated. selection_ast is expected to be nonempty {}".format(
+            "Precondition violated. selection_ast is expected to be nonempty {}".format(
                 selection_ast
             )
         )
@@ -58,21 +58,21 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
     ]
     if len(target_ast.directives) != len(new_target_directives) + 1:
         raise AssertionError(
-            u"Expected the target_ast to contain a single @macro_edge_target "
-            u"directive, but that was unexpectedly not the case: "
-            u"{} {}".format(target_ast, new_target_directives)
+            "Expected the target_ast to contain a single @macro_edge_target "
+            "directive, but that was unexpectedly not the case: "
+            "{} {}".format(target_ast, new_target_directives)
         )
     target_ast.directives = new_target_directives
 
     # See if there's a type coercion in the selection_ast.
     coercion = None
     for selection in selection_ast.selection_set.selections:
-        if isinstance(selection, InlineFragment):
+        if isinstance(selection, InlineFragmentNode):
             if len(selection_ast.selection_set.selections) != 1:
                 raise GraphQLCompilationError(
-                    u"Found selections outside type coercion. "
-                    u"Please move them inside the coercion. "
-                    u"Error near field name: {}".format(get_ast_field_name(selection_ast))
+                    "Found selections outside type coercion. "
+                    "Please move them inside the coercion. "
+                    "Error near field name: {}".format(get_ast_field_name(selection_ast))
                 )
             else:
                 coercion = selection
@@ -91,10 +91,10 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
         if coercion_class != target_class_name:
             if coercion_class not in subclass_sets.get(target_class_name, set()):
                 raise GraphQLCompilationError(
-                    u"Attempting to use a type coercion to coerce a value of type {field_type} "
-                    u"(from field named {field_name}) to incompatible type {coercion_type}, which "
-                    u"is not a subtype of {field_type}. Only coercions "
-                    u"to a subtype are allowed.".format(
+                    "Attempting to use a type coercion to coerce a value of type {field_type} "
+                    "(from field named {field_name}) to incompatible type {coercion_type}, which "
+                    "is not a subtype of {field_type}. Only coercions "
+                    "to a subtype are allowed.".format(
                         field_type=target_class_name,
                         coercion_type=coercion_class,
                         field_name=get_ast_field_name(selection_ast),
@@ -102,20 +102,23 @@ def _merge_selection_into_target(subclass_sets, target_ast, target_class_name, s
                 )
 
         continuation_ast = coercion
-        if isinstance(target_ast, InlineFragment):
+        if isinstance(target_ast, InlineFragmentNode):
             # The macro edge definition has a type coercion as well, replace it with the user's one.
             target_ast.type_condition = coercion.type_condition
         else:
             # No coercion in the macro edge definition,
             # slip the user's type coercion inside the target AST.
-            new_coercion = InlineFragment(
-                coercion.type_condition, target_ast.selection_set, directives=[]
+            new_coercion = InlineFragmentNode(
+                type_condition=coercion.type_condition,
+                selection_set=target_ast.selection_set,
+                directives=[],
             )
-            target_ast.selection_set = SelectionSet([new_coercion])
+            target_ast.selection_set = SelectionSetNode(selections=[new_coercion])
             target_ast = new_coercion
 
     # Merge the continuation into the target
-    target_ast.directives += continuation_ast.directives
+    # target_ast.directives += continuation_ast.directives
+    target_ast.directives = list(target_ast.directives) + list(continuation_ast.directives)
     target_ast.selection_set = merge_selection_sets(
         target_ast.selection_set, continuation_ast.selection_set
     )
@@ -155,10 +158,10 @@ def _expand_specific_macro_edge(subclass_sets, target_class_name, macro_ast, sel
         else:
             if replacement_selection_ast is not None:
                 raise AssertionError(
-                    u"Found multiple @macro_edge_target directives. This means "
-                    u"the macro definition is invalid, and should never happen "
-                    u"as it should have been caught during validation. Macro AST: "
-                    u"{}".format(macro_ast)
+                    "Found multiple @macro_edge_target directives. This means "
+                    "the macro definition is invalid, and should never happen "
+                    "as it should have been caught during validation. Macro AST: "
+                    "{}".format(macro_ast)
                 )
             replacement_selection_ast = new_ast
             _merge_selection_into_target(
@@ -167,7 +170,7 @@ def _expand_specific_macro_edge(subclass_sets, target_class_name, macro_ast, sel
 
     if replacement_selection_ast is None:
         raise AssertionError(
-            u"Found no @macro_edge_target directives in macro selection set. {}".format(macro_ast)
+            "Found no @macro_edge_target directives in macro selection set. {}".format(macro_ast)
         )
 
     return replacement_selection_ast, sibling_prefix_selections, sibling_suffix_selections
@@ -204,7 +207,7 @@ def expand_potential_macro_edge(macro_registry, current_schema_type, ast, query_
     )
 
     # If the input AST isn't a Field, it can't be a macro edge. Nothing to be done.
-    if not isinstance(ast, Field):
+    if not isinstance(ast, FieldNode):
         return no_op_result
 
     # If the field isn't a vertex field, it can't be a macro edge. Nothing to be done.

@@ -7,7 +7,7 @@ LET
         FROM (
             MATCH {{
                 class: Animal,
-                where: ((((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0)) AND ((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)))),
+                where: ((((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)) AND ((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0)))),
                 as: Animal___1
             }}
             RETURN $matches
@@ -38,7 +38,7 @@ LET
         FROM (
             MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal___1 
+                as: Animal___1
             }}.in('Animal_ParentOf') {{
                 class: Animal,
                 where: (((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0))),
@@ -50,9 +50,9 @@ LET
                 where: ((@this INSTANCEOF 'Animal')),
                 as: Animal__in_Animal_ParentOf__in_Entity_Related___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1
             }} , {{
-                as: Animal___1 
+                as: Animal___1
             }}.out('Animal_ParentOf') {{
                 class: Animal,
                 where: (((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0))),
@@ -73,11 +73,11 @@ LET
                 class: Animal,
                 as: Animal___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
             }}
             RETURN $matches
         )
@@ -92,7 +92,7 @@ LET
                 as: Animal___1
             }}.in('Animal_ParentOf') {{
                 class: Animal,
-                where: ((((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0)) AND ((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)))),
+                where: ((((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)) AND ((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0)))),
                 as: Animal__in_Animal_ParentOf___1
             }}
             RETURN $matches
@@ -104,13 +104,13 @@ LET
         FROM (
             MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal___1 
+                as: Animal___1
             }}.in('Animal_ParentOf') {{
                 class: Animal,
-                where: ((((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0)) AND ((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)))),
+                where: ((((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)) AND ((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0)))),
                 as: Animal__in_Animal_ParentOf___1
             }} , {{
-                as: Animal___1 
+                as: Animal___1
             }}.out('Animal_ParentOf') {{
                 class: Animal,
                 where: (((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0))),
@@ -125,23 +125,23 @@ LET
         FROM (
             MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal___1 
+                as: Animal___1
             }}.in('Animal_ParentOf') {{
-                as: Animal__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf___1
             }}.in('Animal_ParentOf') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1
             }} , {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf___1
             }}.in('Entity_Related') {{
                 where: ((@this INSTANCEOF 'Animal')),
                 as: Animal__in_Animal_ParentOf__in_Entity_Related___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1
             }} , {{
-                as: Animal___1 
+                as: Animal___1
             }}.out('Animal_ParentOf') {{
                 class: Animal,
                 where: (((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0))),
@@ -156,7 +156,7 @@ LET
         FROM (
             MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal___1 
+                as: Animal___1
             }}.in('Animal_ParentOf') {{
                 class: Animal,
                 where: (((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0))),
@@ -168,15 +168,15 @@ LET
                 where: ((@this INSTANCEOF 'Animal')),
                 as: Animal__in_Animal_ParentOf__in_Entity_Related___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1
             }} , {{
-                as: Animal___1 
+                as: Animal___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
             }}
             RETURN $matches
         )
@@ -187,17 +187,17 @@ LET
         FROM (
             MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal___1 
+                as: Animal___1
             }}.in('Animal_ParentOf') {{
                 class: Animal,
                 where: (((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0))),
                 as: Animal__in_Animal_ParentOf___1
             }}.in('Animal_ParentOf') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1
             }} , {{
-                as: Animal___1 
+                as: Animal___1
             }}.out('Animal_ParentOf') {{
                 class: Animal,
                 where: (((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0))),
@@ -212,19 +212,19 @@ LET
         FROM (
             MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal___1 
+                as: Animal___1
             }}.in('Animal_ParentOf') {{
                 class: Animal,
-                where: ((((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0)) AND ((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)))),
+                where: ((((in_Animal_ParentOf IS null) OR (in_Animal_ParentOf.size() = 0)) AND ((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0)))),
                 as: Animal__in_Animal_ParentOf___1
             }} , {{
-                as: Animal___1 
+                as: Animal___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
             }}
             RETURN $matches
         )
@@ -235,23 +235,23 @@ LET
         FROM (
             MATCH {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal___1 
+                as: Animal___1
             }}.in('Animal_ParentOf') {{
                 class: Animal,
                 where: (((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0))),
                 as: Animal__in_Animal_ParentOf___1
             }}.in('Animal_ParentOf') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1
             }} , {{
-                as: Animal___1 
+                as: Animal___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf___1
             }}.out('Animal_ParentOf') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__out_Animal_ParentOf__out_Animal_ParentOf__out_Animal_OfSpecies___1
             }}
             RETURN $matches
         )
@@ -275,7 +275,7 @@ LET
                 where: ((@this INSTANCEOF 'Animal')),
                 as: Animal__in_Animal_ParentOf__in_Entity_Related___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1
             }}
             RETURN $matches
         )
@@ -293,9 +293,9 @@ LET
                 where: (((in_Entity_Related IS null) OR (in_Entity_Related.size() = 0))),
                 as: Animal__in_Animal_ParentOf___1
             }}.in('Animal_ParentOf') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1
             }}
             RETURN $matches
         )
@@ -309,19 +309,19 @@ LET
                 where: (((out_Animal_ParentOf IS null) OR (out_Animal_ParentOf.size() = 0))),
                 as: Animal___1
             }}.in('Animal_ParentOf') {{
-                as: Animal__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf___1
             }}.in('Animal_ParentOf') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Animal_ParentOf__out_Animal_OfSpecies___1
             }} , {{
                 where: ((@this INSTANCEOF 'Animal')),
-                as: Animal__in_Animal_ParentOf___1 
+                as: Animal__in_Animal_ParentOf___1
             }}.in('Entity_Related') {{
                 where: ((@this INSTANCEOF 'Animal')),
                 as: Animal__in_Animal_ParentOf__in_Entity_Related___1
             }}.out('Animal_OfSpecies') {{
-                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1 
+                as: Animal__in_Animal_ParentOf__in_Entity_Related__out_Animal_OfSpecies___1
             }}
             RETURN $matches
         )

@@ -2,7 +2,7 @@
 from copy import copy
 from itertools import chain
 
-from graphql.language.ast import InlineFragment, SelectionSet
+from graphql.language.ast import InlineFragmentNode, SelectionSetNode
 
 from ..ast_manipulation import (
     get_ast_field_name,
@@ -47,7 +47,7 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
         prefix_selections = []  # Selections from macro expansion to be added before this selection
         suffix_selections = []  # Selections from macro expansion to be added after this selection
 
-        if isinstance(selection_ast, InlineFragment):
+        if isinstance(selection_ast, InlineFragmentNode):
             vertex_field_type = schema.get_type(selection_ast.type_condition.name.value)
             new_selection_ast, new_query_args = _expand_macros_in_inner_ast(
                 macro_registry, vertex_field_type, selection_ast, new_query_args, tag_names
@@ -79,9 +79,9 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
 
         if new_selection_ast is selection_ast and (prefix_selections or suffix_selections):
             raise AssertionError(
-                u"No macro expansion happened but unexpectedly there are "
-                u"prefix or suffix selections to expand: {} {}."
-                u"current_schema_type: {}, ast: {}, field_name: {}".format(
+                "No macro expansion happened but unexpectedly there are "
+                "prefix or suffix selections to expand: {} {}."
+                "current_schema_type: {}, ast: {}, field_name: {}".format(
                     prefix_selections, suffix_selections, current_schema_type, ast, field_name
                 )
             )
@@ -91,7 +91,9 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
 
         new_selection_set = merge_selection_sets(
             new_selection_set,
-            SelectionSet(list(chain(prefix_selections, [new_selection_ast], suffix_selections))),
+            SelectionSetNode(
+                selections=list(chain(prefix_selections, [new_selection_ast], suffix_selections))
+            ),
         )
 
     if made_changes:
@@ -101,8 +103,8 @@ def _expand_macros_in_inner_ast(macro_registry, current_schema_type, ast, query_
     else:
         if new_query_args is not query_args:
             raise AssertionError(
-                u"No changes made during macro expansion, but query args changed: "
-                u"{} vs {}. AST: {}".format(query_args, new_query_args, ast)
+                "No changes made during macro expansion, but query args changed: "
+                "{} vs {}. AST: {}".format(query_args, new_query_args, ast)
             )
 
         result_ast = ast
@@ -133,7 +135,7 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
     base_ast = get_only_selection_from_ast(definition_ast, GraphQLInvalidMacroError)
 
     base_start_type_name = get_ast_field_name(base_ast)
-    query_type = macro_registry.schema_without_macros.get_query_type()
+    query_type = macro_registry.schema_without_macros.query_type
     base_start_type = query_type.fields[base_start_type_name].type
     tag_names = get_all_tag_names(base_ast)
 
@@ -148,8 +150,8 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
         # No macro expansion happened.
         if new_query_args != query_args:
             raise AssertionError(
-                u"No macro expansion happened, but the query args object changed: "
-                u"{} vs {}. This should be impossible. GraphQL query AST: {}".format(
+                "No macro expansion happened, but the query args object changed: "
+                "{} vs {}. This should be impossible. GraphQL query AST: {}".format(
                     query_args, new_query_args, query_ast
                 )
             )
@@ -158,7 +160,7 @@ def expand_macros_in_query_ast(macro_registry, query_ast, query_args):
         new_query_args = query_args
     else:
         new_definition = copy(definition_ast)
-        new_definition.selection_set = SelectionSet([new_base_ast])
+        new_definition.selection_set = SelectionSetNode(selections=[new_base_ast])
 
         new_query_ast = copy(query_ast)
         new_query_ast.definitions = [new_definition]

@@ -1,15 +1,15 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Common test data and helper functions."""
 from collections import namedtuple
+from inspect import getmembers, isfunction
 from pprint import pformat
 import re
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Dict, List, Optional, Set, Tuple, Union, cast
 from unittest import TestCase
 
-from graphql import GraphQLList, parse
-from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
+from graphql import GraphQLList, build_schema, lexicographic_sort_schema, print_schema
+from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType, GraphQLUnionType
 from graphql.type.schema import GraphQLSchema
-from graphql.utils.build_ast_schema import build_ast_schema
 from pyorient.orient import OrientDB
 import six
 import sqlalchemy
@@ -18,10 +18,10 @@ from sqlalchemy.dialects import mssql, postgresql
 from ..compiler.compiler_entities import BasicBlock
 from ..compiler.subclass import compute_subclass_sets
 from ..debugging_utils import pretty_print_gremlin, pretty_print_match
+from ..global_utils import is_same_type
 from ..macros import MacroRegistry, create_macro_registry, register_macro_edge
 from ..query_formatting.graphql_formatting import pretty_print_graphql
 from ..schema import (
-    CUSTOM_SCALAR_TYPES,
     ClassToFieldTypeOverridesType,
     GraphQLSchemaFieldType,
     TypeEquivalenceHintsType,
@@ -40,12 +40,11 @@ from ..schema_generation.orientdb.utils import (
     ORIENTDB_SCHEMA_RECORDS_QUERY,
 )
 from ..schema_generation.schema_graph import SchemaGraph
-from ..schema_generation.utils import amend_custom_scalar_types
 
 
 # The strings which we will be comparing have newlines and spaces we'd like to get rid of,
 # so we can compare expected and produced emitted code irrespective of whitespace.
-WHITESPACE_PATTERN = re.compile(u"[\t\n ]*", flags=re.UNICODE)
+WHITESPACE_PATTERN = re.compile("[\t\n ]*", flags=re.UNICODE)
 
 # flag to indicate a test component should be skipped
 SKIP_TEST = "SKIP"
@@ -59,21 +58,43 @@ SCHEMA_TEXT = """
         query: RootSchemaQuery
     }
 
-    directive @filter(op_name: String!, value: [String!]) on FIELD | INLINE_FRAGMENT
+    directive @filter(
+        \"\"\"Name of the filter operation to perform.\"\"\"
+        op_name: String!
 
-    directive @tag(tag_name: String!) on FIELD
+        \"\"\"List of string operands for the operator.\"\"\"
+        value: [String!]
+    ) repeatable on FIELD | INLINE_FRAGMENT
 
-    directive @output(out_name: String!) on FIELD
+    directive @tag(
+        \"\"\"Name to apply to the given property field.\"\"\"
+        tag_name: String!
+    ) on FIELD
+
+    directive @output(
+        \"\"\"What to designate the output field generated from this property field.\"\"\"
+        out_name: String!
+    ) on FIELD
 
     directive @output_source on FIELD
 
     directive @optional on FIELD
 
-    directive @recurse(depth: Int!) on FIELD
+    directive @recurse(
+        \"\"\"
+        Recurse up to this many times on this edge. A depth of 1 produces the current \
+vertex and its immediate neighbors along the given edge.
+        \"\"\"
+        depth: Int!
+    ) on FIELD
 
     directive @fold on FIELD
 
-    type Animal implements Entity, UniquelyIdentifiable {
+    directive @macro_edge on FIELD_DEFINITION
+
+    directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+    type Animal implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         birthday: Date
@@ -93,7 +114,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type BirthEvent implements Entity, UniquelyIdentifiable {
+    type BirthEvent implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -108,10 +129,31 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
+    \"\"\"
+    The `Date` scalar type represents day-accuracy date objects.Values are
+    serialized following the ISO-8601 datetime format specification, for example
+    "2017-03-21". The year, month and day fields must be included, and the format
+    followed exactly, or the behavior is undefined.
+    \"\"\"
     scalar Date
 
+    \"\"\"
+    The `DateTime` scalar type represents timezone-naive second-accuracy
+    timestamps.Values are serialized following the ISO-8601 datetime format
+    specification, for example "2017-03-21T12:34:56". All of these fields must
+    be included, including the seconds, and the format followed
+    exactly, or the behavior is undefined.
+    \"\"\"
     scalar DateTime
 
+    \"\"\"
+    The `Decimal` scalar type is an arbitrary-precision decimal number object useful
+    for representing values that should never be rounded, such as currency amounts.
+    Values are allowed to be transported as either a native Decimal type, if the
+    underlying transport allows that, or serialized as strings in decimal format,
+    without thousands separators and using a "." as the decimal separator: for
+    example, "12345678.012345".
+    \"\"\"
     scalar Decimal
 
     interface Entity {
@@ -124,7 +166,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type Event implements Entity, UniquelyIdentifiable {
+    type Event implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -138,7 +180,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type FeedingEvent implements Entity, UniquelyIdentifiable {
+    type FeedingEvent implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -153,7 +195,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type Food implements Entity, UniquelyIdentifiable {
+    type Food implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -164,7 +206,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type FoodOrSpecies implements Entity, UniquelyIdentifiable {
+    type FoodOrSpecies implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -175,7 +217,7 @@ SCHEMA_TEXT = """
         uuid: ID
     }
 
-    type Location implements Entity, UniquelyIdentifiable {
+    type Location implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -199,7 +241,7 @@ SCHEMA_TEXT = """
         UniquelyIdentifiable: [UniquelyIdentifiable]
     }
 
-    type Species implements Entity, UniquelyIdentifiable {
+    type Species implements Entity & UniquelyIdentifiable {
         _x_count: Int
         alias: [String]
         description: String
@@ -263,7 +305,9 @@ VALID_MACROS_TEXT = [
             }
         }
     }""",
-        {"wanted": "Nate",},
+        {
+            "wanted": "Nate",
+        },
     ),
     (
         """\
@@ -291,7 +335,9 @@ VALID_MACROS_TEXT = [
             }
         }
     }""",
-        {"num_parents": 0,},
+        {
+            "num_parents": 0,
+        },
     ),
     # Testing that @optional that doesn't include @macro_edge_target is okay.
     (
@@ -403,9 +449,26 @@ BackendTester = namedtuple(
 )
 
 
+def get_function_names_from_module(module):
+    """Return a set of function names present in a given module."""
+    return {member for member, member_type in getmembers(module) if isfunction(member_type)}
+
+
+def get_test_function_names_from_class(test_class):
+    """Return a set of test function names present in a given TestCase class."""
+    if not issubclass(test_class, TestCase):
+        raise AssertionError("Received non-test class {} as input.".format(test_class))
+    member_dict = test_class.__dict__
+    return {
+        member
+        for member in member_dict
+        if isfunction(member_dict[member]) and member[:5] == "test_"
+    }
+
+
 def transform(emitted_output: str) -> str:
     """Transform emitted_output into a unique representation, regardless of lines / indentation."""
-    return WHITESPACE_PATTERN.sub(u"", emitted_output)
+    return WHITESPACE_PATTERN.sub("", emitted_output)
 
 
 def _get_mismatch_message(
@@ -414,7 +477,7 @@ def _get_mismatch_message(
     """Create a well-formated error message indicating that two lists of blocks are mismatched."""
     pretty_expected = pformat(expected_blocks)
     pretty_received = pformat(received_blocks)
-    return u"{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
+    return "{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)
 
 
 def compare_ir_blocks(
@@ -424,16 +487,16 @@ def compare_ir_blocks(
     mismatch_message = _get_mismatch_message(expected_blocks, received_blocks)
 
     if len(expected_blocks) != len(received_blocks):
-        test_case.fail(u"Not the same number of blocks:\n\n" u"{}".format(mismatch_message))
+        test_case.fail("Not the same number of blocks:\n\n{}".format(mismatch_message))
 
-    for i in six.moves.xrange(len(expected_blocks)):
-        expected = expected_blocks[i]
-        received = received_blocks[i]
+    for i, (expected, received) in enumerate(zip(expected_blocks, received_blocks)):
         test_case.assertEqual(
             expected,
             received,
-            msg=u"Blocks at position {} were different: {} vs {}\n\n"
-            u"{}".format(i, expected, received, mismatch_message),
+            msg=(
+                "Blocks at position {} were different: {} vs {}\n\n"
+                "{}".format(i, expected, received, mismatch_message)
+            ),
         )
 
 
@@ -444,7 +507,10 @@ def compare_graphql(test_case: TestCase, expected: str, received: str) -> None:
 
 
 def compare_match(
-    test_case: TestCase, expected: str, received: str, parameterized: bool = True,
+    test_case: TestCase,
+    expected: str,
+    received: str,
+    parameterized: bool = True,
 ) -> None:
     """Compare the expected and received MATCH code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(
@@ -460,7 +526,11 @@ def compare_sql(test_case: TestCase, expected: str, received: str) -> None:
     compare_ignoring_whitespace(test_case, expected, received, msg)
 
 
-def compare_gremlin(test_case: TestCase, expected: str, received: str,) -> None:
+def compare_gremlin(
+    test_case: TestCase,
+    expected: str,
+    received: str,
+) -> None:
     """Compare the expected and received Gremlin code, ignoring whitespace."""
     msg = "\n{}\n\n!=\n\n{}".format(pretty_print_gremlin(expected), pretty_print_gremlin(received))
     compare_ignoring_whitespace(test_case, expected, received, msg)
@@ -487,36 +557,65 @@ def compare_input_metadata(
         received_value = received[key]
 
         test_case.assertTrue(
-            expected_value.is_same_type(received_value),
-            msg=u"{} != {}".format(str(expected_value), str(received_value)),
+            is_same_type(expected_value, received_value),
+            msg="{} != {}".format(str(expected_value), str(received_value)),
         )
 
 
 def compare_ignoring_whitespace(
-    test_case: Any, expected: str, received: str, msg: Optional[str]
+    test_case: TestCase, expected: str, received: str, msg: Optional[str]
 ) -> None:
     """Compare expected and received code, ignoring whitespace, with the given failure message."""
     test_case.assertEqual(transform(expected), transform(received), msg=msg)
 
 
+def _lexicographic_sort_schema_text(schema_text: str) -> str:
+    """Sort the schema types and fields in a lexicographic order."""
+    return print_schema(lexicographic_sort_schema(build_schema(schema_text)))
+
+
+def compare_schema_texts_order_independently(
+    test_case: TestCase,
+    expected_schema_text: str,
+    received_schema_text: str,
+) -> None:
+    """Compare expected and received schema texts, ignoring order of definitions."""
+    sorted_expected_schema_text = _lexicographic_sort_schema_text(expected_schema_text)
+    sorted_received_schema_text = _lexicographic_sort_schema_text(received_schema_text)
+    msg = "\n{}\n\n!=\n\n{}".format(sorted_expected_schema_text, sorted_received_schema_text)
+    compare_ignoring_whitespace(
+        test_case, sorted_expected_schema_text, sorted_received_schema_text, msg
+    )
+
+
 def get_schema() -> GraphQLSchema:
     """Get a schema object for testing."""
-    ast = parse(SCHEMA_TEXT)
-    schema = build_ast_schema(ast)
-    amend_custom_scalar_types(schema, CUSTOM_SCALAR_TYPES)  # Mutates the schema.
-    return schema
+    return build_schema(SCHEMA_TEXT)
 
 
 def get_type_equivalence_hints() -> TypeEquivalenceHintsType:
     """Get the default type_equivalence_hints used for testing."""
     schema = get_schema()
-    return {
-        schema.get_type(key): schema.get_type(value)
-        for key, value in [
-            ("Event", "Union__BirthEvent__Event__FeedingEvent"),
-            ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),
-        ]
-    }
+    type_equivalence_hints: Dict[
+        Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
+    ] = {}
+    for key, value in [
+        ("Event", "Union__BirthEvent__Event__FeedingEvent"),
+        ("FoodOrSpecies", "Union__Food__FoodOrSpecies__Species"),
+    ]:
+        key_type = schema.get_type(key)
+        value_type = schema.get_type(value)
+        if (
+            key_type
+            and value_type
+            and (
+                isinstance(key_type, GraphQLInterfaceType)
+                or isinstance(key_type, GraphQLObjectType)
+            )
+            and isinstance(value_type, GraphQLUnionType)
+        ):
+            type_equivalence_hints[key_type] = value_type
+    return type_equivalence_hints
 
 
 def get_common_schema_info() -> CommonSchemaInfo:
@@ -529,7 +628,7 @@ def _get_schema_without_list_valued_property_fields() -> GraphQLSchema:
     schema = get_schema()
 
     types_with_fields = (GraphQLInterfaceType, GraphQLObjectType)
-    for type_name, graphql_type in six.iteritems(schema.get_type_map()):
+    for type_name, graphql_type in six.iteritems(schema.type_map):
         if isinstance(graphql_type, types_with_fields):
             if type_name != "RootSchemaQuery" and not type_name.startswith("__"):
                 fields_to_pop = []
@@ -575,7 +674,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
         "BirthEvent": sqlalchemy.Table(
             "BirthEvent",
             sqlalchemy_metadata,
-            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=False),
+            sqlalchemy.Column("description", sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column("uuid", uuid_type, primary_key=True),
             sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False),
@@ -757,7 +856,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
     elif dialect == "mssql":
         sqlalchemy_compiler_dialect = mssql.dialect()
     else:
-        raise AssertionError(u"Unrecognized dialect {}".format(dialect))
+        raise AssertionError("Unrecognized dialect {}".format(dialect))
     return make_sqlalchemy_schema_info(
         schema, type_equivalence_hints, sqlalchemy_compiler_dialect, tables, join_descriptors
     )
@@ -788,9 +887,12 @@ def generate_schema(
 def get_empty_test_macro_registry() -> MacroRegistry:
     """Return a MacroRegistry with appropriate type_equivalence_hints and subclass_set."""
     schema = get_schema()
-    type_equivalence_hints = {
-        schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),
-    }
+    type_equivalence_hints = cast(
+        TypeEquivalenceHintsType,
+        {
+            schema.get_type("Event"): schema.get_type("Union__BirthEvent__Event__FeedingEvent"),
+        },
+    )
     subclass_sets = compute_subclass_sets(schema, type_equivalence_hints)
     macro_registry = create_macro_registry(schema, type_equivalence_hints, subclass_sets)
     return macro_registry

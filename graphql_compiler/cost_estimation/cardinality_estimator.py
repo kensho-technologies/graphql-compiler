@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
+from typing import Any, Dict
 
-from ..compiler.compiler_frontend import graphql_to_ir
 from ..compiler.helpers import (
     INBOUND_EDGE_DIRECTION,
     OUTBOUND_EDGE_DIRECTION,
@@ -9,6 +9,8 @@ from ..compiler.helpers import (
     Location,
     get_edge_direction_and_name,
 )
+from ..compiler.metadata import QueryMetadataTable
+from ..schema.schema_info import QueryPlanningSchemaInfo
 from .filter_selectivity_utils import adjust_counts_for_filters
 
 
@@ -67,7 +69,7 @@ def _get_last_edge_direction_and_name_to_location(location):
     elif isinstance(location, FoldScopeLocation):
         edge_direction, edge_name = location.fold_path[-1]
     else:
-        raise AssertionError(u"Unexpected location encountered: {}".format(location))
+        raise AssertionError("Unexpected location encountered: {}".format(location))
     return edge_direction, edge_name
 
 
@@ -83,8 +85,8 @@ def _get_base_class_names_of_parent_and_child_from_edge(schema_graph, current_lo
         child_base_class_name = edge_element.base_out_connection
     else:
         raise AssertionError(
-            u"Expected edge direction to be either inbound or outbound."
-            u"Found: edge {} with direction {}".format(edge_name, edge_direction)
+            "Expected edge direction to be either inbound or outbound."
+            "Found: edge {} with direction {}".format(edge_name, edge_direction)
         )
     return parent_base_class_name, child_base_class_name
 
@@ -129,8 +131,8 @@ def _query_statistics_for_vertex_edge_vertex_count(
         inbound_vertex_name = child_name_from_location
     else:
         raise AssertionError(
-            u"Expected edge direction to be either inbound or outbound."
-            u"Found: edge {} with direction {}".format(edge_name, edge_direction)
+            "Expected edge direction to be either inbound or outbound."
+            "Found: edge {} with direction {}".format(edge_name, edge_direction)
         )
 
     query_result = statistics.get_vertex_edge_vertex_count(
@@ -227,6 +229,12 @@ def _estimate_edges_to_children_per_parent(
     # Count the number of parents, over which we assume the edges are uniformly distributed.
     parent_location_counts = schema_info.statistics.get_class_count(parent_name_from_location)
 
+    # Anticipate division by zero
+    if parent_location_counts == 0:
+        # This implies that edge_counts is also 0. However, asserting that edge_counts is 0 is
+        # too aggressive because we can't expect all statistics to be collected at the same time.
+        return 0.0
+
     # False-positive bug in pylint: https://github.com/PyCQA/pylint/issues/3039
     # pylint: disable=old-division
     #
@@ -318,22 +326,22 @@ def _estimate_expansion_cardinality(schema_info, query_metadata, parameters, cur
     return expansion_cardinality
 
 
-def estimate_query_result_cardinality(schema_info, graphql_query, parameters):
+def estimate_query_result_cardinality(
+    schema_info: QueryPlanningSchemaInfo,
+    query_metadata: QueryMetadataTable,
+    parameters: Dict[str, Any],
+) -> float:
     """Estimate the cardinality of a GraphQL query's result using database statistics.
 
     Args:
         schema_info: QueryPlanningSchemaInfo
-        graphql_query: string, a valid GraphQL query
+        query_metadata: info on locations, inputs, outputs, and tags in the query
         parameters: dict, parameters with which query will be executed.
 
     Returns:
         float, expected query result cardinality. Equal to the number of root vertices multiplied by
         the expected number of result sets per full expansion of a root vertex.
     """
-    query_metadata = graphql_to_ir(
-        schema_info.schema, graphql_query, type_equivalence_hints=schema_info.type_equivalence_hints
-    ).query_metadata_table
-
     root_location = query_metadata.root_location
 
     # First, count the vertices corresponding to the root location that pass relevant filters
@@ -355,48 +363,3 @@ def estimate_query_result_cardinality(schema_info, graphql_query, parameters):
     expected_query_result_cardinality = root_counts * results_per_root
 
     return expected_query_result_cardinality
-
-
-def estimate_number_of_pages(schema_info, graphql_query, params, page_size):
-    """Estimate how many pages of results will be generated for a given query.
-
-    Using the cardinality estimator, we generate an estimate for the query result cardinality i.e.
-    the number of result rows, then divide (rounding up) by the page_size to get the approximate
-    number of pages that the query will produce.
-    For example, if a query were estimated to return 12000 result rows, and the desired page size is
-    5000, then the query can be divided into ceil(12000/5000)=3 pages, each with a result size below
-    (or equal to) 5000 results.
-
-    Args:
-        schema_info: QueryPlanningSchemaInfo
-        graphql_query: str, valid GraphQL query to be estimated.
-        params: dict, parameters for the given query.
-        page_size: int, desired number of result rows per page.
-
-    Returns:
-        int, estimated number of pages if the query were executed.
-
-    Raises:
-        ValueError if page_size is below 1.
-    """
-    if page_size < 1:
-        raise ValueError(
-            u"Could not estimate number of pages for query {}"
-            u" with page size lower than 1: {} {}".format(graphql_query, page_size, params)
-        )
-
-    result_size = estimate_query_result_cardinality(schema_info, graphql_query, params)
-    if result_size < 0.0:
-        raise AssertionError(
-            u"Received negative estimate {} for cardinality of query {}: {}".format(
-                result_size, graphql_query, params
-            )
-        )
-
-    # Since using a // b returns the fraction rounded down, we instead use (a + b - 1) // b, which
-    # returns the fraction value rounded up, which is the desired functionality.
-    num_pages = int((result_size + page_size - 1) // page_size)
-    if num_pages == 0:
-        num_pages = 1
-
-    return num_pages

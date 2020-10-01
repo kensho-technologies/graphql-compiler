@@ -40,12 +40,19 @@ type SchemaQuery {
 
 
 basic_merged_schema = merge_schemas(
-    OrderedDict([("first", basic_schema), ("second", parse(basic_additional_schema)),]),
+    OrderedDict(
+        [
+            ("first", basic_schema),
+            ("second", parse(basic_additional_schema)),
+        ]
+    ),
     [
         CrossSchemaEdgeDescriptor(
             edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id="first", type_name="Animal", field_name="uuid",
+                schema_id="first",
+                type_name="Animal",
+                field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
                 schema_id="second", type_name="Creature", field_name="id"
@@ -87,12 +94,19 @@ type SchemaQuery {
 
 
 interface_merged_schema = merge_schemas(
-    OrderedDict([("first", basic_schema), ("second", parse(interface_additional_schema)),]),
+    OrderedDict(
+        [
+            ("first", basic_schema),
+            ("second", parse(interface_additional_schema)),
+        ]
+    ),
     [
         CrossSchemaEdgeDescriptor(
             edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id="first", type_name="Animal", field_name="uuid",
+                schema_id="first",
+                type_name="Animal",
+                field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
                 schema_id="second", type_name="Creature", field_name="id"
@@ -116,7 +130,7 @@ def _get_type_equivalence_hints(schema_id_to_ast, type_equivalence_hints_names):
     name_to_type = {}
     for ast in six.itervalues(schema_id_to_ast):
         schema = build_ast_schema(ast)
-        name_to_type.update(schema.get_type_map())
+        name_to_type.update(schema.type_map)
     type_equivalence_hints = {}
     for object_type_name, union_type_name in six.iteritems(type_equivalence_hints_names):
         object_type = name_to_type[object_type_name]
@@ -150,7 +164,10 @@ type SchemaQuery {
 
 
 union_schema_id_to_ast = OrderedDict(
-    [("first", basic_schema), ("second", parse(union_additional_schema)),]
+    [
+        ("first", basic_schema),
+        ("second", parse(union_additional_schema)),
+    ]
 )
 
 
@@ -160,7 +177,9 @@ union_merged_schema = merge_schemas(
         CrossSchemaEdgeDescriptor(
             edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id="first", type_name="Animal", field_name="uuid",
+                schema_id="first",
+                type_name="Animal",
+                field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
                 schema_id="second", type_name="Creature", field_name="id"
@@ -200,7 +219,9 @@ three_merged_schema = merge_schemas(
         CrossSchemaEdgeDescriptor(
             edge_name="Animal_Creature",
             outbound_field_reference=FieldReference(
-                schema_id="first", type_name="Animal", field_name="uuid",
+                schema_id="first",
+                type_name="Animal",
+                field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
                 schema_id="second", type_name="Creature", field_name="id"
@@ -210,7 +231,9 @@ three_merged_schema = merge_schemas(
         CrossSchemaEdgeDescriptor(
             edge_name="Animal_Critter",
             outbound_field_reference=FieldReference(
-                schema_id="first", type_name="Animal", field_name="uuid",
+                schema_id="first",
+                type_name="Animal",
+                field_name="uuid",
             ),
             inbound_field_reference=FieldReference(
                 schema_id="third", type_name="Critter", field_name="ID"
@@ -242,6 +265,8 @@ type SchemaQuery {
   Animal: Animal
   Creature: Creature
 }
+
+directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
 directive @output(out_name: String!) on FIELD
 """

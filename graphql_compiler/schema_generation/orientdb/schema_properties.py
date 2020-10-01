@@ -14,9 +14,24 @@ ORDERED_NON_UNIQUE_INDEX_TYPE = "NOTUNIQUE"
 HASHED_UNIQUE_INDEX_TYPE = "UNIQUE_HASH_INDEX"
 HASHED_NON_UNIQUE_INDEX_TYPE = "NOTUNIQUE_HASH_INDEX"
 
-UNIQUE_INDEX_TYPES = frozenset({ORDERED_UNIQUE_INDEX_TYPE, HASHED_UNIQUE_INDEX_TYPE,})
-NON_UNIQUE_INDEX_TYPES = frozenset({ORDERED_NON_UNIQUE_INDEX_TYPE, HASHED_NON_UNIQUE_INDEX_TYPE,})
-ORDERED_INDEX_TYPES = frozenset({ORDERED_UNIQUE_INDEX_TYPE, ORDERED_NON_UNIQUE_INDEX_TYPE,})
+UNIQUE_INDEX_TYPES = frozenset(
+    {
+        ORDERED_UNIQUE_INDEX_TYPE,
+        HASHED_UNIQUE_INDEX_TYPE,
+    }
+)
+NON_UNIQUE_INDEX_TYPES = frozenset(
+    {
+        ORDERED_NON_UNIQUE_INDEX_TYPE,
+        HASHED_NON_UNIQUE_INDEX_TYPE,
+    }
+)
+ORDERED_INDEX_TYPES = frozenset(
+    {
+        ORDERED_UNIQUE_INDEX_TYPE,
+        ORDERED_NON_UNIQUE_INDEX_TYPE,
+    }
+)
 
 # The naming stems from OrientDB naming conventions for builtin link properties for edges.
 EDGE_SOURCE_PROPERTY_NAME = "out"
@@ -69,7 +84,7 @@ PROPERTY_TYPE_ANY_NAME = "Any"
 COLLECTION_PROPERTY_TYPES = {PROPERTY_TYPE_EMBEDDED_SET_ID, PROPERTY_TYPE_EMBEDDED_LIST_ID}
 
 # Map of numeric type identifier to human-readable type name.
-# Also the master list of all property types that the graph supports,
+# Also the central list of all property types that the graph supports,
 # since the graph doesn't actually support all of OrientDB's types.
 PROPERTY_TYPE_ID_TO_NAME = {
     PROPERTY_TYPE_BOOLEAN_ID: PROPERTY_TYPE_BOOLEAN_NAME,
@@ -109,8 +124,8 @@ def try_get_graphql_scalar_type(property_name, property_type_id):
     maybe_graphql_type = ORIENTDB_TO_GRAPHQL_SCALARS.get(property_type_id, None)
     if not maybe_graphql_type:
         warnings.warn(
-            u'Ignoring property "{}" with unsupported property type: '
-            u"{}".format(property_name, PROPERTY_TYPE_ID_TO_NAME[property_type_id])
+            'Ignoring property "{}" with unsupported property type: '
+            "{}".format(property_name, PROPERTY_TYPE_ID_TO_NAME[property_type_id])
         )
     return maybe_graphql_type
 
@@ -124,8 +139,8 @@ def _parse_bool_default_value(property_name, default_value_string):
         return True
     else:
         raise AssertionError(
-            u'Unsupported default value for boolean property "{}": '
-            u"{}".format(property_name, default_value_string)
+            'Unsupported default value for boolean property "{}": '
+            "{}".format(property_name, default_value_string)
         )
 
 
@@ -193,6 +208,6 @@ def parse_default_property_value(property_name, property_type_id, default_value_
         return _parse_date_default_value(property_name, default_value_string)
     else:
         raise AssertionError(
-            u'Unsupported default value for property "{}" with type id {}: '
-            u"{}".format(property_name, property_type_id, default_value_string)
+            'Unsupported default value for property "{}" with type id {}: '
+            "{}".format(property_name, property_type_id, default_value_string)
         )

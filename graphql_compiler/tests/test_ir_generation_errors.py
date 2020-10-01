@@ -1,13 +1,15 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 import string
+from typing import cast
 import unittest
 
 from graphql import parse
-from graphql.utils.build_ast_schema import build_ast_schema
+from graphql.utilities.build_ast_schema import build_ast_schema
 import six
 
 from ..compiler.compiler_frontend import graphql_to_ir
 from ..exceptions import GraphQLCompilationError, GraphQLParsingError, GraphQLValidationError
+from ..schema import TypeEquivalenceHintsType
 from .test_helpers import get_schema
 
 
@@ -758,15 +760,15 @@ class IrGenerationErrorTests(unittest.TestCase):
         def generate_args_string(num_args: int) -> str:
             """Generate a GraphQL array with the given args, as a string."""
             if num_args == 0:
-                return u"[]"
+                return "[]"
 
             variable_names = string.ascii_lowercase
             if num_args >= len(variable_names):
                 raise AssertionError("Invalid test data, too many variables to represent.")
 
             args = (variable_names[i] for i in six.moves.xrange(num_args))
-            array_contents = u",".join(u'"${}"'.format(x) for x in args)
-            return u"[{}]".format(array_contents)
+            array_contents = ",".join('"${}"'.format(x) for x in args)
+            return "[{}]".format(array_contents)
 
         expected_arg_counts = [
             # Using % rather than .format() because GraphQL uses lots of curly braces,
@@ -867,7 +869,7 @@ class IrGenerationErrorTests(unittest.TestCase):
         }""",
         )
 
-        with self.assertRaises(GraphQLCompilationError):
+        with self.assertRaises(GraphQLValidationError):
             graphql_to_ir(
                 self.schema,
                 """{
@@ -1462,10 +1464,18 @@ class IrGenerationErrorTests(unittest.TestCase):
                 }
             }
         }"""
-        invalid_type_equivalence_hints = {
+        invalid_type_equivalence_hint_data = {
             "Event": "Union__BirthEvent__Event__FeedingEvent",
             "BirthEvent": "Union__BirthEvent__Event__FeedingEvent",
         }
+
+        invalid_type_equivalence_hints: TypeEquivalenceHintsType = cast(
+            TypeEquivalenceHintsType,
+            {
+                self.schema.get_type(key): self.schema.get_type(value)
+                for key, value in invalid_type_equivalence_hint_data.items()
+            },
+        )
         with self.assertRaises(TypeError):
             graphql_to_ir(
                 self.schema,

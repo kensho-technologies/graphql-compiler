@@ -2,21 +2,20 @@
 from collections import OrderedDict, namedtuple
 from copy import copy
 
+from graphql import TypeInfo, TypeInfoVisitor, Visitor, validate, visit
 from graphql.language.ast import (
-    Argument,
-    Directive,
-    Document,
-    Field,
-    InterfaceTypeDefinition,
-    Name,
-    ObjectTypeDefinition,
-    OperationDefinition,
-    SelectionSet,
-    StringValue,
+    ArgumentNode,
+    DirectiveNode,
+    DocumentNode,
+    FieldNode,
+    InterfaceTypeDefinitionNode,
+    NameNode,
+    ObjectTypeDefinitionNode,
+    OperationDefinitionNode,
+    OperationType,
+    SelectionSetNode,
+    StringValueNode,
 )
-from graphql.language.visitor import TypeInfoVisitor, Visitor, visit
-from graphql.utils.type_info import TypeInfo
-from graphql.validation import validate
 import six
 
 from ..ast_manipulation import get_only_query_definition
@@ -68,9 +67,9 @@ def split_query(query_ast, merged_schema_descriptor):
     @filter directives.
 
     Args:
-        query_ast: Document, representing a GraphQL query to split
+        query_ast: DocumentNode, representing a GraphQL query to split
         merged_schema_descriptor: MergedSchemaDescriptor namedtuple, containing:
-                                  schema_ast: Document representing the merged schema
+                                  schema_ast: DocumentNode representing the merged schema
                                   schema: GraphQLSchema representing the merged schema
                                   type_name_to_schema_id: Dict[str, str], mapping type names to
                                                           the id of the schema it came from
@@ -135,10 +134,10 @@ def _get_edge_to_stitch_fields(merged_schema_descriptor):
     """
     edge_to_stitch_fields = {}
     for type_definition in merged_schema_descriptor.schema_ast.definitions:
-        if isinstance(type_definition, (ObjectTypeDefinition, InterfaceTypeDefinition)):
+        if isinstance(type_definition, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
             for field_definition in type_definition.fields:
                 stitch_directive = try_get_ast_by_name_and_type(
-                    field_definition.directives, u"stitch", Directive
+                    field_definition.directives, "stitch", DirectiveNode
                 )
                 if stitch_directive is not None:
                     fields_by_name = get_uniquely_named_objects_by_name(stitch_directive.arguments)
@@ -198,8 +197,8 @@ def _split_query_one_level(
     validation_errors = validate(merged_schema_descriptor.schema, query_node.query_ast)
     if len(validation_errors) > 0:
         raise AssertionError(
-            u'The resulting split query "{}" is invalid, with the following error messages: {}'
-            u"".format(query_node.query_ast, validation_errors)
+            'The resulting split query "{}" is invalid, with the following error messages: {}'
+            "".format(query_node.query_ast, validation_errors)
         )
 
     # Set schema id, check for consistency
@@ -213,8 +212,8 @@ def _split_query_one_level(
 
     if query_node.schema_id is None:
         raise AssertionError(
-            u'Unreachable code reached. The schema id of query piece "{}" has not been '
-            u"determined.".format(query_node.query_ast)
+            'Unreachable code reached. The schema id of query piece "{}" has not been '
+            "determined.".format(query_node.query_ast)
         )
 
 
@@ -273,7 +272,7 @@ def _split_query_ast_one_level_recursive(
     # Return input, or make copy
     if new_selections is not selections:
         new_ast = copy(ast)
-        new_ast.selection_set = SelectionSet(selections=new_selections)
+        new_ast.selection_set = SelectionSetNode(selections=new_selections)
         return new_ast
     else:
         return ast
@@ -337,9 +336,9 @@ def _split_query_ast_one_level_recursive_normal_fields(
             child_type_name = strip_non_null_and_list_from_type(child_type).name
         else:
             raise AssertionError(
-                u"The query may be invalid against the schema, causing TypeInfo to lose track "
-                u'of the types of fields. This occurs at the cross schema field "{}", while '
-                u'splitting the AST "{}"'.format(cross_schema_field, query_node.query_ast)
+                "The query may be invalid against the schema, causing TypeInfo to lose track "
+                'of the types of fields. This occurs at the cross schema field "{}", while '
+                'splitting the AST "{}"'.format(cross_schema_field, query_node.query_ast)
             )
         stitch_data_key = (parent_type_name, cross_schema_field.name.value)
         parent_field_name, child_field_name = edge_to_stitch_fields[stitch_data_key]
@@ -415,7 +414,9 @@ def _process_cross_schema_field(
         existing_property_field, parent_field_name, cross_schema_field.directives
     )
     # Add @output if needed, record out_name
-    parent_output_name = _get_out_name_optionally_add_output(parent_property_field, name_assigner)
+    parent_property_field, parent_output_name = _get_out_name_optionally_add_output(
+        parent_property_field, name_assigner
+    )
     # Create child query node around ast
     child_query_node, child_output_name = _get_child_query_node_and_out_name(
         cross_schema_field, child_type_name, child_field_name, name_assigner
@@ -441,7 +442,7 @@ def _split_selections_property_and_vertex(selections):
         GraphQLValidationError if some property field is repeated
     """
     if selections is None:
-        raise AssertionError(u"Input selections is None, rather than a list.")
+        raise AssertionError("Input selections is None, rather than a list.")
     property_fields_map = OrderedDict()
     vertex_fields = []
     for selection in selections:
@@ -449,7 +450,7 @@ def _split_selections_property_and_vertex(selections):
             name = selection.name.value
             if name in property_fields_map:
                 raise GraphQLValidationError(
-                    u'The field named "{}" occurs more than once in the selection {}.'.format(
+                    'The field named "{}" occurs more than once in the selection {}.'.format(
                         name, selections
                     )
                 )
@@ -479,14 +480,14 @@ def _split_vertex_fields_intra_and_cross_schema(
     intra_schema_fields = []
     cross_schema_fields = []
     for vertex_field in vertex_fields:
-        if isinstance(vertex_field, Field):
+        if isinstance(vertex_field, FieldNode):
             stitch_data_key = (parent_type_name, vertex_field.name.value)
             if stitch_data_key in edge_to_stitch_fields:
                 cross_schema_fields.append(vertex_field)
             else:
                 intra_schema_fields.append(vertex_field)
         else:
-            raise AssertionError(u"Input vertex field {} is not a Field".format(vertex_field))
+            raise AssertionError("Input vertex field {} is not a Field".format(vertex_field))
     return intra_schema_fields, cross_schema_fields
 
 
@@ -552,13 +553,15 @@ def _get_child_query_node_and_out_name(ast, child_type_name, child_field_name, n
 
     # Get existing field with name in child
     existing_child_property_field = try_get_ast_by_name_and_type(
-        child_selections, child_field_name, Field
+        child_selections, child_field_name, FieldNode
     )
     child_property_field = _get_property_field(
         existing_child_property_field, child_field_name, None
     )
     # Add @output if needed, record out_name
-    child_output_name = _get_out_name_optionally_add_output(child_property_field, name_assigner)
+    child_property_field, child_output_name = _get_out_name_optionally_add_output(
+        child_property_field, name_assigner
+    )
     # Get new child_selections by replacing or adding in new property field
     child_property_fields_map, child_vertex_fields = _split_selections_property_and_vertex(
         child_selections
@@ -577,57 +580,61 @@ def _get_child_query_node_and_out_name(ast, child_type_name, child_field_name, n
 
 
 def _get_property_field(existing_field, field_name, directives_from_edge):
-    """Return a Field object with field_name, sharing directives with any such existing field.
+    """Return a FieldNode with field_name, sharing directives with any such existing FieldNode.
 
-    Any valid directives in directives_on_edge will be transferred over to the new field.
-    If there is an existing Field in selection with field_name, the returned new Field
+    Any valid directives in directives_on_edge will be transferred over to the new FieldNode.
+    If there is an existing FieldNode in selection with field_name, the returned new FieldNode
     will also contain all directives of the existing field with that name.
 
     Args:
-        existing_field: Field or None. If it's not None, it is a field with field_name. The
+        existing_field: FieldNode or None. If it's not None, it is a FieldNode with field_name. The
                         directives of this field will carry output to the output field
         field_name: str, the name of the output field
-        directives_from_edge: List[Directive], the directives of a vertex field. The output
+        directives_from_edge: List[DirectiveNode], the directives of a vertex field. The output
                               field will contain all @filter and any @optional directives
                               from this list
 
     Returns:
-        Field object, with field_name as its name, containing directives from any field in the
+        FieldNode, with field_name as its name, containing directives from any field in the
         input selections with the same name and directives from the input list of directives
     """
-    new_field = Field(name=Name(value=field_name), directives=[],)
+    new_field_directives = []
 
     # Transfer directives from existing field of the same name
     if existing_field is not None:
         # Existing field, add all its directives
         directives_from_existing_field = existing_field.directives
         if directives_from_existing_field is not None:
-            new_field.directives.extend(directives_from_existing_field)
+            new_field_directives.extend(directives_from_existing_field)
     # Transfer directives from edge
     if directives_from_edge is not None:
         for directive in directives_from_edge:
             if directive.name.value == OutputDirective.name:  # output illegal on vertex field
                 raise GraphQLValidationError(
-                    u'Directive "{}" is not allowed on a vertex field, as @output directives '
-                    u"can only exist on property fields.".format(directive)
+                    'Directive "{}" is not allowed on a vertex field, as @output directives '
+                    "can only exist on property fields.".format(directive)
                 )
             elif directive.name.value == OptionalDirective.name:
                 if (
                     try_get_ast_by_name_and_type(
-                        new_field.directives, OptionalDirective.name, Directive
+                        new_field_directives, OptionalDirective.name, DirectiveNode
                     )
                     is None
                 ):
                     # New optional directive
-                    new_field.directives.append(directive)
+                    new_field_directives.append(directive)
             elif directive.name.value == FilterDirective.name:
-                new_field.directives.append(directive)
+                new_field_directives.append(directive)
             else:
                 raise AssertionError(
-                    u'Unreachable code reached. Directive "{}" is of an unsupported type, and '
-                    u"was not caught in a prior validation step.".format(directive)
+                    'Unreachable code reached. Directive "{}" is of an unsupported type, and '
+                    "was not caught in a prior validation step.".format(directive)
                 )
 
+    new_field = FieldNode(
+        name=NameNode(value=field_name),
+        directives=new_field_directives,
+    )
     return new_field
 
 
@@ -635,49 +642,69 @@ def _get_out_name_optionally_add_output(field, name_assigner):
     """Return out_name of @output on field, creating new @output if needed.
 
     Args:
-        field: Field object, whose directives we may modify by adding an @output directive
+        field: FieldNode, a field that may need an added an @output directive
         name_assigner: IntermediateOutNameAssigner, object used to generate and keep track of
                        names of newly created @output directives
 
     Returns:
-        str, name of the out_name of the @output directive, either pre-existing or newly
-        generated
+        tuple of (field, out_name) with the following information:
+            field: FieldNode, either the original field or a new FieldNode that has the same
+                   properties as the original field, but with an added @output directive
+            out_name: str, name of the out_name of the @output directive, either pre-existing or
+                      newly generated
     """
     # Check for existing directive
     output_directive = try_get_ast_by_name_and_type(
-        field.directives, OutputDirective.name, Directive
+        field.directives, OutputDirective.name, DirectiveNode
     )
     if output_directive is None:
         # Create and add new directive to field
         out_name = name_assigner.assign_and_return_out_name()
         output_directive = _get_output_directive(out_name)
         if field.directives is None:
-            field.directives = []
-        field.directives.append(output_directive)
-        return out_name
+            new_directives = []
+        else:
+            new_directives = list(field.directives)
+        new_directives.append(output_directive)
+        new_field = FieldNode(
+            alias=field.alias,
+            name=field.name,
+            arguments=field.arguments,
+            selection_set=field.selection_set,
+            directives=new_directives,
+            loc=field.loc,
+        )
+        return new_field, out_name
     else:
-        return output_directive.arguments[0].value.value  # Location of value of out_name
+        return field, output_directive.arguments[0].value.value  # Location of value of out_name
 
 
 def _get_output_directive(out_name):
     """Return a Directive representing an @output with the input out_name."""
-    return Directive(
-        name=Name(value=OutputDirective.name),
-        arguments=[Argument(name=Name(value=u"out_name"), value=StringValue(value=out_name),),],
+    return DirectiveNode(
+        name=NameNode(value=OutputDirective.name),
+        arguments=[
+            ArgumentNode(
+                name=NameNode(value="out_name"),
+                value=StringValueNode(value=out_name),
+            ),
+        ],
     )
 
 
 def _get_query_document(root_vertex_field_name, root_selections):
     """Return a Document representing a query with the specified name and selections."""
-    return Document(
+    return DocumentNode(
         definitions=[
-            OperationDefinition(
-                operation="query",
-                selection_set=SelectionSet(
+            OperationDefinitionNode(
+                operation=OperationType.QUERY,
+                selection_set=SelectionSetNode(
                     selections=[
-                        Field(
-                            name=Name(value=root_vertex_field_name),
-                            selection_set=SelectionSet(selections=root_selections,),
+                        FieldNode(
+                            name=NameNode(value=root_vertex_field_name),
+                            selection_set=SelectionSetNode(
+                                selections=root_selections,
+                            ),
                             directives=[],
                         )
                     ]
@@ -693,7 +720,7 @@ def _add_query_connections(
     """Modify parent and child SubQueryNodes by adding QueryConnections between them."""
     if child_query_node.parent_query_connection is not None:
         raise AssertionError(
-            u"The input child query node already has a parent connection, {}".format(
+            "The input child query node already has a parent connection, {}".format(
                 child_query_node.parent_query_connection
             )
         )
@@ -702,8 +729,8 @@ def _add_query_connections(
         for query_connection_from_parent in parent_query_node.child_query_connections
     ):
         raise AssertionError(
-            u"The input parent query node already has the child query node in a child query "
-            u"connection."
+            "The input parent query node already has the child query node in a child query "
+            "connection."
         )
     # Create QueryConnections
     new_query_connection_from_parent = QueryConnection(
@@ -751,12 +778,12 @@ class SchemaIdSetterVisitor(Visitor):
         self.query_node = query_node
         self.type_name_to_schema_id = type_name_to_schema_id
 
-    def enter_Field(self, *args):
+    def enter_field(self, *args):
         """Check the schema of the type that the field leads to."""
         child_type_name = strip_non_null_and_list_from_type(self.type_info.get_type()).name
         self._check_or_set_schema_id(child_type_name)
 
-    def enter_InlineFragment(self, node, *args):
+    def enter_inline_fragment(self, node, *args):
         """Check the schema of the coerced type."""
         self._check_or_set_schema_id(node.type_condition.name.value)
 
@@ -777,11 +804,11 @@ class SchemaIdSetterVisitor(Visitor):
                 # is invalid: an edge field without a @stitch directive crosses schemas,
                 # or type_name_to_schema_id is wrong
                 raise SchemaStructureError(
-                    u"The provided merged schema descriptor may be invalid. Perhaps some "
-                    u"vertex field that does not have a @stitch directive crosses schemas. As "
-                    u'a result, query piece "{}" appears to contain types from more than '
-                    u'one schema. Type "{}" belongs to schema "{}", while some other type '
-                    u'belongs to schema "{}".'.format(
+                    "The provided merged schema descriptor may be invalid. Perhaps some "
+                    "vertex field that does not have a @stitch directive crosses schemas. As "
+                    'a result, query piece "{}" appears to contain types from more than '
+                    'one schema. Type "{}" belongs to schema "{}", while some other type '
+                    'belongs to schema "{}".'.format(
                         self.query_node.query_ast,
                         type_name,
                         current_type_schema_id,

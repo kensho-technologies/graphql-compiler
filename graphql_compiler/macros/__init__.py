@@ -3,17 +3,18 @@ from collections import namedtuple
 
 from graphql import parse
 from graphql.language.ast import (
-    Directive,
-    FieldDefinition,
-    InterfaceTypeDefinition,
-    ListType,
-    Name,
-    NamedType,
-    ObjectTypeDefinition,
+    DirectiveNode,
+    DocumentNode,
+    FieldDefinitionNode,
+    InterfaceTypeDefinitionNode,
+    ListTypeNode,
+    NamedTypeNode,
+    NameNode,
+    ObjectTypeDefinitionNode,
 )
 from graphql.language.printer import print_ast
-from graphql.utils.build_ast_schema import build_ast_schema
-from graphql.utils.schema_printer import print_schema
+from graphql.pyutils import FrozenList
+from graphql.utilities import build_ast_schema, print_schema
 import six
 
 from ..ast_manipulation import safe_parse_graphql
@@ -172,29 +173,63 @@ def get_schema_with_macros(macro_registry):
                         we want to add to the schema.
 
     Returns:
-        GraphQLSchema with additional fields where macroe edges can be used.
+        GraphQLSchema with additional fields where macro edges can be used.
     """
     # The easiest way to manipulate the schema is through its AST. The easiest
     # way to get an AST is to print it and parse it.
     schema_ast = parse(print_schema(macro_registry.schema_without_macros))
 
-    definitions_by_name = {}
+    fields_by_definition_name = {}
     for definition in schema_ast.definitions:
-        if isinstance(definition, (ObjectTypeDefinition, InterfaceTypeDefinition)):
-            definitions_by_name[definition.name.value] = definition
+        if isinstance(definition, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
+            # Cast to list (from FrozenList) to allow for updates.
+            fields_by_definition_name[definition.name.value] = list(definition.fields)
 
     for class_name, macros_for_class in six.iteritems(macro_registry.macro_edges_at_class):
         for macro_edge_name, macro_edge_descriptor in six.iteritems(macros_for_class):
-            list_type_at_target = ListType(NamedType(Name(macro_edge_descriptor.target_class_name)))
+            list_type_at_target = ListTypeNode(
+                type=NamedTypeNode(name=NameNode(value=macro_edge_descriptor.target_class_name))
+            )
             arguments = []
-            directives = [Directive(Name(MacroEdgeDirective.name))]
-            definitions_by_name[class_name].fields.append(
-                FieldDefinition(
-                    Name(macro_edge_name), arguments, list_type_at_target, directives=directives
+            directives = [DirectiveNode(name=NameNode(value=MacroEdgeDirective.name))]
+            fields_by_definition_name[class_name].append(
+                FieldDefinitionNode(
+                    name=NameNode(value=macro_edge_name),
+                    arguments=arguments,
+                    type=list_type_at_target,
+                    directives=directives,
                 )
             )
 
-    return build_ast_schema(schema_ast)
+    new_definitions = []
+    for definition in schema_ast.definitions:
+        # Create new (Object)/(Interface)TypeDefinitionNode based on the updated fields.
+        if isinstance(definition, ObjectTypeDefinitionNode):
+            new_definitions.append(
+                ObjectTypeDefinitionNode(
+                    interfaces=definition.interfaces,
+                    description=definition.description,
+                    name=definition.name,
+                    directives=definition.directives,
+                    loc=definition.loc,
+                    fields=FrozenList(fields_by_definition_name[definition.name.value]),
+                )
+            )
+        elif isinstance(definition, InterfaceTypeDefinitionNode):
+            new_definitions.append(
+                InterfaceTypeDefinitionNode(
+                    description=definition.description,
+                    name=definition.name,
+                    directives=definition.directives,
+                    loc=definition.loc,
+                    fields=FrozenList(fields_by_definition_name[definition.name.value]),
+                )
+            )
+        else:
+            new_definitions.append(definition)
+
+    new_schema_ast = DocumentNode(definitions=new_definitions)
+    return build_ast_schema(new_schema_ast)
 
 
 def get_schema_for_macro_definition(schema):
@@ -238,7 +273,7 @@ def perform_macro_expansion(macro_registry, schema_with_macros, graphql_with_mac
     validation_errors = validate_schema_and_query_ast(schema_with_macros, query_ast)
     if validation_errors:
         raise GraphQLValidationError(
-            u"The provided GraphQL input does not validate: {} {}".format(
+            "The provided GraphQL input does not validate: {} {}".format(
                 graphql_with_macro, validation_errors
             )
         )

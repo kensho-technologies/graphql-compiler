@@ -1,12 +1,14 @@
 # Copyright 2018-present Kensho Technologies, LLC.
+from typing import Callable, List, Tuple
 import unittest
 
 from graphql import GraphQLList, GraphQLString
 
 from . import test_input_data
 from ..compiler.compiler_frontend import graphql_to_ir
-from ..compiler.helpers import FoldScopeLocation, Location
+from ..compiler.helpers import BaseLocation, FoldScopeLocation, Location
 from ..compiler.metadata import FilterInfo, OutputInfo, RecurseInfo
+from ..global_utils import is_same_type
 from ..schema import GraphQLDate, GraphQLDateTime
 from .test_helpers import get_schema
 
@@ -14,25 +16,31 @@ from .test_helpers import get_schema
 class ExplainInfoTests(unittest.TestCase):
     """Ensure we get correct information about filters and recursion."""
 
-    def setUp(self):
+    def setUp(self) -> None:
         """Initialize the test schema once for all tests."""
         self.schema = get_schema()
 
-    def compare_output_info(self, expected, received):
+    def compare_output_info(self, expected: OutputInfo, received: OutputInfo) -> None:
         """Compare two OutputInfo objects, using proper GraphQL type comparison operators."""
         self.assertEqual(expected.location, received.location)
-        self.assertTrue((expected.type).is_same_type(received.type))
+        self.assertTrue(is_same_type(expected.type, received.type))
         self.assertEqual(expected.optional, received.optional)
 
-    def check(self, graphql_test, expected_filters, expected_recurses, expected_outputs):
+    def check(
+        self,
+        graphql_test: Callable[[], test_input_data.CommonTestData],
+        expected_filter_list: List[Tuple[BaseLocation, List[FilterInfo]]],
+        expected_recurse_list: List[Tuple[BaseLocation, List[RecurseInfo]]],
+        expected_output_list: List[Tuple[str, OutputInfo]],
+    ) -> None:
         """Verify query produces expected explain infos."""
         ir_and_metadata = graphql_to_ir(self.schema, graphql_test().graphql_input)
         meta = ir_and_metadata.query_metadata_table
 
         # Unfortunately literal dicts don't accept Location() as keys
-        expected_filters = dict(expected_filters)
-        expected_recurses = dict(expected_recurses)
-        expected_outputs = dict(expected_outputs)
+        expected_filters = dict(expected_filter_list)
+        expected_recurses = dict(expected_recurse_list)
+        expected_outputs = dict(expected_output_list)
 
         for location, _ in meta.registered_locations:
             # Do filters match with expected for this location?
@@ -48,7 +56,8 @@ class ExplainInfoTests(unittest.TestCase):
 
         for output_name, output_info in meta.outputs:
             # Does output info match with expected?
-            self.compare_output_info(expected_outputs.get(output_name, None), output_info)
+            self.assertIn(output_name, expected_outputs)
+            self.compare_output_info(expected_outputs[output_name], output_info)
             if output_info:
                 del expected_outputs[output_name]
 
@@ -57,15 +66,17 @@ class ExplainInfoTests(unittest.TestCase):
         self.assertEqual(0, len(expected_recurses))
         self.assertEqual(0, len(expected_outputs))
 
-    def test_immediate_output(self):
+    def test_immediate_output(self) -> None:
         out_name = "animal_name"
         out_info = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         self.check(test_input_data.immediate_output, [], [], [(out_name, out_info)])
 
-    def test_output_source_and_complex_output(self):
+    def test_output_source_and_complex_output(self) -> None:
         loc = Location(("Animal",), None, 1)
         filters = [
             FilterInfo(fields=("name",), op_name="=", args=("$wanted",)),
@@ -73,7 +84,9 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "animal_name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "parent_name"
@@ -90,7 +103,7 @@ class ExplainInfoTests(unittest.TestCase):
             [(out_name1, out_info1), (out_name2, out_info2)],
         )
 
-    def test_traverse_filter_and_output(self):
+    def test_traverse_filter_and_output(self) -> None:
         loc = Location(("Animal", "out_Animal_ParentOf"), None, 1)
         filters = [
             FilterInfo(fields=("name", "alias"), op_name="name_or_alias", args=("$wanted",)),
@@ -106,7 +119,7 @@ class ExplainInfoTests(unittest.TestCase):
             test_input_data.traverse_filter_and_output, [(loc, filters)], [], [(out_name, out_info)]
         )
 
-    def test_complex_optional_traversal_variables(self):
+    def test_complex_optional_traversal_variables(self) -> None:
         loc1 = Location(("Animal",), None, 1)
         filters1 = [
             FilterInfo(fields=("name",), op_name="=", args=("$animal_name",)),
@@ -123,7 +136,11 @@ class ExplainInfoTests(unittest.TestCase):
         ]
         out_name1 = "parent_fed_at"
         out_loc1 = Location(("Animal", "out_Animal_ParentOf", "out_Animal_FedAt"), "event_date", 1)
-        out_info1 = OutputInfo(location=out_loc1, type=GraphQLDateTime, optional=True,)
+        out_info1 = OutputInfo(
+            location=out_loc1,
+            type=GraphQLDateTime,
+            optional=True,
+        )
 
         out_name2 = "other_child_fed_at"
         out_loc2 = Location(
@@ -131,11 +148,19 @@ class ExplainInfoTests(unittest.TestCase):
             "event_date",
             1,
         )
-        out_info2 = OutputInfo(location=out_loc2, type=GraphQLDateTime, optional=True,)
+        out_info2 = OutputInfo(
+            location=out_loc2,
+            type=GraphQLDateTime,
+            optional=True,
+        )
 
         out_name3 = "grandchild_fed_at"
         out_loc3 = Location(("Animal", "in_Animal_ParentOf", "out_Animal_FedAt"), "event_date", 1)
-        out_info3 = OutputInfo(location=out_loc3, type=GraphQLDateTime, optional=False,)
+        out_info3 = OutputInfo(
+            location=out_loc3,
+            type=GraphQLDateTime,
+            optional=False,
+        )
 
         self.check(
             test_input_data.complex_optional_traversal_variables,
@@ -144,7 +169,7 @@ class ExplainInfoTests(unittest.TestCase):
             [(out_name1, out_info1), (out_name2, out_info2), (out_name3, out_info3)],
         )
 
-    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self):
+    def test_coercion_filters_and_multiple_outputs_within_fold_scope(self) -> None:
         loc = FoldScopeLocation(Location(("Animal",), None, 1), (("out", "Entity_Related"),), None)
         filters = [
             FilterInfo(fields=("name",), op_name="has_substring", args=("$substring",)),
@@ -153,20 +178,30 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "related_animals"
         out_loc2 = FoldScopeLocation(
             Location(("Animal",), None, 1), (("out", "Entity_Related"),), "name"
         )
-        out_info2 = OutputInfo(location=out_loc2, type=GraphQLList(GraphQLString), optional=False,)
+        out_info2 = OutputInfo(
+            location=out_loc2,
+            type=GraphQLList(GraphQLString),
+            optional=False,
+        )
 
         out_name3 = "related_birthdays"
         out_loc3 = FoldScopeLocation(
             Location(("Animal",), None, 1), (("out", "Entity_Related"),), "birthday"
         )
-        out_info3 = OutputInfo(location=out_loc3, type=GraphQLList(GraphQLDate), optional=False,)
+        out_info3 = OutputInfo(
+            location=out_loc3,
+            type=GraphQLList(GraphQLDate),
+            optional=False,
+        )
 
         self.check(
             test_input_data.coercion_filters_and_multiple_outputs_within_fold_scope,
@@ -175,7 +210,7 @@ class ExplainInfoTests(unittest.TestCase):
             [(out_name1, out_info1), (out_name2, out_info2), (out_name3, out_info3)],
         )
 
-    def test_multiple_filters(self):
+    def test_multiple_filters(self) -> None:
         loc = Location(("Animal",), None, 1)
         filters = [
             FilterInfo(fields=("name",), op_name=">=", args=("$lower_bound",)),
@@ -184,12 +219,14 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name = "animal_name"
         out_info = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         self.check(test_input_data.multiple_filters, [(loc, filters)], [], [(out_name, out_info)])
 
-    def test_has_edge_degree_op_filter(self):
+    def test_has_edge_degree_op_filter(self) -> None:
         loc = Location(("Animal",), None, 1)
         filters = [
             FilterInfo(
@@ -199,7 +236,9 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "animal_name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "child_name"
@@ -216,7 +255,7 @@ class ExplainInfoTests(unittest.TestCase):
             [(out_name1, out_info1), (out_name2, out_info2)],
         )
 
-    def test_simple_recurse(self):
+    def test_simple_recurse(self) -> None:
         loc = Location(("Animal",), None, 1)
         recurses = [RecurseInfo(edge_direction="out", edge_name="Animal_ParentOf", depth=1)]
 
@@ -229,7 +268,7 @@ class ExplainInfoTests(unittest.TestCase):
 
         self.check(test_input_data.simple_recurse, [], [(loc, recurses)], [(out_name, out_info)])
 
-    def test_two_consecutive_recurses(self):
+    def test_two_consecutive_recurses(self) -> None:
         loc = Location(("Animal",), None, 1)
         filters = [
             FilterInfo(
@@ -243,7 +282,9 @@ class ExplainInfoTests(unittest.TestCase):
 
         out_name1 = "animal_name"
         out_info1 = OutputInfo(
-            location=Location(("Animal",), "name", 1), type=GraphQLString, optional=False,
+            location=Location(("Animal",), "name", 1),
+            type=GraphQLString,
+            optional=False,
         )
 
         out_name2 = "important_event"
@@ -281,7 +322,7 @@ class ExplainInfoTests(unittest.TestCase):
             expected_outputs,
         )
 
-    def test_filter_on_optional_traversal_name_or_alias(self):
+    def test_filter_on_optional_traversal_name_or_alias(self) -> None:
         loc = Location(("Animal", "out_Animal_ParentOf"), None, 1)
         filters = [
             FilterInfo(

@@ -59,16 +59,19 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from collections import namedtuple
+from typing import Dict, List, NamedTuple, Optional
 
 from graphql import (
+    DocumentNode,
     GraphQLInt,
     GraphQLInterfaceType,
     GraphQLList,
     GraphQLObjectType,
+    GraphQLSchema,
+    GraphQLType,
     GraphQLUnionType,
 )
-from graphql.language.ast import Field, InlineFragment
+from graphql.language.ast import FieldNode, InlineFragmentNode
 
 from . import blocks, expressions
 from ..ast_manipulation import (
@@ -78,7 +81,10 @@ from ..ast_manipulation import (
     safe_parse_graphql,
 )
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from ..schema import COUNT_META_FIELD_NAME, is_vertex_field_name
+from ..global_utils import is_same_type
+from ..schema import COUNT_META_FIELD_NAME, TypeEquivalenceHintsType, is_vertex_field_name
+from ..typedefs import QueryArgumentGraphQLType
+from .compiler_entities import BasicBlock
 from .context_helpers import (
     get_context_fold_info,
     get_optional_scope_or_none,
@@ -126,47 +132,49 @@ from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo,
 from .validation import validate_schema_and_query_ast
 
 
-# LocationStackEntry contains the following:
-# - location: Location object corresponding to an inserted MarkLocation block
-# - num_traverses: Int counter for the number of traverses inserted after the last MarkLocation
-#                  (corresponding Location stored in `location`)
-LocationStackEntry = namedtuple("LocationStackEntry", ("location", "num_traverses"))
+class OutputMetadata(NamedTuple):
+    """Metadata about a query's outputs."""
 
+    # The type of the output value.
+    type: GraphQLType
 
-def _construct_location_stack_entry(location, num_traverses):
-    """Return a LocationStackEntry namedtuple with the specified parameters."""
-    if not isinstance(num_traverses, int) or num_traverses < 0:
-        raise AssertionError(
-            u"Attempted to create a LocationStackEntry namedtuple with an invalid "
-            u'value for "num_traverses" {}. This is not allowed.'.format(num_traverses)
-        )
-    if not isinstance(location, Location):
-        raise AssertionError(
-            u"Attempted to create a LocationStackEntry namedtuple with an invalid "
-            u'value for "location" {}. This is not allowed.'.format(location)
-        )
-    return LocationStackEntry(location=location, num_traverses=num_traverses)
+    # Whether the output is part of an optional traversal, which would allow a value of null.
+    optional: bool
 
+    # Whether the output is within a fold scope. Note that if the output is within a fold scope,
+    # the `type` is expected to be a GraphQLList unless the output field is an _x_count,
+    # in which case the type must be GraphQLInt.
+    folded: bool
 
-# The OutputMetadata will have the following types for its members:
-# - type: a GraphQL type object, like String or Integer, describing the type of that output value
-# - optional: boolean, whether the output is part of an optional traversal and
-#             could therefore have a value of null because it did not exist
-class OutputMetadata(namedtuple("OutputMetadata", ("type", "optional"))):
     def __eq__(self, other):
         """Check another OutputMetadata object for equality against this one."""
         # Unfortunately, GraphQL types don't have an equality operator defined,
         # and instead have this "is_same_type" function. Hence, we have to override equality here.
-        return self.type.is_same_type(other.type) and self.optional == other.optional
+        return (
+            is_same_type(self.type, other.type)
+            and self.optional == other.optional
+            and self.folded == other.folded
+        )
 
     def __ne__(self, other):
         """Check another OutputMetadata object for non-equality against this one."""
         return not self.__eq__(other)
 
 
-IrAndMetadata = namedtuple(
-    "IrAndMetadata", ("ir_blocks", "input_metadata", "output_metadata", "query_metadata_table",)
-)
+class IrAndMetadata(NamedTuple):
+    """Internal representation (IR) and metadata for a particular schema and query combination."""
+
+    # List of basic block objects describing the query.
+    ir_blocks: List[BasicBlock]
+
+    # Mapping of expected input parameters -> inferred GraphQL type.
+    input_metadata: Dict[str, QueryArgumentGraphQLType]
+
+    # Mapping output name -> output metadata.
+    output_metadata: Dict[str, OutputMetadata]
+
+    # Describing the location metadata.
+    query_metadata_table: QueryMetadataTable
 
 
 def _get_fields(ast):
@@ -192,7 +200,7 @@ def _get_fields(ast):
     seen_field_names = set()
     switched_to_vertices = False  # Ensures that all property fields are before all vertex fields.
     for field_ast in ast.selection_set.selections:
-        if not isinstance(field_ast, Field):
+        if not isinstance(field_ast, FieldNode):
             # We are getting Fields only, ignore everything else.
             continue
 
@@ -211,16 +219,16 @@ def _get_fields(ast):
                 # then we have to change the Location naming scheme to reflect the repetitions
                 # and disambiguate between Recurse and Traverse visits to a Location.
                 raise GraphQLCompilationError(
-                    u"Encountered repeated property field: {}. If you "
-                    u"are attempting to specify multiple directives on a "
-                    u"single property field, one way to do so is to "
-                    u"place all of them adjacent to the property field "
-                    u"as follows: propertyField @directive1 @directive2 "
-                    u"...".format(name)
+                    "Encountered repeated property field: {}. If you "
+                    "are attempting to specify multiple directives on a "
+                    "single property field, one way to do so is to "
+                    "place all of them adjacent to the property field "
+                    "as follows: propertyField @directive1 @directive2 "
+                    "...".format(name)
                 )
             if switched_to_vertices:
                 raise GraphQLCompilationError(
-                    u"Encountered property field {} " u"after vertex fields!".format(name)
+                    "Encountered property field {} after vertex fields!".format(name)
                 )
             property_fields.append(field_ast)
 
@@ -238,7 +246,7 @@ def _get_inline_fragment(ast):
     fragments = [
         ast_node
         for ast_node in ast.selection_set.selections
-        if isinstance(ast_node, InlineFragment)
+        if isinstance(ast_node, InlineFragmentNode)
     ]
 
     if not fragments:
@@ -246,7 +254,7 @@ def _get_inline_fragment(ast):
 
     if len(fragments) > 1:
         raise GraphQLCompilationError(
-            u"Cannot compile GraphQL with more than one fragment in " u"a given selection set."
+            "Cannot compile GraphQL with more than one fragment in a given selection set."
         )
 
     return fragments[0]
@@ -279,9 +287,9 @@ def _process_output_source_directive(
     output_source_directive = local_unique_directives.get("output_source", None)
     if output_source_directive:
         if has_encountered_output_source(context):
-            raise GraphQLCompilationError(u"Cannot have more than one output source!")
+            raise GraphQLCompilationError("Cannot have more than one output source!")
         if is_in_optional_scope(context):
-            raise GraphQLCompilationError(u"Cannot have the output source in an optional block!")
+            raise GraphQLCompilationError("Cannot have the output source in an optional block!")
         set_output_source_data(context, location)
         return blocks.OutputSource()
     else:
@@ -300,21 +308,21 @@ def _process_tag_directive(context, current_schema_type, location, tag_directive
     """
     if is_in_fold_scope(context):
         raise GraphQLCompilationError(
-            u"Tagging values within a @fold vertex field is "
-            u"not allowed! Location: {}".format(location)
+            "Tagging values within a @fold vertex field is "
+            "not allowed! Location: {}".format(location)
         )
 
     if location.field == COUNT_META_FIELD_NAME:
         raise GraphQLCompilationError(
-            u"Tags are prohibited within @fold, but unexpectedly found use of "
-            u"a tag on the {} meta field that is only allowed within a @fold!"
-            u"Location: {}".format(COUNT_META_FIELD_NAME, location)
+            "Tags are prohibited within @fold, but unexpectedly found use of "
+            "a tag on the {} meta field that is only allowed within a @fold!"
+            "Location: {}".format(COUNT_META_FIELD_NAME, location)
         )
 
     # Schema validation has ensured that the fields below exist.
     tag_name = tag_directive.arguments[0].value.value
     if context["metadata"].get_tag_info(tag_name) is not None:
-        raise GraphQLCompilationError(u"Cannot reuse tag name: {}".format(tag_name))
+        raise GraphQLCompilationError("Cannot reuse tag name: {}".format(tag_name))
     validate_safe_string(tag_name)
     context["metadata"].record_tag_info(
         tag_name,
@@ -348,9 +356,9 @@ def _compile_property_ast(
         # Verify that uses of this field are within a @fold scope.
         if not is_in_fold_scope(context):
             raise GraphQLCompilationError(
-                u'Cannot use the "{}" meta field when not within a @fold '
-                u"vertex field, as counting elements only makes sense "
-                u"in a fold. Location: {}".format(COUNT_META_FIELD_NAME, location)
+                'Cannot use the "{}" meta field when not within a @fold '
+                "vertex field, as counting elements only makes sense "
+                "in a fold. Location: {}".format(COUNT_META_FIELD_NAME, location)
             )
 
     # step P-2: Process @output directives.
@@ -359,7 +367,7 @@ def _compile_property_ast(
         # Schema validation has ensured that the fields below exist.
         output_name = output_directive.arguments[0].value.value
         if context["metadata"].get_output_info(output_name):
-            raise GraphQLCompilationError(u"Cannot reuse output name: {}".format(output_name))
+            raise GraphQLCompilationError("Cannot reuse output name: {}".format(output_name))
         validate_output_name(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
@@ -371,7 +379,9 @@ def _compile_property_ast(
                 graphql_type = GraphQLList(graphql_type)
 
         output_info = OutputInfo(
-            location=location, type=graphql_type, optional=is_in_optional_scope(context),
+            location=location,
+            type=graphql_type,
+            optional=is_in_optional_scope(context),
         )
         context["metadata"].record_output_info(output_name, output_info)
 
@@ -383,14 +393,14 @@ def _get_recurse_directive_depth(field_name, field_directives):
 
     if optional_directive:
         raise GraphQLCompilationError(
-            u"Found both @optional and @recurse on " u"the same vertex field: {}".format(field_name)
+            "Found both @optional and @recurse on the same vertex field: {}".format(field_name)
         )
 
     recurse_args = get_uniquely_named_objects_by_name(recurse_directive.arguments)
     recurse_depth = int(recurse_args["depth"].value.value)
     if recurse_depth < 1:
         raise GraphQLCompilationError(
-            u"Found recurse directive with disallowed depth: " u"{}".format(recurse_depth)
+            "Found recurse directive with disallowed depth: {}".format(recurse_depth)
         )
 
     return recurse_depth
@@ -427,12 +437,12 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
 
     if not any((current_scope_is_allowed, is_implemented_interface)):
         raise GraphQLCompilationError(
-            u"Edges expanded with a @recurse directive must either "
-            u"be of the same type as their enclosing scope, a supertype "
-            u"of the enclosing scope, or be of an interface type that is "
-            u"implemented by the type of their enclosing scope. "
-            u"Enclosing scope type: {}, edge type: "
-            u"{}".format(current_schema_type, field_schema_type)
+            "Edges expanded with a @recurse directive must either "
+            "be of the same type as their enclosing scope, a supertype "
+            "of the enclosing scope, or be of an interface type that is "
+            "implemented by the type of their enclosing scope. "
+            "Enclosing scope type: {}, edge type: "
+            "{}".format(current_schema_type, field_schema_type)
         )
 
 
@@ -474,7 +484,7 @@ def _compile_vertex_ast(
         if tag_directive:
             if get_local_filter_directives(field_ast, property_schema_type, None):
                 raise GraphQLCompilationError(
-                    u"Cannot filter and tag the same field {}".format(inner_location)
+                    "Cannot filter and tag the same field {}".format(inner_location)
                 )
             _process_tag_directive(context, property_schema_type, inner_location, tag_directive)
 
@@ -679,9 +689,9 @@ def _validate_fold_has_outputs_or_count_filter(
             return True
 
     raise GraphQLCompilationError(
-        u"Found a @fold scope that has no effect on the query. "
-        u"Each @fold scope must either perform filtering, or contain at "
-        u"least one field marked for output. Fold location: {}".format(fold_scope_location)
+        "Found a @fold scope that has no effect on the query. "
+        "Each @fold scope must either perform filtering, or contain at "
+        "least one field marked for output. Fold location: {}".format(fold_scope_location)
     )
 
 
@@ -712,11 +722,11 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     # No coercion is necessary if coercing to the current type of the scope,
     # or if the scope is of union type, to the base type of the union as defined by
     # the type_equivalence_hints compilation parameter.
-    is_same_type_as_scope = current_schema_type.is_same_type(coerces_to_type_obj)
+    is_same_type_as_scope = is_same_type(current_schema_type, coerces_to_type_obj)
     equivalent_union_type = context["type_equivalence_hints"].get(coerces_to_type_obj, None)
-    is_base_type_of_union = isinstance(
-        current_schema_type, GraphQLUnionType
-    ) and current_schema_type.is_same_type(equivalent_union_type)
+    is_base_type_of_union = isinstance(current_schema_type, GraphQLUnionType) and is_same_type(
+        current_schema_type, equivalent_union_type
+    )
 
     if not (is_same_type_as_scope or is_base_type_of_union):
         # Coercion is required.
@@ -760,23 +770,23 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     fields_exist = vertex_fields or property_fields
     if fragment_exists and fields_exist:
         raise GraphQLCompilationError(
-            u"Cannot compile GraphQL that has inline fragment and "
-            u"selected fields in the same selection. Please move the "
-            u"selected fields inside the inline fragment."
+            "Cannot compile GraphQL that has inline fragment and "
+            "selected fields in the same selection. Please move the "
+            "selected fields inside the inline fragment."
         )
 
     if location.field is not None:  # we're at a property field
         # sanity-check: cannot have an inline fragment at a property field
         if fragment_exists:
             raise AssertionError(
-                u"Found inline fragment at a property field: " u"{} {}".format(location, fragment)
+                "Found inline fragment at a property field: {} {}".format(location, fragment)
             )
 
         # sanity-check: locations at properties don't have their own property locations
         if len(property_fields) > 0:
             raise AssertionError(
-                u"Found property fields on a property field: "
-                u"{} {}".format(location, property_fields)
+                "Found property fields on a property field: "
+                "{} {}".format(location, property_fields)
             )
 
     # step 1: apply local filter, if any
@@ -854,10 +864,63 @@ def _validate_all_tags_are_used(metadata):
     unused_tags = tag_names - filter_arg_names
     if unused_tags:
         raise GraphQLCompilationError(
-            u"This GraphQL query contains @tag directives whose values "
-            u"are not used: {}. This is not allowed. Please either use "
-            u"them in a filter or remove them entirely.".format(unused_tags)
+            "This GraphQL query contains @tag directives whose values "
+            "are not used: {}. This is not allowed. Please either use "
+            "them in a filter or remove them entirely.".format(unused_tags)
         )
+
+
+def _validate_and_create_output_metadata(
+    output_name: str, output_info: OutputInfo
+) -> OutputMetadata:
+    """Create a new OutputMetadata object after validating the output type.
+
+    Checks the following before creating a new OutputMetadata object:
+        - _x_count output is within a fold scope and has type GraphQLInt
+        - all other outputs within a fold scope have type GraphQLList
+
+    Args:
+        output_name: name of the output specified in a query
+        output_info: information about the output
+
+    Returns:
+        OutputMetadata containing metadata about the output
+
+    Raises:
+        AssertionError if an invalid output type is found
+    """
+    # Ensure _x_count is within a fold scope.
+    if output_info.location.field == COUNT_META_FIELD_NAME and not isinstance(
+        output_info.location, FoldScopeLocation
+    ):
+        raise AssertionError(
+            "Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
+        )
+    # Ensure folded outputs have valid type.
+    if isinstance(output_info.location, FoldScopeLocation):
+        # Ensure _x_count is a GraphQLInt.
+        if output_info.location.field == COUNT_META_FIELD_NAME and not is_same_type(
+            output_info.type, GraphQLInt
+        ):
+            raise AssertionError(
+                f"Invalid output: received {COUNT_META_FIELD_NAME} with type {output_info.type}, "
+                f"but {COUNT_META_FIELD_NAME} must always be of type Int"
+            )
+        # Ensure all other folded outputs are GraphQLList.
+        elif output_info.location.field != COUNT_META_FIELD_NAME and not isinstance(
+            output_info.type, GraphQLList
+        ):
+            raise AssertionError(
+                "Invalid output: non-{} folded output must have type "
+                "GraphQLList. Received type {} for folded output "
+                "{}.".format(COUNT_META_FIELD_NAME, output_info.type, output_name)
+            )
+
+    return OutputMetadata(
+        type=output_info.type,
+        optional=output_info.optional,
+        folded=isinstance(output_info.location, FoldScopeLocation),
+    )
 
 
 def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
@@ -870,18 +933,13 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         type_equivalence_hints: optional dict of GraphQL type to equivalent GraphQL union
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - location_types: a dict of location objects -> GraphQL type objects at that location
-        - coerced_locations: a set of location objects indicating where type coercions have happened
+        IrAndMetadata for the given schema and AST
     """
     base_ast = get_only_selection_from_ast(ast, GraphQLCompilationError)
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
 
     # Validation passed, so the base_start_type must exist as a field of the root query.
-    current_schema_type = get_field_type_from_schema(schema.get_query_type(), base_start_type)
+    current_schema_type = get_field_type_from_schema(schema.query_type, base_start_type)
 
     # Allow list types at the query root in the schema.
     if isinstance(current_schema_type, GraphQLList):
@@ -935,10 +993,10 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
             "type_from": base_start_type,
         }
         raise GraphQLCompilationError(
-            u"Found inline fragment coercing to type {coerce_to}, "
-            u"immediately inside query root asking for type {type_from}. "
-            u"This is a contrived pattern -- you should simply start "
-            u"your query at {coerce_to}.".format(**msg_args)
+            "Found inline fragment coercing to type {coerce_to}, "
+            "immediately inside query root asking for type {type_from}. "
+            "This is a contrived pattern -- you should simply start "
+            "your query at {coerce_to}.".format(**msg_args)
         )
 
     # Ensure the GraphQL query root doesn't have any vertex directives
@@ -960,10 +1018,12 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     # Add any filters that apply to the global query scope.
     basic_blocks.extend(context["global_filters"])
 
-    # Based on the outputs context data, add an output step and construct the output metadata.
+    # Based on the outputs context data, add an output step.
     basic_blocks.append(_compile_output_step(query_metadata_table))
+
+    # Construct the output metadata, ensuring that all folded outputs have a valid type.
     output_metadata = {
-        name: OutputMetadata(type=info.type, optional=info.optional)
+        name: _validate_and_create_output_metadata(name, info)
         for name, info in query_metadata_table.outputs
     }
 
@@ -989,8 +1049,8 @@ def _compile_output_step(query_metadata_table):
     """
     if next(query_metadata_table.outputs, None) is None:
         raise GraphQLCompilationError(
-            u"No fields were selected for output! Please mark at least "
-            u"one field with the @output directive."
+            "No fields were selected for output! Please mark at least "
+            "one field with the @output directive."
         )
 
     output_fields = {}
@@ -1005,7 +1065,7 @@ def _compile_output_step(query_metadata_table):
         if isinstance(location, FoldScopeLocation):
             if optional:
                 raise AssertionError(
-                    u"Unreachable state reached, optional in fold: " u"{}".format(output_info)
+                    "Unreachable state reached, optional in fold: {}".format(output_info)
                 )
 
             if location.field == COUNT_META_FIELD_NAME:
@@ -1034,14 +1094,17 @@ def _compile_output_step(query_metadata_table):
 ##############
 
 
-def ast_to_ir(schema, ast, type_equivalence_hints=None):
+def ast_to_ir(
+    schema: GraphQLSchema,
+    ast: DocumentNode,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None,
+) -> IrAndMetadata:
     """Convert the given GraphQL AST object into compiler IR, using the given schema object.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
-        ast: AST object to be compiled to IR
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
+        schema: schema object created using the GraphQL library for which the query must be valid
+        ast: query in AST form to transform into compiler IR
+        type_equivalence_hints: optional, used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
                                 workaround for Gremlin's total lack of inheritance-awareness.
                                 The key-value pairs in the dict specify that the "key" type
@@ -1057,11 +1120,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - query_metadata_table: a QueryMetadataTable object containing location metadata
+        IrAndMetadata for the given schema and AST
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
@@ -1076,20 +1135,23 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
     """
     validation_errors = validate_schema_and_query_ast(schema, ast)
     if validation_errors:
-        raise GraphQLValidationError(u"String does not validate: {}".format(validation_errors))
+        raise GraphQLValidationError("String does not validate: {}".format(validation_errors))
 
     base_ast = get_only_query_definition(ast, GraphQLValidationError)
     return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
 
 
-def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
+def graphql_to_ir(
+    schema: GraphQLSchema,
+    graphql_string: str,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None,
+) -> IrAndMetadata:
     """Convert the given GraphQL string into compiler IR, using the given schema object.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
-        graphql_string: string containing the GraphQL to compile to compiler IR
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
+        schema: schema object created using the GraphQL library for which the query must be valid
+        graphql_string: GraphQL query to transform into compiler IR
+        type_equivalence_hints: optional, used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
                                 workaround for Gremlin's total lack of inheritance-awareness.
                                 The key-value pairs in the dict specify that the "key" type
@@ -1105,11 +1167,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - query_metadata_table: a QueryMetadataTable object containing location metadata
+        IrAndMetadata for the given schema and GraphQL query string
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
