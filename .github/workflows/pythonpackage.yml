@@ -14,6 +14,8 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        # Use a matrix for the python version here to make the rest of the lint job setup
+        # as similar as possible to the test job below.
         python-version: [3.8]
         lint-flags:
           - "--run-only-fast-linters"
@@ -27,18 +29,9 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install binary dependencies
+      - name: Install core dependencies
         run: |
-          bash -c "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -"
-          sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
-          sudo apt-get update
-          sudo apt-get install unixodbc-dev python-mysqldb libmysqlclient-dev
-          ACCEPT_EULA=Y sudo apt-get install msodbcsql17
-      - name: Ensure pip, setuptools, pipenv are latest
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade setuptools pipenv
-          echo "${pythonLocation}/lib/python${{ matrix.python-version }}/site-packages"
+          ./scripts/install_ubuntu_ci_core_dependencies.sh
       - name: Get pip cache dir
         id: pip-cache
         run: |
@@ -69,22 +62,13 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install binary dependencies
+      - name: Install core dependencies
         run: |
-          bash -c "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -"
-          sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
-          sudo apt-get update
-          sudo apt-get install unixodbc-dev python-mysqldb libmysqlclient-dev
-          ACCEPT_EULA=Y sudo apt-get install msodbcsql17
+          ./scripts/install_ubuntu_ci_core_dependencies.sh
       - name: Start database docker containers
         if: matrix.markers != 'not slow'  # don't bring up db containers for non-slow tests
         run: |
           docker-compose up -d
-      - name: Ensure pip, setuptools, pipenv are latest
-        run: |
-          python -m pip install --upgrade pip
-          python -m pip install --upgrade setuptools pipenv
-          echo "${pythonLocation}/lib/python${{ matrix.python-version }}/site-packages"
       - name: Get pip cache dir
         id: pip-cache
         run: |
