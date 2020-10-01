@@ -1,5 +1,6 @@
-from typing import Any, Dict, Iterable, Iterator, Tuple
+from typing import Any, Dict, Iterable, Iterator, Tuple, Optional
 
+from ...compiler.helpers import Location
 from ...compiler.expressions import BinaryComposition, TernaryConditional
 from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
@@ -20,6 +21,7 @@ def evaluate_binary_composition(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: BinaryComposition,
     data_contexts: Iterable[DataContext],
@@ -29,6 +31,7 @@ def evaluate_binary_composition(
             adapter,
             query_metadata_table,
             query_arguments,
+            current_location,
             current_type_name,
             expression.left,
             data_contexts,
@@ -39,6 +42,7 @@ def evaluate_binary_composition(
             adapter,
             query_metadata_table,
             query_arguments,
+            current_location,
             current_type_name,
             expression.right,
             data_contexts,
@@ -61,6 +65,7 @@ def evaluate_ternary_conditional(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: TernaryConditional,
     data_contexts: Iterable[DataContext],
@@ -71,6 +76,7 @@ def evaluate_ternary_conditional(
             adapter,
             query_metadata_table,
             query_arguments,
+            current_location,
             current_type_name,
             expression.predicate,
             data_contexts,
@@ -81,6 +87,7 @@ def evaluate_ternary_conditional(
             adapter,
             query_metadata_table,
             query_arguments,
+            current_location,
             current_type_name,
             expression.if_true,
             data_contexts,
@@ -91,6 +98,7 @@ def evaluate_ternary_conditional(
             adapter,
             query_metadata_table,
             query_arguments,
+            current_location,
             current_type_name,
             expression.if_false,
             data_contexts,

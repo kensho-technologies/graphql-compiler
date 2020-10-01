@@ -22,6 +22,7 @@ def _produce_output(
         adapter,
         query_metadata_table,
         query_arguments,
+        None,
         GLOBAL_LOCATION_TYPE_NAME,
         output_expression,
         data_contexts,

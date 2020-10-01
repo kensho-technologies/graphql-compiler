@@ -1,5 +1,6 @@
-from typing import Any, Dict, Iterable, Iterator, Tuple, Union
+from typing import Any, Dict, Iterable, Iterator, Tuple, Union, Optional
 
+from ...compiler.helpers import Location
 from ...compiler.expressions import (
     ContextField,
     ContextFieldExistence,
@@ -19,15 +20,13 @@ def evaluate_local_field(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: LocalField,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
-    # TODO(bojanserafimov): This won't work. Add current_location argument and use that.
-    vertex_location = expression.location.at_vertex()
-
     # TODO(bojanserafimov): Memoize hints for each location.
-    hints = construct_hints_for_location(query_metadata_table, query_arguments, vertex_location)
+    hints = construct_hints_for_location(query_metadata_table, query_arguments, current_location)
 
     field_name = expression.field_name
     return iter(adapter.project_property(data_contexts, current_type_name, field_name, **hints))
@@ -38,6 +37,7 @@ def evaluate_context_field(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: Union[ContextField, OutputContextField],
     data_contexts: Iterable[DataContext],
@@ -81,6 +81,7 @@ def evaluate_context_field_existence(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: ContextFieldExistence,
     data_contexts: Iterable[DataContext],
@@ -97,6 +98,7 @@ def evaluate_variable(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: Variable,
     data_contexts: Iterable[DataContext],
@@ -110,6 +112,7 @@ def evaluate_literal(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: Literal,
     data_contexts: Iterable[DataContext],

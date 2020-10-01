@@ -254,7 +254,13 @@ class InterpreterBehaviorTests(TestCase):
         args: Dict[str, Any] = {}
 
         result_gen = interpret_query(adapter, self.schema, query, args)
+        list(result_gen)  # drain the iterator
 
-        next_row = next(result_gen)  # advance the generator one step
+        trace = adapter.recorder.get_trace()
 
-        # TODO(bojanserafimov): Finish this test. Currently raises AttributeError
+        project_property_calls = [
+            operation
+            for operation in trace.operations
+            if operation.kind == "call" and operation.name == "project_property"
+        ]
+        self.assertEqual(3, len(project_property_calls))  # TODO(bojanserafimov): Why 3?
