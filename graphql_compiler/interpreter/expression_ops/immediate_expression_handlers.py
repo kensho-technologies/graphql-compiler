@@ -41,6 +41,9 @@ def evaluate_context_field(
     location = expression.location.at_vertex()
     field_name = expression.location.field
 
+    # TODO(bojanserafimov): Memoize hints for each location.
+    hints = construct_hints_for_location(query_metadata_table, query_arguments, location)
+
     if field_name is None:
         raise AssertionError(
             f"Unexpectedly attempted to evaluate a context field without a field name, "
@@ -64,6 +67,7 @@ def evaluate_context_field(
             moved_contexts,
             context_type_name,
             field_name,
+            **hints,
         )
     )
 

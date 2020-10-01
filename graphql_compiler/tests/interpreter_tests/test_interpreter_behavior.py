@@ -175,8 +175,6 @@ class InterpreterBehaviorTests(TestCase):
         # We expect the trace to contain no operations, since nothing should have been called.
         trace = adapter.recorder.get_trace()
 
-        # TODO(predrag): This expected trace will need to be updated when project_property() starts
-        #                being called with proper hints.
         scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001"}
         scooby_doo_base_context = DataContext[dict](
             scooby_doo_token,
@@ -201,7 +199,12 @@ class InterpreterBehaviorTests(TestCase):
                     RecordedTrace.DEFAULT_ROOT_UID,
                     (
                         ("__input_iterable", "Animal", "name"),
-                        {},  # TODO(predrag): Hints should go here, but currently none are passed.
+                        {
+                            'runtime_arg_hints': {},
+                            'used_property_hints': frozenset({'name'}),
+                            'filter_hints': [],
+                            'neighbor_hints': [],
+                        },
                     ),
                 ),
                 AdapterOperation(
