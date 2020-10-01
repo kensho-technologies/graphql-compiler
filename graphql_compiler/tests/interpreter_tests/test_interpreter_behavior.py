@@ -241,7 +241,7 @@ class InterpreterBehaviorTests(TestCase):
         )
         self.assertEqual(expected_trace, trace)
 
-    def test_tmp(self) -> None:  # TODO name this test
+    def test_with_local_field(self) -> None:
         adapter = InterpreterAdapterTap(InMemoryTestAdapter())
 
         query = """{
@@ -256,3 +256,5 @@ class InterpreterBehaviorTests(TestCase):
         result_gen = interpret_query(adapter, self.schema, query, args)
 
         next_row = next(result_gen)  # advance the generator one step
+
+        # TODO(bojanserafimov): Finish this test. Currently raises AttributeError
