@@ -36,8 +36,8 @@ jobs:
           pip install -e .
       - name: Run lint checks
         run: |
-          ./scripts/copyright_line_check.sh
-          ./scripts/lint.sh
+          pipenv run ./scripts/copyright_line_check.sh
+          pipenv run ./scripts/lint.sh
   tests:
     runs-on: ubuntu-latest
     strategy:
