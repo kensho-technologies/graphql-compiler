@@ -26,6 +26,7 @@ from .immediate_expression_handlers import (
 )
 
 
+# TODO(bojanserafimov): Add current_location argument to this function and all evaluators
 def evaluate_expression(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,

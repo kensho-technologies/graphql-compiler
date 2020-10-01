@@ -23,10 +23,11 @@ def evaluate_local_field(
     expression: LocalField,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
-    location = expression.location.at_vertex()
+    # TODO(bojanserafimov): This won't work. Add current_location argument and use that.
+    vertex_location = expression.location.at_vertex()
 
     # TODO(bojanserafimov): Memoize hints for each location.
-    hints = construct_hints_for_location(query_metadata_table, query_arguments, location)
+    hints = construct_hints_for_location(query_metadata_table, query_arguments, vertex_location)
 
     field_name = expression.field_name
     return iter(adapter.project_property(data_contexts, current_type_name, field_name, **hints))

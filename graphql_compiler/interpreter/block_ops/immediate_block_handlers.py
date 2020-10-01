@@ -31,6 +31,7 @@ def handle_filter_block(
     predicate = block.predicate
     yield from (
         data_context
+        # TODO(bojanserafimov): Pass post_block_location
         for data_context, predicate_value in evaluate_expression(
             adapter,
             query_metadata_table,

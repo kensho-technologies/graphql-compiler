@@ -240,3 +240,19 @@ class InterpreterBehaviorTests(TestCase):
             )
         )
         self.assertEqual(expected_trace, trace)
+
+    def test_tmp(self) -> None:  # TODO name this test
+        adapter = InterpreterAdapterTap(InMemoryTestAdapter())
+
+        query = """{
+            Animal {
+                color @tag(tag_name: "color")
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["%color"])
+            }
+        }"""
+        args: Dict[str, Any] = {}
+
+        result_gen = interpret_query(adapter, self.schema, query, args)
+
+        next_row = next(result_gen)  # advance the generator one step
