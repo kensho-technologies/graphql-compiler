@@ -165,9 +165,9 @@ if [ "$run_mypy" -eq 1 ]; then
 fi
 
 if [ "$run_pylint" -eq 1 ]; then
-    echo -e '\n*** Running pylint... ***\n'
-    echo "Using $(get_physical_cores) cores for pylint."
-    pylint --jobs="$(get_physical_cores)" $pylint_lintable_locations
+    physical_core_count="$(get_physical_cores)"
+    echo -e "\n*** Running pylint using ${physical_core_count} cores... ***\n"
+    pylint --jobs="$physical_core_count" $pylint_lintable_locations
     pylint_exit_code=$?
     echo -e "\n*** End of pylint run, exit: $pylint_exit_code ***\n"
 fi
