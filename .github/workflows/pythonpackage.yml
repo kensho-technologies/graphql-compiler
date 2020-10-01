@@ -15,6 +15,12 @@ jobs:
     strategy:
       matrix:
         python-version: [3.8]
+        lint-flags:
+          - "--run-only-fast-linters"
+          - "--run-only-pylint"
+          - "--run-only-mypy"
+          - "--run-only-bandit"
+          - "--run-only-sphinx-build"
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -28,20 +34,32 @@ jobs:
           sudo apt-get update
           sudo apt-get install unixodbc-dev python-mysqldb libmysqlclient-dev
           ACCEPT_EULA=Y sudo apt-get install msodbcsql17
-      - name: Install Python dependencies
+      - name: Ensure pip, setuptools, pipenv are latest
         run: |
           python -m pip install --upgrade pip
           python -m pip install --upgrade setuptools pipenv
+          echo "${pythonLocation}/lib/python${{ matrix.python-version }}/site-packages"
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "::set-output name=dir::$(pip cache dir)"
+      - name: Cache the Python dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+      - name: Install Python dependencies
+        run: |
           pipenv install --dev --deploy --system
           pip install -e .
       - name: Run lint checks
         run: |
-          pipenv run ./scripts/copyright_line_check.sh
-          pipenv run ./scripts/lint.sh
+          pipenv run ./scripts/lint.sh ${{ matrix.lint-flags }}
   tests:
     runs-on: ubuntu-latest
     strategy:
-      max-parallel: 3
       matrix:
         python-version: [3.6, 3.7, 3.8]
     steps:
