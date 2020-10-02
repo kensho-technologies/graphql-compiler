@@ -173,7 +173,6 @@ class InterpreterBehaviorTests(TestCase):
         }
         self.assertEqual(expected_next_row, next_row)
 
-        # We expect the trace to contain no operations, since nothing should have been called.
         trace = adapter.recorder.get_trace()
 
         scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001"}
@@ -191,6 +190,7 @@ class InterpreterBehaviorTests(TestCase):
             },
             scooby_doo_base_context.expression_stack.push(scooby_doo_base_context),
         )
+
         expected_trace = RecordedTrace[dict](
             (
                 AdapterOperation(
@@ -223,7 +223,13 @@ class InterpreterBehaviorTests(TestCase):
                         },
                     ),
                 ),
-                AdapterOperation("yield", "get_tokens_of_type", 2, 1, scooby_doo_token),
+                AdapterOperation(
+                    "yield",
+                    "get_tokens_of_type",
+                    2,
+                    1,
+                    scooby_doo_token,
+                ),
                 AdapterOperation(
                     "yield",
                     InterpreterAdapterTap.INPUT_ITERABLE_NAME,
@@ -237,6 +243,128 @@ class InterpreterBehaviorTests(TestCase):
                     4,
                     0,
                     (scooby_doo_context, "Scooby Doo"),
+                ),
+            )
+        )
+        self.assertEqual(expected_trace, trace)
+
+    def test_filtering_a_non_output_value_works_correctly(self) -> None:
+        adapter = InterpreterAdapterTap(InMemoryTestAdapter())
+
+        query = """{
+            Animal {
+                name @output(out_name: "name")
+                uuid @filter(op_name: "=", value: ["$scooby_uuid"])
+            }
+        }"""
+        args: Dict[str, Any] = {
+            "scooby_uuid": "1001",
+        }
+
+        result_gen = interpret_query(adapter, self.schema, query, args)
+
+        next_row = next(result_gen)  # advance the generator one step
+        expected_next_row = {
+            "name": "Scooby Doo",
+        }
+        self.assertEqual(expected_next_row, next_row)
+
+        trace = adapter.recorder.get_trace()
+
+        scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001"}
+        scooby_doo_local_context = DataContext[dict](
+            scooby_doo_token,
+            {},
+            make_empty_stack(),
+        )
+        scooby_doo_global_base_context = DataContext[dict](
+            scooby_doo_token,
+            {
+                Location(("Animal",), None, 1): scooby_doo_token,
+            },
+            make_empty_stack().push({}),
+        )
+        scooby_doo_global_context = DataContext[dict](
+            scooby_doo_token,
+            {
+                Location(("Animal",), None, 1): scooby_doo_token,
+            },
+            scooby_doo_global_base_context.expression_stack.push(scooby_doo_global_base_context),
+        )
+        expected_hints = {
+            "runtime_arg_hints": {
+                "scooby_uuid": "1001",
+            },
+            "used_property_hints": frozenset({"name", "uuid"}),
+            "filter_hints": [FilterInfo(("uuid",), "=", ("$scooby_uuid",))],
+            "neighbor_hints": [],
+        }
+        expected_trace = RecordedTrace[dict](
+            (
+                AdapterOperation(
+                    "call",
+                    "project_property",
+                    0,
+                    RecordedTrace.DEFAULT_ROOT_UID,
+                    (
+                        ("__input_iterable", "Animal", "name"),
+                        expected_hints,
+                    ),
+                ),
+                AdapterOperation(
+                    "call",
+                    "project_property",
+                    1,
+                    RecordedTrace.DEFAULT_ROOT_UID,
+                    (
+                        ("__input_iterable", "Animal", "uuid"),
+                        expected_hints,
+                    ),
+                ),
+                AdapterOperation(
+                    "call",
+                    "get_tokens_of_type",
+                    2,
+                    RecordedTrace.DEFAULT_ROOT_UID,
+                    (
+                        ("Animal",),
+                        expected_hints,
+                    ),
+                ),
+                AdapterOperation(
+                    "yield",
+                    "get_tokens_of_type",
+                    3,
+                    2,
+                    scooby_doo_token,
+                ),
+                AdapterOperation(
+                    "yield",
+                    InterpreterAdapterTap.INPUT_ITERABLE_NAME,
+                    4,
+                    1,
+                    scooby_doo_local_context,
+                ),
+                AdapterOperation(
+                    "yield",
+                    "project_property",
+                    5,
+                    1,
+                    (scooby_doo_local_context, "1001"),
+                ),
+                AdapterOperation(
+                    "yield",
+                    InterpreterAdapterTap.INPUT_ITERABLE_NAME,
+                    6,
+                    0,
+                    scooby_doo_global_context,
+                ),
+                AdapterOperation(
+                    "yield",
+                    "project_property",
+                    7,
+                    0,
+                    (scooby_doo_global_context, "Scooby Doo"),
                 ),
             )
         )
@@ -365,8 +493,7 @@ class InterpreterBehaviorTests(TestCase):
             )
         ]
         filter_name_input_tokens = tuple(
-            operation.data.current_token
-            for operation in filter_name_input_iterable_operations
+            operation.data.current_token for operation in filter_name_input_iterable_operations
         )
         self.assertEqual(get_tokens_yielded_tokens, filter_name_input_tokens)
 
@@ -395,8 +522,7 @@ class InterpreterBehaviorTests(TestCase):
             )
         ]
         filter_color_tag_input_tokens = tuple(
-            operation.data.current_token
-            for operation in filter_color_tag_input_iterable_operations
+            operation.data.current_token for operation in filter_color_tag_input_iterable_operations
         )
         self.assertEqual(get_tokens_yielded_tokens, filter_color_tag_input_tokens)
 

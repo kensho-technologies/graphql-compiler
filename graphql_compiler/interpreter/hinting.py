@@ -42,6 +42,9 @@ def construct_hints_for_location(
                 )
             used_properties.add(used_property_field)
 
+    for filter_info in filter_hints:
+        used_properties.update(filter_info.fields)
+
     neighbor_hints: List[Tuple[EdgeInfo, NeighborHint]] = []
     for equivalent_location in equivalent_locations:
         for child_location in query_metadata_table.get_child_locations(equivalent_location):
