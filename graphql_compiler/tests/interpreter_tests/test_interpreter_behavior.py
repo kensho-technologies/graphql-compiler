@@ -1,5 +1,5 @@
 from dataclasses import fields
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, List, Optional
 from unittest import TestCase
 
 from graphql import GraphQLSchema
@@ -201,10 +201,10 @@ class InterpreterBehaviorTests(TestCase):
                     (
                         ("__input_iterable", "Animal", "name"),
                         {
-                            'runtime_arg_hints': {},
-                            'used_property_hints': frozenset({'name'}),
-                            'filter_hints': [],
-                            'neighbor_hints': [],
+                            "runtime_arg_hints": {},
+                            "used_property_hints": frozenset({"name"}),
+                            "filter_hints": [],
+                            "neighbor_hints": [],
                         },
                     ),
                 ),
@@ -242,8 +242,8 @@ class InterpreterBehaviorTests(TestCase):
         )
         self.assertEqual(expected_trace, trace)
 
-    def test_with_local_field(self) -> None:
-        # Test that correct hints are given when calling project_property
+    def test_tag_and_filter_on_local_field(self) -> None:
+        # Test for correct behavior (including proper hints) when querying with @tag and @filter
         # for a local field (the tagged value in the same scope).
         adapter = InterpreterAdapterTap(InMemoryTestAdapter())
 
@@ -255,33 +255,175 @@ class InterpreterBehaviorTests(TestCase):
             }
         }"""
         args: Dict[str, Any] = {}
+        expected_results: List[Dict[str, Any]] = []
 
         result_gen = interpret_query(adapter, self.schema, query, args)
-        list(result_gen)  # drain the iterator
+        actual_results = list(result_gen)  # drain the iterator
+        self.assertEqual(expected_results, actual_results)
 
         trace = adapter.recorder.get_trace()
 
-        project_property_calls = [
-            operation
-            for operation in trace.operations
-            if operation.kind == "call" and operation.name == "project_property"
-        ]
+        # The first exactly four elements of the traces have operation.kind == "call".
+        num_calls = 4
+        for operation in trace.operations[:num_calls]:
+            self.assertEqual("call", operation.kind)
 
-        # The interpreter calls project property to get:
-        # - the color for the tag
-        # - the name for the output
-        # - the name again for the filter
-        # The calls are batched across different vertices.
-        self.assertEqual(3, len(project_property_calls))
+        # None of the other operations in the trace are calls.
+        # This is because all operations of the same flavor are batched across vertices.
+        for operation in trace.operations[num_calls:]:
+            self.assertNotEqual("call", trace.operations[num_calls].kind)
+
+        actual_call_operations = trace.operations[:num_calls]
 
         expected_hints = {
-            'runtime_arg_hints': {},
-            'used_property_hints': frozenset({'name', 'color'}),
-            'filter_hints': [
-                FilterInfo(fields=('name',), op_name='=', args=('%color',))
-            ],
-            'neighbor_hints': []
+            "runtime_arg_hints": {},
+            "used_property_hints": frozenset({"name", "color"}),
+            "filter_hints": [FilterInfo(fields=("name",), op_name="=", args=("%color",))],
+            "neighbor_hints": [],
         }
-        for project_property_call in project_property_calls:
-            _, hints = project_property_call.data
-            self.assertEqual(expected_hints, hints)
+        output_operation_uid = 0
+        filter_name_operation_uid = 1
+        filter_color_tag_operation_uid = 2
+        get_tokens_operation_uid = 3
+        expected_call_operations = (
+            AdapterOperation(  # The @output on the "name" field.
+                "call",
+                "project_property",
+                output_operation_uid,
+                RecordedTrace.DEFAULT_ROOT_UID,
+                (
+                    ("__input_iterable", "Animal", "name"),
+                    expected_hints,
+                ),
+            ),
+            AdapterOperation(  # The @filter on the "name" field.
+                "call",
+                "project_property",
+                filter_name_operation_uid,
+                RecordedTrace.DEFAULT_ROOT_UID,
+                (
+                    ("__input_iterable", "Animal", "name"),
+                    expected_hints,
+                ),
+            ),
+            AdapterOperation(  # Resolving the "%color" in the filter, coming from @tag on "color".
+                "call",
+                "project_property",
+                filter_color_tag_operation_uid,
+                RecordedTrace.DEFAULT_ROOT_UID,
+                (
+                    ("__input_iterable", "Animal", "color"),
+                    expected_hints,
+                ),
+            ),
+            AdapterOperation(  # The @filter on the "name" field.
+                "call",
+                "get_tokens_of_type",
+                get_tokens_operation_uid,
+                RecordedTrace.DEFAULT_ROOT_UID,
+                (
+                    ("Animal",),
+                    expected_hints,
+                ),
+            ),
+        )
+
+        self.assertEqual(expected_call_operations, actual_call_operations)
+
+        # We already asserted that this query outputs no results.
+        # Let's ensure that:
+        # 1. The get_tokens_of_type() produced some tokens.
+        # 2. Those tokens progressed through the two project_property() calls that
+        #    together form the @filter's evaluation.
+        # 3. The @filter discarded all tokens, i.e. the project_property() call corresponding
+        #    to the single @output in the query received an empty iterable as input.
+        # ------
+        # 1. The get_tokens_of_type() produced some tokens.
+        #    We find "yield"-kind operations whose "parent_uid" matches the uid of
+        #    our get_tokens_of_type() operation, and ensure we get a non-empty list.
+        get_tokens_yield_operations = [
+            operation
+            for operation in trace.operations
+            if operation.kind == "yield" and operation.parent_uid == get_tokens_operation_uid
+        ]
+        self.assertNotEqual([], get_tokens_yield_operations)
+
+        get_tokens_yielded_tokens = tuple(
+            operation.data for operation in get_tokens_yield_operations
+        )
+
+        # 2. The two project_property() calls consume and produce the same number of tokens
+        #    (wrapped in DataContext objects), in the same order as originally returned
+        #    by get_tokens_of_type().
+        filter_name_input_iterable_operations = [
+            operation
+            for operation in trace.operations
+            if (
+                operation.kind == "yield"
+                and operation.parent_uid == filter_name_operation_uid
+                and operation.name == InterpreterAdapterTap.INPUT_ITERABLE_NAME
+            )
+        ]
+        filter_name_input_tokens = tuple(
+            operation.data.current_token
+            for operation in filter_name_input_iterable_operations
+        )
+        self.assertEqual(get_tokens_yielded_tokens, filter_name_input_tokens)
+
+        filter_name_yielded_operations = [
+            operation
+            for operation in trace.operations
+            if (
+                operation.kind == "yield"
+                and operation.parent_uid == filter_name_operation_uid
+                and operation.name == "project_property"
+            )
+        ]
+        filter_name_yielded_tokens = tuple(
+            operation.data[0].current_token  # operation.data is Tuple[DataContext[DataToken], Any]
+            for operation in filter_name_yielded_operations
+        )
+        self.assertEqual(get_tokens_yielded_tokens, filter_name_yielded_tokens)
+
+        filter_color_tag_input_iterable_operations = [
+            operation
+            for operation in trace.operations
+            if (
+                operation.kind == "yield"
+                and operation.parent_uid == filter_color_tag_operation_uid
+                and operation.name == InterpreterAdapterTap.INPUT_ITERABLE_NAME
+            )
+        ]
+        filter_color_tag_input_tokens = tuple(
+            operation.data.current_token
+            for operation in filter_color_tag_input_iterable_operations
+        )
+        self.assertEqual(get_tokens_yielded_tokens, filter_color_tag_input_tokens)
+
+        filter_color_tag_yielded_operations = [
+            operation
+            for operation in trace.operations
+            if (
+                operation.kind == "yield"
+                and operation.parent_uid == filter_color_tag_operation_uid
+                and operation.name == "project_property"
+            )
+        ]
+        filter_color_tag_yielded_tokens = tuple(
+            operation.data[0].current_token  # operation.data is Tuple[DataContext[DataToken], Any]
+            for operation in filter_color_tag_yielded_operations
+        )
+        self.assertEqual(get_tokens_yielded_tokens, filter_color_tag_yielded_tokens)
+
+        # 3. The @filter discarded all tokens, i.e. the project_property() call corresponding
+        #    to the single @output in the query received an empty iterable as input.
+        output_operation_input_iterable_operations = [
+            operation
+            for operation in trace.operations
+            if (
+                operation.kind == "yield"
+                and operation.parent_uid == output_operation_uid
+                and operation.name == InterpreterAdapterTap.INPUT_ITERABLE_NAME
+            )
+        ]
+        self.assertEqual([], output_operation_input_iterable_operations)
