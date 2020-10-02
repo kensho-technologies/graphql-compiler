@@ -6,6 +6,7 @@ from graphql import GraphQLSchema
 
 from .in_memory_test_adapter import InMemoryTestAdapter
 from ..test_helpers import get_schema
+from ...compiler.metadata import FilterInfo
 from ...compiler.helpers import Location
 from ...interpreter import DataContext, interpret_query
 from ...interpreter.debugging import AdapterOperation, RecordedTrace, InterpreterAdapterTap
@@ -242,6 +243,8 @@ class InterpreterBehaviorTests(TestCase):
         self.assertEqual(expected_trace, trace)
 
     def test_with_local_field(self) -> None:
+        # Test that correct hints are given when calling project_property
+        # for a local field (the tagged value in the same scope).
         adapter = InterpreterAdapterTap(InMemoryTestAdapter())
 
         query = """{
@@ -263,4 +266,22 @@ class InterpreterBehaviorTests(TestCase):
             for operation in trace.operations
             if operation.kind == "call" and operation.name == "project_property"
         ]
-        self.assertEqual(3, len(project_property_calls))  # TODO(bojanserafimov): Why 3?
+
+        # The interpreter calls project property to get:
+        # - the color for the tag
+        # - the name for the output
+        # - the name again for the filter
+        # The calls are batched across different vertices.
+        self.assertEqual(3, len(project_property_calls))
+
+        expected_hints = {
+            'runtime_arg_hints': {},
+            'used_property_hints': frozenset({'name', 'color'}),
+            'filter_hints': [
+                FilterInfo(fields=('name',), op_name='=', args=('%color',))
+            ],
+            'neighbor_hints': []
+        }
+        for project_property_call in project_property_calls:
+            _, hints = project_property_call.data
+            self.assertEqual(expected_hints, hints)
