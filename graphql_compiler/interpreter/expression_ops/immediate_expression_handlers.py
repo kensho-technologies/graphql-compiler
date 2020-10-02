@@ -26,8 +26,10 @@ def evaluate_local_field(
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
     if current_location is None:
-        raise AssertionError(f"Received None for current_location, which indicates we are "
-                             f"in the global scope, but there can't be any local fields there.")
+        raise AssertionError(
+            f"Unexpectedly attempting to evaluate a LocalField while in the global scope "
+            f"(current_location is None). This is a bug: {expression}"
+        )
 
     # TODO(bojanserafimov): Memoize hints for each location.
     hints = construct_hints_for_location(query_metadata_table, query_arguments, current_location)
