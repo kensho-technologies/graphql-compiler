@@ -35,6 +35,7 @@ def handle_filter_block(
             adapter,
             query_metadata_table,
             query_arguments,
+            post_block_location,
             current_type_name,
             predicate,
             data_contexts,

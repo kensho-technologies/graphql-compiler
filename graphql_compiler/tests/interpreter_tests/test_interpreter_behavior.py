@@ -6,6 +6,7 @@ from graphql import GraphQLSchema
 
 from .in_memory_test_adapter import InMemoryTestAdapter
 from ..test_helpers import get_schema
+from ...compiler.metadata import FilterInfo
 from ...compiler.helpers import Location
 from ...interpreter import DataContext, interpret_query
 from ...interpreter.debugging import AdapterOperation, RecordedTrace, InterpreterAdapterTap
@@ -175,8 +176,6 @@ class InterpreterBehaviorTests(TestCase):
         # We expect the trace to contain no operations, since nothing should have been called.
         trace = adapter.recorder.get_trace()
 
-        # TODO(predrag): This expected trace will need to be updated when project_property() starts
-        #                being called with proper hints.
         scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001"}
         scooby_doo_base_context = DataContext[dict](
             scooby_doo_token,
@@ -201,7 +200,12 @@ class InterpreterBehaviorTests(TestCase):
                     RecordedTrace.DEFAULT_ROOT_UID,
                     (
                         ("__input_iterable", "Animal", "name"),
-                        {},  # TODO(predrag): Hints should go here, but currently none are passed.
+                        {
+                            'runtime_arg_hints': {},
+                            'used_property_hints': frozenset({'name'}),
+                            'filter_hints': [],
+                            'neighbor_hints': [],
+                        },
                     ),
                 ),
                 AdapterOperation(
@@ -237,3 +241,47 @@ class InterpreterBehaviorTests(TestCase):
             )
         )
         self.assertEqual(expected_trace, trace)
+
+    def test_with_local_field(self) -> None:
+        # Test that correct hints are given when calling project_property
+        # for a local field (the tagged value in the same scope).
+        adapter = InterpreterAdapterTap(InMemoryTestAdapter())
+
+        query = """{
+            Animal {
+                color @tag(tag_name: "color")
+                name @output(out_name: "name")
+                     @filter(op_name: "=", value: ["%color"])
+            }
+        }"""
+        args: Dict[str, Any] = {}
+
+        result_gen = interpret_query(adapter, self.schema, query, args)
+        list(result_gen)  # drain the iterator
+
+        trace = adapter.recorder.get_trace()
+
+        project_property_calls = [
+            operation
+            for operation in trace.operations
+            if operation.kind == "call" and operation.name == "project_property"
+        ]
+
+        # The interpreter calls project property to get:
+        # - the color for the tag
+        # - the name for the output
+        # - the name again for the filter
+        # The calls are batched across different vertices.
+        self.assertEqual(3, len(project_property_calls))
+
+        expected_hints = {
+            'runtime_arg_hints': {},
+            'used_property_hints': frozenset({'name', 'color'}),
+            'filter_hints': [
+                FilterInfo(fields=('name',), op_name='=', args=('%color',))
+            ],
+            'neighbor_hints': []
+        }
+        for project_property_call in project_property_calls:
+            _, hints = project_property_call.data
+            self.assertEqual(expected_hints, hints)

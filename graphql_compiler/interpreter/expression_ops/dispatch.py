@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Iterator, Tuple
+from typing import Any, Dict, Iterable, Iterator, Tuple, Optional
 
 from ...compiler.expressions import (
     BinaryComposition,
@@ -12,6 +12,7 @@ from ...compiler.expressions import (
     Variable,
 )
 from ...compiler.metadata import QueryMetadataTable
+from ...compiler.helpers import Location
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .composition_expression_handlers import (
     evaluate_binary_composition,
@@ -26,10 +27,13 @@ from .immediate_expression_handlers import (
 )
 
 
+# TODO(bojanserafimov): The current_type_name argument can be removed, since the
+#                       information is available in the metadata table.
 def evaluate_expression(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    current_location: Optional[Location],
     current_type_name: str,
     expression: Expression,
     data_contexts: Iterable[DataContext],
@@ -55,6 +59,7 @@ def evaluate_expression(
         adapter,
         query_metadata_table,
         query_arguments,
+        current_location,
         current_type_name,
         expression,
         data_contexts,

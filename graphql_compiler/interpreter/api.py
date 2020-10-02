@@ -78,6 +78,7 @@ def _get_local_operation_post_block_locations(
 def _split_out_global_operations(
     ir_blocks: List[BasicBlock],
 ) -> Tuple[List[BasicBlock], List[BasicBlock]]:
+    # TODO(bojanserafimov): Maybe use emit_sql._traverse_and_validate_blocks
     for block_index, block in enumerate(ir_blocks):
         if isinstance(block, GlobalOperationsStart):
             global_operations_index = block_index
