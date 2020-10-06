@@ -1,7 +1,7 @@
-from typing import Any, Dict, Iterable, Iterator, Tuple, Optional
+from typing import Any, Dict, Iterable, Iterator, Optional, Tuple
 
-from ...compiler.helpers import Location
 from ...compiler.expressions import BinaryComposition, TernaryConditional
+from ...compiler.helpers import Location
 from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .operators import apply_operator

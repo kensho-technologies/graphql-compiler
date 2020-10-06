@@ -36,5 +36,6 @@ As a result, the development of a new interpreter looks like this:
 For more information, consult the documentation of the items exported below.
 """
 
+from ..compiler.metadata import FilterInfo  # re-export due to use in interpreter API  # noqa
 from .api import interpret_ir, interpret_query  # noqa
 from .typedefs import DataContext, DataToken, EdgeInfo, InterpreterAdapter, NeighborHint  # noqa

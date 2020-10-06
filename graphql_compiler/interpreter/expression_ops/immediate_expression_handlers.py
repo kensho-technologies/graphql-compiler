@@ -1,6 +1,5 @@
-from typing import Any, Dict, Iterable, Iterator, Tuple, Union, Optional
+from typing import Any, Dict, Iterable, Iterator, Optional, Tuple, Union
 
-from ...compiler.helpers import Location
 from ...compiler.expressions import (
     ContextField,
     ContextFieldExistence,
@@ -9,6 +8,7 @@ from ...compiler.expressions import (
     OutputContextField,
     Variable,
 )
+from ...compiler.helpers import Location
 from ...compiler.metadata import QueryMetadataTable
 from ..hinting import construct_hints_for_location
 from ..typedefs import DataContext, DataToken, InterpreterAdapter

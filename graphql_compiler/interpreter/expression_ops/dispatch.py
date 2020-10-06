@@ -1,4 +1,4 @@
-from typing import Any, Dict, Iterable, Iterator, Tuple, Optional
+from typing import Any, Dict, Iterable, Iterator, Optional, Tuple
 
 from ...compiler.expressions import (
     BinaryComposition,
@@ -11,8 +11,8 @@ from ...compiler.expressions import (
     TernaryConditional,
     Variable,
 )
-from ...compiler.metadata import QueryMetadataTable
 from ...compiler.helpers import Location
+from ...compiler.metadata import QueryMetadataTable
 from ..typedefs import DataContext, DataToken, InterpreterAdapter
 from .composition_expression_handlers import (
     evaluate_binary_composition,

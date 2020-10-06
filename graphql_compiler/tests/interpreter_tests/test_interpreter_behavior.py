@@ -4,13 +4,13 @@ from unittest import TestCase
 
 from graphql import GraphQLSchema
 
-from .in_memory_test_adapter import InMemoryTestAdapter
-from ..test_helpers import get_schema
-from ...compiler.metadata import FilterInfo
 from ...compiler.helpers import Location
+from ...compiler.metadata import FilterInfo
 from ...interpreter import DataContext, interpret_query
-from ...interpreter.debugging import AdapterOperation, RecordedTrace, InterpreterAdapterTap
+from ...interpreter.debugging import AdapterOperation, InterpreterAdapterTap, RecordedTrace
 from ...interpreter.immutable_stack import ImmutableStack, make_empty_stack
+from ..test_helpers import get_schema
+from .in_memory_test_adapter import InMemoryTestAdapter
 
 
 class InterpreterBehaviorTests(TestCase):

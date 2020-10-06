@@ -41,8 +41,8 @@ from typing import Any, Callable, Dict, Generic, Iterable, List, Tuple, TypeVar,
 
 from graphql import (
     GraphQLField,
-    GraphQLObjectType,
     GraphQLInterfaceType,
+    GraphQLObjectType,
     GraphQLSchema,
     build_ast_schema,
     is_interface_type,
