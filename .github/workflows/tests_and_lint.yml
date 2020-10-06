@@ -1,0 +1,96 @@
+name: Tests and lint
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - "*"
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        # Use a matrix for the python version here to make the rest of the lint job setup
+        # as similar as possible to the test job below.
+        python-version: [3.8]
+        lint-flags:
+          - "--run-only-fast-linters"
+          - "--run-only-pylint"
+          - "--run-only-mypy"
+          - "--run-only-bandit"
+          - "--run-only-sphinx-build"
+          - "--run-only-typing-copilot-tighten"
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install core dependencies
+        run: |
+          ./scripts/install_ubuntu_ci_core_dependencies.sh
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "::set-output name=dir::$(pip cache dir)"
+      - name: Cache the Python dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+      - name: Install Python dependencies
+        run: |
+          pipenv install --dev --deploy --system
+          pip install -e .
+      - name: Run lint checks
+        if: matrix.lint-flags != '--run-only-typing-copilot-tighten'
+        run: |
+          pipenv run ./scripts/lint.sh ${{ matrix.lint-flags }}
+      - name: Run typing_copilot to ensure tightest possible mypy config
+        if: matrix.lint-flags == '--run-only-typing-copilot-tighten'
+        run: |
+          pipenv run typing_copilot tighten --error-if-can-tighten
+  tests:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+        markers: ["not slow", "slow"]
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install core dependencies
+        run: |
+          ./scripts/install_ubuntu_ci_core_dependencies.sh
+      - name: Start database docker containers
+        if: matrix.markers != 'not slow'  # don't bring up db containers for non-slow tests
+        run: |
+          docker-compose up -d
+      - name: Get pip cache dir
+        id: pip-cache
+        run: |
+          echo "::set-output name=dir::$(pip cache dir)"
+      - name: Cache the Python dependencies
+        uses: actions/cache@v2
+        with:
+          path: ${{ steps.pip-cache.outputs.dir }}
+          key: ${{ runner.os }}-pip-${{ matrix.python-version }}-${{ hashFiles('**/Pipfile.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-${{ matrix.python-version }}-
+      - name: Install Python dependencies
+        run: |
+          pipenv install --dev --deploy --system
+          pip install -e .
+      - name: Test with pytest
+        run: |
+          pytest --cov=graphql_compiler graphql_compiler/tests -m '${{ matrix.markers }}'
+          codecov
