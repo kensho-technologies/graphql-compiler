@@ -52,6 +52,7 @@ all_backends_list = [
     test_backend.MSSQL,
     test_backend.NEO4J,
     test_backend.REDISGRAPH,
+    test_backend.POSTGRES,
 ]
 
 
