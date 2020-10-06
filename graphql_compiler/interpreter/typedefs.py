@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
 from pprint import pformat
 from typing import (
@@ -162,8 +163,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
     Here are a few common examples of DataToken types in practice:
     - a dict containing the type name of the vertex and the values of all its properties;
-    - a dataclass containing the type name of the vertex, and the collection name and primary key
-      of the database entry using which the property values can be looked up, or
+    - a dataclass containing the type name of the vertex, and a collection name and primary key
+      that can be used to retrieve its property values from a database, or
     - an instance of a custom class which has *some* of the values of the vertex properties, and
       has sufficient information to look up the rest of them if they are ever requested.
 
@@ -171,9 +172,9 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     is already available in Python memory, or is on a local disk, or is a network hop away.
 
     Implementers are free to choose any DataToken type and the interpreter code will happily use it.
-    However, for the sake of easier debugging and testing using the built-in functionality in
-    this library, it is desirable to make DataToken be a deep-copyable type that implements
-    equality beyond a simple referential equality check.
+    However, certain debugging and testing tools provided by this library will work best
+    when DataToken is a deep-copyable type that implements equality beyond
+    a simple referential equality check.
 
     ## The InterpreterAdapter API
 
@@ -188,21 +189,21 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
       in each DataContext; project_property() therefore returns an iterable of
       tuples (data_context, value).
     - project_neighbors() is similar: for an iterable of DataContexts and a specific edge name,
-      it returns an iterable (data_context, iterable_of_neighbor_tokens) where each result
-      contains the DataTokens of the neighboring vertices along that edge for the vertex whose
-      DataToken is currently active in that DataContext.
+      it returns an iterable (data_context, iterable_of_neighbor_tokens) where
+      iterable_of_neighbor_tokens yields a DataToken for each vertex that can be reached by
+      following the specified edge from data_context's vertex.
     - can_coerce_to_type() is used to check whether a DataToken corresponding to one vertex type
       can be safely converted into one representing a different vertex type. Given an iterable of
       DataContexts and the name of the type to which the conversion is attempted, it produces
-      an iterable of tuples (data_context, can_coerce) where can_coerce is a boolean.
+      an iterable of tuples (data_context, can_coerce), where can_coerce is a boolean.
 
     ## Performance and optimization opportunities
 
-    The design of the API, including its generator-style operation, enable a variety of
-    optimizations to either happen automatically or be available with minimal additional work.
-    A few simple examples:
+    The design of the API and its generator-style operation enable a variety of optimizations.
+    Many optimizations are applied automatically, and additional ones can be implemented with
+    minimal additional work. A few simple examples:
     - Interpreters perform lazy evaluation by default: if exactly 3 query results are requested,
-      then only the minimal data necessary to produce *exactly 3 rows' worth* of outputs is loaded.
+      then only the minimal data necessary for *exactly 3* results' worth of outputs is loaded.
     - When computing a particular result, data loading for output fields is deferred
       until *after* all filtering operations have been completed, to minimize data loads.
     - Data caching is easy to implement within this API -- simply have
@@ -228,7 +229,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     end with the suffix "_hints", in addition to the catch-all "**hints: Any" argument. These
     provide each function with information about how the data it is currently processing will
     be used in subsequent operations, and can therefore enable additional interesting optimizations.
-    Use of these hints is totally optional (the library always assumes that the hints weren't used),
+    Use of these hints is optional (the interpreter always assumes that the hints weren't used),
     so subclasses of InterpreterAdapter may even safely ignore these kwargs entirely -- for example,
     if the "runtime_arg_hints" kwarg is omitted in the method definition, at call time its value
     will go into the catch-all "**hints" argument instead.
@@ -236,16 +237,20 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     The set of hints (and the information each hint provides) could grow in the future. Currently,
     the following hints are offered:
     - runtime_arg_hints: the values of any runtime arguments provided to the query for use in
-      filtering operations (recall queries' "$foo" filter parameter syntax).
-    - used_property_hints: the property names within the scope relevant to the called function that
-      the query will eventually need, e.g. for filtering on, or to output as the final result.
-    - filter_hints: information about the filters applied within the scope relevant to the called
-      function, such as "which filtering operation is being performed?" and "with which arguments?"
-    - neighbor_hints: information about the edges originating from the scope relevant to the called
-      function that the query will eventually need to expand.
+      filtering operations (e.g. "$foo").
+    - used_property_hints: the property names in the current scope that are used by the query,
+      e.g. in a filter or as an output. Within project_neighbors(), the current scope is the
+      neighboring vertex; in the remaining 3 methods the current scope is the current vertex.
+    - filter_hints: information about the filters applied within the current scope,
+      such as "which filtering operation is being performed?" and "with which arguments?"
+      Within project_neighbors(), the current scope is the neighboring vertex; in
+      the remaining 3 methods the current scope is the current vertex.
+    - neighbor_hints: information about the edges originating from the current scope that
+      the query will eventually need to expand. Within project_neighbors(), the current scope is
+      the neighboring vertex; in the remaining 3 methods the current scope is the current vertex.
 
-    More details on these hints, and suggestions for their use, can be found in the API methods
-    docstrings available below.
+    More details on these hints, and suggestions for their use, can be found in the methods'
+    docstrings, available below.
     """
 
     @abstractmethod
@@ -261,7 +266,6 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     ) -> Iterable[DataToken]:
         """Produce an iterable of tokens for the specified type name."""
         # TODO(predrag): Add more docs in an upcoming PR.
-        pass
 
     @abstractmethod
     def project_property(
@@ -295,12 +299,9 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         """Produce the neighbors along a given edge for each of an iterable of input DataTokens."""
         # TODO(predrag): Add more docs in an upcoming PR.
         #
-        # If using a generator instead of a list for the Iterable[DataToken] part,
-        # be careful -- generators are not closures! Make sure any state you pull into
-        # the generator from the outside does not change, or that bug will be hard to find.
-        # Remember: it's always safer to use a function to produce the generator, since
-        # that will explicitly preserve all the external values passed into it.
-        pass
+        # If using a generator or a mutable data type for the Iterable[DataToken] part,
+        # be careful! Make sure any state it depends upon
+        # does not change, or that bug will be hard to find.
 
     @abstractmethod
     def can_coerce_to_type(
@@ -317,4 +318,3 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
         """Determine if each of an iterable of input DataTokens can be coerced to another type."""
         # TODO(predrag): Add more docs in an upcoming PR.
-        pass
