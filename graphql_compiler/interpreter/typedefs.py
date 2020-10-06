@@ -119,21 +119,27 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     end with the suffix "_hints", in addition to the catch-all "**hints: Any" argument. These
     provide each function with information about how the data it is currently processing will
     be used in subsequent operations, and can therefore enable additional interesting optimizations.
-    Use of these hints is totally optional (the library always assumes that the hints weren't used),
+    Use of these hints is optional (the interpreter always assumes that the hints weren't used),
     so subclasses of InterpreterAdapter may even safely ignore these kwargs entirely -- for example,
     if the "runtime_arg_hints" kwarg is omitted in the method definition, at call time its value
     will go into the catch-all "**hints" argument instead.
+
+
 
     The set of hints (and the information each hint provides) could grow in the future. Currently,
     the following hints are offered:
     - runtime_arg_hints: the values of any runtime arguments provided to the query for use in
       filtering operations (e.g. "$foo").
-    - used_property_hints: the property names within the scope relevant to the called function that
-      the query will eventually need, e.g. for filtering on, or to output as the final result.
-    - filter_hints: information about the filters applied within the scope relevant to the called
-      function, such as "which filtering operation is being performed?" and "with which arguments?"
-    - neighbor_hints: information about the edges originating from the scope relevant to the called
-      function that the query will eventually need to expand.
+    - used_property_hints: the property names in the current scope that are used by the query,
+      e.g. in a filter or as an output. Within project_neighbors(), the current scope is the
+      neighboring vertex; in the remaining 3 methods the current scope is the current vertex.
+    - filter_hints: information about the filters applied within the current scope,
+      such as "which filtering operation is being performed?" and "with which arguments?"
+      Within project_neighbors(), the current scope is the neighboring vertex; in
+      the remaining 3 methods the current scope is the current vertex.
+    - neighbor_hints: information about the edges originating from the current scope that
+      the query will eventually need to expand. Within project_neighbors(), the current scope is
+      the neighboring vertex; in the remaining 3 methods the current scope is the current vertex.
 
     More details on these hints, and suggestions for their use, can be found in the methods'
     docstrings, available below.
