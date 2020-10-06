@@ -237,7 +237,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
     The set of hints (and the information each hint provides) could grow in the future. Currently,
     the following hints are offered:
     - runtime_arg_hints: the values of any runtime arguments provided to the query for use in
-      filtering operations (e.g. "$foo").
+      filtering operations (e.g. "$foo"); an empty mapping in queries with no runtime arguments.
     - used_property_hints: the property names in the current scope that are used by the query,
       e.g. in a filter or as an output. Within project_neighbors(), the current scope is the
       neighboring vertex; in the remaining 3 methods the current scope is the current vertex.
@@ -264,8 +264,72 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
         **hints: Any,
     ) -> Iterable[DataToken]:
-        """Produce an iterable of tokens for the specified type name."""
-        # TODO(predrag): Add more docs in an upcoming PR.
+        """Produce an iterable of tokens for the specified type name.
+
+        This function is used by the interpreter library to get the initial data with which
+        the process of query execution begins.
+
+        Consider the following example schema:
+        ***
+        schema {
+            query: RootSchemaQuery
+        }
+
+        < ... some default GraphQL compiler directives and scalar type definitions here ... >
+
+        type Foo {
+            < ... some fields here ... >
+        }
+
+        < ... perhaps other type definitions here ... >
+
+        type RootSchemaQuery {
+            # This is the root query type for the schema, as defined at the top of the schema.
+            Foo: [Foo]
+        }
+        ***
+
+        Per the GraphQL specification, since the definition of RootSchemaQuery only contains the
+        type named Foo, queries must start by querying for Foo in order to be valid for the schema:
+        {
+            Foo {
+                < stuff here >
+            }
+        }
+
+        To compute the results for such a query, the interpreter would call get_tokens_of_type()
+        with "Foo" as the type_name value. As get_tokens_of_type() yields tokens, the interpreter
+        uses those tokens to perform the rest of the query via the remaining API methods.
+
+        get_tokens_of_type() is guaranteed to be called *exactly once* during the evaluation of
+        any interpreted query. However, due to the generator-style operation of the interpreter,
+        the call to get_tokens_of_type() is *not* guaranteed to be the first call across the four
+        methods that comprise this API -- one or more calls to the other methods may precede it.
+
+        Args:
+            type_name: name of the vertex type for which to yield tokens. Guaranteed to be:
+                       - the name of a type defined in the schema being queried, and specifically
+                       - one of the types defined in the schema's root query type:
+                         http://spec.graphql.org/June2018/#sec-Root-Operation-Types
+            runtime_arg_hints: values of any runtime arguments provided to the query for use in
+                               filtering operations (e.g. "$foo").
+            used_property_hints: the property names of the requested vertices the that
+                                 are going to be used in a subsequent filtering or output step.
+            filter_hints: information about any filters applied to the requested vertices,
+                          such as "which filtering operations are being performed?"
+                          and "with which arguments?"
+            neighbor_hints: information about the edges originating from the requested vertices
+                            that the query will eventually need to expand.
+            **hints: catch-all kwarg field making the function's signature forward-compatible with
+                     future revisions of this library that add more hints.
+
+        Yields:
+            DataTokens corresponding to vertices of the specified type. The information supplied
+            via hints may, but is not required to, be applied to the returned DataToken objects.
+            For example, this function is allowed to yield a DataToken that will be filtered out
+            in a subsequent query step, even though the filter_hints argument (or other hints)
+            notified this function of that impending outcome.
+        """
 
     @abstractmethod
     def project_property(
