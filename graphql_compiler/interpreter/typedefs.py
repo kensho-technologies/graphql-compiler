@@ -126,7 +126,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
     The set of hints (and the information each hint provides) could grow in the future. Currently,
     the following hints are offered:
-    - runtime_arg_hints: the values of any runtime arguments provided to the query for use in
+    - runtime_arg_hints: the names and values of any runtime arguments provided to the query for use in
       filtering operations (e.g. "$foo"); an empty mapping in queries with no runtime arguments.
     - used_property_hints: the property names in the current scope that are used by the query,
       e.g. in a filter or as an output. Within project_neighbors(), the current scope is the
