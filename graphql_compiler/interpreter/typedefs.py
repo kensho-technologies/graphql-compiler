@@ -189,7 +189,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         To compute the results for such a query, the interpreter would call get_tokens_of_type()
         with "Foo" as the type_name value. As get_tokens_of_type() yields tokens, the interpreter
-        uses those tokens to perform the rest of the query via the remaining API methods.
+        uses those tokens to perform the rest of the query via the remaining interpreter API methods.
 
         get_tokens_of_type() is guaranteed to be called *exactly once* during the evaluation of
         any interpreted query. However, due to the generator-style operation of the interpreter,
