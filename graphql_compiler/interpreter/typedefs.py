@@ -126,8 +126,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
     The set of hints (and the information each hint provides) could grow in the future. Currently,
     the following hints are offered:
-    - runtime_arg_hints: the names and values of any runtime arguments provided to the query for use in
-      filtering operations (e.g. "$foo"); an empty mapping in queries with no runtime arguments.
+    - runtime_arg_hints: the names and values of any runtime arguments provided to the query for use
+      in filtering operations (e.g. "$foo"); an empty mapping in queries with no runtime arguments.
     - used_property_hints: the property names in the current scope that are used by the query,
       e.g. in a filter or as an output. Within project_neighbors(), the current scope is the
       neighboring vertex; in the remaining 3 methods the current scope is the current vertex.
@@ -188,8 +188,9 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         }
 
         To compute the results for such a query, the interpreter would call get_tokens_of_type()
-        with "Foo" as the type_name value. As get_tokens_of_type() yields tokens, the interpreter
-        uses those tokens to perform the rest of the query via the remaining interpreter API methods.
+        with "Foo" as the type_name value. As get_tokens_of_type() yields tokens,
+        the interpreter uses those tokens to perform the rest of the query via
+        the remaining interpreter API methods.
 
         get_tokens_of_type() is guaranteed to be called *exactly once* during the evaluation of
         any interpreted query. However, due to the generator-style operation of the interpreter,
@@ -201,8 +202,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                        - the name of a type defined in the schema being queried, and specifically
                        - one of the types defined in the schema's root query type:
                          http://spec.graphql.org/June2018/#sec-Root-Operation-Types
-            runtime_arg_hints: names and values of any runtime arguments provided to the query for use in
-                               filtering operations (e.g. "$foo").
+            runtime_arg_hints: names and values of any runtime arguments provided to the query
+                               for use in filtering operations (e.g. "$foo").
             used_property_hints: the property names of the requested vertices the that
                                  are going to be used in a subsequent filtering or output step.
             filter_hints: information about any filters applied to the requested vertices,
