@@ -155,8 +155,8 @@ language governing permissions and limitations under the License.
 Copyright 2017-present Kensho Technologies, LLC. The present date is
 determined by the timestamp of the most recent commit in the repository.
 
-.. |Build Status| image:: https://travis-ci.org/kensho-technologies/graphql-compiler.svg?branch=main
-   :target: https://travis-ci.org/kensho-technologies/graphql-compiler
+.. |Build Status| image:: https://github.com/kensho-technologies/graphql-compiler/workflows/Tests%20and%20lint/badge.svg
+   :target: https://github.com/kensho-technologies/graphql-compiler/actions?query=workflow%3A%22Tests+and+lint%22
 .. |Coverage Status| image:: https://codecov.io/gh/kensho-technologies/graphql-compiler/branch/main/graph/badge.svg
    :target: https://codecov.io/gh/kensho-technologies/graphql-compiler
 .. |License| image:: https://img.shields.io/badge/License-Apache%202.0-blue.svg

@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from ast import literal_eval
 from textwrap import dedent
-from typing import Dict, Optional, Set, List
+from typing import Dict, List, Optional, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -23,6 +23,7 @@ from ...schema_transformation.utils import (
     builtin_scalar_type_names,
     get_custom_scalar_names,
 )
+from ..test_helpers import compare_schema_texts_order_independently
 from .input_schema_strings import InputSchemaStrings as ISS
 
 
@@ -130,7 +131,9 @@ class TestRenameSchema(unittest.TestCase):
     def test_no_rename(self) -> None:
         renamed_schema = rename_schema(parse(ISS.basic_schema), {}, {})
 
-        self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, ISS.basic_schema, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -153,7 +156,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -180,7 +185,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({"NewStitch": "stitch"}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -218,7 +225,9 @@ class TestRenameSchema(unittest.TestCase):
                 return key
 
         renamed_schema = rename_schema(parse(ISS.basic_schema), RenameMapping(), {})
-        self.assertEqual(ISS.basic_schema, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, ISS.basic_schema, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -255,7 +264,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -278,7 +289,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -306,7 +319,9 @@ class TestRenameSchema(unittest.TestCase):
                 return key
 
         renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), SuppressMapping(), {})
-        self.assertEqual(ISS.multiple_objects_schema, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, ISS.multiple_objects_schema, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -352,7 +367,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({"Human": "Droid", "Droid": "Human"}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -380,13 +397,17 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({"Human": "Droid"}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_cyclic_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Dog", "Dog": "Human"}, {}
+            parse(ISS.multiple_objects_schema),
+            {"Human": "Droid", "Droid": "Dog", "Dog": "Human"},
+            {},
         )
         renamed_schema_string = dedent(
             """\
@@ -413,16 +434,16 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_field_rename(self) -> None:
-        renamed_schema = rename_schema(
-            parse(ISS.basic_schema), {}, {"Human": {"id": ["new_id"]}}
-        )
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": ["new_id"]}})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -440,10 +461,10 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual(
-            {}, renamed_schema.reverse_name_map
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
 
     def test_field_rename_includes_original_name(self) -> None:
@@ -468,10 +489,10 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual(
-            {}, renamed_schema.reverse_name_map
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
 
     def test_field_rename_only_affects_names_in_original_schema(self) -> None:
@@ -498,17 +519,17 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
-        self.assertEqual(
-            {}, renamed_schema.reverse_name_map
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
-        self.assertEqual({"Human": {"age": "id", "new_age": "age"}}, renamed_schema.reverse_field_name_map)
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual(
+            {"Human": {"age": "id", "new_age": "age"}}, renamed_schema.reverse_field_name_map
+        )
 
     def test_field_renaming_illegal_noop(self) -> None:
         with self.assertRaises(NoOpRenamingError):
-            rename_schema(
-                parse(ISS.many_fields_schema), {}, {"Human": {"pet": ["new_pet"]}}
-            )
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": ["new_pet"]}})
         # TODO: check error message too
 
     def test_field_renaming_legal_noop(self) -> None:
@@ -524,7 +545,9 @@ class TestRenameSchema(unittest.TestCase):
                         return ["new_pet"]
                     return [field_name]
 
-            def get(self, type_name: str, default_field_renamings: FieldNoOpRenamings) -> FieldNoOpRenamings:
+            def get(
+                self, type_name: str, default_field_renamings: FieldNoOpRenamings
+            ) -> FieldNoOpRenamings:
                 if type_name == "Human":
                     return FieldRenamingNoOpMapping.FieldNoOpRenamings()
                 return {}
@@ -532,7 +555,9 @@ class TestRenameSchema(unittest.TestCase):
         renamed_schema = rename_schema(
             parse(ISS.many_fields_schema), {}, FieldRenamingNoOpMapping()
         )
-        self.assertEqual(ISS.many_fields_schema, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, ISS.many_fields_schema, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -560,7 +585,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {"NewDroid": "Droid", "NewHeight": "Height"}, renamed_schema.reverse_name_map
         )
@@ -594,7 +621,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {"NewKid": "Kid", "NewCharacter": "Character"}, renamed_schema.reverse_name_map
         )
@@ -615,14 +644,16 @@ class TestRenameSchema(unittest.TestCase):
     def test_suppress_interface_and_all_implementations(self) -> None:
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.various_types_schema), {"Giraffe": None, "Character": None, "Human": None}, {}
+                parse(ISS.various_types_schema),
+                {"Giraffe": None, "Character": None, "Human": None},
+                {},
             )
 
     def test_multiple_interfaces_rename(self) -> None:
         renamed_schema = rename_schema(
             parse(ISS.multiple_interfaces_schema),
             {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "NewCreature"},
-            {}
+            {},
         )
         renamed_schema_string = dedent(
             """\
@@ -650,7 +681,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {"NewHuman": "Human", "NewCharacter": "Character", "NewCreature": "Creature"},
             renamed_schema.reverse_name_map,
@@ -659,17 +692,11 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_scalar_rename(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.scalar_schema),
-                {"Date": "NewDate"}, {}
-            )
+            rename_schema(parse(ISS.scalar_schema), {"Date": "NewDate"}, {})
 
     def test_builtin_rename(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.list_schema),
-                {"String": "NewString"}, {}
-            )
+            rename_schema(parse(ISS.list_schema), {"String": "NewString"}, {})
 
     def test_union_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -697,7 +724,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {"NewDroid": "Droid", "NewHumanOrDroid": "HumanOrDroid"},
             renamed_schema.reverse_name_map,
@@ -728,7 +757,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {"NewDroid": "Droid"},
             renamed_schema.reverse_name_map,
@@ -754,7 +785,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {},
             renamed_schema.reverse_name_map,
@@ -768,7 +801,8 @@ class TestRenameSchema(unittest.TestCase):
                 "Droid": "NewDroid",
                 "Character": "NewCharacter",
                 "Height": "NewHeight",
-            }, {}
+            },
+            {},
         )
         renamed_schema_string = dedent(
             """\
@@ -800,7 +834,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {
                 "NewCharacter": "Character",
@@ -834,7 +870,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -855,7 +893,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -867,7 +907,8 @@ class TestRenameSchema(unittest.TestCase):
                 parse(ISS.directive_schema),
                 {
                     "stitch": "NewStitch",
-                }, {}
+                },
+                {},
             )
         self.assertEqual(
             "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
@@ -891,7 +932,9 @@ class TestRenameSchema(unittest.TestCase):
                 return key
 
         renamed_schema = rename_schema(parse(ISS.directive_schema), DirectiveRenamingMapping(), {})
-        self.assertEqual(ISS.directive_schema, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, ISS.directive_schema, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -952,7 +995,9 @@ class TestRenameSchema(unittest.TestCase):
                 return key
 
         renamed_schema = rename_schema(parse(schema_string), QueryTypeFieldArgumentMapping(), {})
-        self.assertEqual(schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -1121,9 +1166,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_clashing_field_rename(self) -> None:
         with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(
-                parse(ISS.many_fields_schema), {}, {"Human": {"name": ["name", "id"]}}
-            )
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"name": ["name", "id"]}})
         # TODO: check the SchemaRenameNameConflictError error message as well
 
     def test_illegal_rename_type_start_with_number(self) -> None:
@@ -1205,7 +1248,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
@@ -1270,7 +1315,9 @@ class TestRenameSchema(unittest.TestCase):
             }
         """
         )
-        self.assertEqual(renamed_schema_string, print_ast(renamed_schema.schema_ast))
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
         self.assertEqual(
             {
                 "NewCharacter": "Character",
