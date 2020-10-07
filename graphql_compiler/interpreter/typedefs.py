@@ -271,31 +271,31 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         Consider the following example schema:
         ***
-        schema {
-            query: RootSchemaQuery
-        }
+            schema {
+                query: RootSchemaQuery
+            }
 
-        < ... some default GraphQL compiler directives and scalar type definitions here ... >
+            < ... some default GraphQL compiler directives and scalar type definitions here ... >
 
-        type Foo {
-            < ... some fields here ... >
-        }
+            type Foo {
+                < ... some fields here ... >
+            }
 
-        < ... perhaps other type definitions here ... >
+            < ... perhaps other type definitions here ... >
 
-        type RootSchemaQuery {
-            # This is the root query type for the schema, as defined at the top of the schema.
-            Foo: [Foo]
-        }
+            type RootSchemaQuery {
+                # This is the root query type for the schema, as defined at the top of the schema.
+                Foo: [Foo]
+            }
         ***
 
         Per the GraphQL specification, since the definition of RootSchemaQuery only contains the
         type named Foo, queries must start by querying for Foo in order to be valid for the schema:
-        {
-            Foo {
-                < stuff here >
+            {
+                Foo {
+                    < stuff here >
+                }
             }
-        }
 
         To compute the results for such a query, the interpreter would call get_tokens_of_type()
         with "Foo" as the type_name value. As get_tokens_of_type() yields tokens,
@@ -345,8 +345,73 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
         **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
-        """Produce the values for a given property for each of an iterable of input DataTokens."""
-        # TODO(predrag): Add more docs in an upcoming PR.
+        """Produce the values for a given property for each of an iterable of input DataTokens.
+
+        In situations such as outputting property values or applying filters to properties,
+        the interpreter needs to get the value of some property field for a series of DataTokens.
+        For example, consider the following query:
+            {
+                Foo {
+                    bar @output(out_name: "bar_value")
+                }
+            }
+        Once the interpreter has used the get_tokens_of_type() function to obtain
+        an iterable of DataTokens for the Foo type, it will need to get the value of
+        the "bar" property on those tokens. This is where project_property() comes in.
+        The interpreter would call project_property() with arguments current_type_name = "Foo"
+        and field_name = "bar" along with an iterable of DataContext values, each of which
+        contains an optional DataToken as its current_token attribute. These DataContext
+        objects simply allow the interpreter to keep track of "which data came from where";
+        only the DataToken value within the current_token attribute is relevant to this function.
+        For each such DataToken held within a DataContext, project_property() needs to produce
+        the value of its property whose name is given as the field_name function argument.
+
+        A simple example implementation is as follows:
+            def project_property(
+                self,
+                data_contexts: Iterable[DataContext[DataToken]],
+                current_type_name: str,
+                field_name: str,
+                **hints: Any,
+            ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
+                for data_context in data_contexts:
+                    current_token = data_context.current_token
+                    property_value: Any
+                    if current_token is None:
+                        # Evaluating an @optional scope where the optional edge didn't exist.
+                        # There is no value for the named property here.
+                        property_value = None
+                    else:
+                        property_value = < load the field_name property's value for current_token >
+
+                    # Remember to always yield the DataContext alongside the produced value
+                    yield data_context, property_value
+
+        Args:
+            data_contexts: iterable of DataContext objects which specify the DataTokens whose
+                           property data needs to be loaded
+            current_type_name: name of the vertex type whose property is being loaded. Guaranteed
+                               to be the name of a type defined in the schema being queried.
+            field_name: name of the property whose data to load. Guaranteed to refer to a property
+                        that is valid for the supplied current_type_name based on the schema.
+            runtime_arg_hints: names and values of any runtime arguments provided to the query
+                               for use in filtering operations (e.g. "$foo").
+            used_property_hints: the property names of the vertices being processed that
+                                 are going to be used in a subsequent filtering or output step.
+            filter_hints: information about any filters applied to the vertices being processed,
+                          such as "which filtering operations are being performed?"
+                          and "with which arguments?"
+            neighbor_hints: information about the edges of the vertices being processed
+                            that the query will eventually need to expand.
+            **hints: catch-all kwarg field making the function's signature forward-compatible with
+                     future revisions of this library that add more hints.
+
+        Yields:
+            tuples (data_context, property_value), providing the value of the requested property
+            together with the DataContext corresponding to that value. The yielded DataContext
+            values must be yielded in the same order as they were received via the function's
+            data_contexts argument.
+        """
 
     @abstractmethod
     def project_neighbors(
