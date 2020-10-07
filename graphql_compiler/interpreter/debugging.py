@@ -1,16 +1,6 @@
 from copy import deepcopy
 from dataclasses import dataclass, field
-from typing import (
-    Any,
-    ClassVar,
-    Dict,
-    Generic,
-    Iterable,
-    List,
-    Sequence,
-    Tuple,
-    TypeVar,
-)
+from typing import Any, ClassVar, Dict, Generic, Iterable, List, Sequence, Tuple, TypeVar
 
 from ..typedefs import Literal
 from .typedefs import DataToken
