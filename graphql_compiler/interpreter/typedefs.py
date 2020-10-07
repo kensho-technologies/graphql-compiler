@@ -201,7 +201,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                        - the name of a type defined in the schema being queried, and specifically
                        - one of the types defined in the schema's root query type:
                          http://spec.graphql.org/June2018/#sec-Root-Operation-Types
-            runtime_arg_hints: values of any runtime arguments provided to the query for use in
+            runtime_arg_hints: names and values of any runtime arguments provided to the query for use in
                                filtering operations (e.g. "$foo").
             used_property_hints: the property names of the requested vertices the that
                                  are going to be used in a subsequent filtering or output step.
