@@ -224,8 +224,14 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                            property data needs to be loaded
             current_type_name: name of the vertex type whose property is being loaded. Guaranteed
                                to be the name of a type defined in the schema being queried.
-            field_name: name of the property whose data needs to be loaded. Guaranteed to refer to
-                        a property that is valid for the supplied current_type_name in the schema.
+            field_name: name of the property whose data needs to be loaded. Guaranteed to refer
+                        either to a property that is defined in the supplied current_type_name
+                        in the schema, or to the "__typename" meta field that is valid for all
+                        GraphQL types and holds the type name of the current vertex. This type name
+                        may be different from the value of current_type_name e.g. when
+                        current_type_name refers to an interface type and "__typename" refers to
+                        a type that implements that interface. More information on "__typename" may
+                        be found in the GraphQL docs: https://graphql.org/learn/queries/#meta-fields
             runtime_arg_hints: names and values of any runtime arguments provided to the query
                                for use in filtering operations (e.g. "$arg_name").
             used_property_hints: the property names of the vertices being processed that
