@@ -80,8 +80,8 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         if not type_name_conflicts and not renamed_to_builtin_scalar_conflicts:
             raise ValueError(
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
-                "type_name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both empty "
-                "dictionaries."
+                "type_name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both "
+                "empty dictionaries."
             )
         super().__init__()
         self.type_name_conflicts = type_name_conflicts
@@ -91,7 +91,12 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         """Explain renaming conflict and the fix."""
         type_name_conflicts_message = ""
         if self.type_name_conflicts:
-            sorted_type_name_conflicts = [(new_type_name, sorted(original_schema_type_names)) for new_type_name, original_schema_type_names in sorted(self.type_name_conflicts.items())]
+            sorted_type_name_conflicts = [
+                (new_type_name, sorted(original_schema_type_names))
+                for new_type_name, original_schema_type_names in sorted(
+                    self.type_name_conflicts.items()
+                )
+            ]
             type_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple types have the "
                 f"same name, which is an illegal schema state. To fix this, modify the renamings "
@@ -104,7 +109,9 @@ class SchemaRenameNameConflictError(SchemaTransformError):
             )
         renamed_to_builtin_scalar_conflicts_message = ""
         if self.renamed_to_builtin_scalar_conflicts:
-            sorted_renamed_to_builtin_scalar_conflicts = sorted(self.renamed_to_builtin_scalar_conflicts.items())
+            sorted_renamed_to_builtin_scalar_conflicts = sorted(
+                self.renamed_to_builtin_scalar_conflicts.items()
+            )
             renamed_to_builtin_scalar_conflicts_message = (
                 f"Applying the renaming would rename type(s) to a name already used by a built-in "
                 f"GraphQL scalar type. To fix this, ensure that no type name is mapped to a "

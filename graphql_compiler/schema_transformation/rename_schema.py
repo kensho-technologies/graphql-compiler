@@ -530,8 +530,8 @@ class RenameSchemaTypesVisitor(Visitor):
         }
     )
     # Collects naming conflict errors involving types that are not built-in scalar types. If
-    # renaming would result in multiple types being named "Foo", type_name_conflicts will map "Foo" to a
-    # set containing the name of each such type
+    # renaming would result in multiple types being named "Foo", type_name_conflicts will map "Foo"
+    # to a set containing the name of each such type
     type_name_conflicts: Dict[str, Set[str]]
     # Collects naming conflict errors involving built-in scalar types. If renaming would rename a
     # type named "Foo" to "String", renamed_to_scalar_conflicts will map "Foo" to "String"

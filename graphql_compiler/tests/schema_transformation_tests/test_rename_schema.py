@@ -1,7 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from ast import literal_eval
 from textwrap import dedent
-from typing import Dict, Optional, Set
+from typing import Optional, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -806,7 +805,7 @@ class TestRenameSchema(unittest.TestCase):
             "where new_type_name is the type name that would appear in the new schema and "
             "original_schema_type_names is a list of types in the original schema that get "
             "mapped to new_type_name: [('Human', ['Human1', 'Human2'])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_clashing_type_single_rename(self) -> None:
@@ -842,7 +841,7 @@ class TestRenameSchema(unittest.TestCase):
             "where new_type_name is the type name that would appear in the new schema and "
             "original_schema_type_names is a list of types in the original schema that get "
             "mapped to new_type_name: [('Human', ['Human', 'Human2'])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_clashing_type_one_unchanged_rename(self) -> None:
@@ -878,7 +877,7 @@ class TestRenameSchema(unittest.TestCase):
             "where new_type_name is the type name that would appear in the new schema and "
             "original_schema_type_names is a list of types in the original schema that get "
             "mapped to new_type_name: [('Human3', ['Human', 'Human2'])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_clashing_scalar_type_rename(self) -> None:
@@ -911,7 +910,7 @@ class TestRenameSchema(unittest.TestCase):
             "where new_type_name is the type name that would appear in the new schema and "
             "original_schema_type_names is a list of types in the original schema that get "
             "mapped to new_type_name: [('SCALAR', ['Human', 'SCALAR'])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_builtin_type_conflict_rename(self) -> None:
@@ -934,13 +933,13 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(schema_string), {"Human": "String"})
         self.assertEqual(
-            f"Applying the renaming would rename type(s) to a name already used by a built-in "
-            f"GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
-            f"scalar's name. The following is a list of tuples that describes what needs to be "
-            f"fixed. Each tuple is of the form (type_name, scalar_name) where type_name is the "
-            f"original name of the type and scalar_name is the name of the scalar that the "
-            f"type would be renamed to: [('Human', 'String')]",
-            str(e.exception)
+            "Applying the renaming would rename type(s) to a name already used by a built-in "
+            "GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
+            "scalar's name. The following is a list of tuples that describes what needs to be "
+            "fixed. Each tuple is of the form (type_name, scalar_name) where type_name is the "
+            "original name of the type and scalar_name is the name of the scalar that the "
+            "type would be renamed to: [('Human', 'String')]",
+            str(e.exception),
         )
 
     def test_multiple_naming_conflicts(self) -> None:
@@ -985,7 +984,7 @@ class TestRenameSchema(unittest.TestCase):
             "fixed. Each tuple is of the form (type_name, scalar_name) where type_name is the "
             "original name of the type and scalar_name is the name of the scalar that the "
             "type would be renamed to: [('Human', 'String')]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_start_with_number(self) -> None:
