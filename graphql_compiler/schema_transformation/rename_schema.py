@@ -88,7 +88,7 @@ Renaming constraints:
 from collections import namedtuple, defaultdict
 from collections.abc import Iterable
 from copy import copy
-from typing import AbstractSet, Any, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import AbstractSet, Any, Dict, List, Optional, Set, Tuple, Union, cast, DefaultDict
 
 from graphql import (
     DocumentNode,
@@ -461,9 +461,9 @@ def _rename_and_suppress_types_and_fields(
             for type_name in visitor.reverse_name_map
             if type_name != visitor.reverse_name_map[type_name]
         }
-        no_op_renames: Set[str] = set(type_renamings) - renamed_types - set(visitor.suppressed_types)
-        if no_op_renames:
-            raise NoOpRenamingError(no_op_renames)
+        no_op_type_renames: Set[str] = set(type_renamings) - renamed_types - set(visitor.suppressed_types)
+        if no_op_type_renames or visitor.no_op_field_renamings:
+            raise NoOpRenamingError(no_op_type_renames, visitor.no_op_field_renamings)
     return renamed_schema_ast, visitor.reverse_name_map, visitor.reverse_field_name_map
 
 
@@ -574,6 +574,19 @@ class RenameSchemaTypesVisitor(Visitor):
     # Collects the type names for types that get suppressed. If type_renamings would suppress a type named
     # "Foo", renamed_types will contain "Foo".
     suppressed_types: Set[str]
+    # reverse_field_name_map maps type name to a dict, which in turn maps the name of a field in the
+    # renamed schema to the name of the field in the original schema, if the field has different
+    # names in the original schema and the new schema. If field_renamings would rename a field named
+    # "foo" to "bar" in a type named "Baz", then reverse_field_name_map["Baz"] will map "bar" to
+    # "foo".
+    reverse_field_name_map: DefaultDict[str, Dict[str, str]]
+    # Maps no-op renamings for fields, mapping the type name (that contains the field) to the set of
+    # names of fields for which field_renamings contained no-op renamings. Applies only when
+    # field_renamings is iterable. If field_renamings would rename a field named "foo" to "foo" in a
+    # type named "Bar", or if it would rename a field named "foo" in a type named "Bar" when such a
+    # field does not exist, no_op_field_renamings will map "Bar" to a set containing "foo".
+    # TODO wow this was pretty convoluted, see if you can re-word this
+    no_op_field_renamings: DefaultDict[str, Set[str]]
 
     def __init__(
         self,
@@ -605,6 +618,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.suppressed_types = set()
         self.field_renamings = field_renamings
         self.reverse_field_name_map = defaultdict(dict)
+        self.no_op_field_renamings = defaultdict(set)
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -708,13 +722,21 @@ class RenameSchemaTypesVisitor(Visitor):
         field_nodes = set(node.fields)
         new_field_node_names = set()
         new_field_nodes = set()
+        field_node_renamings = self.field_renamings.get(node.name.value, None)  # field renamings for this type in particular
+        field_node_renamings_iterable = isinstance(field_node_renamings, Iterable)
+        if field_node_renamings_iterable:
+            field_renamings_to_be_used = set(field_node_renamings)  # toDO this is iffy bc field_renamings_to_be_used doesn't always show up and that makes Pycharm sad
         for field_node in field_nodes:
             original_field_name = field_node.name.value
-            new_names = self.field_renamings.get(node.name.value, None).get(original_field_name, [original_field_name])  # TODO: same problem as before with the default None argument
+            if field_node_renamings_iterable:
+                # Check for no-op 1-1 renamings for fields
+                if original_field_name in field_node_renamings and field_node_renamings[original_field_name] == [original_field_name]:
+                    self.no_op_field_renamings[node.name.value].add(original_field_name)
+            new_names = field_node_renamings.get(original_field_name, [original_field_name])  # TODO: same problem as before with the default None argument
             for new_field_name in new_names:
                 if new_field_name in new_field_node_names:
                     # 'TODO fix this error message reporting for name conflicts'
-                    raise SchemaRenameNameConflictError({}, {})
+                    raise SchemaRenameNameConflictError({}, {}, new_field_name)
                 if not is_valid_unreserved_name(new_field_name):
                     raise InvalidTypeNameError("TODO make a better error collecting thing for this")
                 # TODO can we implement this without parallel structures for new_field_node_names and new_field_nodes? Prone to errors, hard to reason about
@@ -722,6 +744,11 @@ class RenameSchemaTypesVisitor(Visitor):
                 new_field_nodes.add(get_copy_of_node_with_new_name(field_node, new_field_name))
                 if original_field_name != new_field_name:
                     self.reverse_field_name_map[node.name.value][new_field_name] = original_field_name
+            if field_node_renamings_iterable:
+                field_renamings_to_be_used.discard(original_field_name)  # discard to avoid raising errors if the renamings didn't explicitly specify this to be renamed, which is ok
+        if field_node_renamings_iterable and field_renamings_to_be_used:
+            # Need this condition because if all the renamings are used, calling update() will cause an empty set to be materialized anyways and then it'll seem like there are no-op field renamings when there aren't.
+            self.no_op_field_renamings[node.name.value].update(field_renamings_to_be_used)  # add in all the nodes that weren't renamed
         new_type_node = copy(node)  # shallow copy is enough
         new_type_node.fields = FrozenList(new_field_nodes)
         return new_type_node

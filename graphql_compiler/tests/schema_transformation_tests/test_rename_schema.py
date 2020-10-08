@@ -527,13 +527,13 @@ class TestRenameSchema(unittest.TestCase):
             {"Human": {"age": "id", "new_age": "age"}}, renamed_schema.reverse_field_name_map
         )
 
-    def test_field_renaming_illegal_noop(self) -> None:
+    def test_field_renaming_illegal_noop_unused_renaming(self) -> None:
         with self.assertRaises(NoOpRenamingError):
             rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": ["new_pet"]}})
         # TODO: check error message too
 
-    def test_field_renaming_legal_noop(self) -> None:
-        # Unlike with test_field_renaming_illegal_noop, here field_renamings is not iterable.
+    def test_field_renaming_legal_noop_unused_renaming(self) -> None:
+        # Unlike with test_field_renaming_illegal_noop_unused_renaming, here field_renamings is not iterable.
         # As a result, this renaming is technically legal but it is inadvisable to write a
         # renaming like this since the intended "pet" -> "new_pet" mapping is unused and will
         # silently do nothing when applied to ISS.many_fields_schema.
@@ -560,6 +560,15 @@ class TestRenameSchema(unittest.TestCase):
         )
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
+
+    def test_field_renaming_illegal_noop_renamed_to_self(self) -> None:
+        # This would be legal if the field named "id" were 1-many renamed to something else as well
+        # (e.g. renaming to "id" and "new_id" so that both fields in the renamed schema correspond
+        # to the field named "id" in the original schema). However, since this is a 1-1 renaming,
+        # this renaming would have no effect.
+        with self.assertRaises(NoOpRenamingError):
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"id": ["id"]}})
+        # TODO: check error message too
 
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(

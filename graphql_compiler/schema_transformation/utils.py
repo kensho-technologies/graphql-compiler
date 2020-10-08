@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
-from typing import Any, Dict, FrozenSet, List, Optional, Set, Type, TypeVar, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Set, Type, TypeVar, Union, DefaultDict
 
 from graphql import GraphQLSchema, build_ast_schema, specified_scalar_types
 from graphql.language.ast import (
@@ -75,9 +75,10 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         self,
         name_conflicts: Dict[str, Set[str]],
         renamed_to_builtin_scalar_conflicts: Dict[str, str],
+        new_field_name: Optional[str] = None  # TODO: fix this
     ) -> None:
         """Record all renaming conflicts."""
-        if not name_conflicts and not renamed_to_builtin_scalar_conflicts:
+        if not name_conflicts and not renamed_to_builtin_scalar_conflicts and not new_field_name:
             raise ValueError(
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
                 "name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both empty "
@@ -86,6 +87,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         super().__init__()
         self.name_conflicts = name_conflicts
         self.renamed_to_builtin_scalar_conflicts = renamed_to_builtin_scalar_conflicts
+        self.new_field_name = new_field_name # TODO yada yada yada, add to __str__ method too
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
@@ -146,10 +148,11 @@ class NoOpRenamingError(SchemaTransformError):
 
     no_op_renames: Set[str]
 
-    def __init__(self, no_op_renames: Set[str]) -> None:
+    def __init__(self, no_op_renames: Set[str], no_op_field_renames: DefaultDict[str, Set[str]]) -> None:
         """Record all renaming conflicts."""
         super().__init__()
         self.no_op_renames = no_op_renames
+        self.no_op_field_renames = no_op_field_renames
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
@@ -158,6 +161,7 @@ class NoOpRenamingError(SchemaTransformError):
             f"entries exist in the type_renamings argument, which either rename a type to itself or "
             f"would rename a type that doesn't exist in the schema, both of which are invalid: "
             f"{sorted(self.no_op_renames)}"
+            # TODO: add error message for no op field renames.
         )
 
 
@@ -207,7 +211,7 @@ RenameNodesT = TypeVar("RenameNodesT", bound=RenameNodes)
 
 # Node types whose fields may be renamed
 RenamableFields = Union[
-    InterfaceTypeDefinitionNode,
+    # InterfaceTypeDefinitionNode,  # TODO: deal with interface edge cases
     ObjectTypeDefinitionNode,
 ]
 RenamableFieldsT = TypeVar("RenamableFieldsT", bound=RenamableFields)
