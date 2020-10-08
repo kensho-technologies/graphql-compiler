@@ -214,7 +214,17 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                         # There is no value for the named property here.
                         property_value = None
                     else:
-                        property_value = < load the field_name property's value for current_token >
+                        if field_name == "__typename":
+                            # The query is requesting the runtime type of the current vertex.
+                            # If current_type_name is an interface type, the runtime type of
+                            # the current vertex may either be that interface type or
+                            # a type that implements that interface. More info on "__typename"
+                            # can be found at https://graphql.org/learn/queries/#meta-fields
+                            property_value = < load the runtime type of the current_token vertex >
+                        else:
+                            property_value = (
+                                < load the value of the field_name property for current_token >
+                            )
 
                     # Remember to always yield the DataContext alongside the produced value
                     yield data_context, property_value
