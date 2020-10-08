@@ -126,8 +126,9 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
     The set of hints (and the information each hint provides) could grow in the future. Currently,
     the following hints are offered:
-    - runtime_arg_hints: the names and values of any runtime arguments provided to the query for use
-      in filtering operations (e.g. "$foo"); an empty mapping in queries with no runtime arguments.
+    - runtime_arg_hints: the names and values of any runtime arguments provided to the query
+      for use in filtering operations (e.g. "$arg_name"); an empty mapping in queries
+      with no runtime arguments.
     - used_property_hints: the property names in the current scope that are used by the query,
       e.g. in a filter or as an output. Within project_neighbors(), the current scope is the
       neighboring vertex; in the remaining 3 methods the current scope is the current vertex.
@@ -203,8 +204,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                        - one of the types defined in the schema's root query type:
                          http://spec.graphql.org/June2018/#sec-Root-Operation-Types
             runtime_arg_hints: names and values of any runtime arguments provided to the query
-                               for use in filtering operations (e.g. "$foo").
-            used_property_hints: the property names of the requested vertices the that
+                               for use in filtering operations (e.g. "$arg_name").
+            used_property_hints: the property names of the requested vertices that
                                  are going to be used in a subsequent filtering or output step.
             filter_hints: information about any filters applied to the requested vertices,
                           such as "which filtering operations are being performed?"
