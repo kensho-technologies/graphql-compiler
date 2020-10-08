@@ -416,9 +416,9 @@ def _rename_and_suppress_types(
             f"start with double underscores. The following dictionary maps each type's original "
             f"name to what would be the new name: {visitor.invalid_type_names}"
         )
-    if visitor.name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
+    if visitor.type_name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
         raise SchemaRenameNameConflictError(
-            visitor.name_conflicts, visitor.renamed_to_builtin_scalar_conflicts
+            visitor.type_name_conflicts, visitor.renamed_to_builtin_scalar_conflicts
         )
     if isinstance(renamings, Iterable):
         # If renamings is iterable, then every renaming must be used and no renaming can map a
@@ -530,9 +530,9 @@ class RenameSchemaTypesVisitor(Visitor):
         }
     )
     # Collects naming conflict errors involving types that are not built-in scalar types. If
-    # renaming would result in multiple types being named "Foo", name_conflicts will map "Foo" to a
+    # renaming would result in multiple types being named "Foo", type_name_conflicts will map "Foo" to a
     # set containing the name of each such type
-    name_conflicts: Dict[str, Set[str]]
+    type_name_conflicts: Dict[str, Set[str]]
     # Collects naming conflict errors involving built-in scalar types. If renaming would rename a
     # type named "Foo" to "String", renamed_to_scalar_conflicts will map "Foo" to "String"
     renamed_to_builtin_scalar_conflicts: Dict[str, str]
@@ -567,7 +567,7 @@ class RenameSchemaTypesVisitor(Visitor):
         """
         self.renamings = renamings
         self.reverse_name_map = {}
-        self.name_conflicts = {}
+        self.type_name_conflicts = {}
         self.renamed_to_builtin_scalar_conflicts = {}
         self.invalid_type_names = {}
         self.query_type = query_type
@@ -648,9 +648,9 @@ class RenameSchemaTypesVisitor(Visitor):
 
             # Collect all types in the original schema that would be named desired_type_name in the
             # new schema
-            if desired_type_name not in self.name_conflicts:
-                self.name_conflicts[desired_type_name] = {conflictingly_renamed_type_name}
-            self.name_conflicts[desired_type_name].add(type_name)
+            if desired_type_name not in self.type_name_conflicts:
+                self.type_name_conflicts[desired_type_name] = {conflictingly_renamed_type_name}
+            self.type_name_conflicts[desired_type_name].add(type_name)
 
         if desired_type_name in builtin_scalar_type_names:
             self.renamed_to_builtin_scalar_conflicts[type_name] = desired_type_name
