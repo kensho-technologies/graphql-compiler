@@ -443,7 +443,7 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_field_rename(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": ["new_id"]}})
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"new_id"}}})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -469,7 +469,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_field_rename_includes_original_name(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.basic_schema), {}, {"Human": {"id": ["new_id", "id"]}}
+            parse(ISS.basic_schema), {}, {"Human": {"id": {"new_id", "id"}}}
         )
         renamed_schema_string = dedent(
             """\
@@ -497,7 +497,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_field_rename_only_affects_names_in_original_schema(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.many_fields_schema), {}, {"Human": {"id": ["age", "id"], "age": ["new_age"]}}
+            parse(ISS.many_fields_schema), {}, {"Human": {"id": {"age", "id"}, "age": {"new_age"}}}
         )
         renamed_schema_string = dedent(
             """\
@@ -529,7 +529,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_field_renaming_illegal_noop_unused_renaming(self) -> None:
         with self.assertRaises(NoOpRenamingError):
-            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": ["new_pet"]}})
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": {"new_pet"}}})
         # TODO: check error message too
 
     def test_field_renaming_legal_noop_unused_renaming(self) -> None:
@@ -539,11 +539,11 @@ class TestRenameSchema(unittest.TestCase):
         # silently do nothing when applied to ISS.many_fields_schema.
         class FieldRenamingNoOpMapping:
             class FieldNoOpRenamings:
-                def get(self, field_name: str, default: List[str]) -> List[str]:
+                def get(self, field_name: str, default: Set[str]) -> Set[str]:
                     """Define field renaming to use."""
                     if field_name == "pet":
-                        return ["new_pet"]
-                    return [field_name]
+                        return {"new_pet"}
+                    return {field_name}
 
             def get(
                 self, type_name: str, default_field_renamings: FieldNoOpRenamings
@@ -567,7 +567,7 @@ class TestRenameSchema(unittest.TestCase):
         # to the field named "id" in the original schema). However, since this is a 1-1 renaming,
         # this renaming would have no effect.
         with self.assertRaises(NoOpRenamingError):
-            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"id": ["id"]}})
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"id": {"id"}}})
         # TODO: check error message too
 
     def test_enum_rename(self) -> None:
@@ -1175,7 +1175,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_clashing_field_rename(self) -> None:
         with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"name": ["name", "id"]}})
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"name": {"name", "id"}}})
         # TODO: check the SchemaRenameNameConflictError error message as well
 
     def test_illegal_rename_type_start_with_number(self) -> None:
@@ -1184,7 +1184,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_illegal_rename_field_start_with_number(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": "0id"}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"0id"}}})
 
     def test_illegal_rename_type_contains_illegal_char(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
@@ -1196,11 +1196,11 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_illegal_rename_field_contains_illegal_char(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": "Human!"}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"Human!"}}})
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": "H-uman"}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"H-uman"}}})
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": "H.uman"}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"H.uman"}}})
 
     def test_illegal_rename_type_to_double_underscore(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
@@ -1208,7 +1208,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_illegal_rename_field_to_double_underscore(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": ["__id"]}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"__id"}}})
 
     def test_illegal_rename_type_to_reserved_name_type(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
@@ -1216,7 +1216,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_illegal_rename_field_to_reserved_name_type(self) -> None:
         with self.assertRaises(InvalidTypeNameError):
-            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": ["__Type"]}})
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"__Type"}}})
 
     def test_suppress_every_type(self) -> None:
         with self.assertRaises(SchemaTransformError):

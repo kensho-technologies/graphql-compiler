@@ -150,11 +150,12 @@ class TypeRenamingMapping(Protocol):
 
 class FieldRenamingMapping(Protocol):
     class FieldRenamings(Protocol):
-        def get(self, field_name: str, default: List[str]) -> List[str]:
+        def get(self, field_name: str, default: Set[str]) -> Set[str]:
             """Define mapping for renaming fields belonging to a type."""
             ...
 
-    def get(self, type_name: str, default_field_renamings: FieldRenamings) -> Optional[FieldRenamings]:
+    def get(self, type_name: str, default_field_renamings: Optional[FieldRenamings]) -> Optional[FieldRenamings]:
+        # TODO: should default_field_renamings be optional?
         """Define mapping for a particular type's field renamings."""
         ...
 
@@ -434,13 +435,14 @@ def _rename_and_suppress_types_and_fields(
     """
     visitor = RenameSchemaTypesVisitor(type_renamings, field_renamings, query_type, custom_scalar_names)
     renamed_schema_ast = visit(schema_ast, visitor)
-    if visitor.invalid_type_names:
+    if visitor.invalid_type_names or visitor.invalid_field_names:
         raise InvalidTypeNameError(
             f"Applying the type renaming would rename types with names that are not valid, unreserved "
             f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
             f"characters and underscores, must not start with a numeric character, and must not "
             f"start with double underscores. The following dictionary maps each type's original "
-            f"name to what would be the new name: {visitor.invalid_type_names}"
+            f"name to what would be the new name: {visitor.invalid_type_names}. also possibly invalid field names: {visitor.invalid_field_names}"
+        #     TODO: something about invalid field names too
         )
     if visitor.name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
         raise SchemaRenameNameConflictError(
@@ -568,7 +570,7 @@ class RenameSchemaTypesVisitor(Visitor):
     reverse_name_map: Dict[str, str]
     # Collects invalid type names in type_renamings. If type_renamings would rename a type named "Foo" to a
     # string that is not a valid, unreserved GraphQL type name (see definition in the
-    # type_name_is_valid function in utils), invalid_type_names will map "Foo" to the invalid type
+    # is_valid_unreserved_name function in utils), invalid_type_names will map "Foo" to the invalid type
     # name.
     invalid_type_names: Dict[str, str]
     # Collects the type names for types that get suppressed. If type_renamings would suppress a type named
@@ -587,6 +589,10 @@ class RenameSchemaTypesVisitor(Visitor):
     # field does not exist, no_op_field_renamings will map "Bar" to a set containing "foo".
     # TODO wow this was pretty convoluted, see if you can re-word this
     no_op_field_renamings: DefaultDict[str, Set[str]]
+    # Collects invalid field names in field_renamings. If field_renamings would rename a field named "foo" (belonging to a type named "Bar") to a
+    # string that is not a valid, unreserved GraphQL type name (see definition in the
+    # is_valid_unreserved_name function in utils), invalid_field_names will map "Bar" to a dict that maps "foo" to the invalid field name.
+    invalid_field_names: DefaultDict[str, Dict[str, str]]
 
     def __init__(
         self,
@@ -619,6 +625,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.field_renamings = field_renamings
         self.reverse_field_name_map = defaultdict(dict)
         self.no_op_field_renamings = defaultdict(set)
+        self.invalid_field_names = defaultdict(dict)
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -715,40 +722,41 @@ class RenameSchemaTypesVisitor(Visitor):
             return node_with_new_name
 
     def _rename_fields(self, node: RenamableFieldsT) -> RenamableFieldsT:
-        """Renames node's fields, if applicable, and return node with fields renamed."""
-        if self.field_renamings.get(node.name.value, None) is None:
-            # TODO: this is syntactically invalid if we don't give it the None argument, but we really don't want to have the argument required at all, but it seems we can't set default arguments in the class for some reason.
+        """Renames node's fields, if applicable and return new node."""
+        type_name = node.name.value
+        field_renamings = self.field_renamings.get(type_name, None)
+        if field_renamings is None:
+            # TODO: need to check that this is the idiomatic way to check for none-- could there be falsey not-None values?
             return node
-        field_nodes = set(node.fields)
-        new_field_node_names = set()
+        # TODO: can we implement this without parallel structures for taken_field_names and
+        # new_field_nodes? I haven't thought of a way to do this cleanly but as it is, it's easy for
+        # errors to creep in.
+        taken_field_names = set()  # Field names that are taken in the new schema
         new_field_nodes = set()
-        field_node_renamings = self.field_renamings.get(node.name.value, None)  # field renamings for this type in particular
-        field_node_renamings_iterable = isinstance(field_node_renamings, Iterable)
-        if field_node_renamings_iterable:
-            field_renamings_to_be_used = set(field_node_renamings)  # toDO this is iffy bc field_renamings_to_be_used doesn't always show up and that makes Pycharm sad
-        for field_node in field_nodes:
+        for field_node in node.fields:
             original_field_name = field_node.name.value
-            if field_node_renamings_iterable:
-                # Check for no-op 1-1 renamings for fields
-                if original_field_name in field_node_renamings and field_node_renamings[original_field_name] == [original_field_name]:
-                    self.no_op_field_renamings[node.name.value].add(original_field_name)
-            new_names = field_node_renamings.get(original_field_name, [original_field_name])  # TODO: same problem as before with the default None argument
-            for new_field_name in new_names:
-                if new_field_name in new_field_node_names:
+            if isinstance(field_renamings, Iterable) and field_renamings.get(original_field_name, set()) == {original_field_name}:
+                # Check for no-op 1-1 renamings when the renamings are iterable and would rename a
+                # field to itself.
+                self.no_op_field_renamings[type_name].add(original_field_name)
+            new_field_names = field_renamings.get(original_field_name, {original_field_name})
+            for new_field_name in new_field_names:
+                if new_field_name in taken_field_names:
                     # 'TODO fix this error message reporting for name conflicts'
                     raise SchemaRenameNameConflictError({}, {}, new_field_name)
                 if not is_valid_unreserved_name(new_field_name):
-                    raise InvalidTypeNameError("TODO make a better error collecting thing for this")
-                # TODO can we implement this without parallel structures for new_field_node_names and new_field_nodes? Prone to errors, hard to reason about
-                new_field_node_names.add(new_field_name)
-                new_field_nodes.add(get_copy_of_node_with_new_name(field_node, new_field_name))
+                    self.invalid_field_names[type_name][original_field_name] = new_field_name
                 if original_field_name != new_field_name:
-                    self.reverse_field_name_map[node.name.value][new_field_name] = original_field_name
-            if field_node_renamings_iterable:
-                field_renamings_to_be_used.discard(original_field_name)  # discard to avoid raising errors if the renamings didn't explicitly specify this to be renamed, which is ok
-        if field_node_renamings_iterable and field_renamings_to_be_used:
-            # Need this condition because if all the renamings are used, calling update() will cause an empty set to be materialized anyways and then it'll seem like there are no-op field renamings when there aren't.
-            self.no_op_field_renamings[node.name.value].update(field_renamings_to_be_used)  # add in all the nodes that weren't renamed
+                    self.reverse_field_name_map[type_name][new_field_name] = original_field_name
+            taken_field_names.update(new_field_names)
+            new_field_nodes.update(get_copy_of_node_with_new_name(field_node, new_field_name) for new_field_name in new_field_names)
+        if isinstance(field_renamings, Iterable):
+            unused_field_renamings = set(field_renamings) - {field.name.value for field in node.fields}
+            if unused_field_renamings:
+                # Need this condition because if all the renamings are used, calling update() will
+                # materialize an empty set, making it seem like there are no-op field renamings even
+                # when there aren't.
+                self.no_op_field_renamings[type_name].update(unused_field_renamings)
         new_type_node = copy(node)  # shallow copy is enough
         new_type_node.fields = FrozenList(new_field_nodes)
         return new_type_node
