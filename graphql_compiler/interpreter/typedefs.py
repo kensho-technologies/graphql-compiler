@@ -176,22 +176,27 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         In situations such as outputting property values or applying filters to properties,
         the interpreter needs to get the value of some property field for a series of DataTokens.
+
         For example, consider the following query:
             {
                 Foo {
                     bar @output(out_name: "bar_value")
                 }
             }
+
         Once the interpreter has used the get_tokens_of_type() function to obtain
-        an iterable of DataTokens for the Foo type, it will need to get the value of
-        the "bar" property on those tokens. This is where project_property() comes in.
-        The interpreter would call project_property() with arguments current_type_name = "Foo"
-        and field_name = "bar" along with an iterable of DataContext values, each of which
-        contains an optional DataToken as its current_token attribute. These DataContext
-        objects simply allow the interpreter to keep track of "which data came from where";
-        only the DataToken value within the current_token attribute is relevant to this function.
-        For each such DataToken held within a DataContext, project_property() needs to produce
-        the value of its property whose name is given as the field_name function argument.
+        an iterable of DataTokens for the Foo type, it will automatically wrap each of them in
+        a "bookkeeping" object called DataContext. These DataContext objects allow
+        the interpreter to keep track of "which data came from where"; only the DataToken value
+        within their current_token attribute is relevant to the InterpreterAdapter API.
+
+        Having obtained an iterable of DataTokens and converted it to an iterable of DataContexts,
+        the interpreter needs to get the value of the "bar" property for the tokens within
+        the contexts. To do so, the interpreter calls project_property() with the iterable
+        of DataContexts, setting current_type_name = "Foo" and field_name = "bar", requesting
+        the "bar" property's value for each DataContext with its corresponding current_token.
+        If the DataContext's current_token attribute is set to None (which may happen
+        when @optional edges are used), the property's value is considered to be None.
 
         A simple example implementation is as follows:
             def project_property(
@@ -219,10 +224,10 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                            property data needs to be loaded
             current_type_name: name of the vertex type whose property is being loaded. Guaranteed
                                to be the name of a type defined in the schema being queried.
-            field_name: name of the property whose data to load. Guaranteed to refer to a property
-                        that is valid for the supplied current_type_name based on the schema.
+            field_name: name of the property whose data needs to be loaded. Guaranteed to refer to
+                        a property that is valid for the supplied current_type_name in the schema.
             runtime_arg_hints: names and values of any runtime arguments provided to the query
-                               for use in filtering operations (e.g. "$foo").
+                               for use in filtering operations (e.g. "$arg_name").
             used_property_hints: the property names of the vertices being processed that
                                  are going to be used in a subsequent filtering or output step.
             filter_hints: information about any filters applied to the vertices being processed,
