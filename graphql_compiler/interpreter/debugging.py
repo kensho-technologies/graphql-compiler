@@ -42,14 +42,14 @@ def _unzip_and_yield_second(iterable: Iterable[Tuple[T, U]]) -> Iterable[U]:
 class AdapterOperation:
     """The record of an action performed to or by an InterpreterAdapter function as part of a trace.
 
-    For example, calling get_tokens_of_type("Foo") would be an AdapterOperation with kind "call",
+    For example, calling get_tokens_of_type("Foo") would produce an AdapterOperation with kind "call",
     with name "get_tokens_of_type", with unique ID and parent unique IDs appropriate for the trace,
     and with data (("Foo",), {}) as the tuple of the positional arguments tuple and kwargs dict.
 
     The parent_uid field allows us to track dependencies across different operations. For example,
-    data yielded by a call to a generator-style function will be recorded in AdapterOperations
-    with kind "yield" whose parent_uid points to the AdapterOperation of the particular invocation
-    of the function that is yielding that data.
+    data yielded by a generator-style function will be recorded in AdapterOperations
+    of kind "yield" whose parent_uids point to the AdapterOperation of the particular invocation
+    of the function that is generating that data.
     """
 
     kind: Literal["call", "yield", "return"]
@@ -61,7 +61,7 @@ class AdapterOperation:
 
 @dataclass(frozen=True)
 class RecordedTrace(Generic[DataToken]):
-    """A complete immutable recording of the execution of a query via an InterpreterAdapter.
+    """A complete, immutable recording of the execution of a query via an InterpreterAdapter.
 
     Includes a linearized sequence of all operations performed during the execution of the query:
     - adapter function calls, yields, and returns;
@@ -73,10 +73,10 @@ class RecordedTrace(Generic[DataToken]):
     The recording is sufficiently detailed to be used in at least the following use cases:
     - to examine, either manually or through automated tests, a query's execution flow;
     - to "impersonate" an InterpreterAdapter implementation for a given query, allowing bugs in
-      the interpreter library code to be isolated and reproduced without an InterpreterAdapter;
-    - to "impersonate" the interpreter library code toward an InterpreterAdapter implementation,
+      the interpreter code to be isolated and reproduced without an InterpreterAdapter;
+    - to "impersonate" the interpreter code toward an InterpreterAdapter implementation,
       allowing adapter implementers to test and examine their implementations in isolation from
-      the rest of the interpreter library code.
+      the rest of the interpreter code.
     """
 
     DEFAULT_ROOT_UID: ClassVar[int] = -1
