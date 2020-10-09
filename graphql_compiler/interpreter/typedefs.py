@@ -350,22 +350,27 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         In situations such as outputting property values or applying filters to properties,
         the interpreter needs to get the value of some property field for a series of DataTokens.
+
         For example, consider the following query:
             {
                 Foo {
                     bar @output(out_name: "bar_value")
                 }
             }
+
         Once the interpreter has used the get_tokens_of_type() function to obtain
-        an iterable of DataTokens for the Foo type, it will need to get the value of
-        the "bar" property on those tokens. This is where project_property() comes in.
-        The interpreter would call project_property() with arguments current_type_name = "Foo"
-        and field_name = "bar" along with an iterable of DataContext values, each of which
-        contains an optional DataToken as its current_token attribute. These DataContext
-        objects simply allow the interpreter to keep track of "which data came from where";
-        only the DataToken value within the current_token attribute is relevant to this function.
-        For each such DataToken held within a DataContext, project_property() needs to produce
-        the value of its property whose name is given as the field_name function argument.
+        an iterable of DataTokens for the Foo type, it will automatically wrap each of them in
+        a "bookkeeping" object called DataContext. These DataContext objects allow
+        the interpreter to keep track of "which data came from where"; only the DataToken value
+        bound to each current_token attribute is relevant to the InterpreterAdapter API.
+
+        Having obtained an iterable of DataTokens and converted it to an iterable of DataContexts,
+        the interpreter needs to get the value of the "bar" property for the tokens bound to
+        the contexts. To do so, the interpreter calls project_property() with the iterable
+        of DataContexts, setting current_type_name = "Foo" and field_name = "bar", requesting
+        the "bar" property's value for each DataContext with its corresponding current_token.
+        If the DataContext's current_token attribute is set to None (which may happen
+        when @optional edges are used), the property's value is considered to be None.
 
         A simple example implementation is as follows:
             def project_property(
@@ -383,7 +388,17 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                         # There is no value for the named property here.
                         property_value = None
                     else:
-                        property_value = < load the field_name property's value for current_token >
+                        if field_name == "__typename":
+                            # The query is requesting the runtime type of the current vertex.
+                            # If current_type_name is an interface type, the runtime type of
+                            # the current vertex may either be that interface type or
+                            # a type that implements that interface. More info on "__typename"
+                            # can be found at https://graphql.org/learn/queries/#meta-fields
+                            property_value = < load the runtime type of the current_token vertex >
+                        else:
+                            property_value = (
+                                < load the value of the field_name property for current_token >
+                            )
 
                     # Remember to always yield the DataContext alongside the produced value
                     yield data_context, property_value
@@ -391,12 +406,18 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         Args:
             data_contexts: iterable of DataContext objects which specify the DataTokens whose
                            property data needs to be loaded
-            current_type_name: name of the vertex type whose property is being loaded. Guaranteed
+            current_type_name: name of the vertex type whose property needs to be loaded. Guaranteed
                                to be the name of a type defined in the schema being queried.
-            field_name: name of the property whose data to load. Guaranteed to refer to a property
-                        that is valid for the supplied current_type_name based on the schema.
+            field_name: name of the property whose data needs to be loaded. Guaranteed to refer
+                        either to a property that is defined in the supplied current_type_name
+                        in the schema, or to the "__typename" meta field that is valid for all
+                        GraphQL types and holds the type name of the current vertex. This type name
+                        may be different from the value of current_type_name e.g. when
+                        current_type_name refers to an interface type and "__typename" refers to
+                        a type that implements that interface. More information on "__typename" may
+                        be found in the GraphQL docs: https://graphql.org/learn/queries/#meta-fields
             runtime_arg_hints: names and values of any runtime arguments provided to the query
-                               for use in filtering operations (e.g. "$foo").
+                               for use in filtering operations (e.g. "$arg_name").
             used_property_hints: the property names of the vertices being processed that
                                  are going to be used in a subsequent filtering or output step.
             filter_hints: information about any filters applied to the vertices being processed,
