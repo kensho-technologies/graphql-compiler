@@ -272,5 +272,103 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
         **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
-        """Determine if each of an iterable of input DataTokens can be coerced to another type."""
-        # TODO(predrag): Add more docs in an upcoming PR.
+        """Determine if each of an iterable of input DataTokens can be coerced to another type.
+
+        Consider a query like the following:
+            {
+                Foo {
+                    out_Foo_Bar {
+                        ... on BarImpl {
+                            < ... some fields here ... >
+                        }
+                    }
+                }
+            }
+
+        Assume that this query is written against a schema that contains the following definitions:
+            type Foo {
+                < ... some fields here ... >
+                out_Foo_Bar: [Bar]
+            }
+
+            interface Bar {
+                < ... some fields here ... >
+            }
+
+            type BarImpl implements Bar {
+                < ... some fields here ... >
+            }
+
+        When resolving the out_Foo_Bar edge in the query using project_neighbors(), the interpreter
+        receives DataTokens that (per the schema) are instances of the Bar interface type. However,
+        the query's subsequent "... on BarImpl" type coercion clause requires that the interpreter
+        discard any neighboring vertices that are not instances of BarImpl, a subtype of
+        the Bar interface type.
+
+        The interpreter uses can_coerce_to_type() for this purpose: it calls this function with
+        an iterable of DataContexts, with current_type_name set to "Bar" (the schema-implied type
+        of the query's scope) and with coerce_to_type_name set to "BarImpl" as the type to which
+        coercion is being attempted. For each DataContext in the input iterable, this function
+        yields a tuple containing the context itself together with a bool set to True if
+        the coercion to the new type could be completed.
+
+        A simple example implementation is as follows:
+            def can_coerce_to_type(
+                self,
+                data_contexts: Iterable[DataContext[DataToken]],
+                current_type_name: str,
+                coerce_to_type_name: str,
+                *,
+                runtime_arg_hints: Optional[Mapping[str, Any]] = None,
+                used_property_hints: Optional[AbstractSet[str]] = None,
+                filter_hints: Optional[Collection[FilterInfo]] = None,
+                neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
+                **hints: Any,
+            ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
+                for data_context in data_contexts:
+                    current_token = data_context.current_token
+                    can_coerce: bool
+                    if current_token is None:
+                        # Evaluating an @optional scope where the optional edge didn't exist.
+                        # We cannot coerce something that doesn't exist.
+                        can_coerce = False
+                    else:
+                        can_coerce = (
+                            < check whether current_token represents a vertex
+                                of type coerce_to_type_name >
+                        )
+
+                    # Remember to always yield the DataContext alongside the bool result.
+                    yield data_context, can_coerce
+
+        Args:
+            data_contexts: iterable of DataContext objects which specify the DataTokens that are
+                           being coerced to a new type
+            current_type_name: name of the vertex type from which the vertices are being coerced.
+                               Guaranteed to be the name of an interface or union type defined
+                               in the schema being queried.
+            coerce_to_type_name: name of the vertex type to which the vertices are being coerced.
+                                 Guaranteed to be the name of a type defined in the schema being
+                                 queried. If current_type_name refers to an interface type, then
+                                 coerce_to_type_name is guaranteed to refer to a type that
+                                 implements that interface. If current_type_name refers to a union
+                                 type, then coerce_to_type_name is guaranteed to refer to a type
+                                 that is a member of that union type.
+            runtime_arg_hints: names and values of any runtime arguments provided to the query
+                               for use in filtering operations (e.g. "$arg_name").
+            used_property_hints: the property names of the vertices being processed that
+                                 are going to be used in a subsequent filtering or output step.
+            filter_hints: information about any filters applied to the vertices being processed,
+                          such as "which filtering operations are being performed?"
+                          and "with which arguments?"
+            neighbor_hints: information about the edges of the vertices being processed
+                            that the query will eventually need to expand.
+            **hints: catch-all kwarg field making the function's signature forward-compatible with
+                     future revisions of this library that add more hints.
+
+        Yields:
+            tuples (data_context, can_coerce), with a DataContext together with whether
+            the current_token referenced by that context can be coerced to the specified type.
+            The yielded DataContext values must be yielded in the same order as they were received
+            via the function's data_contexts argument.
+        """
