@@ -252,10 +252,10 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         an iterable of DataTokens for the Foo type, it will automatically wrap each of them in
         a "bookkeeping" object called DataContext. These DataContext objects allow
         the interpreter to keep track of "which data came from where"; only the DataToken value
-        within their current_token attribute is relevant to the InterpreterAdapter API.
+        bound to each current_token attribute is relevant to the InterpreterAdapter API.
 
         Having obtained an iterable of DataTokens and converted it to an iterable of DataContexts,
-        the interpreter needs to get the value of the "bar" property for the tokens within
+        the interpreter needs to get the value of the "bar" property for the tokens bound to
         the contexts. To do so, the interpreter calls project_property() with the iterable
         of DataContexts, setting current_type_name = "Foo" and field_name = "bar", requesting
         the "bar" property's value for each DataContext with its corresponding current_token.
