@@ -40,16 +40,23 @@ def _unzip_and_yield_second(iterable: Iterable[Tuple[T, U]]) -> Iterable[U]:
 
 @dataclass(frozen=True)
 class AdapterOperation:
-    """The record of an action performed to or by an InterpreterAdapter function as part of a trace.
+    """The record of an action performed on or by an InterpreterAdapter function as part of a trace.
 
-    For example, calling get_tokens_of_type("Foo") would produce an AdapterOperation with kind "call",
-    with name "get_tokens_of_type", with unique ID and parent unique IDs appropriate for the trace,
-    and with data (("Foo",), {}) as the tuple of the positional arguments tuple and kwargs dict.
+    For example, calling get_tokens_of_type("Foo") would produce an AdapterOperation
+    with kind "call", with name "get_tokens_of_type", with unique ID and parent unique IDs
+    appropriate for the trace, and with data (("Foo",), {}) as the tuple of
+    the positional arguments tuple and kwargs dict.
 
     The parent_uid field allows us to track dependencies across different operations. For example,
     data yielded by a generator-style function will be recorded in AdapterOperations
     of kind "yield" whose parent_uids point to the AdapterOperation of the particular invocation
     of the function that is generating that data.
+
+    When InterpreterAdapter functions consume iterable arguments, the iterable argument in
+    the AdapterOperation "call" record is replaced by a placeholder name. As values from such
+    an iterable are consumed, those values are recorded in their own AdapterOperation records
+    with kind "yield", parent unique ID matching the unique ID of the "call" record, and
+    name matching the placeholder name in the "call" record.
     """
 
     kind: Literal["call", "yield", "return"]
