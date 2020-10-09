@@ -46,15 +46,81 @@ class SchemaStructureError(SchemaTransformError):
 
 
 class InvalidTypeNameError(SchemaTransformError):
-    """Raised if a type/field name is not valid.
+    """Raised if a type name is not valid.
 
-    This may be raised if the input schema contains invalid names, or if the user attempts to
-    rename a type/field to an invalid name. A name is considered valid if it consists of
-    alphanumeric characters and underscores and doesn't start with a numeric character (as
-    required by GraphQL), and doesn't start with double underscores as such type names are
+    This may be raised if the input schema contains invalid names. A name is considered valid if it
+    consists of alphanumeric characters and underscores and doesn't start with a numeric character
+    (as required by GraphQL), and doesn't start with double underscores as such type names are
     reserved for GraphQL internal use.
+
+    Not to be confused with SchemaRenameInvalidNameError, which is used for schemas being renamed
+    and includes more information.
     """
 
+
+class SchemaRenameInvalidNameError(SchemaTransformError):
+    """
+    Raised if a type/field name is not valid during renaming.
+
+    A name is considered valid if it consists of alphanumeric characters and underscores and doesn't
+    start with a numeric character (as required by GraphQL), and doesn't start with double
+    underscores as such type names are reserved for GraphQL internal use.
+
+    Not to be confused with InvalidTypeNameError, which is used for schemas that aren't being
+    renamed because this type of error includes information from the renaming process that
+    InvalidTypeNameError doesn't.
+    """
+    # TODO: is there a better way to do this than have two types of invalid name errors?
+    invalid_type_names: Dict[str, str]
+    invalid_field_names: Dict[str, Dict[str, str]]
+
+    def __init__(self, invalid_type_names: Dict[str, str], invalid_field_names: Dict[str, Dict[str, str]]
+                 ) -> None:
+        """Record all invalid names that arise specifically from renaming."""
+        if not invalid_type_names and not invalid_field_names:
+            raise ValueError(
+                "Cannot raise SchemaRenameInvalidNameError without at least one invalid name, but "
+                "all arguments were empty dictionaries."
+            )
+        super().__init__()
+        self.invalid_type_names = invalid_type_names
+        self.invalid_field_names = invalid_field_names
+
+    def __str__(self) -> str:
+        """Explain invalid names and the fix."""
+        explanation = (
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores."
+        )
+        invalid_type_names_message = ""
+        if self.invalid_type_names:
+            sorted_invalid_type_names = sorted(self.invalid_type_names.items())
+            invalid_type_names_message = (
+                f"The following is a list of tuples that describes what needs to be fixed for type "
+                f"renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+                f"original_name is the name in the original schema and invalid_new_name is what "
+                f"original_name would be renamed to: {sorted_invalid_type_names}"
+            )
+        invalid_field_names_message = ""
+        if self.invalid_field_names:
+            sorted_invalid_field_names = [
+                (type_name, sorted(field_renamings.items()))
+                for type_name, field_renamings in sorted(
+                    self.invalid_field_names.items()
+                )
+            ]
+            invalid_field_names_message = (
+                f"The following is a list of tuples that describes what needs to be fixed for "
+                f"field renamings. Each tuple is of the form (type_name, field_renamings) "
+                f"where type_name is the name of the type in the original schema and "
+                f"field_renamings is a list of tuples mapping the original field name to the "
+                f"invalid GraphQL name it would be renamed to: {sorted_invalid_field_names}"
+            )
+        return "\n".join(
+            filter(None, [explanation, invalid_type_names_message, invalid_field_names_message])
+        )
 
 class SchemaMergeNameConflictError(SchemaTransformError):
     """Raised when merging types or fields cause name conflicts.
@@ -83,6 +149,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
                 "type_name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both "
                 "empty dictionaries."
+                # TODO update this message now that there are 3 arguments
             )
         super().__init__()
         self.type_name_conflicts = type_name_conflicts

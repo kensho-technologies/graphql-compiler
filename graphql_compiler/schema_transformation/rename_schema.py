@@ -108,7 +108,7 @@ from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..typedefs import Protocol
 from .utils import (
     CascadingSuppressionError,
-    InvalidTypeNameError,
+    SchemaRenameInvalidNameError,
     NoOpRenamingError,
     RenameTypes,
     RenameTypesT,
@@ -190,14 +190,14 @@ def rename_schema(schema_ast: DocumentNode, type_renamings: TypeRenamingMapping,
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
         - SchemaTransformError if type_renamings suppressed every type. Note that this is a superclass of
-          CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
+          CascadingSuppressionError, SchemaRenameInvalidNameError, SchemaStructureError, and
           SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
           also catch all of its subclasses. This will change after the error classes are modified so
           that errors can be fixed programmatically, at which point it will make sense for the user
           to attempt to treat different errors differently
         - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a type
           implementing an interface
-        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+        - SchemaRenameInvalidNameError if the schema contains an invalid type name, or if the user attempts
           to rename a type to an invalid name. A name is considered invalid if it does not consist
           of alphanumeric characters and underscores, if it starts with a numeric character, or
           if it starts with double underscores
@@ -430,19 +430,14 @@ def _rename_and_suppress_types_and_fields(
         renamed.
 
     Raises:
-        - InvalidTypeNameError if the user attempts to rename a type to an invalid name
+        - SchemaRenameInvalidNameError if the user attempts to rename a type to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
     """
     visitor = RenameSchemaTypesVisitor(type_renamings, field_renamings, query_type, custom_scalar_names)
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.invalid_type_names or visitor.invalid_field_names:
-        raise InvalidTypeNameError(
-            f"Applying the type renaming would rename types with names that are not valid, unreserved "
-            f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
-            f"characters and underscores, must not start with a numeric character, and must not "
-            f"start with double underscores. The following dictionary maps each type's original "
-            f"name to what would be the new name: {visitor.invalid_type_names}. also possibly invalid field names: {visitor.invalid_field_names}"
-        #     TODO: something about invalid field names too
+        raise SchemaRenameInvalidNameError(
+            visitor.invalid_type_names, visitor.invalid_field_names
         )
     if visitor.type_name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
         raise SchemaRenameNameConflictError(

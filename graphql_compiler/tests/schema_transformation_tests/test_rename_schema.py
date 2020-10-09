@@ -15,7 +15,7 @@ from ...schema_transformation.rename_schema import (
 )
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
-    InvalidTypeNameError,
+    SchemaRenameInvalidNameError,
     NoOpRenamingError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
@@ -1143,44 +1143,182 @@ class TestRenameSchema(unittest.TestCase):
         # TODO: check the SchemaRenameNameConflictError error message as well
 
     def test_illegal_rename_type_start_with_number(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "0Human"}, {})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Human', '0Human')]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_field_start_with_number(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"0id"}}})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Human', [('id', '0id')])]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_type_contains_illegal_char(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "Human!"}, {})
-        with self.assertRaises(InvalidTypeNameError):
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Human', 'Human!')]",
+            str(e.exception)
+        )
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"}, {})
-        with self.assertRaises(InvalidTypeNameError):
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Human', 'H-uman')]",
+            str(e.exception)
+        )
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"}, {})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Human', 'H.uman')]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_field_contains_illegal_char(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"Human!"}}})
-        with self.assertRaises(InvalidTypeNameError):
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Human', [('id', 'Human!')])]",
+            str(e.exception)
+        )
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"H-uman"}}})
-        with self.assertRaises(InvalidTypeNameError):
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Human', [('id', 'H-uman')])]",
+            str(e.exception)
+        )
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"H.uman"}}})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Human', [('id', 'H.uman')])]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_type_to_double_underscore(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "__Human"}, {})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Human', '__Human')]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_field_to_double_underscore(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"__id"}}})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Human', [('id', '__id')])]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_type_to_reserved_name_type(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "__Type"}, {})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Human', '__Type')]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_field_to_reserved_name_type(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"__Type"}}})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Human', [('id', '__Type')])]",
+            str(e.exception)
+        )
 
     def test_suppress_every_type(self) -> None:
         with self.assertRaises(SchemaTransformError):
