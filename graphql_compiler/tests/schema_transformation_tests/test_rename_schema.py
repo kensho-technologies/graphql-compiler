@@ -966,7 +966,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(schema_string), {"Human1": "Human", "Human2": "Human"}, {})
         self.assertEqual(
             "Applying the renaming would produce a schema in which multiple types have the "
-            "same name, which is an illegal schema state. To fix this, modify the renamings "
+            "same name, which is an illegal schema state. To fix this, modify the type_renamings "
             "argument of rename_schema to ensure that no two types in the renamed schema have "
             "the same name. The following is a list of tuples that describes what needs to be "
             "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
@@ -1002,7 +1002,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(schema_string), {"Human2": "Human"}, {})
         self.assertEqual(
             "Applying the renaming would produce a schema in which multiple types have the "
-            "same name, which is an illegal schema state. To fix this, modify the renamings "
+            "same name, which is an illegal schema state. To fix this, modify the type_renamings "
             "argument of rename_schema to ensure that no two types in the renamed schema have "
             "the same name. The following is a list of tuples that describes what needs to be "
             "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
@@ -1038,7 +1038,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(schema_string), {"Human": "Human3", "Human2": "Human3"}, {})
         self.assertEqual(
             "Applying the renaming would produce a schema in which multiple types have the "
-            "same name, which is an illegal schema state. To fix this, modify the renamings "
+            "same name, which is an illegal schema state. To fix this, modify the type_renamings "
             "argument of rename_schema to ensure that no two types in the renamed schema have "
             "the same name. The following is a list of tuples that describes what needs to be "
             "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
@@ -1071,7 +1071,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(schema_string), {"Human": "SCALAR"}, {})
         self.assertEqual(
             "Applying the renaming would produce a schema in which multiple types have the "
-            "same name, which is an illegal schema state. To fix this, modify the renamings "
+            "same name, which is an illegal schema state. To fix this, modify the type_renamings "
             "argument of rename_schema to ensure that no two types in the renamed schema have "
             "the same name. The following is a list of tuples that describes what needs to be "
             "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
@@ -1139,7 +1139,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(schema_string), {"Human": "String", "Dog": "Cat"}, {})
         self.assertEqual(
             "Applying the renaming would produce a schema in which multiple types have the "
-            "same name, which is an illegal schema state. To fix this, modify the renamings "
+            "same name, which is an illegal schema state. To fix this, modify the type_renamings "
             "argument of rename_schema to ensure that no two types in the renamed schema have "
             "the same name. The following is a list of tuples that describes what needs to be "
             "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
@@ -1158,7 +1158,10 @@ class TestRenameSchema(unittest.TestCase):
     def test_clashing_field_rename(self) -> None:
         with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"name": {"name", "id"}}})
-        # TODO: check the SchemaRenameNameConflictError error message as well
+        self.assertEqual(
+            "Applying the renaming would produce a schema in which multiple fields belonging to the same type have the same name, which is an illegal schema state. To fix this, modify the field_renamings argument of rename_schema to ensure that within each type in the renamed schema, no two fields have the same name. The following is a list of tuples that describes what needs to be fixed. Each tuple is of the form (type_name, field_conflicts) where type_name is the type name that would appear in the original schema and field_conflicts is a list of tuples of the form (desired_field_name, original_field_names) where desired_field_name is the name of the field in the new schema and original_field_names is a list of the names of all the fields in the original schema that would be renamed to desired_field_name:  [('Human', [('id', ['id', 'name'])])]",
+            str(e.exception)
+        )
 
     def test_illegal_rename_type_start_with_number(self) -> None:
         with self.assertRaises(SchemaRenameInvalidNameError) as e:

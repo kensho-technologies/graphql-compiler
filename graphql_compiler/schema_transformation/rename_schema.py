@@ -439,9 +439,9 @@ def _rename_and_suppress_types_and_fields(
         raise SchemaRenameInvalidNameError(
             visitor.invalid_type_names, visitor.invalid_field_names
         )
-    if visitor.type_name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
+    if visitor.type_name_conflicts or visitor.renamed_to_builtin_scalar_conflicts or visitor.field_name_conflicts:
         raise SchemaRenameNameConflictError(
-            visitor.type_name_conflicts, visitor.renamed_to_builtin_scalar_conflicts
+            visitor.type_name_conflicts, visitor.renamed_to_builtin_scalar_conflicts, visitor.field_name_conflicts
         )
     if isinstance(type_renamings, Iterable):
         # If type_renamings is iterable, then every renaming must be used and no renaming can map a
@@ -587,6 +587,10 @@ class RenameSchemaTypesVisitor(Visitor):
     # string that is not a valid, unreserved GraphQL type name (see definition in the
     # is_valid_unreserved_name function in utils), invalid_field_names will map "Bar" to a dict that maps "foo" to the invalid field name.
     invalid_field_names: DefaultDict[str, Dict[str, str]]
+    # Collects naming conflict errors involving fields. If field_renamings would rename multiple fields (belonging to a type named "Bar" in the original schema) to "foo", field_name_conflicts will map "Bar" to a
+    # dict that maps "foo" to a set containing the names of the fields in the original schema that would be renamed to "foo".
+    field_name_conflicts: Dict[str, Dict[str, Set[str]]]
+    # TODO: probably rearrange the order of these fields since there are so many of them-- is there a better way to do this?
 
     def __init__(
         self,
@@ -620,6 +624,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.reverse_field_name_map = defaultdict(dict)
         self.no_op_field_renamings = defaultdict(set)
         self.invalid_field_names = defaultdict(dict)
+        self.field_name_conflicts = defaultdict(dict)
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -724,7 +729,7 @@ class RenameSchemaTypesVisitor(Visitor):
             return node
         # TODO: can we implement this without parallel structures for taken_field_names and
         # new_field_nodes? I haven't thought of a way to do this cleanly but as it is, it's easy for
-        # errors to creep in.
+        # errors to creep in. Answer: yes, use self.reverse_field_name_map like we do with renaming types
         taken_field_names = set()  # Field names that are taken in the new schema
         new_field_nodes = set()
         for field_node in node.fields:
@@ -736,8 +741,11 @@ class RenameSchemaTypesVisitor(Visitor):
             new_field_names = field_renamings.get(original_field_name, {original_field_name})
             for new_field_name in new_field_names:
                 if new_field_name in taken_field_names:
-                    # 'TODO fix this error message reporting for name conflicts'
-                    raise SchemaRenameNameConflictError({}, {}, new_field_name)
+                    # TODO: be consistent, default dicts throughout the code or no?
+                    if new_field_name not in self.field_name_conflicts[type_name]:
+                        conflictingly_renamed_field_name = self.reverse_field_name_map[type_name].get(new_field_name, new_field_name)
+                        self.field_name_conflicts[type_name][new_field_name] = {conflictingly_renamed_field_name}
+                    self.field_name_conflicts[type_name][new_field_name].add(original_field_name)
                 if not is_valid_unreserved_name(new_field_name):
                     self.invalid_field_names[type_name][original_field_name] = new_field_name
                 if original_field_name != new_field_name:

@@ -136,25 +136,24 @@ class SchemaRenameNameConflictError(SchemaTransformError):
 
     type_name_conflicts: Dict[str, Set[str]]
     renamed_to_builtin_scalar_conflicts: Dict[str, str]
+    field_name_conflicts: Dict[str, Dict[str, Set[str]]]
 
     def __init__(
         self,
         type_name_conflicts: Dict[str, Set[str]],
         renamed_to_builtin_scalar_conflicts: Dict[str, str],
-        new_field_name: Optional[str] = None  # TODO: fix this
+        field_name_conflicts: Dict[str, Dict[str, Set[str]]]
     ) -> None:
         """Record all renaming conflicts."""
-        if not type_name_conflicts and not renamed_to_builtin_scalar_conflicts and not new_field_name:
+        if not type_name_conflicts and not renamed_to_builtin_scalar_conflicts and not field_name_conflicts:
             raise ValueError(
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
-                "type_name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both "
-                "empty dictionaries."
-                # TODO update this message now that there are 3 arguments
+                "all arguments were empty dictionaries."
             )
         super().__init__()
         self.type_name_conflicts = type_name_conflicts
         self.renamed_to_builtin_scalar_conflicts = renamed_to_builtin_scalar_conflicts
-        self.new_field_name = new_field_name # TODO yada yada yada, add to __str__ method too
+        self.field_name_conflicts = field_name_conflicts
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
@@ -168,7 +167,7 @@ class SchemaRenameNameConflictError(SchemaTransformError):
             ]
             type_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple types have the "
-                f"same name, which is an illegal schema state. To fix this, modify the renamings "
+                f"same name, which is an illegal schema state. To fix this, modify the type_renamings "
                 f"argument of rename_schema to ensure that no two types in the renamed schema have "
                 f"the same name. The following is a list of tuples that describes what needs to be "
                 f"fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
@@ -189,8 +188,30 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                 f"original name of the type and scalar_name is the name of the scalar that the "
                 f"type would be renamed to: {sorted_renamed_to_builtin_scalar_conflicts}"
             )
+        field_name_conflicts_message = ""
+        if self.field_name_conflicts:
+            sorted_field_name_conflicts = [
+                (type_name, [
+                    (desired_field_name, sorted(original_field_names))
+                    for desired_field_name, original_field_names in sorted(field_renaming_conflicts_dict.items())
+                    ]
+                 )
+                for type_name, field_renaming_conflicts_dict in sorted(self.field_name_conflicts.items())
+            ]
+            # TODO: Would like feedback on this error message because we're dealing with multiple
+            # levels of indirection which means lots of nested parentheses and brackets as it
+            # stands.
+            field_name_conflicts_message = (
+                f"Applying the renaming would produce a schema in which multiple fields belonging to the same type have the "
+                f"same name, which is an illegal schema state. To fix this, modify the field_renamings "
+                f"argument of rename_schema to ensure that within each type in the renamed schema, no two fields have "
+                f"the same name. The following is a list of tuples that describes what needs to be "
+                f"fixed. Each tuple is of the form (type_name, field_conflicts) "
+                f"where type_name is the type name that would appear in the original schema and "
+                f"field_conflicts is a list of tuples of the form (desired_field_name, original_field_names) where desired_field_name is the name of the field in the new schema and original_field_names is a list of the names of all the fields in the original schema that would be renamed to desired_field_name:  {sorted_field_name_conflicts}"
+            )
         return "\n".join(
-            filter(None, [type_name_conflicts_message, renamed_to_builtin_scalar_conflicts_message])
+            filter(None, [type_name_conflicts_message, renamed_to_builtin_scalar_conflicts_message, field_name_conflicts_message])
         )
 
 
