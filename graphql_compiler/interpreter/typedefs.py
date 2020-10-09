@@ -307,8 +307,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         The interpreter uses can_coerce_to_type() for this purpose: it calls this function with
         an iterable of DataContexts, with current_type_name set to "Bar" (the schema-implied type
-        of the query's scope) and with coerce_to_type_name set to "BarImpl" as the type to which
-        coercion is being attempted. For each DataContext in the input iterable, this function
+        of the query's scope) and with coerce_to_type_name set to "BarImpl" (the type to which
+        coercion is being attempted). For each DataContext in the input iterable, this function
         yields a tuple containing the context itself together with a bool set to True if
         the coercion to the new type could be completed.
 
