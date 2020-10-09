@@ -232,7 +232,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         Args:
             data_contexts: iterable of DataContext objects which specify the DataTokens whose
                            property data needs to be loaded
-            current_type_name: name of the vertex type whose property is being loaded. Guaranteed
+            current_type_name: name of the vertex type whose property needs to be loaded. Guaranteed
                                to be the name of a type defined in the schema being queried.
             field_name: name of the property whose data needs to be loaded. Guaranteed to refer
                         either to a property that is defined in the supplied current_type_name
