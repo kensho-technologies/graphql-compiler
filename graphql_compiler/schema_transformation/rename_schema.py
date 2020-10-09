@@ -707,7 +707,7 @@ class RenameSchemaTypesVisitor(Visitor):
         # validated, so it will appear in the renamed schema, so it's safe to rename its fields
         # if applicable. TODO re-word this
         fields_renamed_node = node  # by default, if no field renaming happens, fields_renamed_node will just be the node the visitor is at.
-        if isinstance(node, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
+        if isinstance(node, ObjectTypeDefinitionNode):
             fields_renamed_node = self._rename_fields(node)
         self.reverse_name_map[desired_type_name] = type_name
         if desired_type_name == type_name:
