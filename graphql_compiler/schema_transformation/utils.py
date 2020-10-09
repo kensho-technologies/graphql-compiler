@@ -68,49 +68,62 @@ class SchemaMergeNameConflictError(SchemaTransformError):
 class SchemaRenameNameConflictError(SchemaTransformError):
     """Raised when renaming causes name conflicts."""
 
-    name_conflicts: Dict[str, Set[str]]
+    type_name_conflicts: Dict[str, Set[str]]
     renamed_to_builtin_scalar_conflicts: Dict[str, str]
 
     def __init__(
         self,
-        name_conflicts: Dict[str, Set[str]],
+        type_name_conflicts: Dict[str, Set[str]],
         renamed_to_builtin_scalar_conflicts: Dict[str, str],
         new_field_name: Optional[str] = None  # TODO: fix this
     ) -> None:
         """Record all renaming conflicts."""
-        if not name_conflicts and not renamed_to_builtin_scalar_conflicts and not new_field_name:
+        if not type_name_conflicts and not renamed_to_builtin_scalar_conflicts and not new_field_name:
             raise ValueError(
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
-                "name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both empty "
-                "dictionaries."
+                "type_name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both "
+                "empty dictionaries."
             )
         super().__init__()
-        self.name_conflicts = name_conflicts
+        self.type_name_conflicts = type_name_conflicts
         self.renamed_to_builtin_scalar_conflicts = renamed_to_builtin_scalar_conflicts
         self.new_field_name = new_field_name # TODO yada yada yada, add to __str__ method too
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
-        name_conflicts_message = ""
-        if self.name_conflicts:
-            name_conflicts_message = (
+        type_name_conflicts_message = ""
+        if self.type_name_conflicts:
+            sorted_type_name_conflicts = [
+                (new_type_name, sorted(original_schema_type_names))
+                for new_type_name, original_schema_type_names in sorted(
+                    self.type_name_conflicts.items()
+                )
+            ]
+            type_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple types have the "
-                f"same name, which is an illegal schema state. The name_conflicts dict describes "
-                f"these problems. For each key k in name_conflicts, name_conflicts[k] is the set "
-                f"of types in the original schema that get mapped to k in the new schema. To fix "
-                f"this, modify the type_renamings argument of rename_schema to ensure that no two types "
-                f"in the renamed schema have the same name. name_conflicts: {self.name_conflicts}"
+                f"same name, which is an illegal schema state. To fix this, modify the renamings "
+                f"argument of rename_schema to ensure that no two types in the renamed schema have "
+                f"the same name. The following is a list of tuples that describes what needs to be "
+                f"fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
+                f"where new_type_name is the type name that would appear in the new schema and "
+                f"original_schema_type_names is a list of types in the original schema that get "
+                f"mapped to new_type_name: {sorted_type_name_conflicts}"
             )
         renamed_to_builtin_scalar_conflicts_message = ""
         if self.renamed_to_builtin_scalar_conflicts:
+            sorted_renamed_to_builtin_scalar_conflicts = sorted(
+                self.renamed_to_builtin_scalar_conflicts.items()
+            )
             renamed_to_builtin_scalar_conflicts_message = (
                 f"Applying the renaming would rename type(s) to a name already used by a built-in "
                 f"GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
-                f"scalar's name. The following dict maps each to-be-renamed type to the scalar "
-                f"name it was mapped to: {self.renamed_to_builtin_scalar_conflicts}"
+                f"scalar's name. The following is a list of tuples that describes what needs to be "
+                f"fixed. Each tuple is of the form (type_name, scalar_name) where type_name is the "
+                f"original name of the type and scalar_name is the name of the scalar that the "
+                f"type would be renamed to: {sorted_renamed_to_builtin_scalar_conflicts}"
             )
         return "\n".join(
-            filter(None, [name_conflicts_message, renamed_to_builtin_scalar_conflicts_message])
+            filter(None, [type_name_conflicts_message, renamed_to_builtin_scalar_conflicts_message])
         )
 
 
