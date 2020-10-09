@@ -577,12 +577,11 @@ class RenameSchemaTypesVisitor(Visitor):
     # "foo" to "bar" in a type named "Baz", then reverse_field_name_map["Baz"] will map "bar" to
     # "foo".
     reverse_field_name_map: DefaultDict[str, Dict[str, str]]
-    # Maps no-op renamings for fields, mapping the type name (that contains the field) to the set of
-    # names of fields for which field_renamings contained no-op renamings. Applies only when
+    # Collects no-op renamings for fields, mapping the type name that contains the field to the set of
+    # field names for which field_renamings contained no-op renamings. Applies only when
     # field_renamings is iterable. If field_renamings would rename a field named "foo" to "foo" in a
-    # type named "Bar", or if it would rename a field named "foo" in a type named "Bar" when such a
+    # type named "Bar", or if it attempts to rename a field named "foo" in a type named "Bar" when such a
     # field does not exist, no_op_field_renamings will map "Bar" to a set containing "foo".
-    # TODO wow this was pretty convoluted, see if you can re-word this
     no_op_field_renamings: DefaultDict[str, Set[str]]
     # Collects invalid field names in field_renamings. If field_renamings would rename a field named "foo" (belonging to a type named "Bar") to a
     # string that is not a valid, unreserved GraphQL type name (see definition in the
@@ -703,10 +702,10 @@ class RenameSchemaTypesVisitor(Visitor):
         if desired_type_name in builtin_scalar_type_names:
             self.renamed_to_builtin_scalar_conflicts[type_name] = desired_type_name
 
-        # At this point, the node will not be suppressed and its name in the new schema has been
-        # validated, so it will appear in the renamed schema, so it's safe to rename its fields
-        # if applicable. TODO re-word this
-        fields_renamed_node = node  # by default, if no field renaming happens, fields_renamed_node will just be the node the visitor is at.
+        # Any potential type suppressions will have taken place by this point, so this current node
+        # will appear in the renamed schema, so it's safe to apply field renamings to this type.
+        fields_renamed_node = node  # If no field renaming happens, fields_renamed_node will just be
+        # the current node, unchanged.
         if isinstance(node, ObjectTypeDefinitionNode):
             fields_renamed_node = self._rename_fields(node)
         self.reverse_name_map[desired_type_name] = type_name
