@@ -367,8 +367,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                      future revisions of this library that add more hints.
 
         Yields:
-            tuples (data_context, can_coerce), with a DataContext together with whether
-            the current_token referenced by that context can be coerced to the specified type.
+            tuples (data_context, can_coerce), containing a DataContext and a corresponding boolean indicating
+            whether its current_token can be coerced to the specified type.
             The yielded DataContext values must be yielded in the same order as they were received
             via the function's data_contexts argument.
         """
