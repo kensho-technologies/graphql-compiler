@@ -72,7 +72,7 @@ class RecordedTrace(Generic[DataToken]):
 
     Includes a linearized sequence of all operations performed during the execution of the query:
     - adapter function calls, yields, and returns;
-    - actuation of all input and output iterables.
+    - yields of any iterables that were passed as inputs to the adapter functions.
 
     Traces may record complete executions of queries (i.e. ones where the generators are run
     to completion), and may also be used to record partial executions (e.g. "fetch only 3 results").
@@ -134,8 +134,9 @@ class TraceRecorder(Generic[DataToken]):
             iterable: iterable to record
 
         Yields:
-            for each piece of data yielded by the input iterable, yields a tuple of the
-            operation's unique identifier for that data together with the data itself
+            for each piece of data yielded by the input iterable, yields a tuple of:
+            - the operation's unique identifier for the yielded data
+            - the input iterable's yielded data itself
         """
         for item in iterable:
             item_uid = len(self._operation_log)
@@ -169,8 +170,9 @@ class TraceRecorder(Generic[DataToken]):
             compound_iterable: iterable to record
 
         Yields:
-            for each piece of data yielded by the input compound_iterable, yields a tuple of the
-            operation's unique identifier for that data together with the data itself
+            for each piece of data yielded by the input compound_iterable, yields a tuple of:
+            - the operation's unique identifier for the yielded data
+            - the input compound_iterable's yielded data itself
         """
         for item_index, item in enumerate(compound_iterable):
             item_uid = len(self._operation_log)
