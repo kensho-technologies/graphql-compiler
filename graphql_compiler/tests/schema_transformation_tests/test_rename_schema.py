@@ -440,9 +440,18 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_field_renaming_illegal_noop_unused_renaming(self) -> None:
-        with self.assertRaises(NoOpRenamingError):
+        with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": {"new_pet"}}})
-        # TODO: check error message too
+        self.assertEqual(
+            f"The field renamings for the following types in field_renamings are iterable, so they "
+            f"cannot cannot have no-op renamings. However, some of these renamings would either rename a field to itself or "
+            f"would rename a field that doesn't exist in the schema, both of which are invalid. "
+            f"The following is a list of tuples that describes what needs to be fixed for "
+            f"field renamings. Each tuple is of the form (type_name, field_renamings) "
+            f"where type_name is the name of the type in the original schema and "
+            f"field_renamings is a list of the fields that would be no-op renamed: [('Human', ['pet'])]",
+            str(e.exception)
+        )
 
     def test_field_renaming_legal_noop_unused_renaming(self) -> None:
         # Unlike with test_field_renaming_illegal_noop_unused_renaming, here field_renamings is not iterable.
@@ -478,9 +487,18 @@ class TestRenameSchema(unittest.TestCase):
         # (e.g. renaming to "id" and "new_id" so that both fields in the renamed schema correspond
         # to the field named "id" in the original schema). However, since this is a 1-1 renaming,
         # this renaming would have no effect.
-        with self.assertRaises(NoOpRenamingError):
+        with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"id": {"id"}}})
-        # TODO: check error message too
+        self.assertEqual(
+            f"The field renamings for the following types in field_renamings are iterable, so they "
+            f"cannot cannot have no-op renamings. However, some of these renamings would either rename a field to itself or "
+            f"would rename a field that doesn't exist in the schema, both of which are invalid. "
+            f"The following is a list of tuples that describes what needs to be fixed for "
+            f"field renamings. Each tuple is of the form (type_name, field_renamings) "
+            f"where type_name is the name of the type in the original schema and "
+            f"field_renamings is a list of the fields that would be no-op renamed: [('Human', ['id'])]",
+            str(e.exception)
+        )
 
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(

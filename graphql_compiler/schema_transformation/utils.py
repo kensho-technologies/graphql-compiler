@@ -218,30 +218,58 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if type_renamings argument is iterable and contains no-op renames.
+    """Raised if renamings are iterable and contains no-op renames.
 
     No-op renames can occur in these ways:
-    * type_renamings contains a string type_name but there doesn't exist a type in the schema named
+    * type_renamings or field_renamings contains a string type_name but there doesn't exist a type in the schema named
       type_name
     * type_renamings maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
+    * field_renamings 1:1 maps a string field_name to itself within a particular type, i.e. field_renamings[type_name][field_name] == [field_name]
+    * There exists a type T named type_name in the schema such that field_renamings[type_name] contains a string field_name but there doesn't exist a field belonging to type T in the schema.
+    TODO implement this last bullet point
     """
 
-    no_op_renames: Set[str]
+    no_op_type_renames: Set[str]
+    no_op_field_renames: Dict[str, Set[str]]
 
-    def __init__(self, no_op_renames: Set[str], no_op_field_renames: DefaultDict[str, Set[str]]) -> None:
-        """Record all renaming conflicts."""
+    def __init__(self, no_op_type_renames: Set[str], no_op_field_renames: Dict[str, Set[str]]) -> None:
+        """Record all no-op renamings."""
+        if not no_op_type_renames and not no_op_field_renames:
+            raise ValueError(
+                "Cannot raise NoOpRenamingError without at least one invalid name, but "
+                "all arguments were empty."
+            )
         super().__init__()
-        self.no_op_renames = no_op_renames
+        self.no_op_type_renames = no_op_type_renames
         self.no_op_field_renames = no_op_field_renames
 
     def __str__(self) -> str:
-        """Explain renaming conflict and the fix."""
-        return (
-            f"type_renamings is iterable, so it cannot have no-op renamings. However, the following "
-            f"entries exist in the type_renamings argument, which either rename a type to itself or "
-            f"would rename a type that doesn't exist in the schema, both of which are invalid: "
-            f"{sorted(self.no_op_renames)}"
-            # TODO: add error message for no op field renames.
+        """Explain no-op renamings and the fix."""
+        no_op_type_renames_message = ""
+        if self.no_op_type_renames:
+            no_op_type_renames_message = (
+                f"type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+                f"entries exist in the type_renamings argument, which either rename a type to itself or "
+                f"would rename a type that doesn't exist in the schema, both of which are invalid: "
+                f"{sorted(self.no_op_type_renames)}"
+            )
+        no_op_field_renames_message = ""
+        if self.no_op_field_renames:
+            sorted_no_op_field_renames = [
+                (type_name, sorted(field_names))
+                for type_name, field_names in sorted(self.no_op_field_renames.items())
+            ]
+            no_op_field_renames_message = (
+                f"The field renamings for the following types in field_renamings are iterable, so they "
+                f"cannot cannot have no-op renamings. However, some of these renamings would either rename a field to itself or "
+                f"would rename a field that doesn't exist in the schema, both of which are invalid. "
+                f"The following is a list of tuples that describes what needs to be fixed for "
+                f"field renamings. Each tuple is of the form (type_name, field_renamings) "
+                f"where type_name is the name of the type in the original schema and "
+                f"field_renamings is a list of the fields that would be no-op renamed: {sorted_no_op_field_renames}"
+            )
+        return "\n".join(
+            filter(None, [no_op_type_renames_message, no_op_field_renames_message])
         )
 
 
