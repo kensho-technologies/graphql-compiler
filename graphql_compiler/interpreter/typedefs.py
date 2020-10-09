@@ -309,8 +309,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         an iterable of DataContexts, with current_type_name set to "Bar" (the schema-implied type
         of the query's scope) and with coerce_to_type_name set to "BarImpl" (the type to which
         coercion is being attempted). For each DataContext in the input iterable, this function
-        yields a tuple containing the context itself together with a bool set to True if
-        the coercion to the new type could be completed.
+        yields a tuple containing the context itself and a bool set to True if the coercion
+        to the new type could be completed.
 
         A simple example implementation is as follows:
             def can_coerce_to_type(
@@ -367,8 +367,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                      future revisions of this library that add more hints.
 
         Yields:
-            tuples (data_context, can_coerce), containing a DataContext and a corresponding boolean indicating
-            whether its current_token can be coerced to the specified type.
+            tuples (data_context, can_coerce), containing a DataContext and a corresponding boolean
+            indicating whether the DataContext's current_token can be coerced to the specified type.
             The yielded DataContext values must be yielded in the same order as they were received
             via the function's data_contexts argument.
         """
