@@ -128,4 +128,4 @@ Attribution
 
 This Code of Conduct is adapted from the `Contributor
 Covenant <http://contributor-covenant.org>`__, version 2.0, available at
-`http://contributor-covenant.org/version/2/0 <http://contributor-covenant.org/version/2/0/>`__
+`https://contributor-covenant.org/version/2/0 <https://contributor-covenant.org/version/2/0/>`__
