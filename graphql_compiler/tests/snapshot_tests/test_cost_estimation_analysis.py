@@ -395,7 +395,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         self.assertEqual(expected_eligible_fields, eligible_fields)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def test_distinct_result_set_estimates_with_revisit_counts(self):
+    def test_distinct_result_set_estimates_edge_constraint_propagation(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
@@ -414,10 +414,15 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
             edge_constraints={
                 "Animal_ParentOf": EdgeConstraint.AtMostOneSource,
-            }
+            },
         )
 
-        # The set of parents of a set of animals is not larger
+        # The Animal_ParentOf edge has an AtMostOneSource constraint, meaning that each
+        # destination is connected to at most one source.
+        # The query below has a unique filter on the root, so the distinct result set
+        # estimate at the root is 1. However, since that animal has at most one parent,
+        # the distinct result set estimate at that location is 1 as well, even though
+        # there are no explicit filters on it.
         query = QueryStringWithParameters(
             """{
             Animal {
@@ -442,7 +447,9 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         }
         self.assertEqual(expected_estimates, estimates)
 
-        # One animal can have many children
+        # Even though the distinct result set estimate at the root is 1, that doesn't affect
+        # the result on the child node, since an animal can have an unlimited number of
+        # children.
         query = QueryStringWithParameters(
             """{
             Animal {
