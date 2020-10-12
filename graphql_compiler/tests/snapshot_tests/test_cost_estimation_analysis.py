@@ -8,7 +8,7 @@ from ...cost_estimation.filter_selectivity_utils import Selectivity
 from ...cost_estimation.interval import Interval
 from ...cost_estimation.statistics import LocalStatistics
 from ...global_utils import QueryStringWithParameters
-from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
+from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering, EdgeConstraint
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
 
@@ -412,15 +412,44 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             statistics=statistics,
             pagination_keys=pagination_keys,
             uuid4_field_info=uuid4_field_info,
+            edge_constraints={
+                "Animal_ParentOf": EdgeConstraint.AtMostOneSource,
+            }
         )
 
+        # The set of parents of a set of animals is not larger
         query = QueryStringWithParameters(
             """{
             Animal {
                 name @filter(op_name: "=", value: ["$animal_name"])
                 in_Animal_ParentOf @optional {
-                    name @output(out_name: "child_name")
+                    name @output(out_name: "parent_name")
                     in_Animal_ParentOf {
+                        name @output(out_name: "grandparent_name")
+                    }
+                }
+            }
+        }""",
+            {
+                "animal_name": "Joe",
+            },
+        )
+        estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
+        expected_estimates = {
+            ("Animal",): 1.0,
+            ("Animal", "in_Animal_ParentOf"): 1.0,
+            ("Animal", "in_Animal_ParentOf", "in_Animal_ParentOf"): 1.0,
+        }
+        self.assertEqual(expected_estimates, estimates)
+
+        # One animal can have many children
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @filter(op_name: "=", value: ["$animal_name"])
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                    out_Animal_ParentOf {
                         name @output(out_name: "grandchild_name")
                     }
                 }
@@ -433,7 +462,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
         expected_estimates = {
             ("Animal",): 1.0,
-            ("Animal", "in_Animal_ParentOf"): 1000.0,
-            ("Animal", "in_Animal_ParentOf", "in_Animal_ParentOf"): 1000.0,
+            ("Animal", "out_Animal_ParentOf"): 1000.0,
+            ("Animal", "out_Animal_ParentOf", "out_Animal_ParentOf"): 1000.0,
         }
         self.assertEqual(expected_estimates, estimates)
