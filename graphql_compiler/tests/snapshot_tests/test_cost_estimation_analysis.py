@@ -8,7 +8,7 @@ from ...cost_estimation.filter_selectivity_utils import Selectivity
 from ...cost_estimation.interval import Interval
 from ...cost_estimation.statistics import LocalStatistics
 from ...global_utils import QueryStringWithParameters
-from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering, EdgeConstraint
+from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
 
