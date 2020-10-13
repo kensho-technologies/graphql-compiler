@@ -295,13 +295,13 @@ def get_distinct_result_set_estimates(
             if EdgeConstraint.AtMostOneSource in edge_constraints:
                 single_destination_traversals.add((to_path, from_path))
 
-    # Make sure there's no path of many-to-one traversals leading to a node with lower
+    # Make sure there's no path of many-to-one traversals leading to a node with higher
     # distinct_result_set_estimate.
     max_path_length = len(single_destination_traversals)
     for _ in range(max_path_length):
         for from_path, to_path in single_destination_traversals:
-            distinct_result_set_estimates[from_path] = min(
-                distinct_result_set_estimates[from_path], distinct_result_set_estimates[to_path]
+            distinct_result_set_estimates[to_path] = min(
+                distinct_result_set_estimates[to_path], distinct_result_set_estimates[from_path]
             )
 
     return distinct_result_set_estimates
