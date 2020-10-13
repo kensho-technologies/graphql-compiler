@@ -459,8 +459,8 @@ def _rename_and_suppress_types_and_fields(
             if type_name != visitor.reverse_name_map[type_name]
         }
         no_op_type_renames: Set[str] = set(type_renamings) - renamed_types - set(visitor.suppressed_types)
-        if no_op_type_renames or visitor.no_op_field_renamings:
-            raise NoOpRenamingError(no_op_type_renames, visitor.no_op_field_renamings)
+        if no_op_type_renames or visitor.no_op_field_renamings or visitor.types_with_field_renamings_to_be_used:
+            raise NoOpRenamingError(no_op_type_renames, visitor.no_op_field_renamings, visitor.types_with_field_renamings_to_be_used)
     return renamed_schema_ast, visitor.reverse_name_map, visitor.reverse_field_name_map
 
 
@@ -583,6 +583,8 @@ class RenameSchemaTypesVisitor(Visitor):
     # type named "Bar", or if it attempts to rename a field named "foo" in a type named "Bar" when such a
     # field does not exist, no_op_field_renamings will map "Bar" to a set containing "foo".
     no_op_field_renamings: DefaultDict[str, Set[str]]
+    # Collects type names if field_renamings is iterable, to record which type_names still need to be used. If field_renamings is iterable and type_name in field_renamings, then types_with_field_renamings_to_be_used will contain type_name until the visitor encounters an object type with that name, at which point the field renamings will be applied. After all the renamings are used, any type names will be used to raise a NoOpRenamingError because the remaining field renamings are no-ops since the type doesn't exist in the schema. If field_renamings is not iterable, then this is simply None since it doesn't make sense to speak of renamings that must be used-- no-op renamings can only exist when the renamings are iterable. Note that if field_renamings is iterable and contains a string type_name and the original schema contains a type named type_name but the type would get suppressed, then this would still raise a NoOpRenamingError because the field renamings would have no effect.
+    types_with_field_renamings_to_be_used: Optional[Set[str]]
     # Collects invalid field names in field_renamings. If field_renamings would rename a field named "foo" (belonging to a type named "Bar") to a
     # string that is not a valid, unreserved GraphQL type name (see definition in the
     # is_valid_unreserved_name function in utils), invalid_field_names will map "Bar" to a dict that maps "foo" to the invalid field name.
@@ -623,6 +625,11 @@ class RenameSchemaTypesVisitor(Visitor):
         self.field_renamings = field_renamings
         self.reverse_field_name_map = defaultdict(dict)
         self.no_op_field_renamings = defaultdict(set)
+        if isinstance(field_renamings, Iterable):
+            self.types_with_field_renamings_to_be_used = set(field_renamings)
+        else:
+            #
+            self.types_with_field_renamings_to_be_used = None
         self.invalid_field_names = defaultdict(dict)
         self.field_name_conflicts = defaultdict(dict)
 
@@ -727,6 +734,10 @@ class RenameSchemaTypesVisitor(Visitor):
         if field_renamings is None:
             # TODO: need to check that this is the idiomatic way to check for none-- could there be falsey not-None values?
             return node
+        if isinstance(field_renamings, Iterable):
+            # An object type named type_name exists in the schema, so the field renamings for that
+            # type have been used.
+            self.types_with_field_renamings_to_be_used.remove(type_name)
         # TODO: can we implement this without parallel structures for taken_field_names and
         # new_field_nodes? I haven't thought of a way to do this cleanly but as it is, it's easy for
         # errors to creep in. Answer: yes, use self.reverse_field_name_map like we do with renaming types

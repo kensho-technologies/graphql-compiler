@@ -500,6 +500,23 @@ class TestRenameSchema(unittest.TestCase):
             str(e.exception)
         )
 
+    def test_field_renaming_illegal_noop_rename_fields_of_nonexistent_type(self) -> None:
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {}, {"Television": {"id": {"new_id"}}})
+        self.assertEqual(
+            "field_renamings is iterable, so it cannot have no-op renamings. However, the following entries exist in the field_renamings argument that correspond to names of object types that either don't exist in the original schema or would get suppressed. In other words, the field renamings for each of these types would be no-ops: ['Television']",
+            str(e.exception)
+        )
+
+    def test_field_renaming_illegal_noop_rename_fields_of_suppressed_type(self) -> None:
+        # Like field renamings for a type that doesn't exist in the schema, this is illegal because the field renamings will have no effect because the type itself gets suppressed.
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.multiple_objects_schema), {"Human": None}, {"Human": {"id": {"new_id"}}})
+        self.assertEqual(
+            f"field_renamings is iterable, so it cannot have no-op renamings. However, the following entries exist in the field_renamings argument that correspond to names of object types that either don't exist in the original schema or would get suppressed. In other words, the field renamings for each of these types would be no-ops: ['Human']",
+            str(e.exception)
+        )
+
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
             parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}, {}

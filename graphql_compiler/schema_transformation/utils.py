@@ -243,26 +243,34 @@ class NoOpRenamingError(SchemaTransformError):
     """Raised if renamings are iterable and contains no-op renames.
 
     No-op renames can occur in these ways:
-    * type_renamings contains a string type_name but there doesn't exist a type in the schema named
+    * type_renamings is iterable and contains a string type_name but there doesn't exist a type in the schema named
       type_name
-    * type_renamings maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
-    * There exists an object type T named type_name in the schema such that field_renamings[type_name] is both iterable and contains a string field_name but there doesn't exist a field belonging to T in the schema.
-    * field_renamings[type_name] is not None when there no object type in the schema has name type_name.
-    * field_renamings 1:1 maps a string field_name to itself within a particular type, i.e. field_renamings[type_name][field_name] == [field_name]
-    TODO implement this last bullet point
+    * type_renamings is iterable and maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
+    * There exists an object type T named type_name in the schema such that field_renamings[type_name] is both iterable and contains a string field_name but there doesn't exist a field named field_name belonging to T in the schema.
+    * field_renamings is iterable and contains a string [type_name] but there doesn't exist an object type in the schema named
+      type_name
+    * There exists an object type T named type_name in the schema such that field_renamings[type_name] is both iterable and 1:1 maps a string field_name to itself within a particular type, i.e. field_renamings[type_name][field_name] == [field_name]
     """
 
     no_op_type_renames: Set[str]
+    no_op_nonexistent_type_field_renames: Set[str]
     no_op_field_renames: Dict[str, Set[str]]
 
-    def __init__(self, no_op_type_renames: Set[str], no_op_field_renames: Dict[str, Set[str]]) -> None:
+    def __init__(self, no_op_type_renames: Set[str], no_op_field_renames: Dict[str, Set[str]], no_op_nonexistent_type_field_renames: Set[str]) -> None:
         """Record all no-op renamings."""
-        if not no_op_type_renames and not no_op_field_renames:
+        # TODO(Leon): Would like feedback on this-- I notice a pattern where I create error message
+        # objects that must have at least one of these parameters as non-empty. Is there a better
+        # way to ensure this than manually writing this verification (which needs to change as the
+        # parameters change)? This also comes up when deciding whether or not to raise these errors
+        # as well-- for instance, checking if any of a number of error-collecting data structures
+        # are nonempty, and raising an error if any are.
+        if not no_op_type_renames and not no_op_field_renames and not no_op_nonexistent_type_field_renames:
             raise ValueError(
                 "Cannot raise NoOpRenamingError without at least one invalid name, but "
                 "all arguments were empty."
             )
         super().__init__()
+        self.no_op_nonexistent_type_field_renames = no_op_nonexistent_type_field_renames
         self.no_op_type_renames = no_op_type_renames
         self.no_op_field_renames = no_op_field_renames
 
@@ -291,8 +299,15 @@ class NoOpRenamingError(SchemaTransformError):
                 f"where type_name is the name of the type in the original schema and "
                 f"field_renamings is a list of the fields that would be no-op renamed: {sorted_no_op_field_renames}"
             )
+        no_op_nonexistent_type_field_renames_message = ""
+        if self.no_op_nonexistent_type_field_renames:
+            no_op_nonexistent_type_field_renames_message = (
+                f"field_renamings is iterable, so it cannot have no-op renamings. However, the following entries exist in the field_renamings argument that correspond to names of object types that either don't exist in the original schema or would get suppressed. In other words, the field renamings for each of these types would be no-ops: {sorted(self.no_op_nonexistent_type_field_renames)}"
+            )
+        # TODO(Leon): same question here regarding dealing with multiple arguments in error messages
+        # where at least one of them has to be nonempty.
         return "\n".join(
-            filter(None, [no_op_type_renames_message, no_op_field_renames_message])
+            filter(None, [no_op_type_renames_message, no_op_field_renames_message, no_op_nonexistent_type_field_renames_message])
         )
 
 
