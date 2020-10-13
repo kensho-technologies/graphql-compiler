@@ -340,14 +340,6 @@ RenameNodes = Union[
 RenameNodesT = TypeVar("RenameNodesT", bound=RenameNodes)
 
 
-# Node types whose fields may be renamed
-RenamableFields = Union[
-    # InterfaceTypeDefinitionNode,  # TODO: deal with interface edge cases
-    ObjectTypeDefinitionNode,
-]
-RenamableFieldsT = TypeVar("RenamableFieldsT", bound=RenamableFields)
-
-
 def check_schema_identifier_is_valid(identifier: str) -> None:
     """Check if input is a valid identifier, made of alphanumeric and underscore characters.
 

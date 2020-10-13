@@ -119,7 +119,7 @@ from .utils import (
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
-    is_valid_unreserved_name, RenamableFieldsT,
+    is_valid_unreserved_name,
 )
 
 
@@ -720,7 +720,7 @@ class RenameSchemaTypesVisitor(Visitor):
             node_with_new_name = get_copy_of_node_with_new_name(fields_renamed_node, desired_type_name)
             return node_with_new_name
 
-    def _rename_fields(self, node: RenamableFieldsT) -> RenamableFieldsT:
+    def _rename_fields(self, node: ObjectTypeDefinitionNode) -> ObjectTypeDefinitionNode:
         """Renames node's fields, if applicable and return new node."""
         type_name = node.name.value
         field_renamings = self.field_renamings.get(type_name, None)
