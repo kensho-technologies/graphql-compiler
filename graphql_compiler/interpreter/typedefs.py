@@ -236,8 +236,94 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
         **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
-        """Produce the values for a given property for each of an iterable of input DataTokens."""
-        # TODO(predrag): Add more docs in an upcoming PR.
+        """Produce the values for a given property for each of an iterable of input DataTokens.
+
+        In situations such as outputting property values or applying filters to properties,
+        the interpreter needs to get the value of some property field for a series of DataTokens.
+
+        For example, consider the following query:
+            {
+                Foo {
+                    bar @output(out_name: "bar_value")
+                }
+            }
+
+        Once the interpreter has used the get_tokens_of_type() function to obtain
+        an iterable of DataTokens for the Foo type, it will automatically wrap each of them in
+        a "bookkeeping" object called DataContext. These DataContext objects allow
+        the interpreter to keep track of "which data came from where"; only the DataToken value
+        bound to each current_token attribute is relevant to the InterpreterAdapter API.
+
+        Having obtained an iterable of DataTokens and converted it to an iterable of DataContexts,
+        the interpreter needs to get the value of the "bar" property for the tokens bound to
+        the contexts. To do so, the interpreter calls project_property() with the iterable
+        of DataContexts, setting current_type_name = "Foo" and field_name = "bar", requesting
+        the "bar" property's value for each DataContext with its corresponding current_token.
+        If the DataContext's current_token attribute is set to None (which may happen
+        when @optional edges are used), the property's value is considered to be None.
+
+        A simple example implementation is as follows:
+            def project_property(
+                self,
+                data_contexts: Iterable[DataContext[DataToken]],
+                current_type_name: str,
+                field_name: str,
+                **hints: Any,
+            ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
+                for data_context in data_contexts:
+                    current_token = data_context.current_token
+                    property_value: Any
+                    if current_token is None:
+                        # Evaluating an @optional scope where the optional edge didn't exist.
+                        # There is no value for the named property here.
+                        property_value = None
+                    else:
+                        if field_name == "__typename":
+                            # The query is requesting the runtime type of the current vertex.
+                            # If current_type_name is an interface type, the runtime type of
+                            # the current vertex may either be that interface type or
+                            # a type that implements that interface. More info on "__typename"
+                            # can be found at https://graphql.org/learn/queries/#meta-fields
+                            property_value = < load the runtime type of the current_token vertex >
+                        else:
+                            property_value = (
+                                < load the value of the field_name property for current_token >
+                            )
+
+                    # Remember to always yield the DataContext alongside the produced value
+                    yield data_context, property_value
+
+        Args:
+            data_contexts: iterable of DataContext objects which specify the DataTokens whose
+                           property data needs to be loaded
+            current_type_name: name of the vertex type whose property needs to be loaded. Guaranteed
+                               to be the name of a type defined in the schema being queried.
+            field_name: name of the property whose data needs to be loaded. Guaranteed to refer
+                        either to a property that is defined in the supplied current_type_name
+                        in the schema, or to the "__typename" meta field that is valid for all
+                        GraphQL types and holds the type name of the current vertex. This type name
+                        may be different from the value of current_type_name e.g. when
+                        current_type_name refers to an interface type and "__typename" refers to
+                        a type that implements that interface. More information on "__typename" may
+                        be found in the GraphQL docs: https://graphql.org/learn/queries/#meta-fields
+            runtime_arg_hints: names and values of any runtime arguments provided to the query
+                               for use in filtering operations (e.g. "$arg_name").
+            used_property_hints: the property names of the vertices being processed that
+                                 are going to be used in a subsequent filtering or output step.
+            filter_hints: information about any filters applied to the vertices being processed,
+                          such as "which filtering operations are being performed?"
+                          and "with which arguments?"
+            neighbor_hints: information about the edges of the vertices being processed
+                            that the query will eventually need to expand.
+            **hints: catch-all kwarg field making the function's signature forward-compatible with
+                     future revisions of this library that add more hints.
+
+        Yields:
+            tuples (data_context, property_value), providing the value of the requested property
+            together with the DataContext corresponding to that value. The yielded DataContext
+            values must be yielded in the same order as they were received via the function's
+            data_contexts argument.
+        """
 
     @abstractmethod
     def project_neighbors(
