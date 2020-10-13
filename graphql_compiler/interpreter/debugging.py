@@ -42,10 +42,19 @@ def _unzip_and_yield_second(iterable: Iterable[Tuple[T, U]]) -> Iterable[U]:
 class AdapterOperation:
     """The record of an action performed on or by an InterpreterAdapter function as part of a trace.
 
+    Actions that can be recorded like this include function calls, function returns, function yields
+    (including yields that contain nested generators, whose yields will also be recorded),
+    and yields of generators that were passed as inputs to function calls. The kind of action being
+    recorded is reflected in the kind attribute, and carries a value suitable to the kind of action
+    in the data attribute.
+
     For example, calling get_tokens_of_type("Foo") would produce an AdapterOperation
     with kind "call", with name "get_tokens_of_type", with unique ID and parent unique IDs
-    appropriate for the trace, and with data (("Foo",), {}) as the tuple of
-    the positional arguments tuple and kwargs dict.
+    appropriate for the trace, and with data (("Foo",), {}) representing a (positional_args, kwargs)
+    tuple for the function call. For function returns, the data attribute of AdapterOperation
+    holds the value returned by the function. For yields of input or output generators, the content
+    of the data attribute is determined by the specific circumstances of the function named in
+    the name attribute -- e.g. whether the function outputs a generator of generators, etc.
 
     The parent_uid field allows us to track dependencies across different operations. For example,
     data yielded by a generator-style function will be recorded in AdapterOperations
