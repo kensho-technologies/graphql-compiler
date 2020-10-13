@@ -70,7 +70,8 @@ class SchemaRenameInvalidNameError(SchemaTransformError):
     renamed because this type of error includes information from the renaming process that
     InvalidTypeNameError doesn't.
     """
-    # TODO: is there a better way to do this than have two types of invalid name errors?
+    # TODO(Leon): Would like feedback on this-- is there a better way to do this than have two types
+    # of invalid name errors? See docstring for why I split them up.
     invalid_type_names: Dict[str, str]
     invalid_field_names: Dict[str, Dict[str, str]]
 
@@ -198,9 +199,9 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                  )
                 for type_name, field_renaming_conflicts_dict in sorted(self.field_name_conflicts.items())
             ]
-            # TODO: Would like feedback on this error message because we're dealing with multiple
-            # levels of indirection which means lots of nested parentheses and brackets as it
-            # stands.
+            # TODO(Leon): Would like feedback on this error message because we're dealing with
+            # multiple levels of indirection which means lots of nested parentheses and brackets as
+            # it stands.
             field_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple fields belonging to the same type have the "
                 f"same name, which is an illegal schema state. To fix this, modify the field_renamings "
@@ -242,11 +243,12 @@ class NoOpRenamingError(SchemaTransformError):
     """Raised if renamings are iterable and contains no-op renames.
 
     No-op renames can occur in these ways:
-    * type_renamings or field_renamings contains a string type_name but there doesn't exist a type in the schema named
+    * type_renamings contains a string type_name but there doesn't exist a type in the schema named
       type_name
     * type_renamings maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
+    * There exists an object type T named type_name in the schema such that field_renamings[type_name] is both iterable and contains a string field_name but there doesn't exist a field belonging to T in the schema.
+    * field_renamings[type_name] is not None when there no object type in the schema has name type_name.
     * field_renamings 1:1 maps a string field_name to itself within a particular type, i.e. field_renamings[type_name][field_name] == [field_name]
-    * There exists a type T named type_name in the schema such that field_renamings[type_name] contains a string field_name but there doesn't exist a field belonging to type T in the schema.
     TODO implement this last bullet point
     """
 
