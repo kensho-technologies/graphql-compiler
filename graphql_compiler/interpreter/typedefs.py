@@ -481,7 +481,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                 }
             }
 
-        Assume that this query is written over a schema that contains the following definitions:
+        Assume that this query is written against a schema that contains the following definitions:
             type Foo {
                 < ... some fields here ... >
                 out_Foo_Bar: [Bar]
@@ -498,15 +498,15 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         When resolving the out_Foo_Bar edge in the query using project_neighbors(), the interpreter
         receives DataTokens that (per the schema) are instances of the Bar interface type. However,
         the query's subsequent "... on BarImpl" type coercion clause requires that the interpreter
-        discard any neighboring vertices that are not actually instances of BarImpl, a subtype of
+        discard any neighboring vertices that are not instances of BarImpl, a subtype of
         the Bar interface type.
 
         The interpreter uses can_coerce_to_type() for this purpose: it calls this function with
         an iterable of DataContexts, with current_type_name set to "Bar" (the schema-implied type
-        of the query's scope) and with coerce_to_type_name set to "BarImpl" as the type to which
-        coercion is being attempted. For each DataContext in the input iterable, this function
-        yields a tuple containing the context itself together with a bool set to True if
-        the coercion to the new type could be completed.
+        of the query's scope) and with coerce_to_type_name set to "BarImpl" (the type to which
+        coercion is being attempted). For each DataContext in the input iterable, this function
+        yields a tuple containing the context itself and a bool set to True if the coercion
+        to the new type could be completed.
 
         A simple example implementation is as follows:
             def can_coerce_to_type(
@@ -563,8 +563,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                      future revisions of this library that add more hints.
 
         Yields:
-            tuples (data_context, can_coerce), with a DataContext together with whether
-            the current_token referenced by that context can be coerced to the specified type.
+            tuples (data_context, can_coerce), containing a DataContext and a corresponding boolean
+            indicating whether the DataContext's current_token can be coerced to the specified type.
             The yielded DataContext values must be yielded in the same order as they were received
             via the function's data_contexts argument.
         """
