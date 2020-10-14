@@ -144,8 +144,8 @@ class TraceRecorder(Generic[DataToken]):
 
         Yields:
             for each piece of data yielded by the input iterable, yields a tuple of:
-            - the operation's unique identifier for the yielded data
-            - the input iterable's yielded data itself
+            - the operation's unique identifier for the yielded data, and
+            - the input iterable's yielded data itself.
         """
         for item in iterable:
             item_uid = len(self._operation_log)
