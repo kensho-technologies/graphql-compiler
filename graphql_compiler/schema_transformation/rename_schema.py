@@ -155,7 +155,6 @@ class FieldRenamingMapping(Protocol):
             ...
 
     def get(self, type_name: str, default_field_renamings: Optional[FieldRenamings]) -> Optional[FieldRenamings]:
-        # TODO: should default_field_renamings be optional?
         """Define mapping for a particular type's field renamings."""
         ...
 
@@ -592,7 +591,7 @@ class RenameSchemaTypesVisitor(Visitor):
     # Collects naming conflict errors involving fields. If field_renamings would rename multiple fields (belonging to a type named "Bar" in the original schema) to "foo", field_name_conflicts will map "Bar" to a
     # dict that maps "foo" to a set containing the names of the fields in the original schema that would be renamed to "foo".
     field_name_conflicts: Dict[str, Dict[str, Set[str]]]
-    # TODO: probably rearrange the order of these fields since there are so many of them-- is there a better way to do this?
+    # TODO(Leon): Would welcome suggestions on how to better organize the data structures in here, since this visitor class has picked up quite a few fields just because of the various types of errors that might arise during renaming and needing to keep track of it all.
 
     def __init__(
         self,
@@ -732,7 +731,7 @@ class RenameSchemaTypesVisitor(Visitor):
         type_name = node.name.value
         current_type_field_renamings = self.field_renamings.get(type_name, None)
         if current_type_field_renamings is None:
-            # TODO: need to check that this is the idiomatic way to check for none-- could there be falsey not-None values?
+            # TODO(Leon): Since current_type_field_renamings need not be a dict, I allow for it to be None if we don't want to do any field renamings for the current type. However, that means it'd technically be valid for it to be an empty dict and I'm not sure how to best check for this, especially since it's not the falsiness of current_type_field_renamings that we're looking for but rather whether it contains any field renamings.
             return node
         if isinstance(current_type_field_renamings, Iterable):
             # An object type named type_name exists in the schema, so the field renamings for that
