@@ -15,8 +15,8 @@ from ...schema_transformation.rename_schema import (
 )
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
-    SchemaRenameInvalidNameError,
     NoOpRenamingError,
+    SchemaRenameInvalidNameError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
@@ -450,7 +450,7 @@ class TestRenameSchema(unittest.TestCase):
             f"field renamings. Each tuple is of the form (type_name, field_renamings) "
             f"where type_name is the name of the type in the original schema and "
             f"field_renamings is a list of the fields that would be no-op renamed: [('Human', ['pet'])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_field_renaming_legal_noop_unused_renaming(self) -> None:
@@ -497,7 +497,7 @@ class TestRenameSchema(unittest.TestCase):
             f"field renamings. Each tuple is of the form (type_name, field_renamings) "
             f"where type_name is the name of the type in the original schema and "
             f"field_renamings is a list of the fields that would be no-op renamed: [('Human', ['id'])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_field_renaming_illegal_noop_rename_fields_of_nonexistent_type(self) -> None:
@@ -505,16 +505,18 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.basic_schema), {}, {"Television": {"id": {"new_id"}}})
         self.assertEqual(
             "field_renamings is iterable, so it cannot have no-op renamings. However, the following entries exist in the field_renamings argument that correspond to names of object types that either don't exist in the original schema or would get suppressed. In other words, the field renamings for each of these types would be no-ops: ['Television']",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_field_renaming_illegal_noop_rename_fields_of_suppressed_type(self) -> None:
         # Like field renamings for a type that doesn't exist in the schema, this is illegal because the field renamings will have no effect because the type itself gets suppressed.
         with self.assertRaises(NoOpRenamingError) as e:
-            rename_schema(parse(ISS.multiple_objects_schema), {"Human": None}, {"Human": {"id": {"new_id"}}})
+            rename_schema(
+                parse(ISS.multiple_objects_schema), {"Human": None}, {"Human": {"id": {"new_id"}}}
+            )
         self.assertEqual(
             f"field_renamings is iterable, so it cannot have no-op renamings. However, the following entries exist in the field_renamings argument that correspond to names of object types that either don't exist in the original schema or would get suppressed. In other words, the field renamings for each of these types would be no-ops: ['Human']",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_enum_rename(self) -> None:
@@ -1176,8 +1178,8 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"name": {"name", "id"}}})
         self.assertEqual(
-            "Applying the renaming would produce a schema in which multiple fields belonging to the same type have the same name, which is an illegal schema state. To fix this, modify the field_renamings argument of rename_schema to ensure that within each type in the renamed schema, no two fields have the same name. The following is a list of tuples that describes what needs to be fixed. Each tuple is of the form (type_name, field_conflicts) where type_name is the type name that would appear in the original schema and field_conflicts is a list of tuples of the form (desired_field_name, original_field_names) where desired_field_name is the name of the field in the new schema and original_field_names is a list of the names of all the fields in the original schema that would be renamed to desired_field_name:  [('Human', [('id', ['id', 'name'])])]",
-            str(e.exception)
+            "Applying the renaming would produce a schema in which multiple fields belonging to the same type have the same name, which is an illegal schema state. To fix this, modify the field_renamings argument of rename_schema to ensure that within each type in the renamed schema, no two fields have the same name. The following is a list of tuples that describes what needs to be fixed. Each tuple is of the form (type_name, field_conflicts) where type_name is the type name that would appear in the original schema and field_conflicts is a list of tuples of the form (desired_field_name, original_field_names) where desired_field_name is the name of the field in the new schema and original_field_names is a list of the names of all the fields in the original schema that would be renamed to desired_field_name: [('Human', [('id', ['id', 'name'])])]",
+            str(e.exception),
         )
 
     def test_illegal_rename_type_start_with_number(self) -> None:
@@ -1192,7 +1194,7 @@ class TestRenameSchema(unittest.TestCase):
             "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
             "original_name is the name in the original schema and invalid_new_name is what "
             "original_name would be renamed to: [('Human', '0Human')]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_field_start_with_number(self) -> None:
@@ -1208,7 +1210,7 @@ class TestRenameSchema(unittest.TestCase):
             "where type_name is the name of the type in the original schema and "
             "field_renamings is a list of tuples mapping the original field name to the "
             "invalid GraphQL name it would be renamed to: [('Human', [('id', '0id')])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_type_contains_illegal_char(self) -> None:
@@ -1223,7 +1225,7 @@ class TestRenameSchema(unittest.TestCase):
             "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
             "original_name is the name in the original schema and invalid_new_name is what "
             "original_name would be renamed to: [('Human', 'Human!')]",
-            str(e.exception)
+            str(e.exception),
         )
         with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"}, {})
@@ -1236,7 +1238,7 @@ class TestRenameSchema(unittest.TestCase):
             "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
             "original_name is the name in the original schema and invalid_new_name is what "
             "original_name would be renamed to: [('Human', 'H-uman')]",
-            str(e.exception)
+            str(e.exception),
         )
         with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"}, {})
@@ -1249,7 +1251,7 @@ class TestRenameSchema(unittest.TestCase):
             "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
             "original_name is the name in the original schema and invalid_new_name is what "
             "original_name would be renamed to: [('Human', 'H.uman')]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_field_contains_illegal_char(self) -> None:
@@ -1265,7 +1267,7 @@ class TestRenameSchema(unittest.TestCase):
             "where type_name is the name of the type in the original schema and "
             "field_renamings is a list of tuples mapping the original field name to the "
             "invalid GraphQL name it would be renamed to: [('Human', [('id', 'Human!')])]",
-            str(e.exception)
+            str(e.exception),
         )
         with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"H-uman"}}})
@@ -1279,7 +1281,7 @@ class TestRenameSchema(unittest.TestCase):
             "where type_name is the name of the type in the original schema and "
             "field_renamings is a list of tuples mapping the original field name to the "
             "invalid GraphQL name it would be renamed to: [('Human', [('id', 'H-uman')])]",
-            str(e.exception)
+            str(e.exception),
         )
         with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"H.uman"}}})
@@ -1293,7 +1295,7 @@ class TestRenameSchema(unittest.TestCase):
             "where type_name is the name of the type in the original schema and "
             "field_renamings is a list of tuples mapping the original field name to the "
             "invalid GraphQL name it would be renamed to: [('Human', [('id', 'H.uman')])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_type_to_double_underscore(self) -> None:
@@ -1308,7 +1310,7 @@ class TestRenameSchema(unittest.TestCase):
             "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
             "original_name is the name in the original schema and invalid_new_name is what "
             "original_name would be renamed to: [('Human', '__Human')]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_field_to_double_underscore(self) -> None:
@@ -1324,7 +1326,7 @@ class TestRenameSchema(unittest.TestCase):
             "where type_name is the name of the type in the original schema and "
             "field_renamings is a list of tuples mapping the original field name to the "
             "invalid GraphQL name it would be renamed to: [('Human', [('id', '__id')])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_type_to_reserved_name_type(self) -> None:
@@ -1339,7 +1341,7 @@ class TestRenameSchema(unittest.TestCase):
             "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
             "original_name is the name in the original schema and invalid_new_name is what "
             "original_name would be renamed to: [('Human', '__Type')]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_illegal_rename_field_to_reserved_name_type(self) -> None:
@@ -1355,7 +1357,7 @@ class TestRenameSchema(unittest.TestCase):
             "where type_name is the name of the type in the original schema and "
             "field_renamings is a list of tuples mapping the original field name to the "
             "invalid GraphQL name it would be renamed to: [('Human', [('id', '__Type')])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_suppress_every_type(self) -> None:
