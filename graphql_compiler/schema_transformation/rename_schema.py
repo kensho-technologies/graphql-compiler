@@ -730,11 +730,11 @@ class RenameSchemaTypesVisitor(Visitor):
     def _rename_fields(self, node: ObjectTypeDefinitionNode) -> ObjectTypeDefinitionNode:
         """Renames node's fields, if applicable and return new node."""
         type_name = node.name.value
-        field_renamings = self.field_renamings.get(type_name, None)
-        if field_renamings is None:
+        current_type_field_renamings = self.field_renamings.get(type_name, None)
+        if current_type_field_renamings is None:
             # TODO: need to check that this is the idiomatic way to check for none-- could there be falsey not-None values?
             return node
-        if isinstance(field_renamings, Iterable):
+        if isinstance(current_type_field_renamings, Iterable):
             # An object type named type_name exists in the schema, so the field renamings for that
             # type have been used.
             self.types_with_field_renamings_to_be_used.remove(type_name)
@@ -745,11 +745,11 @@ class RenameSchemaTypesVisitor(Visitor):
         new_field_nodes = set()
         for field_node in node.fields:
             original_field_name = field_node.name.value
-            if isinstance(field_renamings, Iterable) and field_renamings.get(original_field_name, set()) == {original_field_name}:
+            if isinstance(current_type_field_renamings, Iterable) and current_type_field_renamings.get(original_field_name, set()) == {original_field_name}:
                 # Check for no-op 1-1 renamings when the renamings are iterable and would rename a
                 # field to itself.
                 self.no_op_field_renamings[type_name].add(original_field_name)
-            new_field_names = field_renamings.get(original_field_name, {original_field_name})
+            new_field_names = current_type_field_renamings.get(original_field_name, {original_field_name})
             for new_field_name in new_field_names:
                 if new_field_name in taken_field_names:
                     # TODO: be consistent, default dicts throughout the code or no?
@@ -763,8 +763,8 @@ class RenameSchemaTypesVisitor(Visitor):
                     self.reverse_field_name_map[type_name][new_field_name] = original_field_name
             taken_field_names.update(new_field_names)
             new_field_nodes.update(get_copy_of_node_with_new_name(field_node, new_field_name) for new_field_name in new_field_names)
-        if isinstance(field_renamings, Iterable):
-            unused_field_renamings = set(field_renamings) - {field.name.value for field in node.fields}
+        if isinstance(current_type_field_renamings, Iterable):
+            unused_field_renamings = set(current_type_field_renamings) - {field.name.value for field in node.fields}
             if unused_field_renamings:
                 # Need this condition because if all the renamings are used, calling update() will
                 # materialize an empty set, making it seem like there are no-op field renamings even
