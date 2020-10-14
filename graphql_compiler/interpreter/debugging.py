@@ -180,8 +180,8 @@ class TraceRecorder(Generic[DataToken]):
 
         Yields:
             for each piece of data yielded by the input compound_iterable, yields a tuple of:
-            - the operation's unique identifier for the yielded data
-            - the input compound_iterable's yielded data itself
+            - the operation's unique identifier for the yielded data, and
+            - the input compound_iterable's yielded data itself.
         """
         for item_index, item in enumerate(compound_iterable):
             item_uid = len(self._operation_log)
