@@ -224,13 +224,22 @@ def rename_schema(schema_ast: DocumentNode, type_renamings: TypeRenamingMapping,
         for renamed_name, original_name in six.iteritems(reverse_name_map)
         if renamed_name != original_name
     }
-
+    reverse_field_name_map_changed_names_only = {}
+    for type_name, reverse_field_name_mapping in reverse_field_name_map.items():
+        current_type_reverse_field_name_map_changed_names_only = {
+            renamed_field_name: original_field_name
+            for renamed_field_name, original_field_name in reverse_field_name_mapping.items()
+            if renamed_field_name != original_field_name
+        }
+        if current_type_reverse_field_name_map_changed_names_only:
+            # Add to reverse_field_name_map_changed_names_only iff at least one field name was changed-- this prevents things like reverse_name_map_changed_names_only[type_name] = {} when no fields for a given type were renamed.
+            reverse_field_name_map_changed_names_only[type_name] = current_type_reverse_field_name_map_changed_names_only
     schema_ast = _rename_and_suppress_query_type_fields(schema_ast, type_renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=schema_ast,
         schema=build_ast_schema(schema_ast),
         reverse_name_map=reverse_name_map_changed_names_only,
-        reverse_field_name_map=reverse_field_name_map
+        reverse_field_name_map=reverse_field_name_map_changed_names_only
     )
 
 
@@ -737,10 +746,6 @@ class RenameSchemaTypesVisitor(Visitor):
             # An object type named type_name exists in the schema, so the field renamings for that
             # type have been used.
             self.types_with_field_renamings_to_be_used.remove(type_name)
-        # TODO: can we implement this without parallel structures for taken_field_names and
-        # new_field_nodes? I haven't thought of a way to do this cleanly but as it is, it's easy for
-        # errors to creep in. Answer: yes, use self.reverse_field_name_map like we do with renaming types
-        taken_field_names = set()  # Field names that are taken in the new schema
         new_field_nodes = set()
         for field_node in node.fields:
             original_field_name = field_node.name.value
@@ -750,7 +755,7 @@ class RenameSchemaTypesVisitor(Visitor):
                 self.no_op_field_renamings[type_name].add(original_field_name)
             new_field_names = current_type_field_renamings.get(original_field_name, {original_field_name})
             for new_field_name in new_field_names:
-                if new_field_name in taken_field_names:
+                if new_field_name in self.reverse_field_name_map[type_name]:
                     # TODO: be consistent, default dicts throughout the code or no?
                     if new_field_name not in self.field_name_conflicts[type_name]:
                         conflictingly_renamed_field_name = self.reverse_field_name_map[type_name].get(new_field_name, new_field_name)
@@ -758,9 +763,8 @@ class RenameSchemaTypesVisitor(Visitor):
                     self.field_name_conflicts[type_name][new_field_name].add(original_field_name)
                 if not is_valid_unreserved_name(new_field_name):
                     self.invalid_field_names[type_name][original_field_name] = new_field_name
-                if original_field_name != new_field_name:
-                    self.reverse_field_name_map[type_name][new_field_name] = original_field_name
-            taken_field_names.update(new_field_names)
+                # Record these in self.reverse_field_name_map for now even if new_field_name == original_field_name to prevent naming conflicts with existing fields that don't get renamed. These will eventually get removed before this data structure gets added to the RenamedSchemaDescriptor return value for rename_schema.
+                self.reverse_field_name_map[type_name][new_field_name] = original_field_name
             new_field_nodes.update(get_copy_of_node_with_new_name(field_node, new_field_name) for new_field_name in new_field_names)
         if isinstance(current_type_field_renamings, Iterable):
             unused_field_renamings = set(current_type_field_renamings) - {field.name.value for field in node.fields}
