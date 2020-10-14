@@ -709,13 +709,13 @@ class RenameSchemaTypesVisitor(Visitor):
             # If one type in this conflict is a custom scalar, the two types causing conflict were
             # named type_name and desired_type_name (the latter being the custom scalar name) in the
             # original schema.
-            conflictingly_renamed_type_name = self.reverse_name_map.get(
-                desired_type_name, desired_type_name
-            )
 
             # Collect all types in the original schema that would be named desired_type_name in the
             # new schema
             if desired_type_name not in self.type_name_conflicts:
+                conflictingly_renamed_type_name = self.reverse_name_map.get(
+                    desired_type_name, desired_type_name
+                )
                 self.type_name_conflicts[desired_type_name] = {conflictingly_renamed_type_name}
             self.type_name_conflicts[desired_type_name].add(type_name)
 
@@ -756,7 +756,6 @@ class RenameSchemaTypesVisitor(Visitor):
             new_field_names = current_type_field_renamings.get(original_field_name, {original_field_name})
             for new_field_name in new_field_names:
                 if new_field_name in self.reverse_field_name_map[type_name]:
-                    # TODO: be consistent, default dicts throughout the code or no?
                     if new_field_name not in self.field_name_conflicts[type_name]:
                         conflictingly_renamed_field_name = self.reverse_field_name_map[type_name].get(new_field_name, new_field_name)
                         self.field_name_conflicts[type_name][new_field_name] = {conflictingly_renamed_field_name}
