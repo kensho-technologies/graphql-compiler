@@ -40,13 +40,6 @@ data.
         secondname: String
     }
 
-For both 1-1 or 1-many renaming, renamings only apply to types, fields, and enum values that exist
-in the original schema. For example, if a schema contains a type named "Foo" and a type named "Bar"
-but not a type named "Baz" and type_renamings maps "Foo" to "Bar" and "Bar" to "Baz", then the renamed
-schema will contain a type named "Bar" (corresponding to the original schema's type "Foo") and a
-type named "Baz" (corresponding to the original schema's type "Bar"), instead of containing two
-types both named "Baz".
-
 Suppressing part of the schema removes it altogether. For instance, given the following part of a
 schema:
     type Dog {
@@ -56,34 +49,72 @@ suppressing "Dog" would produce an otherwise-identical schema but with that type
 its fields) removed. If "Dog" also appeared as a field in the schema's root type, it would be
 removed there as well.
 
+For both 1-1 or 1-many renaming, renamings only apply to types, fields, and enum values that exist
+in the original schema. For example, if a schema contains a type named "Foo" and a type named "Bar"
+but not a type named "Baz" and type_renamings maps "Foo" to "Bar" and "Bar" to "Baz", then the renamed
+schema will contain a type named "Bar" (corresponding to the original schema's type "Foo") and a
+type named "Baz" (corresponding to the original schema's type "Bar"), instead of containing two
+types both named "Baz".
+
+Field renamings may produce "illegal" schema states in the process of renaming, but they are legal
+as long as the end result is a legal schema. For example, if a schema contains a type that contains
+just two fields named "foo" and "bar", and field_renamings would 1-many rename the field named "foo"
+to "foo" and "bar" and 1-many rename the field named "bar" to "baz" and "quux", this would be a
+legal renaming. Even though applying the renaming for "foo" first would produce an intermediate
+state with two fields named "bar", the end result has no naming collisions.
+
+Field renaming operations take place before type renamings, so all field renamings should be
+specified in terms of the name of the type in the original schema. For example, if a schema
+contains a single type named "Foo" that contains a field named "bar", then to produce a schema
+with a single type named "Baz" containing a field named "quux", the renamings could be as
+follows:
+    type_renamings == {"Foo": "Baz"}
+    field_renamings == {"Foo": {"bar": "quux"}}
+Note that if instead field_renamings == {"Baz": {"bar": "quux"}}, this would not produce the desired
+result.
+
 Operations that are already supported:
 - 1-1 renaming of object types, unions, enums, and interfaces.
 - Suppressing types that don't implement an interface.
 - Suppressing unions.
+- 1-1 and 1-many renamings for fields belonging to object types
+- Suppressions for fields belonging to object types
 
 Operations that are not yet supported but will be implemented:
-- Suppressions for fields, enums, enum values, interfaces, and types that implement interfaces.
+- Suppressions for fields belonging to interface types, enums, enum values, interfaces, and types
+  that implement interfaces.
 - Renamings and suppressions for scalar types
-- 1-1 and 1-many renamings for fields and enum values.
+- 1-1 and 1-many renamings for fields belonging to interface types and enum values.
 
 Renaming constraints:
 - If you suppress all member types in a union, you must also suppress the union.
 - If you suppress a type X, no other type Y may keep fields of type X (those fields must be
-  suppressed, which requires field suppression which hasn't been implemented yet). However, if type
-  X has a field of that type X, it is legal to suppress type X without explicitly suppressing that
-  particular field.
+  suppressed). However, if type X has a field of that type X, it is legal to suppress type X without
+  explicitly suppressing that particular field.
 - You may not suppress all types in the schema's root type.
 - All names must be valid GraphQL names.
 - Names may not conflict with each other. For instance, you may not rename both "Foo" and "Bar" to
   "Baz". You also may not rename anything to "Baz" if a type "Baz" already exists and is not also
-  being renamed or suppressed.
-- Special rules apply to the type_renamings argument if it's iterable (e.g. if a dict). If iterable,
-  type_renamings may not contain no-op entries. In other words:
-    - A string type_name may be in type_renamings only if there exists a type in the schema named
-      type_name (since otherwise that entry would not affect any type in the schema).
-    - A string type_name is in type_renamings, then type_renamings[type_name] != type_name (since applying the
-      renaming would not change the type named type_name).
-  If not iterable, then these no-op rules don't apply.
+  being renamed or suppressed. The same rules apply for fields that belong to the same type, since
+  they share a namespace as well.
+- There exist special rules for iterable renamings (e.g. if renamings are represented as a
+  dictionary-- specifically that no-op renamings are not allowed.
+  - If type_renamings argument is iterable:
+    - A string type_name may be in type_renamings only if there exists a type in the original schema
+      named type_name (since otherwise that entry would not affect any type in the schema).
+    - If string type_name is in type_renamings, then type_renamings[type_name] != type_name (since
+      if they were the same, then applying the renaming would not change the type named type_name).
+  - If field_renamings argument is iterable:
+    - A string type_name may be in field_renamings only if there exists a type in the original
+      schema named type_name and that type wouldn't get suppressed by type_renamings (since
+      otherwise that entry would not affect any type in the schema).
+  - If field_renamings[type_name] is iterable, for some string type_name in the schema:
+    - A string field_name may be in field_renamings[type_name] only if there exists a field
+      belonging to type_name in the original schema named field_name (since otherwise that entry
+      would not affect any field in the schema).
+    - If string field_name is in field_renamings[type_name], then
+      field_renamings[type_name][field_name] != field_name (since if they were the same, then
+      applying the renaming would not change the field named field_name).
 """
 from collections import defaultdict, namedtuple
 from collections.abc import Iterable
@@ -130,15 +161,10 @@ RenamedSchemaDescriptor = namedtuple(
         "schema",  # GraphQLSchema, representing the same schema as schema_ast
         "reverse_name_map",  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
-        "reverse_field_name_map",  # Dict[str, Dict[str, str]], maps type name to a dict that maps
-        # each of the type's fields f (in the renamed schema) to the name of the field in the
-        # original schema. reverse_field_name_map.get(type_name) is not None iff the type named
-        # type_name has different fields in the original schema vs. the renamed schema. if type_name
-        # in reverse_field_name_map, reverse_field_name_map[type_name].get(new_field_name) is not
-        # None iff the new_field_name is the name of a field in the renamed schema that corresponds
-        # to a field in the original schema that is not also named new_field_name. e.g. if the field
-        # "id" is renamed to "id" and "new_id", only "new_id" -> "id" mapping will show up here
-        # because it's needed to rename the query as well.
+        "reverse_field_name_map",  # Dict[str, Dict[str, str]], mappings of the form type_name:
+        # reverse_field_name_mapping, where type_name is the name of a type in the original schema
+        # and reverse_field_name_mapping is a dict mapping renamed field names to to original name
+        # for the given type. Contains only field names that were changed
     ),
 )
 
@@ -157,7 +183,7 @@ class TypeRenamingMapping(Protocol):
 class FieldRenamingMapping(Protocol):
     class FieldRenamings(Protocol):
         def get(self, field_name: str, default: Set[str]) -> Set[str]:
-            """Define mapping for renaming fields belonging to a type."""
+            """Define mapping for renaming fields belonging to a particular type."""
             ...
 
     def get(
@@ -174,10 +200,13 @@ def rename_schema(
 ) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; rename/suppress types and fields.
 
-    Any type, interface, enum, or fields of the root type/query type whose name
-    appears in type_renamings will be renamed to the corresponding value if the value is not None. If the
-    value is None, it will be suppressed in the renamed schema and queries will not be able to
-    access it.
+    Any object type, interface type, enum type, or field of the root type/query type has a name. Let
+    the name be called type_name. If type_renamings.get(type_name, _) is not None, the type or field
+    of the root type/query type will be renamed to the corresponding value. If the value is None, it
+    will be suppressed in the renamed schema and queries will not be able to access it.
+    todo CHECK IF YOU WANT TO USE GET OR THE BRACKET NOTATION -> LIKE WITH A DICT ETC
+    Fields belonging to object types may also be renamed or suppressed. For an object type named
+    type_name, if field_renamings[type_name]
 
     Any such names that do not appear in type_renamings will be unchanged. Directives will never be
     renamed.
