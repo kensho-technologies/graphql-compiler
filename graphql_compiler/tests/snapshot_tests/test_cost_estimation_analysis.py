@@ -8,7 +8,7 @@ from ...cost_estimation.filter_selectivity_utils import Selectivity
 from ...cost_estimation.interval import Interval
 from ...cost_estimation.statistics import LocalStatistics
 from ...global_utils import QueryStringWithParameters
-from ...schema.schema_info import QueryPlanningSchemaInfo, UUIDOrdering
+from ...schema.schema_info import EdgeConstraint, QueryPlanningSchemaInfo, UUIDOrdering
 from ...schema_generation.graphql_schema import get_graphql_schema_from_schema_graph
 from ..test_helpers import generate_schema_graph
 
@@ -395,7 +395,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         self.assertEqual(expected_eligible_fields, eligible_fields)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
-    def test_distinct_result_set_estimates_with_revisit_counts(self):
+    def test_distinct_result_set_estimates_edge_constraint_propagation(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
@@ -412,15 +412,51 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             statistics=statistics,
             pagination_keys=pagination_keys,
             uuid4_field_info=uuid4_field_info,
+            edge_constraints={
+                "Animal_ParentOf": EdgeConstraint.AtMostOneSource,
+            },
         )
 
+        # The Animal_ParentOf edge has an AtMostOneSource constraint, meaning that each
+        # destination is connected to at most one source.
+        # The query below has a unique filter on the root, so the distinct result set
+        # estimate at the root is 1. However, since that animal has at most one parent,
+        # the distinct result set estimate at that location is 1 as well, even though
+        # there are no explicit filters on it.
         query = QueryStringWithParameters(
             """{
             Animal {
                 name @filter(op_name: "=", value: ["$animal_name"])
                 in_Animal_ParentOf @optional {
-                    name @output(out_name: "child_name")
+                    name @output(out_name: "parent_name")
                     in_Animal_ParentOf {
+                        name @output(out_name: "grandparent_name")
+                    }
+                }
+            }
+        }""",
+            {
+                "animal_name": "Joe",
+            },
+        )
+        estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
+        expected_estimates = {
+            ("Animal",): 1.0,
+            ("Animal", "in_Animal_ParentOf"): 1.0,
+            ("Animal", "in_Animal_ParentOf", "in_Animal_ParentOf"): 1.0,
+        }
+        self.assertEqual(expected_estimates, estimates)
+
+        # Even though the distinct result set estimate at the root is 1, that doesn't affect
+        # the result on the child node, since an animal can have an unlimited number of
+        # children.
+        query = QueryStringWithParameters(
+            """{
+            Animal {
+                name @filter(op_name: "=", value: ["$animal_name"])
+                out_Animal_ParentOf @optional {
+                    name @output(out_name: "child_name")
+                    out_Animal_ParentOf {
                         name @output(out_name: "grandchild_name")
                     }
                 }
@@ -433,7 +469,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
         estimates = analyze_query_string(schema_info, query).distinct_result_set_estimates
         expected_estimates = {
             ("Animal",): 1.0,
-            ("Animal", "in_Animal_ParentOf"): 1000.0,
-            ("Animal", "in_Animal_ParentOf", "in_Animal_ParentOf"): 1000.0,
+            ("Animal", "out_Animal_ParentOf"): 1000.0,
+            ("Animal", "out_Animal_ParentOf", "out_Animal_ParentOf"): 1000.0,
         }
         self.assertEqual(expected_estimates, estimates)
