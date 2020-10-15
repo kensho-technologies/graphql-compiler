@@ -21,9 +21,6 @@ from ..typedefs import Literal, TypedDict
 from .immutable_stack import ImmutableStack, make_empty_stack
 
 
-GLOBAL_LOCATION_TYPE_NAME = "__global__"
-
-
 DataToken = TypeVar("DataToken")
 
 

@@ -22,7 +22,6 @@ def evaluate_binary_composition(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: BinaryComposition,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
@@ -32,7 +31,6 @@ def evaluate_binary_composition(
             query_metadata_table,
             query_arguments,
             current_location,
-            current_type_name,
             expression.left,
             data_contexts,
         )
@@ -43,7 +41,6 @@ def evaluate_binary_composition(
             query_metadata_table,
             query_arguments,
             current_location,
-            current_type_name,
             expression.right,
             data_contexts,
         )
@@ -66,7 +63,6 @@ def evaluate_ternary_conditional(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: TernaryConditional,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
@@ -77,7 +73,6 @@ def evaluate_ternary_conditional(
             query_metadata_table,
             query_arguments,
             current_location,
-            current_type_name,
             expression.predicate,
             data_contexts,
         )
@@ -88,7 +83,6 @@ def evaluate_ternary_conditional(
             query_metadata_table,
             query_arguments,
             current_location,
-            current_type_name,
             expression.if_true,
             data_contexts,
         )
@@ -99,7 +93,6 @@ def evaluate_ternary_conditional(
             query_metadata_table,
             query_arguments,
             current_location,
-            current_type_name,
             expression.if_false,
             data_contexts,
         )

@@ -21,7 +21,6 @@ def evaluate_local_field(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: LocalField,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
@@ -30,6 +29,8 @@ def evaluate_local_field(
             f"Unexpectedly attempting to evaluate a LocalField while in the global scope "
             f"(current_location is None). This is a bug: {expression}"
         )
+
+    current_type_name = query_metadata_table.get_location_info(current_location).type.name
 
     # TODO(bojanserafimov): Memoize hints for each location.
     hints = construct_hints_for_location(query_metadata_table, query_arguments, current_location)
@@ -44,7 +45,6 @@ def evaluate_context_field(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: Union[ContextField, OutputContextField],
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
@@ -88,7 +88,6 @@ def evaluate_context_field_existence(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: ContextFieldExistence,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
@@ -105,7 +104,6 @@ def evaluate_variable(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: Variable,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
@@ -119,7 +117,6 @@ def evaluate_literal(
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: Literal,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:

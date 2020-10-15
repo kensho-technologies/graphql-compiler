@@ -19,9 +19,6 @@ def handle_filter_block(
     if post_block_location is None:
         raise AssertionError()
 
-    post_block_location_info = query_metadata_table.get_location_info(post_block_location)
-    current_type_name = post_block_location_info.type.name
-
     # TODO(predrag): Handle the "filters depending on missing optional values pass" rule.
     #                Currently, pre-lowering IR has the invariant: one @filter = one Filter block.
     #                Add an explicit test to ensure this continues to be the case, then make use of
@@ -36,7 +33,6 @@ def handle_filter_block(
             query_metadata_table,
             query_arguments,
             post_block_location,
-            current_type_name,
             predicate,
             data_contexts,
         )

@@ -27,14 +27,11 @@ from .immediate_expression_handlers import (
 )
 
 
-# TODO(bojanserafimov): The current_type_name argument can be removed, since the
-#                       information is available in the metadata table.
 def evaluate_expression(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
     current_location: Optional[Location],
-    current_type_name: str,
     expression: Expression,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Tuple[DataContext, Any]]:
@@ -60,7 +57,6 @@ def evaluate_expression(
         query_metadata_table,
         query_arguments,
         current_location,
-        current_type_name,
         expression,
         data_contexts,
     )

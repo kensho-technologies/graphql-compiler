@@ -5,7 +5,7 @@ from ...compiler.expressions import Expression
 from ...compiler.metadata import QueryMetadataTable
 from ..debugging import print_tap
 from ..expression_ops import evaluate_expression
-from ..typedefs import GLOBAL_LOCATION_TYPE_NAME, DataContext, DataToken, InterpreterAdapter
+from ..typedefs import DataContext, DataToken, InterpreterAdapter
 
 
 def _produce_output(
@@ -23,7 +23,6 @@ def _produce_output(
         query_metadata_table,
         query_arguments,
         None,
-        GLOBAL_LOCATION_TYPE_NAME,
         output_expression,
         data_contexts,
     )
