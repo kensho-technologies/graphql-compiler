@@ -1,6 +1,6 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 from dataclasses import dataclass
-from typing import Any, Dict, NamedTuple, Set, Tuple, Type, TypeVar
+from typing import Any, Dict, NamedTuple, Set, Tuple, Type, TypeVar, Union
 
 from graphql import DocumentNode, GraphQLList, GraphQLNamedType, GraphQLNonNull, GraphQLType
 from graphql.language.printer import print_ast
@@ -109,3 +109,35 @@ def assert_set_equality(set1: Set[Any], set2: Set[Any]) -> None:
         if diff2:
             error_message_list.append(f"Keys in the second set but not the first: {diff2}.")
         raise AssertionError(" ".join(error_message_list))
+
+
+T_A = TypeVar("T_A")
+T_B = TypeVar("T_B")
+
+
+def checked_cast(target_type: Type[T_A], value: Any) -> T_A:
+    """Assert that the value is of the given type; checked version of typing.cast()."""
+    if not isinstance(value, target_type):
+        raise AssertionError(
+            f"Expected value {value} to be an instance of {target_type}, but that was unexpectedly "
+            f"not the case. Its current type is {type(value).__name__}."
+        )
+
+    return value
+
+
+def checked_cast_to_union2(
+    target_types: Tuple[Type[T_A], Type[T_B]],
+    value: Any,
+) -> Union[T_A, T_B]:
+    """Assert that the value is one of the two specified types."""
+    # N.B.: If we ever need a union of more than two types, feel free to make functions like
+    #       checked_cast_to_union3() or checked_cast_to_union4() as necessary, so long as you
+    #       cover them with tests on par with the ones for this function.
+    if not isinstance(value, target_types):
+        raise AssertionError(
+            f"Expected value {value} to be an instance of one of {target_types}, but that "
+            f"was unexpectedly not the case. Its current type is {type(value).__name__}."
+        )
+
+    return value

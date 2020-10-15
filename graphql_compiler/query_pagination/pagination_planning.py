@@ -3,10 +3,16 @@ from abc import ABC
 from dataclasses import dataclass, field
 from typing import Tuple
 
-from ..ast_manipulation import get_only_query_definition, get_only_selection_from_ast
+from graphql import FieldNode
+
+from ..ast_manipulation import (
+    get_ast_field_name,
+    get_only_query_definition,
+    get_only_selection_from_ast,
+)
 from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..exceptions import GraphQLError
-from ..global_utils import PropertyPath
+from ..global_utils import PropertyPath, checked_cast
 
 
 @dataclass
@@ -122,8 +128,11 @@ def get_pagination_plan(
 
     # TODO(bojanserafimov): Make a better pagination plan. A non-root vertex might have a
     #                       higher pagination capacity than the root does.
-    root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
-    pagination_node = root_node
+    root_ast_node = checked_cast(
+        FieldNode, get_only_selection_from_ast(definition_ast, GraphQLError)
+    )
+    root_vertex_name = get_ast_field_name(root_ast_node)
+    pagination_node = root_vertex_name
 
     # TODO(bojanserafimov): Remove pagination fields. The pagination planner is now smart enough
     #                       to pick the best field for pagination based on the query. This is not
@@ -134,7 +143,7 @@ def get_pagination_plan(
         return PaginationPlan(tuple()), (PaginationFieldNotSpecified(pagination_node),)
 
     # Get the pagination capacity
-    vertex_path = (root_node,)
+    vertex_path = (root_vertex_name,)
     property_path = PropertyPath(vertex_path, pagination_field)
     capacity = query_analysis.pagination_capacities.get(property_path)
     # If the pagination capacity is None, then there must be no quantiles for this property.
