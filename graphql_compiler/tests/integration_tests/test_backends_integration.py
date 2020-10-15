@@ -151,7 +151,7 @@ class IntegrationTests(TestCase):
         if backend_name in SQL_BACKENDS:
             engine = cls.sql_backend_name_to_engine[backend_name]  # type: ignore
             results, output_metadata = compile_and_run_sql_query(
-                cls.sql_schema_info, graphql_query, parameters, engine  # type: ignore
+                cls.sql_schema_info[backend_name], graphql_query, parameters, engine  # type: ignore
             )
         elif backend_name in MATCH_BACKENDS:
             results = compile_and_run_match_query(

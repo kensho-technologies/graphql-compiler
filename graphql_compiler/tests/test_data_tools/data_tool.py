@@ -15,6 +15,7 @@ from ..integration_tests.integration_backend_config import (
     EXPLICIT_DB_BACKENDS,
     SQL_BACKEND_TO_CONNECTION_STRING,
     SqlTestBackend,
+    test_backend,
 )
 from ..test_helpers import get_sqlalchemy_schema_info
 
@@ -283,33 +284,60 @@ def init_sql_integration_test_backends():
         # safely create the test DATABASE for all SQL backends except sqlite
         # sqlite's in-memory database does not need to be explicitly created/dropped.
         if backend_name in EXPLICIT_DB_BACKENDS:
-            # Drop databases if they exist
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("DROP DATABASE IF EXISTS db_1;")
-            )
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("DROP DATABASE IF EXISTS db_2;")
-            )
 
-            # create the test databases
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("CREATE DATABASE db_1;")
-            )
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                text("CREATE DATABASE db_2;")
-            )
+            if backend_name == test_backend.POSTGRES:
+                # Drop schemas and dependent tables if they exist.
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("DROP SCHEMA IF EXISTS schema_1 CASCADE;")
+                )
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("DROP SCHEMA IF EXISTS schema_2 CASCADE;")
+                )
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("DROP SCHEMA IF EXISTS schema_3 CASCADE;")
+                )
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("DROP SCHEMA IF EXISTS schema_4 CASCADE;")
+                )
 
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_1;"))
-            # create the test schemas in db_1
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
+                # Create the test schemas.
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_1"))
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_2"))
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_3"))
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_4"))
 
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_2;"))
-            # create the test schemas in db_2
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
+            else:
+                # Drop databases if they exist
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("DROP DATABASE IF EXISTS db_1;")
+                )
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("DROP DATABASE IF EXISTS db_2;")
+                )
 
-            engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE master;"))
+                # create the test databases
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("CREATE DATABASE db_1;")
+                )
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    text("CREATE DATABASE db_2;")
+                )
+
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_1;"))
+                # create the test schemas in db_1
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
+
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_2;"))
+                # create the test schemas in db_2
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
+
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE master;"))
 
         sql_test_backend = SqlTestBackend(engine, base_connection_string)
         sql_test_backends[backend_name] = sql_test_backend
@@ -328,67 +356,85 @@ def tear_down_integration_test_backends(sql_test_backends):
         engine = create_engine(sql_test_backend.base_connection_string)
         # set execution options to AUTOCOMMIT so that the DB drop is not performed in a transaction
         # as this is not allowed on some SQL backends
-        engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-            text("DROP DATABASE IF EXISTS db_1;")
-        )
-        engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-            text("DROP DATABASE IF EXISTS db_2;")
-        )
+        if backend_name == test_backend.POSTGRES:
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                text("DROP SCHEMA IF EXISTS schema_1 CASCADE;")
+            )
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                text("DROP SCHEMA IF EXISTS schema_2 CASCADE;")
+            )
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                text("DROP SCHEMA IF EXISTS schema_3 CASCADE;")
+            )
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                text("DROP SCHEMA IF EXISTS schema_4 CASCADE;")
+            )
+        else:
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                text("DROP DATABASE IF EXISTS db_1;")
+            )
+            engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                text("DROP DATABASE IF EXISTS db_2;")
+            )
 
 
 def generate_sql_integration_data(sql_test_backends):
     """Populate test data for SQL backends for integration testing."""
-    sql_schema_info = get_sqlalchemy_schema_info()
-    vertex_values, edge_values, uuid_to_class_name = get_integration_data()
+    sql_schema_info = {}
+    for backend_name, sql_test_backend in six.iteritems(sql_test_backends):
+        backend_specific_sql_schema_info = get_sqlalchemy_schema_info(backend_name)
+        vertex_values, edge_values, uuid_to_class_name = get_integration_data()
 
-    # Represent all edges as foreign keys
-    uuid_to_foreign_key_values = {}
-    for edge_name, edge_values in six.iteritems(edge_values):
-        for edge_value in edge_values:
-            from_classname = uuid_to_class_name[edge_value["from_uuid"]]
-            edge_field_name = "out_{}".format(edge_name)
-            join_descriptor = sql_schema_info.join_descriptors[from_classname][edge_field_name]
+        # Represent all edges as foreign keys
+        uuid_to_foreign_key_values = {}
+        for edge_name, edge_values in six.iteritems(edge_values):
+            for edge_value in edge_values:
+                from_classname = uuid_to_class_name[edge_value["from_uuid"]]
+                edge_field_name = "out_{}".format(edge_name)
+                join_descriptor = backend_specific_sql_schema_info.join_descriptors[from_classname][edge_field_name]
 
-            is_from_uuid = join_descriptor.from_column == "uuid"
-            is_to_uuid = join_descriptor.to_column == "uuid"
-            if is_from_uuid == is_to_uuid:
-                raise NotImplementedError(
-                    "Exactly one of the join columns was expected to"
-                    "be uuid. found {}".format(join_descriptor)
-                )
-
-            if is_from_uuid:
-                existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
-                    edge_value["to_uuid"], {}
-                )
-                if join_descriptor.to_column in existing_foreign_key_values:
+                is_from_uuid = join_descriptor.from_column == "uuid"
+                is_to_uuid = join_descriptor.to_column == "uuid"
+                if is_from_uuid == is_to_uuid:
                     raise NotImplementedError(
-                        "The SQL backend does not support many-to-many "
-                        "edges. Found multiple edges of class {} from "
-                        "vertex {}.".format(edge_name, edge_value["to_uuid"])
+                        "Exactly one of the join columns was expected to"
+                        "be uuid. found {}".format(join_descriptor)
                     )
-                existing_foreign_key_values[join_descriptor.to_column] = edge_value["from_uuid"]
-            elif is_to_uuid:
-                existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
-                    edge_value["from_uuid"], {}
-                )
-                if join_descriptor.from_column in existing_foreign_key_values:
-                    raise NotImplementedError(
-                        "The SQL backend does not support many-to-many "
-                        "edges. Found multiple edges of class {} to "
-                        "vertex {}.".format(edge_name, edge_value["to_uuid"])
+
+                if is_from_uuid:
+                    existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
+                        edge_value["to_uuid"], {}
                     )
-                existing_foreign_key_values[join_descriptor.from_column] = edge_value["to_uuid"]
+                    if join_descriptor.to_column in existing_foreign_key_values:
+                        raise NotImplementedError(
+                            "The SQL backend does not support many-to-many "
+                            "edges. Found multiple edges of class {} from "
+                            "vertex {}.".format(edge_name, edge_value["to_uuid"])
+                        )
+                    existing_foreign_key_values[join_descriptor.to_column] = edge_value["from_uuid"]
+                elif is_to_uuid:
+                    existing_foreign_key_values = uuid_to_foreign_key_values.setdefault(
+                        edge_value["from_uuid"], {}
+                    )
+                    if join_descriptor.from_column in existing_foreign_key_values:
+                        raise NotImplementedError(
+                            "The SQL backend does not support many-to-many "
+                            "edges. Found multiple edges of class {} to "
+                            "vertex {}.".format(edge_name, edge_value["to_uuid"])
+                        )
+                    existing_foreign_key_values[join_descriptor.from_column] = edge_value["to_uuid"]
 
     # Insert all the prepared data into the test database
-    for sql_test_backend in six.itervalues(sql_test_backends):
+    # for sql_test_backend in six.itervalues(sql_test_backends):
         for vertex_name, insert_values in six.iteritems(vertex_values):
-            table = sql_schema_info.vertex_name_to_table[vertex_name]
+            table = backend_specific_sql_schema_info.vertex_name_to_table[vertex_name]
             table.delete(bind=sql_test_backend.engine)
             table.create(bind=sql_test_backend.engine)
             for insert_value in insert_values:
                 foreign_key_values = uuid_to_foreign_key_values.get(insert_value["uuid"], {})
                 all_values = merge_non_overlapping_dicts(insert_value, foreign_key_values)
                 sql_test_backend.engine.execute(table.insert().values(**all_values))
+
+        sql_schema_info[backend_name] = backend_specific_sql_schema_info
 
     return sql_schema_info
