@@ -256,7 +256,7 @@ def rename_schema(
     custom_scalar_names = get_custom_scalar_names(schema)
 
     _validate_renamings(
-        schema_ast, type_renamings, field_renamings, query_type, custom_scalar_names
+        schema_ast, type_renamings, query_type, custom_scalar_names
     )
 
     # Rename types, interfaces, enums, unions and suppress types, unions
