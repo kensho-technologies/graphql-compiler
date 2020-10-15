@@ -161,32 +161,30 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         the process of query execution begins.
 
         Consider the following example schema:
-        ***
-        schema {
-            query: RootSchemaQuery
-        }
+            schema {
+                query: RootSchemaQuery
+            }
 
-        < ... some default GraphQL compiler directives and scalar type definitions here ... >
+            < ... some default GraphQL compiler directives and scalar type definitions here ... >
 
-        type Foo {
-            < ... some fields here ... >
-        }
+            type Foo {
+                < ... some fields here ... >
+            }
 
-        < ... perhaps other type definitions here ... >
+            < ... perhaps other type definitions here ... >
 
-        type RootSchemaQuery {
-            # This is the root query type for the schema, as defined at the top of the schema.
-            Foo: [Foo]
-        }
-        ***
+            type RootSchemaQuery {
+                # This is the root query type for the schema, as defined at the top of the schema.
+                Foo: [Foo]
+            }
 
         Per the GraphQL specification, since the definition of RootSchemaQuery only contains the
         type named Foo, queries must start by querying for Foo in order to be valid for the schema:
-        {
-            Foo {
-                < stuff here >
+            {
+                Foo {
+                    < ... stuff here ... >
+                }
             }
-        }
 
         To compute the results for such a query, the interpreter would call get_tokens_of_type()
         with "Foo" as the type_name value. As get_tokens_of_type() yields tokens,
