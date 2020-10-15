@@ -3,6 +3,7 @@ from textwrap import dedent
 from typing import Optional, Set
 import unittest
 
+from ...typedefs import Protocol
 from graphql import GraphQLSchema, build_ast_schema, parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
@@ -11,7 +12,7 @@ from graphql.pyutils import snake_to_camel
 from ...schema_transformation.rename_schema import (
     RenameSchemaTypesVisitor,
     TypeRenamingMapping,
-    rename_schema,
+    rename_schema, FieldRenamingsForParticularType, FieldRenamingMapping,
 )
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
@@ -458,20 +459,24 @@ class TestRenameSchema(unittest.TestCase):
         # As a result, this renaming is technically legal but it is inadvisable to write a
         # renaming like this since the intended "pet" -> "new_pet" mapping is unused and will
         # silently do nothing when applied to ISS.many_fields_schema.
-        class FieldRenamingNoOpMapping:
-            class FieldNoOpRenamings:
-                def get(self, field_name: str, default: Set[str]) -> Set[str]:
-                    """Define field renaming to use."""
-                    if field_name == "pet":
-                        return {"new_pet"}
-                    return {field_name}
 
+        # Unfortunately this can't be a nested class because mypy has a bug and it's safer to make
+        # the classes slightly less organized in exchange for being able to use mypy for here.
+        # https://github.com/python/mypy/issues/6393
+        class FieldNoOpRenamings:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "pet":
+                    return {"new_pet"}
+                return {field_name}
+
+        class FieldRenamingNoOpMapping:
             def get(
-                self, type_name: str, default_field_renamings: FieldNoOpRenamings
-            ) -> FieldNoOpRenamings:
+                self, type_name: str, default_field_renamings: Optional[FieldRenamingsForParticularType]
+            ) -> Optional[FieldRenamingsForParticularType]:
                 if type_name == "Human":
-                    return FieldRenamingNoOpMapping.FieldNoOpRenamings()
-                return {}
+                    return FieldNoOpRenamings()
+                return None
 
         renamed_schema = rename_schema(
             parse(ISS.many_fields_schema), {}, FieldRenamingNoOpMapping()
@@ -1410,7 +1415,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.list_schema), {"Height": None}, {})
 
     def test_rename_using_dict_like_prefixer_class(self) -> None:
-        class PrefixNewDict(TypeRenamingMapping):
+        class PrefixNewDict:
             def __init__(self, schema: GraphQLSchema):
                 self.schema = schema
                 super().__init__()

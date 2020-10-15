@@ -180,15 +180,19 @@ class TypeRenamingMapping(Protocol):
         ...
 
 
-class FieldRenamingMapping(Protocol):
-    class FieldRenamings(Protocol):
-        def get(self, field_name: str, default: Set[str]) -> Set[str]:
-            """Define mapping for renaming fields belonging to a particular type."""
-            ...
+# Unfortunately this can't be a nested class because mypy has a bug and it's safer to make
+# the classes slightly less organized in exchange for being able to use mypy here.
+# https://github.com/python/mypy/issues/6393
+class FieldRenamingsForParticularType(Protocol):
+    def get(self, field_name: str, default: Set[str]) -> Set[str]:
+        """Define mapping for renaming fields belonging to a particular type."""
+        ...
 
+
+class FieldRenamingMapping(Protocol):
     def get(
-        self, type_name: str, default_field_renamings: Optional[FieldRenamings]
-    ) -> Optional[FieldRenamings]:
+        self, type_name: str, default_field_renamings: Optional[FieldRenamingsForParticularType]
+    ) -> Optional[FieldRenamingsForParticularType]:
         """Define mapping for a particular type's field renamings."""
         ...
 
@@ -505,6 +509,7 @@ def _rename_and_suppress_types_and_fields(
             visitor.renamed_to_builtin_scalar_conflicts,
             visitor.field_name_conflicts,
         )
+    no_op_type_renames: Set[str] = set()
     if isinstance(type_renamings, Iterable):
         # If type_renamings is iterable, then every renaming must be used and no renaming can map a
         # name to itself
@@ -520,18 +525,21 @@ def _rename_and_suppress_types_and_fields(
             for type_name in visitor.reverse_name_map
             if type_name != visitor.reverse_name_map[type_name]
         }
-        no_op_type_renames: Set[str] = (
+        no_op_type_renames = (
             set(type_renamings) - renamed_types - set(visitor.suppressed_types)
         )
+    types_with_field_renamings_to_be_used: Set[str] = set()
+    if isinstance(field_renamings, Iterable):
+        types_with_field_renamings_to_be_used = set(field_renamings) - visitor.types_with_field_renamings_processed
         if (
             no_op_type_renames
             or visitor.no_op_field_renamings
-            or visitor.types_with_field_renamings_to_be_used
+            or types_with_field_renamings_to_be_used
         ):
             raise NoOpRenamingError(
                 no_op_type_renames,
                 visitor.no_op_field_renamings,
-                visitor.types_with_field_renamings_to_be_used,
+                types_with_field_renamings_to_be_used,
             )
     return renamed_schema_ast, visitor.reverse_name_map, visitor.reverse_field_name_map
 
@@ -655,8 +663,10 @@ class RenameSchemaTypesVisitor(Visitor):
     # type named "Bar", or if it attempts to rename a field named "foo" in a type named "Bar" when such a
     # field does not exist, no_op_field_renamings will map "Bar" to a set containing "foo".
     no_op_field_renamings: DefaultDict[str, Set[str]]
-    # Collects type names if field_renamings is iterable, to record which type_names still need to be used. If field_renamings is iterable and type_name in field_renamings, then types_with_field_renamings_to_be_used will contain type_name until the visitor encounters an object type with that name, at which point the field renamings will be applied. After all the renamings are used, any type names will be used to raise a NoOpRenamingError because the remaining field renamings are no-ops since the type doesn't exist in the schema. If field_renamings is not iterable, then this is simply None since it doesn't make sense to speak of renamings that must be used-- no-op renamings can only exist when the renamings are iterable. Note that if field_renamings is iterable and contains a string type_name and the original schema contains a type named type_name but the type would get suppressed, then this would still raise a NoOpRenamingError because the field renamings would have no effect.
-    types_with_field_renamings_to_be_used: Optional[Set[str]]
+    # Collects type names for each object type that has field renamings and had them applied. After
+    # every renaming is done, this is used to ensure that field_renamings contains no unused field
+    # renamings for a particular type if field_renamings is iterable.
+    types_with_field_renamings_processed: Set[str]
     # Collects invalid field names in field_renamings. If field_renamings would rename a field named "foo" (belonging to a type named "Bar") to a
     # string that is not a valid, unreserved GraphQL type name (see definition in the
     # is_valid_unreserved_name function in utils), invalid_field_names will map "Bar" to a dict that maps "foo" to the invalid field name.
@@ -696,11 +706,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.field_renamings = field_renamings
         self.reverse_field_name_map = defaultdict(dict)
         self.no_op_field_renamings = defaultdict(set)
-        if isinstance(field_renamings, Iterable):
-            self.types_with_field_renamings_to_be_used = set(field_renamings)
-        else:
-            #
-            self.types_with_field_renamings_to_be_used = None
+        self.types_with_field_renamings_processed = set()
         self.invalid_field_names = defaultdict(dict)
         self.field_name_conflicts = defaultdict(dict)
 
@@ -789,8 +795,11 @@ class RenameSchemaTypesVisitor(Visitor):
         # will appear in the renamed schema, so it's safe to apply field renamings to this type.
         fields_renamed_node = node  # If no field renaming happens, fields_renamed_node will just be
         # the current node, unchanged.
-        if isinstance(node, ObjectTypeDefinitionNode):
-            fields_renamed_node = self._rename_fields(node)
+        if isinstance(fields_renamed_node, ObjectTypeDefinitionNode):
+            # mypy is unable to detect that fields_renamed_node is an ObjectTypeDefinitionNode if
+            # the code enters this block, so disabling it for this line.
+            # https://github.com/python/mypy/issues/2885#issuecomment-287928126
+            fields_renamed_node = self._rename_fields(fields_renamed_node)  # type: ignore
         self.reverse_name_map[desired_type_name] = type_name
         if desired_type_name == type_name:
             return fields_renamed_node
@@ -807,11 +816,8 @@ class RenameSchemaTypesVisitor(Visitor):
         if current_type_field_renamings is None:
             # TODO(Leon): Since current_type_field_renamings need not be a dict, I allow for it to be None if we don't want to do any field renamings for the current type. However, that means it'd technically be valid for it to be an empty dict and I'm not sure how to best check for this, especially since it's not the falsiness of current_type_field_renamings that we're looking for but rather whether it contains any field renamings.
             return node
-        if isinstance(current_type_field_renamings, Iterable):
-            # An object type named type_name exists in the schema, so the field renamings for that
-            # type have been used.
-            self.types_with_field_renamings_to_be_used.remove(type_name)
-        new_field_nodes = set()
+        self.types_with_field_renamings_processed.add(type_name)
+        new_field_nodes: Set[FieldDefinitionNode] = set()
         for field_node in node.fields:
             original_field_name = field_node.name.value
             if isinstance(
