@@ -23,7 +23,7 @@ from ..compiler.helpers import BaseLocation, get_only_element_from_collection
 from ..compiler.metadata import QueryMetadataTable
 from .block_ops import generate_block_outputs, generate_construct_result_outputs
 from .debugging import print_tap
-from .hinting import construct_hints_for_location
+from .hinting import get_hints_for_location_via_readthrough_cache
 from .typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 
 
@@ -120,6 +120,7 @@ def interpret_ir(
 ) -> Iterator[Dict[str, Any]]:
     ir_blocks = ir_and_metadata.ir_blocks
     query_metadata_table = ir_and_metadata.query_metadata_table
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints] = {}
 
     if not ir_blocks:
         raise AssertionError()
@@ -143,8 +144,8 @@ def interpret_ir(
     # Process the first block.
     start_class = get_only_element_from_collection(first_block.start_class)
     root_location = query_metadata_table.root_location
-    root_location_hints = construct_hints_for_location(
-        query_metadata_table, query_arguments, root_location
+    root_location_hints = get_hints_for_location_via_readthrough_cache(
+        query_metadata_table, query_arguments, per_query_hint_cache, root_location
     )
     current_data_contexts: Iterator[DataContext[DataToken]] = _get_initial_data_contexts(
         adapter, start_class, root_location_hints
@@ -160,6 +161,7 @@ def interpret_ir(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             block_location,
             block,
             current_data_contexts,
@@ -171,6 +173,7 @@ def interpret_ir(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             None,
             block,
             current_data_contexts,
@@ -180,7 +183,7 @@ def interpret_ir(
 
     # Process the final block.
     return generate_construct_result_outputs(
-        adapter, query_metadata_table, query_arguments, last_block, current_data_contexts
+        adapter, query_metadata_table, query_arguments, per_query_hint_cache, last_block, current_data_contexts
     )
 
 

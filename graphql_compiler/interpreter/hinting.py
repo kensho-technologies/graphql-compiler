@@ -28,8 +28,6 @@ def construct_hints_for_location(
         )
     )
 
-    # TODO(predrag): Memoize and optimize this, it's inefficient.
-    #                We can probably reuse most if not all of the hints object for a set location.
     used_properties: Set[str] = set()
     for _, info_object in chain(query_metadata_table.outputs, query_metadata_table.tags):
         used_location = info_object.location.at_vertex()
@@ -64,3 +62,22 @@ def construct_hints_for_location(
     result["neighbor_hints"] = neighbor_hints
 
     return result
+
+
+def get_hints_for_location_via_readthrough_cache(
+    query_metadata_table: QueryMetadataTable,
+    query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
+    location: BaseLocation,
+) -> InterpreterHints:
+    hints = per_query_hint_cache.get(location, None)
+    if hints is None:
+        if isinstance(location, Location):
+            hints = construct_hints_for_location(query_metadata_table, query_arguments, location)
+        else:
+            # TODO(predrag): This will need to be updated when the interpreter supports @fold
+            raise AssertionError(f"Unsupported location type: {location}")
+
+        per_query_hint_cache[location] = hints
+
+    return hints

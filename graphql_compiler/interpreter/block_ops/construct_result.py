@@ -2,16 +2,18 @@ from typing import Any, Dict, Iterable, Iterator
 
 from ...compiler.blocks import ConstructResult
 from ...compiler.expressions import Expression
+from ...compiler.helpers import BaseLocation
 from ...compiler.metadata import QueryMetadataTable
 from ..debugging import print_tap
 from ..expression_ops import evaluate_expression
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 
 
 def _produce_output(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     output_name: str,
     output_expression: Expression,
     data_contexts: Iterable[DataContext],
@@ -22,6 +24,7 @@ def _produce_output(
         adapter,
         query_metadata_table,
         query_arguments,
+        per_query_hint_cache,
         None,
         output_expression,
         data_contexts,
@@ -36,6 +39,7 @@ def generate_construct_result_outputs(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     block: ConstructResult,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[Dict[str, Any]]:
@@ -48,6 +52,7 @@ def generate_construct_result_outputs(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             output_name,
             output_expression,
             data_contexts,

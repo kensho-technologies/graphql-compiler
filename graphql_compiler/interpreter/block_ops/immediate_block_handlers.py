@@ -4,14 +4,15 @@ from ...compiler.blocks import Backtrack, CoerceType, Filter, MarkLocation, Trav
 from ...compiler.helpers import BaseLocation, get_only_element_from_collection
 from ...compiler.metadata import QueryMetadataTable
 from ..expression_ops import evaluate_expression
-from ..hinting import construct_hints_for_location
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..hinting import get_hints_for_location_via_readthrough_cache
+from ..typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 
 
 def handle_filter_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Filter,
     data_contexts: Iterable[DataContext],
@@ -32,6 +33,7 @@ def handle_filter_block(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             post_block_location,
             predicate,
             data_contexts,
@@ -44,6 +46,7 @@ def handle_traverse_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Traverse,
     data_contexts: Iterable[DataContext],
@@ -60,8 +63,8 @@ def handle_traverse_block(
         post_block_location_info.parent_location
     )
 
-    interpreter_hints = construct_hints_for_location(
-        query_metadata_table, query_arguments, post_block_location
+    interpreter_hints = get_hints_for_location_via_readthrough_cache(
+        query_metadata_table, query_arguments, per_query_hint_cache, post_block_location
     )
 
     neighbor_data = adapter.project_neighbors(
@@ -88,15 +91,17 @@ def handle_coerce_type_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: CoerceType,
     data_contexts: Iterable[DataContext],
 ) -> Iterator[DataContext]:
     location_info = query_metadata_table.get_location_info(post_block_location)
 
-    interpreter_hints = construct_hints_for_location(
+    interpreter_hints = get_hints_for_location_via_readthrough_cache(
         query_metadata_table,
         query_arguments,
+        per_query_hint_cache,
         post_block_location,
     )
 
@@ -114,6 +119,7 @@ def handle_mark_location_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: MarkLocation,
     data_contexts: Iterable[DataContext],
@@ -133,6 +139,7 @@ def handle_backtrack_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Backtrack,
     data_contexts: Iterable[DataContext],

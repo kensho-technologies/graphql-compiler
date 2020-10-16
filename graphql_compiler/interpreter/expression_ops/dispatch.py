@@ -11,9 +11,9 @@ from ...compiler.expressions import (
     TernaryConditional,
     Variable,
 )
-from ...compiler.helpers import Location
+from ...compiler.helpers import BaseLocation, Location
 from ...compiler.metadata import QueryMetadataTable
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 from .composition_expression_handlers import (
     evaluate_binary_composition,
     evaluate_ternary_conditional,
@@ -31,6 +31,7 @@ def evaluate_expression(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: Expression,
     data_contexts: Iterable[DataContext],
@@ -56,6 +57,7 @@ def evaluate_expression(
         adapter,
         query_metadata_table,
         query_arguments,
+        per_query_hint_cache,
         current_location,
         expression,
         data_contexts,

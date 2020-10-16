@@ -8,10 +8,10 @@ from ...compiler.expressions import (
     OutputContextField,
     Variable,
 )
-from ...compiler.helpers import Location
+from ...compiler.helpers import BaseLocation, Location
 from ...compiler.metadata import QueryMetadataTable
-from ..hinting import construct_hints_for_location
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..hinting import get_hints_for_location_via_readthrough_cache
+from ..typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 from .typedefs import ExpressionEvaluatorFunc
 
 
@@ -20,6 +20,7 @@ def evaluate_local_field(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: LocalField,
     data_contexts: Iterable[DataContext],
@@ -32,8 +33,8 @@ def evaluate_local_field(
 
     current_type_name = query_metadata_table.get_location_info(current_location).type.name
 
-    # TODO(bojanserafimov): Memoize hints for each location.
-    hints = construct_hints_for_location(query_metadata_table, query_arguments, current_location)
+    hints = get_hints_for_location_via_readthrough_cache(
+        query_metadata_table, query_arguments, per_query_hint_cache, current_location)
 
     field_name = expression.field_name
     return iter(adapter.project_property(data_contexts, current_type_name, field_name, **hints))
@@ -44,6 +45,7 @@ def evaluate_context_field(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: Union[ContextField, OutputContextField],
     data_contexts: Iterable[DataContext],
@@ -51,8 +53,8 @@ def evaluate_context_field(
     location = expression.location.at_vertex()
     field_name = expression.location.field
 
-    # TODO(bojanserafimov): Memoize hints for each location.
-    hints = construct_hints_for_location(query_metadata_table, query_arguments, location)
+    hints = get_hints_for_location_via_readthrough_cache(
+        query_metadata_table, query_arguments, per_query_hint_cache, location)
 
     if field_name is None:
         raise AssertionError(
@@ -87,6 +89,7 @@ def evaluate_context_field_existence(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: ContextFieldExistence,
     data_contexts: Iterable[DataContext],
@@ -103,6 +106,7 @@ def evaluate_variable(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: Variable,
     data_contexts: Iterable[DataContext],
@@ -116,6 +120,7 @@ def evaluate_literal(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: Literal,
     data_contexts: Iterable[DataContext],

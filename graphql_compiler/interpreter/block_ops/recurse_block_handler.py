@@ -4,7 +4,7 @@ from typing import Any, Dict, Iterable, Iterator, Optional
 from ...compiler.blocks import Recurse
 from ...compiler.helpers import BaseLocation
 from ...compiler.metadata import QueryMetadataTable
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 
 
 def _handle_already_inactive_tokens(
@@ -27,6 +27,7 @@ def _iterative_recurse_handler(
     data_contexts: Iterable[DataContext],
     current_depth: int,
 ) -> Iterator[DataContext]:
+    # TODO(predrag): Add hints to this call.
     neighbor_data = adapter.project_neighbors(
         data_contexts,
         current_type_name,
@@ -73,6 +74,7 @@ def handle_recurse_block(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: Recurse,
     data_contexts: Iterable[DataContext],

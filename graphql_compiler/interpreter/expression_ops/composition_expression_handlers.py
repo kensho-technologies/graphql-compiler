@@ -1,9 +1,9 @@
 from typing import Any, Dict, Iterable, Iterator, Optional, Tuple
 
 from ...compiler.expressions import BinaryComposition, TernaryConditional
-from ...compiler.helpers import Location
+from ...compiler.helpers import BaseLocation, Location
 from ...compiler.metadata import QueryMetadataTable
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 from .operators import apply_operator
 from .typedefs import ExpressionEvaluatorFunc
 
@@ -21,6 +21,7 @@ def evaluate_binary_composition(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: BinaryComposition,
     data_contexts: Iterable[DataContext],
@@ -30,6 +31,7 @@ def evaluate_binary_composition(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             current_location,
             expression.left,
             data_contexts,
@@ -40,6 +42,7 @@ def evaluate_binary_composition(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             current_location,
             expression.right,
             data_contexts,
@@ -62,6 +65,7 @@ def evaluate_ternary_conditional(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     current_location: Optional[Location],
     expression: TernaryConditional,
     data_contexts: Iterable[DataContext],
@@ -72,6 +76,7 @@ def evaluate_ternary_conditional(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             current_location,
             expression.predicate,
             data_contexts,
@@ -82,6 +87,7 @@ def evaluate_ternary_conditional(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             current_location,
             expression.if_true,
             data_contexts,
@@ -92,6 +98,7 @@ def evaluate_ternary_conditional(
             adapter,
             query_metadata_table,
             query_arguments,
+            per_query_hint_cache,
             current_location,
             expression.if_false,
             data_contexts,

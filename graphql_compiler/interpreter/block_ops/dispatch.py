@@ -14,7 +14,7 @@ from ...compiler.blocks import (
 from ...compiler.helpers import BaseLocation
 from ...compiler.metadata import QueryMetadataTable
 from ..debugging import print_tap
-from ..typedefs import DataContext, DataToken, InterpreterAdapter
+from ..typedefs import DataContext, DataToken, InterpreterAdapter, InterpreterHints
 from .immediate_block_handlers import (
     handle_backtrack_block,
     handle_coerce_type_block,
@@ -29,6 +29,7 @@ def generate_block_outputs(
     adapter: InterpreterAdapter[DataToken],
     query_metadata_table: QueryMetadataTable,
     query_arguments: Dict[str, Any],
+    per_query_hint_cache: Dict[BaseLocation, InterpreterHints],
     post_block_location: Optional[BaseLocation],  # None means global location
     block: BasicBlock,
     data_contexts: Iterator[DataContext],
@@ -56,6 +57,7 @@ def generate_block_outputs(
         adapter,
         query_metadata_table,
         query_arguments,
+        per_query_hint_cache,
         post_block_location,
         block,
         data_contexts,
