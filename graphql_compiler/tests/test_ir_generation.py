@@ -3698,6 +3698,49 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_fold_and_filter_and_traverse_and_output(self):
+        test_data = test_input_data.fold_and_filter_and_traverse_and_output()
+
+        base_location = helpers.Location(("Animal",))
+        parent_fold = base_location.navigate_to_fold("in_Animal_ParentOf")
+        grand_parent_fold = parent_fold.navigate_to_subpath("in_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Animal"}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    ">",
+                    expressions.LocalField("net_worth", GraphQLDecimal),
+                    expressions.Variable("$parent_min_worth", GraphQLDecimal),
+                )
+            ),
+            blocks.MarkLocation(parent_fold),
+            blocks.Traverse("in", "Animal_ParentOf"),
+            blocks.MarkLocation(grand_parent_fold),
+            blocks.Backtrack(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "animal_name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "grand_parent_list": expressions.FoldedContextField(
+                        grand_parent_fold.navigate_to_field("name"), GraphQLList(GraphQLString)
+                    ),
+                }
+            ),
+        ]
+        expected_location_types = {
+            base_location: "Animal",
+            parent_fold: "Animal",
+            grand_parent_fold: "Animal",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_multiple_outputs_in_same_fold(self):
         test_data = test_input_data.multiple_outputs_in_same_fold()
 
