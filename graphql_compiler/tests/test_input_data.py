@@ -2102,16 +2102,16 @@ def traverse_and_fold_and_traverse() -> CommonTestData:  # noqa: D103
 
 def fold_and_filter_and_traverse_and_output() -> CommonTestData:  # noqa: D103
     graphql_input = """{
-            Animal {
-                name @output(out_name: "animal_name")
-                in_Animal_ParentOf @fold {
-                    net_worth @filter(op_name: ">", value: ["$parent_min_worth"])
-                    in_Animal_ParentOf {
-                        name @output(out_name: "grand_parent_list")
-                    }
+        Animal {
+            name @output(out_name: "animal_name")
+            in_Animal_ParentOf @fold {
+                net_worth @filter(op_name: ">", value: ["$parent_min_worth"])
+                in_Animal_ParentOf {
+                    name @output(out_name: "grand_parent_list")
                 }
             }
-        }"""
+        }
+    }"""
     expected_output_metadata = {
         "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
         "grand_parent_list": OutputMetadata(
