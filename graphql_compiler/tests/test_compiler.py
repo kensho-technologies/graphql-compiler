@@ -6301,6 +6301,118 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
+    def test_fold_and_filter_and_traverse_and_output(self) -> None:
+        test_data = test_input_data.fold_and_filter_and_traverse_and_output()
+
+        expected_match = """
+            SELECT
+                Animal___1.name AS `animal_name`,
+                $Animal___1___in_Animal_ParentOf.name AS `grand_parent_list`
+            FROM  (
+                MATCH  {{
+                    class: Animal,
+                    as: Animal___1
+                }}
+                RETURN $matches
+            )
+            LET
+                $Animal___1___in_Animal_ParentOf = Animal___1.in("Animal_ParentOf")[
+                    (net_worth > {parent_min_worth})
+            ].in("Animal_ParentOf").asList()
+        """
+        expected_gremlin = """
+            g.V('@class', 'Animal')
+            .as('Animal___1')
+            .transform{it, m -> new com.orientechnologies.orient.core.record.impl.ODocument([
+                animal_name: m.Animal___1.name,
+                grand_parent_list: (
+                    (m.Animal___1.in_Animal_ParentOf == null) ? [] : (
+                        m.Animal___1.in_Animal_ParentOf
+                            .collect{entry -> entry.outV.next()}
+                            .findAll{entry -> (entry.net_worth > $parent_min_worth)}
+                            .collectMany{
+                                entry -> entry.in_Animal_ParentOf.collect{edge -> edge.outV.next()}
+                            }
+                            .collect{entry -> entry.name}
+                    )
+                )
+            ])}
+        """
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                folded_subquery_1.fold_output_name AS grand_parent_list
+            FROM db_1.schema_1.[Animal] AS [Animal_1]
+            JOIN (
+                SELECT
+                    [Animal_2].uuid AS uuid,
+                    coalesce((
+                        SELECT
+                            '|' + coalesce(
+                                REPLACE(
+                                    REPLACE(
+                                        REPLACE([Animal_3].name, '^', '^e'),
+                                    '~', '^n'),
+                                '|', '^d'),
+                            '~')
+                        FROM db_1.schema_1.[Animal] AS [Animal_4]
+                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                        ON [Animal_4].parent = [Animal_3].uuid
+                        WHERE [Animal_2].parent = [Animal_4].uuid
+                        AND [Animal_4].net_worth > :parent_min_worth
+                        FOR XML PATH ('')
+                    ), '') AS fold_output_name
+                FROM db_1.schema_1.[Animal] AS [Animal_2]
+            ) AS folded_subquery_1
+            ON [Animal_1].uuid = folded_subquery_1.uuid
+        """
+        expected_cypher = """
+            MATCH (Animal___1:Animal)
+            OPTIONAL MATCH (Animal___1)<-[:Animal_ParentOf]-(Animal__in_Animal_ParentOf___1:Animal)
+            WHERE (Animal__in_Animal_ParentOf___1.net_worth > $parent_min_worth)
+            OPTIONAL MATCH (
+                Animal__in_Animal_ParentOf___1)<-
+                [:Animal_ParentOf]-(Animal__in_Animal_ParentOf__in_Animal_ParentOf___1:Animal)
+            WITH
+                Animal___1 AS Animal___1,
+                collect(Animal__in_Animal_ParentOf___1) AS collected_Animal__in_Animal_ParentOf___1,
+                collect(Animal__in_Animal_ParentOf__in_Animal_ParentOf___1)
+                    AS collected_Animal__in_Animal_ParentOf__in_Animal_ParentOf___1
+            RETURN
+                Animal___1.name AS `animal_name`,
+                [x IN collected_Animal__in_Animal_ParentOf__in_Animal_ParentOf___1 | x.name]
+                    AS `grand_parent_list`
+        """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                coalesce(folded_subquery_1.fold_output_name, ARRAY[]::VARCHAR[])
+                    AS grand_parent_list
+            FROM schema_1."Animal" AS "Animal_1"
+            JOIN (
+                SELECT
+                    "Animal_2".uuid AS uuid,
+                    array_agg("Animal_3".name) AS fold_output_name
+                FROM schema_1."Animal" AS "Animal_2"
+                JOIN schema_1."Animal" AS "Animal_4"
+                ON "Animal_2".parent = "Animal_4".uuid
+                JOIN schema_1."Animal" AS "Animal_3"
+                ON "Animal_4".parent = "Animal_3".uuid
+                WHERE "Animal_4".net_worth > %(parent_min_worth)s
+                GROUP BY "Animal_2".uuid
+            ) AS folded_subquery_1
+            ON "Animal_1".uuid = folded_subquery_1.uuid
+        """
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
     def test_multiple_outputs_in_same_fold(self) -> None:
         test_data = test_input_data.multiple_outputs_in_same_fold()
 

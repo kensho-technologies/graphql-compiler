@@ -633,7 +633,10 @@ class FoldSubqueryBuilder(object):
         self._output_fields = output_fields
 
     def add_filter(
-        self, predicate: Expression, aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias]
+        self,
+        predicate: Expression,
+        aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias],
+        current_alias: Alias,
     ) -> None:
         """Add a new filter to the FoldSubqueryBuilder."""
         if self._ended:
@@ -641,8 +644,7 @@ class FoldSubqueryBuilder(object):
                 "Cannot add a filter after end_fold has been called. Invalid "
                 f"state encountered during fold {self}."
             )
-        # Filters are applied to output vertices, thus current_alias=self.output_vertex_alias.
-        sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
+        sql_expression = predicate.to_sql(self._dialect, aliases, current_alias)
         self._filters.append(sql_expression)
 
     def end_fold(self) -> Tuple[Select, FoldScopeLocation]:
@@ -1080,7 +1082,7 @@ class CompilationState(object):
                 raise NotImplementedError(
                     "Filtering with a tagged parameter in a fold scope is not implemented yet."
                 )
-            self._current_fold.add_filter(predicate, self._aliases)
+            self._current_fold.add_filter(predicate, self._aliases, self._current_alias)
 
         # Otherwise, add the filter to the compilation state. Note that this is for filters outside
         # a fold scope and _x_count filters within a fold scope.

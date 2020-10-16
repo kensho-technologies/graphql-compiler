@@ -2100,6 +2100,36 @@ def traverse_and_fold_and_traverse() -> CommonTestData:  # noqa: D103
     )
 
 
+def fold_and_filter_and_traverse_and_output() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+            Animal {
+                name @output(out_name: "animal_name")
+                in_Animal_ParentOf @fold {
+                    net_worth @filter(op_name: ">", value: ["$parent_min_worth"])
+                    in_Animal_ParentOf {
+                        name @output(out_name: "grand_parent_list")
+                    }
+                }
+            }
+        }"""
+    expected_output_metadata = {
+        "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "grand_parent_list": OutputMetadata(
+            type=GraphQLList(GraphQLString), optional=False, folded=True
+        ),
+    }
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {
+        "parent_min_worth": GraphQLDecimal,
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def multiple_outputs_in_same_fold() -> CommonTestData:  # noqa: D103
     graphql_input = """{
         Animal {
