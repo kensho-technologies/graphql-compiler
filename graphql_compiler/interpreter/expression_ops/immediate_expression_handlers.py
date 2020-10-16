@@ -34,7 +34,8 @@ def evaluate_local_field(
     current_type_name = query_metadata_table.get_location_info(current_location).type.name
 
     hints = get_hints_for_location_via_readthrough_cache(
-        query_metadata_table, query_arguments, per_query_hint_cache, current_location)
+        query_metadata_table, query_arguments, per_query_hint_cache, current_location
+    )
 
     field_name = expression.field_name
     return iter(adapter.project_property(data_contexts, current_type_name, field_name, **hints))
@@ -54,7 +55,8 @@ def evaluate_context_field(
     field_name = expression.location.field
 
     hints = get_hints_for_location_via_readthrough_cache(
-        query_metadata_table, query_arguments, per_query_hint_cache, location)
+        query_metadata_table, query_arguments, per_query_hint_cache, location
+    )
 
     if field_name is None:
         raise AssertionError(

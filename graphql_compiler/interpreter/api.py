@@ -183,7 +183,12 @@ def interpret_ir(
 
     # Process the final block.
     return generate_construct_result_outputs(
-        adapter, query_metadata_table, query_arguments, per_query_hint_cache, last_block, current_data_contexts
+        adapter,
+        query_metadata_table,
+        query_arguments,
+        per_query_hint_cache,
+        last_block,
+        current_data_contexts,
     )
 
 
