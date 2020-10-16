@@ -1,15 +1,6 @@
 # Copyright 2020-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
-from typing import (
-    AbstractSet,
-    Any,
-    Collection,
-    Generic,
-    Iterable,
-    Mapping,
-    Optional,
-    Tuple,
-)
+from typing import AbstractSet, Any, Collection, Generic, Iterable, Mapping, Optional, Tuple
 
 from ..compiler.metadata import FilterInfo
 from ..typedefs import Literal, TypedDict
