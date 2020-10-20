@@ -3,16 +3,17 @@ from textwrap import dedent
 from typing import Optional, Set
 import unittest
 
-from ...typedefs import Protocol
 from graphql import GraphQLSchema, build_ast_schema, parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
 from ...schema_transformation.rename_schema import (
+    FieldRenamingMapping,
+    FieldRenamingsForParticularType,
     RenameSchemaTypesVisitor,
     TypeRenamingMapping,
-    rename_schema, FieldRenamingsForParticularType, FieldRenamingMapping,
+    rename_schema,
 )
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
@@ -23,6 +24,7 @@ from ...schema_transformation.utils import (
     builtin_scalar_type_names,
     get_custom_scalar_names,
 )
+from ...typedefs import Protocol
 from ..test_helpers import compare_schema_texts_order_independently
 from .input_schema_strings import InputSchemaStrings as ISS
 
@@ -472,7 +474,9 @@ class TestRenameSchema(unittest.TestCase):
 
         class FieldRenamingNoOpMapping:
             def get(
-                self, type_name: str, default_field_renamings: Optional[FieldRenamingsForParticularType]
+                self,
+                type_name: str,
+                default_field_renamings: Optional[FieldRenamingsForParticularType],
             ) -> Optional[FieldRenamingsForParticularType]:
                 if type_name == "Human":
                     return FieldNoOpRenamings()

@@ -428,17 +428,17 @@ def check_schema_identifier_is_valid(identifier: str) -> None:
 
 
 def is_valid_unreserved_name(name: str) -> bool:
-    """Check if input is a valid, nonreserved GraphQL name.
+    """Check if input is a valid, unreserved GraphQL name.
 
     A GraphQL name is valid iff it consists of only alphanumeric characters and underscores and
-    does not start with a numeric character. It is nonreserved (i.e. not reserved for GraphQL
+    does not start with a numeric character. It is unreserved (i.e. not reserved for GraphQL
     internal use) if it does not start with double underscores.
 
     Args:
         name: to be checked
 
     Returns:
-        True iff name is a valid, nonreserved GraphQL name.
+        True iff name is a valid, unreserved GraphQL name.
     """
     return bool(re_name.match(name)) and not name.startswith("__")
 
