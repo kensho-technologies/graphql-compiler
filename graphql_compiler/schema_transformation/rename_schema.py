@@ -485,14 +485,13 @@ def _rename_and_suppress_types_and_fields(
                              builtin scalars)
 
     Returns:
-        Tuple containing the modified version of the schema AST, and the renamed type name to
-        original type name map. Map contains all non-suppressed types, including those that were not
-        renamed.
-    # TODO confirm is this return accuarte?
+        Tuple containing the modified version of the schema AST, the renamed type name to original
+        type name map, and the renamed field name to original field name map. The maps contain all
+        non-suppressed types/ fields, including those that were not renamed.
     Raises:
         - SchemaRenameInvalidNameError if the user attempts to rename a type to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
-    #     TODO the other types of errors?
+        - NoOpRenamingError if renamings contains no-op renamings and renamings are iterable.
     """
     visitor = RenameSchemaTypesVisitor(
         type_renamings, field_renamings, query_type, custom_scalar_names
@@ -517,9 +516,9 @@ def _rename_and_suppress_types_and_fields(
         for type_name in visitor.suppressed_types:
             if type_name not in type_renamings:
                 raise AssertionError(
-                    f"suppressed_types should be a subset of the set of keys in type_renamings, but "
-                    f"found {type_name} in suppressed_types that is not a key in type_renamings. This "
-                    f"is a bug."
+                    f"suppressed_types should be a subset of the set of keys in type_renamings, "
+                    f"but found {type_name} in suppressed_types that is not a key in "
+                    f"type_renamings. This is a bug."
                 )
         renamed_types = {
             visitor.reverse_name_map[type_name]
@@ -529,19 +528,21 @@ def _rename_and_suppress_types_and_fields(
         no_op_type_renames = (
             set(type_renamings) - renamed_types - set(visitor.suppressed_types)
         )
-    types_with_field_renamings_to_be_used: Set[str] = set()
+    nonexistent_types_with_field_renamings: Set[str] = set()
     if isinstance(field_renamings, Iterable):
-        types_with_field_renamings_to_be_used = set(field_renamings) - visitor.types_with_field_renamings_processed
-        if (
-            no_op_type_renames
-            or visitor.no_op_field_renamings
-            or types_with_field_renamings_to_be_used
-        ):
-            raise NoOpRenamingError(
-                no_op_type_renames,
-                visitor.no_op_field_renamings,
-                types_with_field_renamings_to_be_used,
-            )
+        # nonexistent_types_with_field_renamings, if field_renamings is iterable, is the set of all
+        # object type names that aren't the original schema but appeared in field_renamings anyways.
+        nonexistent_types_with_field_renamings = set(field_renamings) - visitor.types_with_field_renamings_processed
+    if (
+        no_op_type_renames
+        or visitor.no_op_field_renamings
+        or nonexistent_types_with_field_renamings
+    ):
+        raise NoOpRenamingError(
+            no_op_type_renames,
+            visitor.no_op_field_renamings,
+            nonexistent_types_with_field_renamings,
+        )
     return renamed_schema_ast, visitor.reverse_name_map, visitor.reverse_field_name_map
 
 
