@@ -1164,8 +1164,13 @@ class CompilationState(object):
             is_left_outer_join = True
         # MSSQL folded subquery returns exactly 1 folded result for each row in the outer table
         # so should use an INNER JOIN.
-        else:
+        elif isinstance(self._sql_schema_info.dialect, MSDialect):
             is_left_outer_join = False
+        else:
+            raise NotImplementedError(
+                "Fold only supported for MSSQL and PostgreSQL, "
+                f"dialect set to {self._sql_schema_info.dialect.name}."
+            )
 
         self._from_clause = sqlalchemy.join(
             self._from_clause,
