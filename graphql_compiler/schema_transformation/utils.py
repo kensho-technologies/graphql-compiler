@@ -59,8 +59,7 @@ class InvalidTypeNameError(SchemaTransformError):
 
 
 class SchemaRenameInvalidNameError(SchemaTransformError):
-    """
-    Raised if a type/field name is not valid during renaming.
+    """Raised if a type/field name is not valid during renaming.
 
     A name is considered valid if it consists of alphanumeric characters and underscores and doesn't
     start with a numeric character (as required by GraphQL), and doesn't start with double

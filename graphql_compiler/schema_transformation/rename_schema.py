@@ -229,6 +229,7 @@ def rename_schema(
         field_renamings: maps type names to the renamings for its fields. The renamings map field
                          names belonging to the type to a list of field names for the renamed
                          schema.
+
     Returns:
         RenamedSchemaDescriptor containing the AST of the renamed schema, and the maps of renamed
         type/field names to original names. Only renamed names will be included in the maps.
@@ -486,6 +487,7 @@ def _rename_and_suppress_types_and_fields(
         Tuple containing the modified version of the schema AST, the renamed type name to original
         type name map, and the renamed field name to original field name map. The maps contain
         entries for all non-suppressed types/ fields, including those that were not renamed.
+
     Raises:
         - SchemaRenameInvalidNameError if the user attempts to rename a type to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
@@ -823,7 +825,7 @@ class RenameSchemaTypesVisitor(Visitor):
             return node_with_new_name
 
     def _rename_fields(self, node: ObjectTypeDefinitionNode) -> ObjectTypeDefinitionNode:
-        """Renames node's fields, if applicable and return new node."""
+        """Rename node's fields, if applicable and return new node."""
         type_name = node.name.value
         current_type_field_renamings = self.field_renamings.get(type_name, None)
         if current_type_field_renamings is None:
