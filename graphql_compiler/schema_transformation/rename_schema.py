@@ -186,6 +186,10 @@ class TypeRenamingMapping(Protocol):
 class FieldRenamingsForParticularType(Protocol):
     def get(self, field_name: str, default: Set[str]) -> Set[str]:
         """Define mapping for renaming fields belonging to a particular type."""
+        # TODO(Leon): I'd like this to work with dicts, but that would require the default argument
+        #  and the return to be Optional[Set[str]]. However, it's natural to represent suppressions
+        #  as the empty set, so actually changing the type hint here to be Optional would be
+        #  misleading.
         ...
 
 

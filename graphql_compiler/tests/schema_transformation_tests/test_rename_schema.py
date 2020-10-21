@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from textwrap import dedent
-from typing import Optional, Set
+from typing import Dict, Optional, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -440,9 +440,9 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_field_renaming_illegal_noop_unused_renaming(self) -> None:
-        with self.assertRaises(NoOpRenamingError) as e:
-            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": {"new_pet"}}})
-        self.assertEqual(
+        # Note that the error here gets raised specifically when field_renamings["Human"] is
+        # iterable, i.e. field_renamings itself need not be iterable.
+        expected_error_message = (
             "The field renamings for the following types in field_renamings are iterable, so they "
             "cannot cannot have no-op renamings. However, some of these renamings would either "
             "rename a field to itself or would rename a field that doesn't exist in the schema, "
@@ -450,7 +450,30 @@ class TestRenameSchema(unittest.TestCase):
             "needs to be fixed for field renamings. Each tuple is of the form "
             "(type_name, field_renamings) where type_name is the name of the type in the original "
             "schema and field_renamings is a list of the fields that would be no-op renamed: "
-            "[('Human', ['pet'])]",
+            "[('Human', ['pet'])]"
+        )
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": {"new_pet"}}})
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings itself need not be iterable for this error.
+
+        class NonIterableFieldRenamings:
+            def get(
+                self,
+                type_name: str,
+                default_field_renamings: Optional[Dict[str, Set[str]]],
+            ) -> Optional[Dict[str, Set[str]]]:
+                if type_name == "Human":
+                    return {"pet": {"new_pet"}}
+                return None
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, NonIterableFieldRenamings())
+        self.assertEqual(
+            expected_error_message,
             str(e.exception),
         )
 
@@ -490,14 +513,91 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({}, renamed_schema.reverse_name_map)
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
+    def test_iterable_field_renamings_with_non_iterable_entries(self) -> None:
+        # Test for when field_renamings is iterable but its entries aren't.
+        class NonIterableEntry:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "id":
+                    return {"new_id"}
+                return {field_name}
+
+        renamed_schema = rename_schema(
+            parse(ISS.many_fields_schema), {}, {"Human": NonIterableEntry()}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              new_id: String
+              name: String
+              age: Int
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
+
+    def test_non_iterable_field_renamings_with_iterable_entries(self) -> None:
+        # Test for when field_renamings isn't iterable but its relevant entry is.
+        class NonIterableFieldRenamings:
+            def get(
+                self,
+                type_name: str,
+                default_field_renamings: Optional[Dict[str, Set[str]]],
+            ) -> Optional[Dict[str, Set[str]]]:
+                if type_name == "Human":
+                    return {"id": {"new_id"}}
+                return None
+
+        renamed_schema = rename_schema(
+            parse(ISS.many_fields_schema), {}, NonIterableFieldRenamings()
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              new_id: String
+              name: String
+              age: Int
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
+
     def test_field_renaming_illegal_noop_renamed_to_self(self) -> None:
         # This would be legal if the field named "id" were 1-many renamed to something else as well
         # (e.g. renaming to "id" and "new_id" so that both fields in the renamed schema correspond
         # to the field named "id" in the original schema). However, since this is a 1-1 renaming,
         # this renaming would have no effect.
-        with self.assertRaises(NoOpRenamingError) as e:
-            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"id": {"id"}}})
-        self.assertEqual(
+        # Note that the error here gets raised specifically when field_renamings["Human"] is
+        # iterable, i.e. field_renamings itself need not be iterable.
+        expected_error_message = (
             "The field renamings for the following types in field_renamings are iterable, so they "
             "cannot cannot have no-op renamings. However, some of these renamings would either "
             "rename a field to itself or would rename a field that doesn't exist in the schema, "
@@ -505,35 +605,100 @@ class TestRenameSchema(unittest.TestCase):
             "needs to be fixed for field renamings. Each tuple is of the form "
             "(type_name, field_renamings) where type_name is the name of the type in the original "
             "schema and field_renamings is a list of the fields that would be no-op renamed: "
-            "[('Human', ['id'])]",
+            "[('Human', ['id'])]"
+        )
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"id": {"id"}}})
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings itself need not be iterable for this error.
+
+        class NonIterableFieldRenamings:
+            def get(
+                self,
+                type_name: str,
+                default_field_renamings: Optional[Dict[str, Set[str]]],
+            ) -> Optional[Dict[str, Set[str]]]:
+                if type_name == "Human":
+                    return {"id": {"id"}}
+                return None
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, NonIterableFieldRenamings())
+        self.assertEqual(
+            expected_error_message,
             str(e.exception),
         )
 
     def test_field_renaming_illegal_noop_rename_fields_of_nonexistent_type(self) -> None:
-        with self.assertRaises(NoOpRenamingError) as e:
-            rename_schema(parse(ISS.basic_schema), {}, {"Television": {"id": {"new_id"}}})
-        self.assertEqual(
+        # Note that the error here gets raised specifically when field_renamings is iterable, i.e.
+        # field_renamings[type_name] itself need not be iterable for any given string type_name.
+        expected_error_message = (
             "field_renamings is iterable, so it cannot have no-op renamings. However, the "
             "following entries exist in the field_renamings argument that correspond to names of "
             "object types that either don't exist in the original schema or would get suppressed. "
             "In other words, the field renamings for each of these types would be no-ops: "
-            "['Television']",
+            "['Television']"
+        )
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {}, {"Television": {"id": {"new_id"}}})
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings's entries need not be iterable for this error.
+
+        class NonIterableEntry:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "id":
+                    return {"new_id"}
+                return {field_name}
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {}, {"Television": NonIterableEntry})
+        self.assertEqual(
+            expected_error_message,
             str(e.exception),
         )
 
     def test_field_renaming_illegal_noop_rename_fields_of_suppressed_type(self) -> None:
         # Like field renamings for a type that doesn't exist in the schema, this is illegal because
         # the field renamings will have no effect because the type itself gets suppressed.
+        # Note that the error here gets raised specifically when field_renamings is iterable, i.e.
+        # field_renamings[type_name] itself need not be iterable for any given string type_name.
+        expected_error_message = (
+            "field_renamings is iterable, so it cannot have no-op renamings. However, the "
+            "following entries exist in the field_renamings argument that correspond to names of "
+            "object types that either don't exist in the original schema or would get suppressed. "
+            "In other words, the field renamings for each of these types would be no-ops: "
+            "['Human']"
+        )
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(
                 parse(ISS.multiple_objects_schema), {"Human": None}, {"Human": {"id": {"new_id"}}}
             )
         self.assertEqual(
-            "field_renamings is iterable, so it cannot have no-op renamings. However, the "
-            "following entries exist in the field_renamings argument that correspond to names of "
-            "object types that either don't exist in the original schema or would get suppressed. "
-            "In other words, the field renamings for each of these types would be no-ops: "
-            "['Human']",
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings's entries need not be iterable for this error.
+
+        class NonIterableEntry:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "id":
+                    return {"new_id"}
+                return {field_name}
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(
+                parse(ISS.multiple_objects_schema), {"Human": None}, {"Human": NonIterableEntry()}
+            )
+        self.assertEqual(
+            expected_error_message,
             str(e.exception),
         )
 
