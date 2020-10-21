@@ -1158,6 +1158,15 @@ class CompilationState(object):
                 f"Attempted to unfold while the _current_alias was None during fold {self}."
             )
         outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
+
+        # Postgres uses a LEFT OUTER JOIN and coalesces nulls to an empty array in the top SELECT.
+        if isinstance(self._sql_schema_info.dialect, PGDialect):
+            is_left_outer_join = True
+        # MSSQL folded subquery returns exactly 1 folded result for each row in the outer table
+        # so should use an INNER JOIN.
+        else:
+            is_left_outer_join = False
+
         self._from_clause = sqlalchemy.join(
             self._from_clause,
             fold_subquery_alias,
@@ -1165,7 +1174,7 @@ class CompilationState(object):
                 self._current_alias.c[outer_vertex_primary_key_name]
                 == fold_subquery_alias.c[outer_vertex_primary_key_name]
             ),
-            isouter=False,
+            isouter=is_left_outer_join,
         )
 
         # 5. Clear the fold from the compilation state.
