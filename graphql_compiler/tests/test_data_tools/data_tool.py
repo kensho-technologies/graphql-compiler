@@ -302,13 +302,17 @@ def init_sql_integration_test_backends():
 
                 # Create the test schemas.
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                    CreateSchema("schema_1"))
+                    CreateSchema("schema_1")
+                )
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                    CreateSchema("schema_2"))
+                    CreateSchema("schema_2")
+                )
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                    CreateSchema("schema_3"))
+                    CreateSchema("schema_3")
+                )
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(
-                    CreateSchema("schema_4"))
+                    CreateSchema("schema_4")
+                )
 
             else:
                 # Drop databases if they exist
@@ -329,13 +333,21 @@ def init_sql_integration_test_backends():
 
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_1;"))
                 # create the test schemas in db_1
-                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
-                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_1")
+                )
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_2")
+                )
 
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE db_2;"))
                 # create the test schemas in db_2
-                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_1"))
-                engine.execution_options(isolation_level="AUTOCOMMIT").execute(CreateSchema("schema_2"))
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_1")
+                )
+                engine.execution_options(isolation_level="AUTOCOMMIT").execute(
+                    CreateSchema("schema_2")
+                )
 
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(text("USE master;"))
 
@@ -391,7 +403,9 @@ def generate_sql_integration_data(sql_test_backends):
             for edge_value in edge_values:
                 from_classname = uuid_to_class_name[edge_value["from_uuid"]]
                 edge_field_name = "out_{}".format(edge_name)
-                join_descriptor = backend_specific_sql_schema_info.join_descriptors[from_classname][edge_field_name]
+                join_descriptor = backend_specific_sql_schema_info.join_descriptors[from_classname][
+                    edge_field_name
+                ]
 
                 is_from_uuid = join_descriptor.from_column == "uuid"
                 is_to_uuid = join_descriptor.to_column == "uuid"
@@ -424,8 +438,8 @@ def generate_sql_integration_data(sql_test_backends):
                         )
                     existing_foreign_key_values[join_descriptor.from_column] = edge_value["to_uuid"]
 
-    # Insert all the prepared data into the test database
-    # for sql_test_backend in six.itervalues(sql_test_backends):
+        # Insert all the prepared data into the test database
+        # for sql_test_backend in six.itervalues(sql_test_backends):
         for vertex_name, insert_values in six.iteritems(vertex_values):
             table = backend_specific_sql_schema_info.vertex_name_to_table[vertex_name]
             table.delete(bind=sql_test_backend.engine)
