@@ -313,7 +313,6 @@ def init_sql_integration_test_backends():
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(
                     CreateSchema("schema_4")
                 )
-
             else:
                 # Drop databases if they exist
                 engine.execution_options(isolation_level="AUTOCOMMIT").execute(
