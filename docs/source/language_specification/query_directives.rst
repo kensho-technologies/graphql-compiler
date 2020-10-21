@@ -381,7 +381,7 @@ Allows filtering of the data to be returned, based on any of a set of
 filtering operations. Conceptually, it is the GraphQL equivalent of the
 SQL :code:`WHERE` keyword.
 
-See `Supported filtering operations <supported_filtering_operations>`__
+See :ref:`Supported filtering operations <supported_filtering_operations>`
 for details on the various types of filtering that the compiler
 currently supports. These operations are currently hardcoded in the
 compiler; in the future, we may enable the addition of custom filtering
