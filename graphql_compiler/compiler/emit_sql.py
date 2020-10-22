@@ -633,7 +633,10 @@ class FoldSubqueryBuilder(object):
         self._output_fields = output_fields
 
     def add_filter(
-        self, predicate: Expression, aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias]
+        self,
+        predicate: Expression,
+        aliases: Dict[Tuple[QueryPath, Optional[FoldPath]], Alias],
+        current_alias: Alias,
     ) -> None:
         """Add a new filter to the FoldSubqueryBuilder."""
         if self._ended:
@@ -641,8 +644,7 @@ class FoldSubqueryBuilder(object):
                 "Cannot add a filter after end_fold has been called. Invalid "
                 f"state encountered during fold {self}."
             )
-        # Filters are applied to output vertices, thus current_alias=self.output_vertex_alias.
-        sql_expression = predicate.to_sql(self._dialect, aliases, self._output_vertex_alias)
+        sql_expression = predicate.to_sql(self._dialect, aliases, current_alias)
         self._filters.append(sql_expression)
 
     def end_fold(self) -> Tuple[Select, FoldScopeLocation]:
@@ -1080,7 +1082,7 @@ class CompilationState(object):
                 raise NotImplementedError(
                     "Filtering with a tagged parameter in a fold scope is not implemented yet."
                 )
-            self._current_fold.add_filter(predicate, self._aliases)
+            self._current_fold.add_filter(predicate, self._aliases, self._current_alias)
 
         # Otherwise, add the filter to the compilation state. Note that this is for filters outside
         # a fold scope and _x_count filters within a fold scope.
@@ -1156,6 +1158,20 @@ class CompilationState(object):
                 f"Attempted to unfold while the _current_alias was None during fold {self}."
             )
         outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
+
+        # Postgres uses a LEFT OUTER JOIN and coalesces nulls to an empty array in the top SELECT.
+        if isinstance(self._sql_schema_info.dialect, PGDialect):
+            is_left_outer_join = True
+        # MSSQL folded subquery returns exactly 1 folded result for each row in the outer table
+        # so should use an INNER JOIN.
+        elif isinstance(self._sql_schema_info.dialect, MSDialect):
+            is_left_outer_join = False
+        else:
+            raise NotImplementedError(
+                "Fold only supported for MSSQL and PostgreSQL, "
+                f"dialect set to {self._sql_schema_info.dialect.name}."
+            )
+
         self._from_clause = sqlalchemy.join(
             self._from_clause,
             fold_subquery_alias,
@@ -1163,7 +1179,7 @@ class CompilationState(object):
                 self._current_alias.c[outer_vertex_primary_key_name]
                 == fold_subquery_alias.c[outer_vertex_primary_key_name]
             ),
-            isouter=False,
+            isouter=is_left_outer_join,
         )
 
         # 5. Clear the fold from the compilation state.

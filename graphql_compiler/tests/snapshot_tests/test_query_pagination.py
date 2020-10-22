@@ -197,7 +197,11 @@ class QueryPaginationTests(unittest.TestCase):
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
         }
-        class_counts = {"Animal": 1000}
+        class_counts = {
+            "Animal": 1000,
+            "Animal_FedAt": 10000000,
+            "FeedingEvent": 100000,
+        }
         statistics = LocalStatistics(class_counts)
         edge_constraints = {"Animal_ParentOf": EdgeConstraint.AtMostOneSource}
         schema_info = QueryPlanningSchemaInfo(
@@ -214,11 +218,11 @@ class QueryPaginationTests(unittest.TestCase):
             """{
             Animal {
                 name @output(out_name: "animal_name")
-                in_Animal_ParentOf {
+                out_Animal_ParentOf {
                     uuid @filter(op_name: "=", value: ["$animal_uuid"])
                 }
-                out_Animal_ParentOf {
-                    name @output(out_name: "child_name")
+                out_Animal_FedAt {
+                    name @output(out_name: "feeding_event_name")
                 }
             }
         }""",
@@ -230,9 +234,9 @@ class QueryPaginationTests(unittest.TestCase):
         analysis = analyze_query_string(schema_info, query)
         pagination_plan, advisories = get_pagination_plan(analysis, number_of_pages)
 
-        # This is a white box test. We check that we don't paginate on the root when it has a
-        # unique filter on its many-to-one neighbor. A better plan is to paginate on a
-        # different vertex, but that is not implemented.
+        # This is a white box test. There's a filter on the child, which narrows down
+        # the number of possible roots down to 1. This makes the root a bad pagination
+        # vertex. Ideally, we'd paginate on the FeedingEvent node, but that's not implemented.
         expected_plan = PaginationPlan(tuple())
         expected_advisories: Tuple[PaginationAdvisory, ...] = tuple()
         self.assertEqual([w.message for w in expected_advisories], [w.message for w in advisories])

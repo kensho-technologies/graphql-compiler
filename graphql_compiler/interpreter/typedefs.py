@@ -161,32 +161,30 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         the process of query execution begins.
 
         Consider the following example schema:
-        ***
-        schema {
-            query: RootSchemaQuery
-        }
+            schema {
+                query: RootSchemaQuery
+            }
 
-        < ... some default GraphQL compiler directives and scalar type definitions here ... >
+            < ... some default GraphQL compiler directives and scalar type definitions here ... >
 
-        type Foo {
-            < ... some fields here ... >
-        }
+            type Foo {
+                < ... some fields here ... >
+            }
 
-        < ... perhaps other type definitions here ... >
+            < ... perhaps other type definitions here ... >
 
-        type RootSchemaQuery {
-            # This is the root query type for the schema, as defined at the top of the schema.
-            Foo: [Foo]
-        }
-        ***
+            type RootSchemaQuery {
+                # This is the root query type for the schema, as defined at the top of the schema.
+                Foo: [Foo]
+            }
 
         Per the GraphQL specification, since the definition of RootSchemaQuery only contains the
         type named Foo, queries must start by querying for Foo in order to be valid for the schema:
-        {
-            Foo {
-                < stuff here >
+            {
+                Foo {
+                    < ... stuff here ... >
+                }
             }
-        }
 
         To compute the results for such a query, the interpreter would call get_tokens_of_type()
         with "Foo" as the type_name value. As get_tokens_of_type() yields tokens,
@@ -236,8 +234,94 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
         **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
-        """Produce the values for a given property for each of an iterable of input DataTokens."""
-        # TODO(predrag): Add more docs in an upcoming PR.
+        """Produce the values for a given property for each of an iterable of input DataTokens.
+
+        In situations such as outputting property values or applying filters to properties,
+        the interpreter needs to get the value of some property field for a series of DataTokens.
+
+        For example, consider the following query:
+            {
+                Foo {
+                    bar @output(out_name: "bar_value")
+                }
+            }
+
+        Once the interpreter has used the get_tokens_of_type() function to obtain
+        an iterable of DataTokens for the Foo type, it will automatically wrap each of them in
+        a "bookkeeping" object called DataContext. These DataContext objects allow
+        the interpreter to keep track of "which data came from where"; only the DataToken value
+        bound to each current_token attribute is relevant to the InterpreterAdapter API.
+
+        Having obtained an iterable of DataTokens and converted it to an iterable of DataContexts,
+        the interpreter needs to get the value of the "bar" property for the tokens bound to
+        the contexts. To do so, the interpreter calls project_property() with the iterable
+        of DataContexts, setting current_type_name = "Foo" and field_name = "bar", requesting
+        the "bar" property's value for each DataContext with its corresponding current_token.
+        If the DataContext's current_token attribute is set to None (which may happen
+        when @optional edges are used), the property's value is considered to be None.
+
+        A simple example implementation is as follows:
+            def project_property(
+                self,
+                data_contexts: Iterable[DataContext[DataToken]],
+                current_type_name: str,
+                field_name: str,
+                **hints: Any,
+            ) -> Iterable[Tuple[DataContext[DataToken], Any]]:
+                for data_context in data_contexts:
+                    current_token = data_context.current_token
+                    property_value: Any
+                    if current_token is None:
+                        # Evaluating an @optional scope where the optional edge didn't exist.
+                        # There is no value for the named property here.
+                        property_value = None
+                    else:
+                        if field_name == "__typename":
+                            # The query is requesting the runtime type of the current vertex.
+                            # If current_type_name is an interface type, the runtime type of
+                            # the current vertex may either be that interface type or
+                            # a type that implements that interface. More info on "__typename"
+                            # can be found at https://graphql.org/learn/queries/#meta-fields
+                            property_value = < load the runtime type of the current_token vertex >
+                        else:
+                            property_value = (
+                                < load the value of the field_name property for current_token >
+                            )
+
+                    # Remember to always yield the DataContext alongside the produced value
+                    yield data_context, property_value
+
+        Args:
+            data_contexts: iterable of DataContext objects which specify the DataTokens whose
+                           property data needs to be loaded
+            current_type_name: name of the vertex type whose property needs to be loaded. Guaranteed
+                               to be the name of a type defined in the schema being queried.
+            field_name: name of the property whose data needs to be loaded. Guaranteed to refer
+                        either to a property that is defined in the supplied current_type_name
+                        in the schema, or to the "__typename" meta field that is valid for all
+                        GraphQL types and holds the type name of the current vertex. This type name
+                        may be different from the value of current_type_name e.g. when
+                        current_type_name refers to an interface type and "__typename" refers to
+                        a type that implements that interface. More information on "__typename" may
+                        be found in the GraphQL docs: https://graphql.org/learn/queries/#meta-fields
+            runtime_arg_hints: names and values of any runtime arguments provided to the query
+                               for use in filtering operations (e.g. "$arg_name").
+            used_property_hints: the property names of the vertices being processed that
+                                 are going to be used in a subsequent filtering or output step.
+            filter_hints: information about any filters applied to the vertices being processed,
+                          such as "which filtering operations are being performed?"
+                          and "with which arguments?"
+            neighbor_hints: information about the edges of the vertices being processed
+                            that the query will eventually need to expand.
+            **hints: catch-all kwarg field making the function's signature forward-compatible with
+                     future revisions of this library that add more hints.
+
+        Yields:
+            tuples (data_context, property_value), providing the value of the requested property
+            together with the DataContext corresponding to that value. The yielded DataContext
+            values must be yielded in the same order as they were received via the function's
+            data_contexts argument.
+        """
 
     @abstractmethod
     def project_neighbors(
@@ -272,5 +356,103 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
         **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
-        """Determine if each of an iterable of input DataTokens can be coerced to another type."""
-        # TODO(predrag): Add more docs in an upcoming PR.
+        """Determine if each of an iterable of input DataTokens can be coerced to another type.
+
+        Consider a query like the following:
+            {
+                Foo {
+                    out_Foo_Bar {
+                        ... on BarImpl {
+                            < ... some fields here ... >
+                        }
+                    }
+                }
+            }
+
+        Assume that this query is written against a schema that contains the following definitions:
+            type Foo {
+                < ... some fields here ... >
+                out_Foo_Bar: [Bar]
+            }
+
+            interface Bar {
+                < ... some fields here ... >
+            }
+
+            type BarImpl implements Bar {
+                < ... some fields here ... >
+            }
+
+        When resolving the out_Foo_Bar edge in the query using project_neighbors(), the interpreter
+        receives DataTokens that (per the schema) are instances of the Bar interface type. However,
+        the query's subsequent "... on BarImpl" type coercion clause requires that the interpreter
+        discard any neighboring vertices that are not instances of BarImpl, a subtype of
+        the Bar interface type.
+
+        The interpreter uses can_coerce_to_type() for this purpose: it calls this function with
+        an iterable of DataContexts, with current_type_name set to "Bar" (the schema-implied type
+        of the query's scope) and with coerce_to_type_name set to "BarImpl" (the type to which
+        coercion is being attempted). For each DataContext in the input iterable, this function
+        yields a tuple containing the context itself and a bool set to True if the coercion
+        to the new type could be completed.
+
+        A simple example implementation is as follows:
+            def can_coerce_to_type(
+                self,
+                data_contexts: Iterable[DataContext[DataToken]],
+                current_type_name: str,
+                coerce_to_type_name: str,
+                *,
+                runtime_arg_hints: Optional[Mapping[str, Any]] = None,
+                used_property_hints: Optional[AbstractSet[str]] = None,
+                filter_hints: Optional[Collection[FilterInfo]] = None,
+                neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
+                **hints: Any,
+            ) -> Iterable[Tuple[DataContext[DataToken], bool]]:
+                for data_context in data_contexts:
+                    current_token = data_context.current_token
+                    can_coerce: bool
+                    if current_token is None:
+                        # Evaluating an @optional scope where the optional edge didn't exist.
+                        # We cannot coerce something that doesn't exist.
+                        can_coerce = False
+                    else:
+                        can_coerce = (
+                            < check whether current_token represents a vertex
+                                of type coerce_to_type_name >
+                        )
+
+                    # Remember to always yield the DataContext alongside the bool result.
+                    yield data_context, can_coerce
+
+        Args:
+            data_contexts: iterable of DataContext objects which specify the DataTokens that are
+                           being coerced to a new type
+            current_type_name: name of the vertex type from which the vertices are being coerced.
+                               Guaranteed to be the name of an interface or union type defined
+                               in the schema being queried.
+            coerce_to_type_name: name of the vertex type to which the vertices are being coerced.
+                                 Guaranteed to be the name of a type defined in the schema being
+                                 queried. If current_type_name refers to an interface type, then
+                                 coerce_to_type_name is guaranteed to refer to a type that
+                                 implements that interface. If current_type_name refers to a union
+                                 type, then coerce_to_type_name is guaranteed to refer to a type
+                                 that is a member of that union type.
+            runtime_arg_hints: names and values of any runtime arguments provided to the query
+                               for use in filtering operations (e.g. "$arg_name").
+            used_property_hints: the property names of the vertices being processed that
+                                 are going to be used in a subsequent filtering or output step.
+            filter_hints: information about any filters applied to the vertices being processed,
+                          such as "which filtering operations are being performed?"
+                          and "with which arguments?"
+            neighbor_hints: information about the edges of the vertices being processed
+                            that the query will eventually need to expand.
+            **hints: catch-all kwarg field making the function's signature forward-compatible with
+                     future revisions of this library that add more hints.
+
+        Yields:
+            tuples (data_context, can_coerce), containing a DataContext and a corresponding boolean
+            indicating whether the DataContext's current_token can be coerced to the specified type.
+            The yielded DataContext values must be yielded in the same order as they were received
+            via the function's data_contexts argument.
+        """
