@@ -46,14 +46,60 @@ class SchemaStructureError(SchemaTransformError):
 
 
 class InvalidTypeNameError(SchemaTransformError):
-    """Raised if a type/field name is not valid.
+    """Raised if a type name is not valid.
 
-    This may be raised if the input schema contains invalid names, or if the user attempts to
-    rename a type/field to an invalid name. A name is considered valid if it consists of
-    alphanumeric characters and underscores and doesn't start with a numeric character (as
-    required by GraphQL), and doesn't start with double underscores as such type names are
+    This may be raised if the input schema contains invalid names. A name is considered valid if it
+    consists of alphanumeric characters and underscores and doesn't start with a numeric character
+    (as required by GraphQL), and doesn't start with double underscores as such type names are
     reserved for GraphQL internal use.
+
+    Not to be confused with SchemaRenameInvalidNameError, which is used for schemas being renamed
+    and includes more information.
     """
+
+
+class SchemaRenameInvalidNameError(SchemaTransformError):
+    """Raised if a type name is not valid during renaming.
+
+    A name is considered valid if it consists of alphanumeric characters and underscores and doesn't
+    start with a numeric character (as required by GraphQL), and doesn't start with double
+    underscores as such type names are reserved for GraphQL internal use.
+
+    Not to be confused with InvalidTypeNameError, which is used for schemas that aren't being
+    renamed because this type of error includes information from the renaming process that
+    InvalidTypeNameError doesn't.
+    """
+
+    # TODO(Leon): Would like feedback on this-- is there a better way to do this than have two types
+    # of invalid name errors? See docstring for why I split them up.
+    invalid_type_names: Dict[str, str]
+
+    def __init__(self, invalid_type_names: Dict[str, str]) -> None:
+        """Record all invalid names that arise specifically from renaming."""
+        if not invalid_type_names:
+            raise ValueError(
+                "Cannot raise SchemaRenameInvalidNameError without at least one invalid name, but "
+                "all arguments were empty dictionaries."
+            )
+        super().__init__()
+        self.invalid_type_names = invalid_type_names
+
+    def __str__(self) -> str:
+        """Explain invalid names and the fix."""
+        explanation = (
+            "Applying the type renaming would rename types with names that are not valid, "
+            "unreserved GraphQL names. Valid, unreserved GraphQL names must consist of only "
+            "alphanumeric characters and underscores, must not start with a numeric character, and "
+            "must not start with double underscores."
+        )
+        sorted_invalid_type_names = sorted(self.invalid_type_names.items())
+        invalid_type_names_message = (
+            f"The following is a list of tuples that describes what needs to be fixed for type "
+            f"renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            f"original_name is the name in the original schema and invalid_new_name is what "
+            f"original_name would be renamed to: {sorted_invalid_type_names}"
+        )
+        return "\n".join(filter(None, [explanation, invalid_type_names_message]))
 
 
 class SchemaMergeNameConflictError(SchemaTransformError):
@@ -99,13 +145,14 @@ class SchemaRenameNameConflictError(SchemaTransformError):
             ]
             type_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple types have the "
-                f"same name, which is an illegal schema state. To fix this, modify the renamings "
-                f"argument of rename_schema to ensure that no two types in the renamed schema have "
-                f"the same name. The following is a list of tuples that describes what needs to be "
-                f"fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
-                f"where new_type_name is the type name that would appear in the new schema and "
-                f"original_schema_type_names is a list of types in the original schema that get "
-                f"mapped to new_type_name: {sorted_type_name_conflicts}"
+                f"same name, which is an illegal schema state. To fix this, modify the "
+                f"type_renamings argument of rename_schema to ensure that no two types in the "
+                f"renamed schema have the same name. The following is a list of tuples that "
+                f"describes what needs to be fixed. Each tuple is of the form "
+                f"(new_type_name, original_schema_type_names) where new_type_name is the type name "
+                f"that would appear in the new schema and original_schema_type_names is a list of "
+                f"types in the original schema that get mapped to new_type_name: "
+                f"{sorted_type_name_conflicts}"
             )
         renamed_to_builtin_scalar_conflicts_message = ""
         if self.renamed_to_builtin_scalar_conflicts:
@@ -149,28 +196,34 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if renamings argument is iterable and contains no-op renames.
+    """Raised if renamings are iterable and contains no-op renames.
 
     No-op renames can occur in these ways:
-    * renamings contains a string type_name but there doesn't exist a type in the schema named
-      type_name
-    * renamings maps a string type_name to itself, i.e. renamings[type_name] == type_name
+    * type_renamings is iterable and contains a string type_name but there doesn't exist a type in
+      the schema named type_name
+    * type_renamings is iterable and maps a string type_name to itself, i.e.
+      type_renamings[type_name] == type_name
     """
 
-    no_op_renames: Set[str]
+    no_op_type_renames: Set[str]
 
-    def __init__(self, no_op_renames: Set[str]) -> None:
-        """Record all renaming conflicts."""
+    def __init__(self, no_op_type_renames: Set[str]) -> None:
+        """Record all no-op renamings."""
+        if not no_op_type_renames:
+            raise ValueError(
+                "Cannot raise NoOpRenamingError without at least one invalid name, but "
+                "all arguments were empty."
+            )
         super().__init__()
-        self.no_op_renames = no_op_renames
+        self.no_op_type_renames = no_op_type_renames
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
         return (
-            f"Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            f"entries exist in the renamings argument, which either rename a type to itself or "
-            f"would rename a type that doesn't exist in the schema, both of which are invalid: "
-            f"{sorted(self.no_op_renames)}"
+            f"type_renamings is iterable, so it cannot have no-op renamings. However, the "
+            f"following entries exist in the type_renamings argument, which either rename a "
+            f"type to itself or would rename a type that doesn't exist in the schema, both of "
+            f"which are invalid: {sorted(self.no_op_type_renames)}"
         )
 
 
@@ -241,18 +294,18 @@ def check_schema_identifier_is_valid(identifier: str) -> None:
         )
 
 
-def type_name_is_valid(name: str) -> bool:
-    """Check if input is a valid, nonreserved GraphQL type name.
+def is_valid_unreserved_name(name: str) -> bool:
+    """Check if input is a valid, unreserved GraphQL type name.
 
-    A GraphQL type name is valid iff it consists of only alphanumeric characters and underscores and
-    does not start with a numeric character. It is nonreserved (i.e. not reserved for GraphQL
+    A GraphQL name is valid iff it consists of only alphanumeric characters and underscores and
+    does not start with a numeric character. It is unreserved (i.e. not reserved for GraphQL
     internal use) if it does not start with double underscores.
 
     Args:
         name: to be checked
 
     Returns:
-        True iff name is a valid, nonreserved GraphQL type name.
+        True iff name is a valid, unreserved GraphQL name.
     """
     return bool(re_name.match(name)) and not name.startswith("__")
 
@@ -441,7 +494,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         elif node_type in self.unexpected_types:
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
         elif isinstance(node, self.check_name_validity_types):
-            if not type_name_is_valid(node.name.value):
+            if not is_valid_unreserved_name(node.name.value):
                 raise InvalidTypeNameError(
                     f"Node name {node.name.value} is not a valid, unreserved GraphQL name. Valid, "
                     f"unreserved GraphQL names must consist of only alphanumeric characters and "
