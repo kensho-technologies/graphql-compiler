@@ -199,7 +199,7 @@ fi
 if  [[
         (
             ("$run_fast_linters" == 1) && (
-                ("copyright_line_check_exit_code" != "0") ||
+                ("$copyright_line_check_exit_code" != "0") ||
                 ("$isort_exit_code" != "0") ||
                 ("$black_exit_code" != "0") ||
                 ("$flake_exit_code" != "0") ||
