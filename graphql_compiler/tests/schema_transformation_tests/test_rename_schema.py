@@ -11,7 +11,6 @@ from graphql.pyutils import snake_to_camel
 from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
-    InvalidTypeNameError,
     NoOpRenamingError,
     SchemaRenameInvalidNameError,
     SchemaRenameNameConflictError,
@@ -986,8 +985,19 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_illegal_rename_type_start_with_number(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(SchemaRenameInvalidNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "0Human"})
+        self.assertEqual(
+            "Applying the type renaming would rename types with names that are not valid, "
+            "unreserved GraphQL names. Valid, unreserved GraphQL names must consist of only "
+            "alphanumeric characters and underscores, must not start with a numeric character, and "
+            "must not start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Human', '0Human')]",
+            str(e.exception),
+        )
 
     def test_illegal_rename_type_contains_illegal_char(self) -> None:
         with self.assertRaises(SchemaRenameInvalidNameError) as e:
