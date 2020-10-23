@@ -117,6 +117,9 @@ def _find_used_columns(
             # A recurse implies an outgoing foreign key usage
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
+                used_columns.setdefault(get_vertex_path(location), set()).add(
+                    edge.to_column
+                )
                 used_columns.setdefault(get_vertex_path(child_location), set()).add(
                     edge.from_column
                 )
@@ -130,17 +133,6 @@ def _find_used_columns(
     for _, tag_info in ir.query_metadata_table.tags:
         query_path = get_vertex_path(tag_info.location)
         used_columns.setdefault(query_path, set()).add(tag_info.location.field)
-
-    # Columns used in the base case of CTE recursions should be made available from parent scope
-    # TODO(bojanserafimov): Some of these are no longer needed, since we don't select from
-    #                       the base cte, but only semijoin to its primary key now.
-    for location, _ in ir.query_metadata_table.registered_locations:
-        for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
-            traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
-            used_columns[get_vertex_path(location)] = used_columns.get(
-                get_vertex_path(location), set()
-            ).union(used_columns[get_vertex_path(location) + (traversal,)])
-            used_columns[get_vertex_path(location)].add(edge.from_column)
 
     return used_columns
 
