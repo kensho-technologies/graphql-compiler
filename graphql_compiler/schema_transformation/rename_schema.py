@@ -79,7 +79,7 @@ Renaming constraints:
   being renamed or suppressed. The same rules apply for fields that belong to the same type, since
   they share a namespace as well.
 - There exist special rules for iterable renamings (e.g. if renamings are represented as a
-  dictionary-- specifically that no-op renamings are not allowed.
+  dictionary)-- specifically, no-op renamings are not allowed.
   - If type_renamings argument is iterable:
     - A string type_name may be in type_renamings only if there exists a type in the original schema
       named type_name (since otherwise that entry would not affect any type in the schema).
@@ -166,7 +166,7 @@ def rename_schema(
                     the same name as the types they query. Not modified by this function
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
 
     Returns:
         RenamedSchemaDescriptor containing the AST of the renamed schema, and the map of renamed
@@ -192,7 +192,7 @@ def rename_schema(
           input object definitions, or if the schema contains mutations or subscriptions
         - SchemaRenameNameConflictError if there are name conflicts between the renamed types or
           fields
-        - NoOpRenamingError if the renamings contain no-op renamings and are iterable.
+        - NoOpRenamingError if the renamings contain no-op renamings and are iterable
     """
     # Check input schema satisfies various structural requirements
     check_ast_schema_is_valid(schema_ast)
@@ -242,7 +242,7 @@ def _validate_renamings(
                     the same name as the types they query. Not modified by this function
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
@@ -397,7 +397,7 @@ def _rename_and_suppress_types(
         schema_ast: schema that we're returning a modified version of
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
@@ -455,7 +455,7 @@ def _rename_and_suppress_query_type_fields(
         schema_ast: schema that we're returning a modified version of
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
@@ -569,7 +569,7 @@ class RenameSchemaTypesVisitor(Visitor):
         Args:
             type_renamings: maps original type name to renamed name or None (for type suppression).
                             A type named "Foo" will be unchanged iff type_renamings does not map
-                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
             custom_scalar_names: set of all user defined scalars used in the schema (excluding
                                  builtin scalars)
@@ -651,13 +651,13 @@ class RenameSchemaTypesVisitor(Visitor):
             # If one type in this conflict is a custom scalar, the two types causing conflict were
             # named type_name and desired_type_name (the latter being the custom scalar name) in the
             # original schema.
+            conflictingly_renamed_type_name = self.reverse_name_map.get(
+                desired_type_name, desired_type_name
+            )
 
             # Collect all types in the original schema that would be named desired_type_name in the
             # new schema
             if desired_type_name not in self.type_name_conflicts:
-                conflictingly_renamed_type_name = self.reverse_name_map.get(
-                    desired_type_name, desired_type_name
-                )
                 self.type_name_conflicts[desired_type_name] = {conflictingly_renamed_type_name}
             self.type_name_conflicts[desired_type_name].add(type_name)
 
@@ -702,7 +702,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         Args:
             type_renamings: maps original type name to renamed name or None (for type suppression).
                             A type named "Foo" will be unchanged iff type_renamings does not map
-                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             query_type: name of the query type (e.g. RootSchemaQuery)
 
         Raises:
