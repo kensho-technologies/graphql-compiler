@@ -105,6 +105,14 @@ def _find_used_columns(
 
     # Find foreign keys used
     for location, location_info in ir.query_metadata_table.registered_locations:
+
+        primary_key = None
+        primary_keys = (
+            sql_schema_info.vertex_name_to_table[location_info.type.name].alias().primary_key
+        )
+        if len(primary_keys) > 1:
+            primary_key = str(primary_keys[0].name)
+
         for child_location in ir.query_metadata_table.get_child_locations(location):
             edge_direction, edge_name = get_edge_direction_and_name(
                 get_vertex_path(child_location)[-1]
@@ -117,9 +125,8 @@ def _find_used_columns(
             # A recurse implies an outgoing foreign key usage
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
-                used_columns.setdefault(get_vertex_path(location), set()).add(
-                    edge.to_column
-                )
+                if primary_key is not None:
+                    used_columns.setdefault(get_vertex_path(location), set()).add(primary_key)
                 used_columns.setdefault(get_vertex_path(child_location), set()).add(
                     edge.from_column
                 )
