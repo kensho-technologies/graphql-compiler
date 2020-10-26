@@ -105,7 +105,6 @@ def _find_used_columns(
 
     # Find foreign keys used
     for location, location_info in ir.query_metadata_table.registered_locations:
-
         primary_key = None
         primary_keys = (
             sql_schema_info.vertex_name_to_table[location_info.type.name].alias().primary_key
