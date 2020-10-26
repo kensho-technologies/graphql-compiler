@@ -2474,7 +2474,52 @@ class CompilerTests(unittest.TestCase):
                     ON anon_2.[Species_in_Animal_OfSpecies__uuid] = anon_1.__cte_key
         """
         expected_cypher = SKIP_TEST
-        expected_postgresql = SKIP_TEST
+        expected_postgresql = """
+        WITH RECURSIVE anon_2 AS (
+            SELECT
+                "Species_1".name AS "Species__name",
+                "Species_1".uuid AS "Species__uuid",
+                "Animal_1".name AS "Species_in_Animal_OfSpecies__name",
+                "Animal_1".parent AS "Species_in_Animal_OfSpecies__parent",
+                "Animal_1".species AS "Species_in_Animal_OfSpecies__species",
+                "Animal_1".uuid AS "Species_in_Animal_OfSpecies__uuid"
+            FROM
+                schema_1."Species" AS "Species_1"
+                JOIN schema_1."Animal" AS "Animal_1"
+                    ON "Species_1".uuid = "Animal_1".species),
+        anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+            SELECT
+                "Animal_2".name AS name,
+                "Animal_2".parent AS parent,
+                "Animal_2".uuid AS uuid,
+                "Animal_2".uuid AS __cte_key,
+                0 AS __cte_depth
+            FROM
+                schema_1."Animal" AS "Animal_2"
+            WHERE
+                "Animal_2".uuid IN (SELECT anon_2."Species_in_Animal_OfSpecies__uuid" FROM anon_2)
+            UNION ALL
+            SELECT
+                "Animal_3".name AS name,
+                "Animal_3".parent AS parent,
+                "Animal_3".uuid AS uuid,
+                anon_1.__cte_key AS __cte_key,
+                anon_1.__cte_depth + 1 AS __cte_depth
+            FROM
+                anon_1
+                JOIN schema_1."Animal" AS "Animal_3"
+                    ON anon_1.parent = "Animal_3".uuid
+            WHERE anon_1.__cte_depth < 1
+        )
+        SELECT
+            anon_1.name AS ancestor_name,
+            anon_2."Species_in_Animal_OfSpecies__name" AS animal_name,
+            anon_2."Species__name" AS species_name
+        FROM
+            anon_2
+            JOIN anon_1
+                ON anon_2."Species_in_Animal_OfSpecies__uuid" = anon_1.__cte_key
+        """
         check_test_data(
             self,
             test_data,
