@@ -103,7 +103,7 @@ def _find_used_columns(
             for field in filter_info.fields:
                 used_columns.setdefault(get_vertex_path(location), set()).add(field)
 
-    # Find foreign keys used
+    # Find columns used to emit edges
     for location, location_info in ir.query_metadata_table.registered_locations:
         primary_key = None
         primary_keys = (
@@ -121,11 +121,14 @@ def _find_used_columns(
             used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
             used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.to_column)
 
-            # A recurse implies an outgoing foreign key usage
+            # Check if the edge is recursive
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
+                # The primary key may be used if the recursive cte base semijoins to
+                # the pre-recurse cte by primary key.
                 if primary_key is not None:
                     used_columns.setdefault(get_vertex_path(location), set()).add(primary_key)
+                # The from_column is used at the destination as well, inside the recursive step
                 used_columns.setdefault(get_vertex_path(child_location), set()).add(
                     edge.from_column
                 )
