@@ -513,6 +513,7 @@ class RenameSchemaTypesVisitor(Visitor):
             "ScalarTypeExtensionNode",
         }
     )
+
     # rename_types must be a set of strings corresponding to the names of the classes in
     # RenameTypes. The duplication exists because introspection for Unions via typing.get_args()
     # doesn't exist until Python 3.8. In Python 3.8, this would be a valid way to define
@@ -532,31 +533,31 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
+
     # Collects naming conflict errors involving types that are not built-in scalar types. If
     # type_renamings would result in multiple types being named "Foo", type_name_conflicts will map
     # "Foo" to a set containing the name of each such type
     type_name_conflicts: Dict[str, Set[str]]
+
     # Collects naming conflict errors involving built-in scalar types. If type_renamings would
     # rename a type named "Foo" to "String", type_renamed_to_builtin_scalar_conflicts will map
     # "Foo" to "String"
     type_renamed_to_builtin_scalar_conflicts: Dict[str, str]
+
     # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
     # non-scalar types, including those that were unchanged. Must contain unchanged names to prevent
     # type renaming conflicts and raise SchemaRenameNameConflictError when they arise
     reverse_name_map: Dict[str, str]
+
     # Collects invalid type names in type_renamings. If type_renamings would rename a type named
     # "Foo" to a string that is not a valid, unreserved GraphQL type name (valid, unreserved names
     # consist only of alphanumeric characters and underscores, do not start with a number, and do
     # not start with two underscores), invalid_type_names will map "Foo" to the invalid type name.
     invalid_type_names: Dict[str, str]
+
     # Collects the type names for types that get suppressed. If type_renamings would suppress a type
     # named "Foo", suppressed_type_names will contain "Foo".
     suppressed_type_names: Set[str]
-    # reverse_field_name_map maps type name to a dict, which in turn maps the name of a field in the
-    # renamed schema to the name of the field in the original schema, if the field has different
-    # names in the original schema and the new schema. If field_renamings would rename a field named
-    # "foo" (in a type named "Baz") to "bar", then reverse_field_name_map["Baz"] will map "bar" to
-    # "foo".
 
     def __init__(
         self,
