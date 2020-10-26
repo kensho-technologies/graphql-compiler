@@ -908,6 +908,33 @@ def simple_recurse() -> CommonTestData:  # noqa: D103
     )
 
 
+def inwards_recurse_after_traverse() -> CommonTestData:  # noqa: D103
+    graphql_input = """{
+        Species {
+            name @output(out_name: "species_name")
+            in_Animal_OfSpecies {
+                name @output(out_name: "animal_name")
+                in_Animal_ParentOf @recurse(depth: 1) {
+                    name @output(out_name: "ancestor_name")
+                }
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "species_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "ancestor_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+    }
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=None,
+    )
+
+
 def recurse_with_new_output_inside_recursion_and_filter_at_root() -> CommonTestData:  # noqa: D103
     # The filter on the root location will make SQL emit a cte at the base. Since
     # the color field is used in the base case of the recursive cte, the root cte

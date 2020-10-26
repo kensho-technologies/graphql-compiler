@@ -110,7 +110,7 @@ def _find_used_columns(
         primary_keys = (
             sql_schema_info.vertex_name_to_table[location_info.type.name].alias().primary_key
         )
-        if len(primary_keys) > 1:
+        if len(primary_keys) == 1:
             primary_key = str(primary_keys[0].name)
 
         for child_location in ir.query_metadata_table.get_child_locations(location):
