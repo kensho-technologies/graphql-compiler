@@ -14,36 +14,37 @@ class CommonIrLoweringTests(unittest.TestCase):
         self.maxDiff = None
         self.sql_schema_info = get_sqlalchemy_schema_info()
 
-    def test_print_query_mssql_basic(self):
-        query = sqlalchemy.select([self.sql_schema_info.vertex_name_to_table['Animal'].c.name])
+    def test_print_query_mssql_basic(self) -> None:
+        query = sqlalchemy.select([self.sql_schema_info.vertex_name_to_table["Animal"].c.name])
         text = print_sqlalchemy_query_string(query, mssql.dialect())
-        expected_text = '''
+        expected_text = """
             SELECT db_1.schema_1.[Animal].name
             FROM db_1.schema_1.[Animal]
-        '''
+        """
         compare_sql(self, expected_text, text)
 
-    def test_print_query_mssql_string_argument(self):
-        animal = self.sql_schema_info.vertex_name_to_table['Animal'].alias()
+    def test_print_query_mssql_string_argument(self) -> None:
+        animal = self.sql_schema_info.vertex_name_to_table["Animal"].alias()
         query = sqlalchemy.select([animal.c.name]).where(
-            animal.c.name == sqlalchemy.bindparam('name', expanding=False))
+            animal.c.name == sqlalchemy.bindparam("name", expanding=False)
+        )
         text = print_sqlalchemy_query_string(query, mssql.dialect())
-        expected_text = '''
+        expected_text = """
              SELECT [Animal_1].name
              FROM db_1.schema_1.[Animal] AS [Animal_1]
              WHERE [Animal_1].name = :name
-        '''
+        """
         compare_sql(self, expected_text, text)
 
-    def test_print_query_mssql_list_argument(self):
-        animal = self.sql_schema_info.vertex_name_to_table['Animal'].alias()
+    def test_print_query_mssql_list_argument(self) -> None:
+        animal = self.sql_schema_info.vertex_name_to_table["Animal"].alias()
         query = sqlalchemy.select([animal.c.name]).where(
-            animal.c.name.in_(sqlalchemy.bindparam('names', expanding=True))
+            animal.c.name.in_(sqlalchemy.bindparam("names", expanding=True))
         )
         text = print_sqlalchemy_query_string(query, mssql.dialect())
-        expected_text = '''
+        expected_text = """
              SELECT [Animal_1].name
              FROM db_1.schema_1.[Animal] AS [Animal_1]
              WHERE [Animal_1].name IN :names
-        '''
+        """
         compare_sql(self, expected_text, text)

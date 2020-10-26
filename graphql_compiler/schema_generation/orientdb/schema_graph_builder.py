@@ -1,5 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from itertools import chain
+from typing import Dict, Set
 
 from funcy.py3 import lsplit
 from graphql.type import GraphQLList, GraphQLObjectType
@@ -7,14 +8,27 @@ import six
 
 from ..exceptions import IllegalSchemaStateError
 from ..schema_graph import (
-    EdgeType, IndexDefinition, InheritanceStructure, NonGraphElement, PropertyDescriptor,
-    SchemaGraph, VertexType, link_schema_elements
+    EdgeType,
+    IndexDefinition,
+    InheritanceStructure,
+    NonGraphElement,
+    PropertyDescriptor,
+    SchemaGraph,
+    VertexType,
+    link_schema_elements,
 )
 from .schema_properties import (
-    COLLECTION_PROPERTY_TYPES, EDGE_DESTINATION_PROPERTY_NAME, EDGE_END_NAMES,
-    EDGE_SOURCE_PROPERTY_NAME, ORDERED_INDEX_TYPES, ORIENTDB_BASE_EDGE_CLASS_NAME,
-    ORIENTDB_BASE_VERTEX_CLASS_NAME, PROPERTY_TYPE_LINK_ID, UNIQUE_INDEX_TYPES,
-    parse_default_property_value, try_get_graphql_scalar_type
+    COLLECTION_PROPERTY_TYPES,
+    EDGE_DESTINATION_PROPERTY_NAME,
+    EDGE_END_NAMES,
+    EDGE_SOURCE_PROPERTY_NAME,
+    ORDERED_INDEX_TYPES,
+    ORIENTDB_BASE_EDGE_CLASS_NAME,
+    ORIENTDB_BASE_VERTEX_CLASS_NAME,
+    PROPERTY_TYPE_LINK_ID,
+    UNIQUE_INDEX_TYPES,
+    parse_default_property_value,
+    try_get_graphql_scalar_type,
 )
 
 
@@ -83,8 +97,7 @@ def get_orientdb_schema_graph(schema_data, index_data):
         fully-constructed SchemaGraph object
     """
     class_name_to_definition = {
-        class_definition['name']: class_definition
-        for class_definition in schema_data
+        class_definition["name"]: class_definition for class_definition in schema_data
     }
 
     direct_superclass_sets = {
@@ -96,7 +109,8 @@ def get_orientdb_schema_graph(schema_data, index_data):
 
     non_graph_elements = _get_non_graph_elements(class_name_to_definition, inheritance_structure)
     inner_collection_objs = _get_graphql_representation_of_non_graph_elements(
-        non_graph_elements, inheritance_structure)
+        non_graph_elements, inheritance_structure
+    )
 
     elements = non_graph_elements
     elements.update(
@@ -119,13 +133,13 @@ def get_orientdb_schema_graph(schema_data, index_data):
 def get_superclasses_from_class_definition(class_definition):
     """Extract a list of all superclass names from a class definition dict."""
     # New-style superclasses definition, supporting multiple-inheritance.
-    superclasses = class_definition.get('superClasses', None)
+    superclasses = class_definition.get("superClasses", None)
 
     if superclasses:
         return list(superclasses)
 
     # Old-style superclass definition, single inheritance only.
-    superclass = class_definition.get('superClass', None)
+    superclass = class_definition.get("superClass", None)
     if superclass:
         return [superclass]
 
@@ -144,19 +158,27 @@ def _get_non_graph_elements(class_name_to_definition, inheritance_structure):
         abstract = _is_abstract(class_definition)
 
         inherited_property_definitions = _get_inherited_property_definitions(
-            inheritance_structure.superclass_sets[class_name], class_name_to_definition)
-        link_property_definitions, non_link_property_definitions = (
-            _get_link_and_non_link_properties(inherited_property_definitions))
+            inheritance_structure.superclass_sets[class_name], class_name_to_definition
+        )
+        (
+            link_property_definitions,
+            non_link_property_definitions,
+        ) = _get_link_and_non_link_properties(inherited_property_definitions)
 
         if len(link_property_definitions) > 0:
-            raise AssertionError(u'There are links {} defined on non-edge class {}'
-                                 .format(link_property_definitions, class_name))
+            raise AssertionError(
+                "There are links {} defined on non-edge class {}".format(
+                    link_property_definitions, class_name
+                )
+            )
 
         property_name_to_descriptor = _get_element_properties(
-            class_name, non_link_property_definitions, non_graph_class_names, [])
+            class_name, non_link_property_definitions, non_graph_class_names, []
+        )
 
         non_graph_elements[class_name] = NonGraphElement(
-            class_name, abstract, property_name_to_descriptor, class_fields)
+            class_name, abstract, property_name_to_descriptor, class_fields
+        )
     return non_graph_elements
 
 
@@ -164,8 +186,11 @@ def _get_edge_elements(class_name_to_definition, inheritance_structure, inner_co
     """Return a dict mapping class name to EdgeType."""
     edge_elements = dict()
 
-    vertex_class_names, edge_class_names, non_graph_class_names = (
-        _get_vertex_edge_and_non_graph_class_names(inheritance_structure))
+    (
+        vertex_class_names,
+        edge_class_names,
+        non_graph_class_names,
+    ) = _get_vertex_edge_and_non_graph_class_names(inheritance_structure)
 
     for class_name in edge_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -173,25 +198,36 @@ def _get_edge_elements(class_name_to_definition, inheritance_structure, inner_co
         abstract = _is_abstract(class_definition)
 
         inherited_property_definitions = _get_inherited_property_definitions(
-            inheritance_structure.superclass_sets[class_name], class_name_to_definition)
-        link_property_definitions, non_link_property_definitions = (
-            _get_link_and_non_link_properties(inherited_property_definitions))
+            inheritance_structure.superclass_sets[class_name], class_name_to_definition
+        )
+        (
+            link_property_definitions,
+            non_link_property_definitions,
+        ) = _get_link_and_non_link_properties(inherited_property_definitions)
 
         for definition in link_property_definitions:
             _validate_link_definition(
-                class_name_to_definition, definition, vertex_class_names, inheritance_structure)
+                class_name_to_definition, definition, vertex_class_names, inheritance_structure
+            )
 
         links = _get_end_direction_to_superclasses(link_property_definitions)
 
         maybe_base_in_connection, maybe_base_out_connection = _try_get_base_connections(
-            class_name, inheritance_structure, links, abstract)
+            class_name, inheritance_structure, links, abstract
+        )
 
         property_name_to_descriptor = _get_element_properties(
-            class_name, non_link_property_definitions, non_graph_class_names, inner_collection_objs)
+            class_name, non_link_property_definitions, non_graph_class_names, inner_collection_objs
+        )
 
         edge_elements[class_name] = EdgeType(
-            class_name, abstract, property_name_to_descriptor, class_fields,
-            maybe_base_in_connection, maybe_base_out_connection)
+            class_name,
+            abstract,
+            property_name_to_descriptor,
+            class_fields,
+            maybe_base_in_connection,
+            maybe_base_out_connection,
+        )
     return edge_elements
 
 
@@ -199,8 +235,9 @@ def _get_vertex_elements(class_name_to_definition, inheritance_structure, inner_
     """Return a dict mapping class name to VertexType."""
     vertex_elements = dict()
 
-    vertex_class_names, _, non_graph_class_names = (
-        _get_vertex_edge_and_non_graph_class_names(inheritance_structure))
+    vertex_class_names, _, non_graph_class_names = _get_vertex_edge_and_non_graph_class_names(
+        inheritance_structure
+    )
 
     for class_name in vertex_class_names:
         class_definition = class_name_to_definition[class_name]
@@ -208,19 +245,27 @@ def _get_vertex_elements(class_name_to_definition, inheritance_structure, inner_
         abstract = _is_abstract(class_definition)
 
         inherited_property_definitions = _get_inherited_property_definitions(
-            inheritance_structure.superclass_sets[class_name], class_name_to_definition)
-        link_property_definitions, non_link_property_definitions = (
-            _get_link_and_non_link_properties(inherited_property_definitions))
+            inheritance_structure.superclass_sets[class_name], class_name_to_definition
+        )
+        (
+            link_property_definitions,
+            non_link_property_definitions,
+        ) = _get_link_and_non_link_properties(inherited_property_definitions)
 
         if len(link_property_definitions) > 0:
-            raise AssertionError(u'There are links {} defined on non-edge class {}'
-                                 .format(link_property_definitions, class_name))
+            raise AssertionError(
+                "There are links {} defined on non-edge class {}".format(
+                    link_property_definitions, class_name
+                )
+            )
 
         property_name_to_descriptor = _get_element_properties(
-            class_name, non_link_property_definitions, non_graph_class_names, inner_collection_objs)
+            class_name, non_link_property_definitions, non_graph_class_names, inner_collection_objs
+        )
 
         vertex_elements[class_name] = VertexType(
-            class_name, abstract, property_name_to_descriptor, class_fields)
+            class_name, abstract, property_name_to_descriptor, class_fields
+        )
     return vertex_elements
 
 
@@ -235,8 +280,10 @@ def _get_vertex_edge_and_non_graph_class_names(inheritance_structure):
         is_edge = ORIENTDB_BASE_EDGE_CLASS_NAME in superclass_set
 
         if is_vertex and is_edge:
-            raise AssertionError(u'Class {} appears to be both a vertex and an edge class: '
-                                 u'{}'.format(class_name, superclass_set))
+            raise AssertionError(
+                "Class {} appears to be both a vertex and an edge class: "
+                "{}".format(class_name, superclass_set)
+            )
         elif is_vertex:
             vertex_class_names.add(class_name)
         elif is_edge:
@@ -249,7 +296,7 @@ def _get_vertex_edge_and_non_graph_class_names(inheritance_structure):
 
 def _get_class_fields(class_definition):
     """Return the class fields."""
-    class_fields = class_definition.get('customFields')
+    class_fields = class_definition.get("customFields")
     if class_fields is None:
         # OrientDB likes to make empty collections be None instead.
         # We convert this field back to an empty dict, for our general sanity.
@@ -259,40 +306,47 @@ def _get_class_fields(class_definition):
 
 def _is_abstract(class_definition):
     """Return if the class is abstract. We pretend the V and E OrientDB classes are abstract."""
-    orientdb_base_classes = frozenset({
-        ORIENTDB_BASE_VERTEX_CLASS_NAME,
-        ORIENTDB_BASE_EDGE_CLASS_NAME,
-    })
-    return class_definition['name'] in orientdb_base_classes or class_definition['abstract']
+    orientdb_base_classes = frozenset(
+        {
+            ORIENTDB_BASE_VERTEX_CLASS_NAME,
+            ORIENTDB_BASE_EDGE_CLASS_NAME,
+        }
+    )
+    return class_definition["name"] in orientdb_base_classes or class_definition["abstract"]
 
 
 def _get_inherited_property_definitions(superclass_set, class_name_to_definition):
     """Return a class's inherited OrientDB property definitions."""
-    return list(chain.from_iterable(
-        class_name_to_definition[inherited_class_name]['properties']
-        for inherited_class_name in superclass_set
-    ))
+    return list(
+        chain.from_iterable(
+            class_name_to_definition[inherited_class_name]["properties"]
+            for inherited_class_name in superclass_set
+        )
+    )
 
 
 def _get_link_and_non_link_properties(property_definitions):
     """Return a class's link and non link OrientDB property definitions."""
-    return lsplit(lambda x: x['name'] in EDGE_END_NAMES, property_definitions)
+    return lsplit(lambda x: x["name"] in EDGE_END_NAMES, property_definitions)
 
 
-def _get_element_properties(class_name, non_link_property_definitions, non_graph_class_names,
-                            inner_collection_objs):
+def _get_element_properties(
+    class_name, non_link_property_definitions, non_graph_class_names, inner_collection_objs
+):
     """Return the SchemaElement's properties from the OrientDB non-link property definitions."""
     property_name_to_descriptor = {}
     for property_definition in non_link_property_definitions:
-        property_name = property_definition['name']
+        property_name = property_definition["name"]
 
         if property_name in property_name_to_descriptor:
-            raise AssertionError(u'The property "{}" on class "{}" is defined '
-                                 u'more than once, this is not allowed!'
-                                 .format(property_name, class_name))
+            raise AssertionError(
+                'The property "{}" on class "{}" is defined '
+                "more than once, this is not allowed!".format(property_name, class_name)
+            )
 
         maybe_graphql_type = _try_get_graphql_type(
-            class_name, property_definition, non_graph_class_names, inner_collection_objs)
+            class_name, property_definition, non_graph_class_names, inner_collection_objs
+        )
 
         if maybe_graphql_type is not None:
             default_value = _get_default_value(class_name, property_definition)
@@ -301,46 +355,55 @@ def _get_element_properties(class_name, non_link_property_definitions, non_graph
     return property_name_to_descriptor
 
 
-def _try_get_graphql_type(class_name, property_definition, non_graph_class_names,
-                          inner_collection_objs):
+def _try_get_graphql_type(
+    class_name, property_definition, non_graph_class_names, inner_collection_objs
+):
     """Return the GraphQLType corresponding to the non-link property definition."""
-    name = property_definition['name']
-    type_id = property_definition['type']
-    linked_class = property_definition.get('linkedClass', None)
-    linked_type = property_definition.get('linkedType', None)
+    name = property_definition["name"]
+    type_id = property_definition["type"]
+    linked_class = property_definition.get("linkedClass", None)
+    linked_type = property_definition.get("linkedType", None)
 
     maybe_graphql_type = None
     if type_id == PROPERTY_TYPE_LINK_ID:
-        raise AssertionError(u'Found a improperly named property of type Link: '
-                             u'{} {}. Links must be named either "in" or "out"'
-                             .format(name, class_name))
+        raise AssertionError(
+            "Found a improperly named property of type Link: "
+            '{} {}. Links must be named either "in" or "out"'.format(name, class_name)
+        )
     elif type_id in COLLECTION_PROPERTY_TYPES:
         if linked_class is not None and linked_type is not None:
-            raise AssertionError(u'Property "{}" unexpectedly has both a linked class and '
-                                 u'a linked type: {}'.format(name, property_definition))
+            raise AssertionError(
+                'Property "{}" unexpectedly has both a linked class and '
+                "a linked type: {}".format(name, property_definition)
+            )
         elif linked_type is not None and linked_class is None:
             # No linked class, must be a linked native OrientDB type.
-            maybe_inner_type = try_get_graphql_scalar_type(name + ' inner type', linked_type)
+            maybe_inner_type = try_get_graphql_scalar_type(name + " inner type", linked_type)
             if maybe_inner_type is not None:
                 maybe_graphql_type = GraphQLList(maybe_inner_type)
         elif linked_class is not None and linked_type is None:
             # No linked type, must be a linked non-graph user-defined type.
             if class_name in non_graph_class_names:
-                raise AssertionError('Class {} is a non-graph class that contains a '
-                                     'collection property {}. Only graph classes are allowed '
-                                     'to have collections as properties.'
-                                     .format(class_name, property_definition))
+                raise AssertionError(
+                    "Class {} is a non-graph class that contains a "
+                    "collection property {}. Only graph classes are allowed "
+                    "to have collections as properties.".format(class_name, property_definition)
+                )
             if linked_class not in inner_collection_objs:
-                raise AssertionError(u'Property "{}" is declared as the inner type of '
-                                     u'an embedded collection, but the inner class {} is not a '
-                                     u'non-graph class with no superclasses other than '
-                                     u'itself.'.format(name, linked_class))
+                raise AssertionError(
+                    'Property "{}" is declared as the inner type of '
+                    "an embedded collection, but the inner class {} is not a "
+                    "non-graph class with no superclasses other than "
+                    "itself.".format(name, linked_class)
+                )
 
             maybe_graphql_type = GraphQLList(inner_collection_objs[linked_class])
         else:
-            raise AssertionError(u'Property "{}" is an embedded collection but has '
-                                 u'neither a linked class nor a linked type: '
-                                 u'{}'.format(name, property_definition))
+            raise AssertionError(
+                'Property "{}" is an embedded collection but has '
+                "neither a linked class nor a linked type: "
+                "{}".format(name, property_definition)
+            )
     else:
         maybe_graphql_type = try_get_graphql_scalar_type(name, type_id)
 
@@ -350,56 +413,63 @@ def _try_get_graphql_type(class_name, property_definition, non_graph_class_names
 def _get_default_value(class_name, property_definition):
     """Return the default value of the OrientDB property."""
     default_value = None
-    default_value_string = property_definition.get('defaultValue', None)
+    default_value_string = property_definition.get("defaultValue", None)
     if default_value_string is not None:
         default_value = parse_default_property_value(
-            property_definition['name'], property_definition['type'], default_value_string)
+            property_definition["name"], property_definition["type"], default_value_string
+        )
 
     # We don't want properties of collection type having "null" values, since that may cause
     # unexpected errors during GraphQL query execution and other operations.
-    if property_definition['type'] in COLLECTION_PROPERTY_TYPES:
+    if property_definition["type"] in COLLECTION_PROPERTY_TYPES:
         if default_value is None:
-            raise IllegalSchemaStateError(u'Class "{}" has a property "{}" of collection type with '
-                                          u'no default value.'
-                                          .format(class_name, property_definition))
+            raise IllegalSchemaStateError(
+                'Class "{}" has a property "{}" of collection type with '
+                "no default value.".format(class_name, property_definition)
+            )
 
     return default_value
 
 
-def _validate_link_definition(class_name_to_definition, property_definition,
-                              vertex_class_names, inheritance_structure):
+def _validate_link_definition(
+    class_name_to_definition, property_definition, vertex_class_names, inheritance_structure
+):
     """Validate that property named either 'in' or 'out' is properly defined as a link."""
-    name = property_definition['name']
-    type_id = property_definition['type']
-    linked_class = property_definition['linkedClass']
+    name = property_definition["name"]
+    type_id = property_definition["type"]
+    linked_class = property_definition["linkedClass"]
     if type_id != PROPERTY_TYPE_LINK_ID:
-        raise AssertionError(u'Expected property named "{}" to be of type Link: {}'
-                             .format(name, property_definition))
+        raise AssertionError(
+            'Expected property named "{}" to be of type Link: {}'.format(name, property_definition)
+        )
     if linked_class is None:
-        raise AssertionError(u'Property "{}" is declared with type Link but has no '
-                             u'linked class: {}'.format(name, property_definition))
+        raise AssertionError(
+            'Property "{}" is declared with type Link but has no '
+            "linked class: {}".format(name, property_definition)
+        )
     if linked_class not in vertex_class_names:
-        is_linked_class_abstract = class_name_to_definition[linked_class]['abstract']
+        is_linked_class_abstract = class_name_to_definition[linked_class]["abstract"]
         all_subclasses_are_vertices = True
         for subclass in inheritance_structure.subclass_sets[linked_class]:
             if subclass != linked_class and subclass not in vertex_class_names:
                 all_subclasses_are_vertices = False
                 break
         if not (is_linked_class_abstract and all_subclasses_are_vertices):
-            raise AssertionError(u'Property "{}" is declared as a Link to class {}, but '
-                                 u'that class is neither a vertex nor is it an '
-                                 u'abstract class whose subclasses are all vertices!'
-                                 .format(name, linked_class))
+            raise AssertionError(
+                'Property "{}" is declared as a Link to class {}, but '
+                "that class is neither a vertex nor is it an "
+                "abstract class whose subclasses are all vertices!".format(name, linked_class)
+            )
 
 
 def _get_end_direction_to_superclasses(link_property_definitions):
     """Return the set of superclasses that classes at each edge end must inherit from."""
-    links = {
+    links: Dict[str, Set[str]] = {
         EDGE_SOURCE_PROPERTY_NAME: set(),
         EDGE_DESTINATION_PROPERTY_NAME: set(),
     }
     for property_definition in link_property_definitions:
-        links[property_definition['name']].add(property_definition['linkedClass'])
+        links[property_definition["name"]].add(property_definition["linkedClass"])
     return links
 
 
@@ -420,9 +490,10 @@ def _try_get_base_connections(class_name, inheritance_structure, links, abstract
                 base_connections[end_direction] = linked_class
 
         if end_direction not in base_connections and not abstract:
-            raise AssertionError(u'For edge end direction "{}" of non-abstract edge class '
-                                 u'"{}", no such subclass-of-all-elements exists.'
-                                 .format(end_direction, class_name))
+            raise AssertionError(
+                'For edge end direction "{}" of non-abstract edge class '
+                '"{}", no such subclass-of-all-elements exists.'.format(end_direction, class_name)
+            )
     return (
         base_connections.get(EDGE_SOURCE_PROPERTY_NAME, None),
         base_connections.get(EDGE_DESTINATION_PROPERTY_NAME, None),
@@ -434,10 +505,7 @@ def _get_graphql_representation_of_non_graph_elements(non_graph_elements, inheri
     graphql_reps = {}
     for element_name, element in six.iteritems(non_graph_elements):
         if inheritance_structure.superclass_sets[element_name] == {element_name}:
-            fields = {
-                name: property_obj.type
-                for name, property_obj in element.properties.items()
-            }
+            fields = {name: property_obj.type for name, property_obj in element.properties.items()}
             graphql_reps[element_name] = GraphQLObjectType(element_name, fields, [])
     return graphql_reps
 
@@ -450,13 +518,13 @@ def _get_indexes(index_data, elements):
     all_class_names = set(elements.keys())
 
     for index in index_data:
-        index_name = index['name']
-        index_type = index['type']
+        index_name = index["name"]
+        index_type = index["type"]
         index_unique = index_type in UNIQUE_INDEX_TYPES
         index_ordered = index_type in ORDERED_INDEX_TYPES
-        index_definition = index['indexDefinition']
-        index_base_classname = index_definition['className']
-        index_ignore_nulls = index_definition['nullValuesIgnored']
+        index_definition = index["indexDefinition"]
+        index_base_classname = index_definition["className"]
+        index_ignore_nulls = index_definition["nullValuesIgnored"]
 
         # Exclude indexes on OrientDB metadata classes (e.g. OUser).
         if index_base_classname not in all_class_names:
@@ -466,23 +534,23 @@ def _get_indexes(index_data, elements):
         #   - directly on the "indexDefinition" dict, if only a single field is covered;
         #   - within a nested "indexDefinitions" dict inside
         #     the top-level "indexDefinition" dict, if multiple fields are covered.
-        single_field = index_definition.get('field', None)
+        single_field = index_definition.get("field", None)
         if single_field is not None:
             index_fields = frozenset((single_field,))
         else:
             index_fields = frozenset(
-                subdefinition['field']
-                for subdefinition in index_definition['indexDefinitions']
+                subdefinition["field"] for subdefinition in index_definition["indexDefinitions"]
             )
 
         if not index_fields:
-            raise AssertionError(u'Unable to load index fields for index: {}'.format(index))
+            raise AssertionError("Unable to load index fields for index: {}".format(index))
 
         if index_ignore_nulls and len(index_fields) != 1:
             raise AssertionError(
-                u'Index {} ignores nulls, but covers more than one field. '
-                u'We don\'t know how OrientDB handles such indexes, so they are not allowed. '
-                u'{}'.format(index_name, index))
+                "Index {} ignores nulls, but covers more than one field. "
+                "We don't know how OrientDB handles such indexes, so they are not allowed. "
+                "{}".format(index_name, index)
+            )
 
         definition = IndexDefinition(
             name=index_name,

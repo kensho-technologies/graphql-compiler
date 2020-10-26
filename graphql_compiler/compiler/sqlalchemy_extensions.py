@@ -13,11 +13,17 @@ def contains_operator(collection, element):
         sqlalchemy BinaryExpression
     """
     if not isinstance(collection, sqlalchemy.sql.elements.BindParameter):
-        raise AssertionError(u'Argument collection was expected to be a {}, but was a {}.'
-                             .format(sqlalchemy.sql.elements.BindParameter, type(collection)))
+        raise AssertionError(
+            "Argument collection was expected to be a {}, but was a {}.".format(
+                sqlalchemy.sql.elements.BindParameter, type(collection)
+            )
+        )
     if not isinstance(element, sqlalchemy.sql.schema.Column):
-        raise AssertionError(u'Argument element was expected to be a {}, but was a {}.'
-                             .format(sqlalchemy.sql.schema.Column, type(element)))
+        raise AssertionError(
+            "Argument element was expected to be a {}, but was a {}.".format(
+                sqlalchemy.sql.schema.Column, type(element)
+            )
+        )
 
     return element.in_(collection)
 
@@ -33,11 +39,17 @@ def not_contains_operator(collection, element):
         sqlalchemy BinaryExpression
     """
     if not isinstance(collection, sqlalchemy.sql.elements.BindParameter):
-        raise AssertionError(u'Argument collection was expected to be a {}, but was a {}.'
-                             .format(sqlalchemy.sql.elements.BindParameter, type(collection)))
+        raise AssertionError(
+            "Argument collection was expected to be a {}, but was a {}.".format(
+                sqlalchemy.sql.elements.BindParameter, type(collection)
+            )
+        )
     if not isinstance(element, sqlalchemy.sql.schema.Column):
-        raise AssertionError(u'Argument element was expected to be a {}, but was a {}.'
-                             .format(sqlalchemy.sql.schema.Column, type(element)))
+        raise AssertionError(
+            "Argument element was expected to be a {}, but was a {}.".format(
+                sqlalchemy.sql.schema.Column, type(element)
+            )
+        )
 
     return element.notin_(collection)
 
@@ -52,6 +64,7 @@ def print_sqlalchemy_query_string(query, dialect):
     Returns:
         string that can be ran using sqlalchemy.sql.text(result)
     """
+
     class BindparamCompiler(dialect.statement_compiler):
         def visit_bindparam(self, bindparam, **kwargs):
             # A bound parameter with name param is represented as ":param". However,

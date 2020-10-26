@@ -18,8 +18,9 @@ def insert_arguments_into_sql_query(compilation_result, arguments):
         SQLAlchemy Selectable, a executable SQL query with parameters bound.
     """
     if compilation_result.language != SQL_LANGUAGE:
-        raise AssertionError(u'Unexpected query output language: {}'.format(compilation_result))
+        raise AssertionError("Unexpected query output language: {}".format(compilation_result))
     base_query = compilation_result.query
     return base_query.params(**arguments)
+
 
 ######

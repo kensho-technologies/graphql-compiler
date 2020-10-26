@@ -59,85 +59,122 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from collections import namedtuple
+from typing import Dict, List, NamedTuple, Optional
 
 from graphql import (
-    GraphQLInt, GraphQLInterfaceType, GraphQLList, GraphQLObjectType, GraphQLUnionType
+    DocumentNode,
+    GraphQLInt,
+    GraphQLInterfaceType,
+    GraphQLList,
+    GraphQLObjectType,
+    GraphQLSchema,
+    GraphQLType,
+    GraphQLUnionType,
 )
-from graphql.language.ast import Field, InlineFragment
+from graphql.language.ast import FieldNode, InlineFragmentNode
 
 from . import blocks, expressions
 from ..ast_manipulation import (
-    get_ast_field_name, get_only_query_definition, get_only_selection_from_ast, safe_parse_graphql
+    get_ast_field_name,
+    get_only_query_definition,
+    get_only_selection_from_ast,
+    safe_parse_graphql,
 )
 from ..exceptions import GraphQLCompilationError, GraphQLValidationError
-from ..schema import COUNT_META_FIELD_NAME, is_vertex_field_name
+from ..global_utils import is_same_type
+from ..schema import COUNT_META_FIELD_NAME, TypeEquivalenceHintsType, is_vertex_field_name
+from ..typedefs import QueryArgumentGraphQLType
+from .compiler_entities import BasicBlock
 from .context_helpers import (
-    get_context_fold_info, get_optional_scope_or_none, has_encountered_output_source,
-    has_fold_count_filter, is_in_fold_innermost_scope, is_in_fold_scope, is_in_optional_scope,
-    set_fold_count_filter, set_fold_innermost_scope, set_fold_scope_data, set_optional_scope_data,
-    set_output_source_data, unmark_context_fold_scope, unmark_fold_count_filter,
-    unmark_fold_innermost_scope, unmark_optional_scope, validate_context_for_visiting_vertex_field
+    get_context_fold_info,
+    get_optional_scope_or_none,
+    has_encountered_output_source,
+    has_fold_count_filter,
+    is_in_fold_innermost_scope,
+    is_in_fold_scope,
+    is_in_optional_scope,
+    set_fold_count_filter,
+    set_fold_innermost_scope,
+    set_fold_scope_data,
+    set_optional_scope_data,
+    set_output_source_data,
+    unmark_context_fold_scope,
+    unmark_fold_count_filter,
+    unmark_fold_innermost_scope,
+    unmark_optional_scope,
+    validate_context_for_visiting_vertex_field,
 )
 from .directive_helpers import (
-    get_local_filter_directives, get_unique_directives, validate_property_directives,
-    validate_root_vertex_directives, validate_vertex_directives,
-    validate_vertex_field_directive_in_context, validate_vertex_field_directive_interactions
+    get_local_filter_directives,
+    get_unique_directives,
+    validate_property_directives,
+    validate_root_vertex_directives,
+    validate_vertex_directives,
+    validate_vertex_field_directive_in_context,
+    validate_vertex_field_directive_interactions,
 )
 from .filters import process_filter_directive
 from .helpers import (
-    FoldScopeLocation, Location, get_edge_direction_and_name, get_field_type_from_schema,
-    get_parameter_name, get_uniquely_named_objects_by_name, get_vertex_field_type, invert_dict,
-    is_tagged_parameter, strip_non_null_from_type, validate_output_name, validate_safe_string
+    FoldScopeLocation,
+    Location,
+    get_edge_direction_and_name,
+    get_field_type_from_schema,
+    get_parameter_name,
+    get_uniquely_named_objects_by_name,
+    get_vertex_field_type,
+    invert_dict,
+    is_tagged_parameter,
+    strip_non_null_from_type,
+    validate_output_name,
+    validate_safe_string,
 )
 from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo, TagInfo
 from .validation import validate_schema_and_query_ast
 
 
-# LocationStackEntry contains the following:
-# - location: Location object corresponding to an inserted MarkLocation block
-# - num_traverses: Int counter for the number of traverses inserted after the last MarkLocation
-#                  (corresponding Location stored in `location`)
-LocationStackEntry = namedtuple('LocationStackEntry', ('location', 'num_traverses'))
+class OutputMetadata(NamedTuple):
+    """Metadata about a query's outputs."""
 
+    # The type of the output value.
+    type: GraphQLType
 
-def _construct_location_stack_entry(location, num_traverses):
-    """Return a LocationStackEntry namedtuple with the specified parameters."""
-    if not isinstance(num_traverses, int) or num_traverses < 0:
-        raise AssertionError(u'Attempted to create a LocationStackEntry namedtuple with an invalid '
-                             u'value for "num_traverses" {}. This is not allowed.'
-                             .format(num_traverses))
-    if not isinstance(location, Location):
-        raise AssertionError(u'Attempted to create a LocationStackEntry namedtuple with an invalid '
-                             u'value for "location" {}. This is not allowed.'
-                             .format(location))
-    return LocationStackEntry(location=location, num_traverses=num_traverses)
+    # Whether the output is part of an optional traversal, which would allow a value of null.
+    optional: bool
 
+    # Whether the output is within a fold scope. Note that if the output is within a fold scope,
+    # the `type` is expected to be a GraphQLList unless the output field is an _x_count,
+    # in which case the type must be GraphQLInt.
+    folded: bool
 
-# The OutputMetadata will have the following types for its members:
-# - type: a GraphQL type object, like String or Integer, describing the type of that output value
-# - optional: boolean, whether the output is part of an optional traversal and
-#             could therefore have a value of null because it did not exist
-class OutputMetadata(namedtuple('OutputMetadata', ('type', 'optional'))):
     def __eq__(self, other):
         """Check another OutputMetadata object for equality against this one."""
         # Unfortunately, GraphQL types don't have an equality operator defined,
         # and instead have this "is_same_type" function. Hence, we have to override equality here.
-        return self.type.is_same_type(other.type) and self.optional == other.optional
+        return (
+            is_same_type(self.type, other.type)
+            and self.optional == other.optional
+            and self.folded == other.folded
+        )
 
     def __ne__(self, other):
         """Check another OutputMetadata object for non-equality against this one."""
         return not self.__eq__(other)
 
 
-IrAndMetadata = namedtuple(
-    'IrAndMetadata', (
-        'ir_blocks',
-        'input_metadata',
-        'output_metadata',
-        'query_metadata_table',
-    )
-)
+class IrAndMetadata(NamedTuple):
+    """Internal representation (IR) and metadata for a particular schema and query combination."""
+
+    # List of basic block objects describing the query.
+    ir_blocks: List[BasicBlock]
+
+    # Mapping of expected input parameters -> inferred GraphQL type.
+    input_metadata: Dict[str, QueryArgumentGraphQLType]
+
+    # Mapping output name -> output metadata.
+    output_metadata: Dict[str, OutputMetadata]
+
+    # Describing the location metadata.
+    query_metadata_table: QueryMetadataTable
 
 
 def _get_fields(ast):
@@ -163,7 +200,7 @@ def _get_fields(ast):
     seen_field_names = set()
     switched_to_vertices = False  # Ensures that all property fields are before all vertex fields.
     for field_ast in ast.selection_set.selections:
-        if not isinstance(field_ast, Field):
+        if not isinstance(field_ast, FieldNode):
             # We are getting Fields only, ignore everything else.
             continue
 
@@ -173,7 +210,7 @@ def _get_fields(ast):
         # Vertex fields start with 'out_' or 'in_', denoting the edge direction to that vertex.
         if is_vertex_field_name(name):
             if seen_already:
-                raise GraphQLCompilationError('Encountered repeated vertex field: {}.'.format(name))
+                raise GraphQLCompilationError("Encountered repeated vertex field: {}.".format(name))
             switched_to_vertices = True
             vertex_fields.append(field_ast)
         else:
@@ -181,15 +218,18 @@ def _get_fields(ast):
                 # If we ever allow repeated field names,
                 # then we have to change the Location naming scheme to reflect the repetitions
                 # and disambiguate between Recurse and Traverse visits to a Location.
-                raise GraphQLCompilationError(u'Encountered repeated property field: {}. If you '
-                                              u'are attempting to specify multiple directives on a '
-                                              u'single property field, one way to do so is to '
-                                              u'place all of them adjacent to the property field '
-                                              u'as follows: propertyField @directive1 @directive2 '
-                                              u'...'.format(name))
+                raise GraphQLCompilationError(
+                    "Encountered repeated property field: {}. If you "
+                    "are attempting to specify multiple directives on a "
+                    "single property field, one way to do so is to "
+                    "place all of them adjacent to the property field "
+                    "as follows: propertyField @directive1 @directive2 "
+                    "...".format(name)
+                )
             if switched_to_vertices:
-                raise GraphQLCompilationError(u'Encountered property field {} '
-                                              u'after vertex fields!'.format(name))
+                raise GraphQLCompilationError(
+                    "Encountered property field {} after vertex fields!".format(name)
+                )
             property_fields.append(field_ast)
 
         seen_field_names.add(name)
@@ -206,15 +246,16 @@ def _get_inline_fragment(ast):
     fragments = [
         ast_node
         for ast_node in ast.selection_set.selections
-        if isinstance(ast_node, InlineFragment)
+        if isinstance(ast_node, InlineFragmentNode)
     ]
 
     if not fragments:
         return None
 
     if len(fragments) > 1:
-        raise GraphQLCompilationError(u'Cannot compile GraphQL with more than one fragment in '
-                                      u'a given selection set.')
+        raise GraphQLCompilationError(
+            "Cannot compile GraphQL with more than one fragment in a given selection set."
+        )
 
     return fragments[0]
 
@@ -224,8 +265,9 @@ def _mark_location(location):
     return blocks.MarkLocation(location)
 
 
-def _process_output_source_directive(schema, current_schema_type, ast,
-                                     location, context, local_unique_directives):
+def _process_output_source_directive(
+    schema, current_schema_type, ast, location, context, local_unique_directives
+):
     """Process the output_source directive, modifying the context as appropriate.
 
     Args:
@@ -242,12 +284,12 @@ def _process_output_source_directive(schema, current_schema_type, ast,
         an OutputSource block, if one should be emitted, or None otherwise
     """
     # The 'ast' variable is only for function signature uniformity, and is currently not used.
-    output_source_directive = local_unique_directives.get('output_source', None)
+    output_source_directive = local_unique_directives.get("output_source", None)
     if output_source_directive:
         if has_encountered_output_source(context):
-            raise GraphQLCompilationError(u'Cannot have more than one output source!')
+            raise GraphQLCompilationError("Cannot have more than one output source!")
         if is_in_optional_scope(context):
-            raise GraphQLCompilationError(u'Cannot have the output source in an optional block!')
+            raise GraphQLCompilationError("Cannot have the output source in an optional block!")
         set_output_source_data(context, location)
         return blocks.OutputSource()
     else:
@@ -265,29 +307,36 @@ def _process_tag_directive(context, current_schema_type, location, tag_directive
         tag_directive: GraphQL Directive that we want to process
     """
     if is_in_fold_scope(context):
-        raise GraphQLCompilationError(u'Tagging values within a @fold vertex field is '
-                                      u'not allowed! Location: {}'.format(location))
+        raise GraphQLCompilationError(
+            "Tagging values within a @fold vertex field is "
+            "not allowed! Location: {}".format(location)
+        )
 
     if location.field == COUNT_META_FIELD_NAME:
         raise GraphQLCompilationError(
-            u'Tags are prohibited within @fold, but unexpectedly found use of '
-            u'a tag on the {} meta field that is only allowed within a @fold!'
-            u'Location: {}'.format(COUNT_META_FIELD_NAME, location))
+            "Tags are prohibited within @fold, but unexpectedly found use of "
+            "a tag on the {} meta field that is only allowed within a @fold!"
+            "Location: {}".format(COUNT_META_FIELD_NAME, location)
+        )
 
     # Schema validation has ensured that the fields below exist.
     tag_name = tag_directive.arguments[0].value.value
-    if context['metadata'].get_tag_info(tag_name) is not None:
-        raise GraphQLCompilationError(u'Cannot reuse tag name: {}'.format(tag_name))
+    if context["metadata"].get_tag_info(tag_name) is not None:
+        raise GraphQLCompilationError("Cannot reuse tag name: {}".format(tag_name))
     validate_safe_string(tag_name)
-    context['metadata'].record_tag_info(tag_name, TagInfo(
-        location=location,
-        optional=is_in_optional_scope(context),
-        type=strip_non_null_from_type(current_schema_type),
-    ))
+    context["metadata"].record_tag_info(
+        tag_name,
+        TagInfo(
+            location=location,
+            optional=is_in_optional_scope(context),
+            type=strip_non_null_from_type(current_schema_type),
+        ),
+    )
 
 
-def _compile_property_ast(schema, current_schema_type, ast, location,
-                          context, unique_local_directives):
+def _compile_property_ast(
+    schema, current_schema_type, ast, location, context, unique_local_directives
+):
     """Process property directives at this AST node, updating the query context as appropriate.
 
     Args:
@@ -306,18 +355,19 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
     if location.field == COUNT_META_FIELD_NAME:
         # Verify that uses of this field are within a @fold scope.
         if not is_in_fold_scope(context):
-            raise GraphQLCompilationError(u'Cannot use the "{}" meta field when not within a @fold '
-                                          u'vertex field, as counting elements only makes sense '
-                                          u'in a fold. Location: {}'
-                                          .format(COUNT_META_FIELD_NAME, location))
+            raise GraphQLCompilationError(
+                'Cannot use the "{}" meta field when not within a @fold '
+                "vertex field, as counting elements only makes sense "
+                "in a fold. Location: {}".format(COUNT_META_FIELD_NAME, location)
+            )
 
     # step P-2: Process @output directives.
-    output_directive = unique_local_directives.get('output', None)
+    output_directive = unique_local_directives.get("output", None)
     if output_directive:
         # Schema validation has ensured that the fields below exist.
         output_name = output_directive.arguments[0].value.value
-        if context['metadata'].get_output_info(output_name):
-            raise GraphQLCompilationError(u'Cannot reuse output name: {}'.format(output_name))
+        if context["metadata"].get_output_info(output_name):
+            raise GraphQLCompilationError("Cannot reuse output name: {}".format(output_name))
         validate_output_name(output_name)
 
         graphql_type = strip_non_null_from_type(current_schema_type)
@@ -333,23 +383,25 @@ def _compile_property_ast(schema, current_schema_type, ast, location,
             type=graphql_type,
             optional=is_in_optional_scope(context),
         )
-        context['metadata'].record_output_info(output_name, output_info)
+        context["metadata"].record_output_info(output_name, output_info)
 
 
 def _get_recurse_directive_depth(field_name, field_directives):
     """Validate and return the depth parameter of the recurse directive."""
-    recurse_directive = field_directives['recurse']
-    optional_directive = field_directives.get('optional', None)
+    recurse_directive = field_directives["recurse"]
+    optional_directive = field_directives.get("optional", None)
 
     if optional_directive:
-        raise GraphQLCompilationError(u'Found both @optional and @recurse on '
-                                      u'the same vertex field: {}'.format(field_name))
+        raise GraphQLCompilationError(
+            "Found both @optional and @recurse on the same vertex field: {}".format(field_name)
+        )
 
     recurse_args = get_uniquely_named_objects_by_name(recurse_directive.arguments)
-    recurse_depth = int(recurse_args['depth'].value.value)
+    recurse_depth = int(recurse_args["depth"].value.value)
     if recurse_depth < 1:
-        raise GraphQLCompilationError(u'Found recurse directive with disallowed depth: '
-                                      u'{}'.format(recurse_depth))
+        raise GraphQLCompilationError(
+            "Found recurse directive with disallowed depth: {}".format(recurse_depth)
+        )
 
     return recurse_depth
 
@@ -364,8 +416,8 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
                  is optional, etc.). May be mutated in-place in this function!
     """
     # Get the set of all allowed types in the current scope.
-    type_hints = context['type_equivalence_hints'].get(field_schema_type)
-    type_hints_inverse = context['type_equivalence_hints_inverse'].get(field_schema_type)
+    type_hints = context["type_equivalence_hints"].get(field_schema_type)
+    type_hints_inverse = context["type_equivalence_hints_inverse"].get(field_schema_type)
     allowed_current_types = {field_schema_type}
 
     if type_hints and isinstance(type_hints, GraphQLUnionType):
@@ -378,22 +430,25 @@ def _validate_recurse_directive_types(current_schema_type, field_schema_type, co
     current_scope_is_allowed = current_schema_type in allowed_current_types
 
     is_implemented_interface = (
-        isinstance(field_schema_type, GraphQLInterfaceType) and
-        isinstance(current_schema_type, GraphQLObjectType) and
-        field_schema_type in current_schema_type.interfaces
+        isinstance(field_schema_type, GraphQLInterfaceType)
+        and isinstance(current_schema_type, GraphQLObjectType)
+        and field_schema_type in current_schema_type.interfaces
     )
 
     if not any((current_scope_is_allowed, is_implemented_interface)):
-        raise GraphQLCompilationError(u'Edges expanded with a @recurse directive must either '
-                                      u'be of the same type as their enclosing scope, a supertype '
-                                      u'of the enclosing scope, or be of an interface type that is '
-                                      u'implemented by the type of their enclosing scope. '
-                                      u'Enclosing scope type: {}, edge type: '
-                                      u'{}'.format(current_schema_type, field_schema_type))
+        raise GraphQLCompilationError(
+            "Edges expanded with a @recurse directive must either "
+            "be of the same type as their enclosing scope, a supertype "
+            "of the enclosing scope, or be of an interface type that is "
+            "implemented by the type of their enclosing scope. "
+            "Enclosing scope type: {}, edge type: "
+            "{}".format(current_schema_type, field_schema_type)
+        )
 
 
-def _compile_vertex_ast(schema, current_schema_type, ast,
-                        location, context, unique_local_directives, fields):
+def _compile_vertex_ast(
+    schema, current_schema_type, ast, location, context, unique_local_directives, fields
+):
     """Return a list of basic blocks corresponding to the vertex AST node.
 
     Args:
@@ -412,7 +467,7 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         list of basic blocks, the compiled output of the vertex AST node
     """
     basic_blocks = []
-    query_metadata_table = context['metadata']
+    query_metadata_table = context["metadata"]
     current_location_info = query_metadata_table.get_location_info(location)
 
     vertex_fields, property_fields = fields
@@ -425,11 +480,12 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         property_schema_type = get_field_type_from_schema(current_schema_type, field_name)
         inner_location = location.navigate_to_field(field_name)
         local_unique_directives = get_unique_directives(field_ast)
-        tag_directive = local_unique_directives.get('tag', None)
+        tag_directive = local_unique_directives.get("tag", None)
         if tag_directive:
             if get_local_filter_directives(field_ast, property_schema_type, None):
-                raise GraphQLCompilationError(u'Cannot filter and tag the same field {}'
-                                              .format(inner_location))
+                raise GraphQLCompilationError(
+                    "Cannot filter and tag the same field {}".format(inner_location)
+                )
             _process_tag_directive(context, property_schema_type, inner_location, tag_directive)
 
     # step V-3: step into property fields
@@ -438,15 +494,17 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         property_schema_type = get_field_type_from_schema(current_schema_type, field_name)
 
         inner_location = location.navigate_to_field(field_name)
-        inner_basic_blocks = _compile_ast_node_to_ir(schema, property_schema_type, field_ast,
-                                                     inner_location, context)
+        inner_basic_blocks = _compile_ast_node_to_ir(
+            schema, property_schema_type, field_ast, inner_location, context
+        )
         basic_blocks.extend(inner_basic_blocks)
 
     # step V-4: mark the graph position, and process output_source directive
     basic_blocks.append(_mark_location(location))
 
-    output_source = _process_output_source_directive(schema, current_schema_type, ast,
-                                                     location, context, unique_local_directives)
+    output_source = _process_output_source_directive(
+        schema, current_schema_type, ast, location, context, unique_local_directives
+    )
     if output_source:
         basic_blocks.append(output_source)
 
@@ -456,18 +514,19 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         validate_context_for_visiting_vertex_field(location, field_name, context)
 
         field_schema_type = get_vertex_field_type(current_schema_type, field_name)
-        hinted_base = context['type_equivalence_hints_inverse'].get(field_schema_type, None)
+        hinted_base = context["type_equivalence_hints_inverse"].get(field_schema_type, None)
         if hinted_base:
             field_schema_type = hinted_base
 
         inner_unique_directives = get_unique_directives(field_ast)
         validate_vertex_field_directive_interactions(location, field_name, inner_unique_directives)
         validate_vertex_field_directive_in_context(
-            location, field_name, inner_unique_directives, context)
+            location, field_name, inner_unique_directives, context
+        )
 
-        recurse_directive = inner_unique_directives.get('recurse', None)
-        optional_directive = inner_unique_directives.get('optional', None)
-        fold_directive = inner_unique_directives.get('fold', None)
+        recurse_directive = inner_unique_directives.get("recurse", None)
+        optional_directive = inner_unique_directives.get("optional", None)
+        fold_directive = inner_unique_directives.get("fold", None)
         in_topmost_optional_block = False
 
         edge_traversal_is_optional = optional_directive is not None
@@ -510,9 +569,11 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
             type=strip_non_null_from_type(field_schema_type),
             coerced_from_type=None,
             optional_scopes_depth=(
-                current_location_info.optional_scopes_depth + edge_traversal_is_optional),
+                current_location_info.optional_scopes_depth + edge_traversal_is_optional
+            ),
             recursive_scopes_depth=(
-                current_location_info.recursive_scopes_depth + edge_traversal_is_recursive),
+                current_location_info.recursive_scopes_depth + edge_traversal_is_recursive
+            ),
             is_within_fold=(current_location_info.is_within_fold or edge_traversal_is_folded),
         )
         query_metadata_table.register_location(inner_location, inner_location_info)
@@ -533,27 +594,40 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         elif recurse_directive:
             _validate_recurse_directive_types(current_schema_type, field_schema_type, context)
             recurse_depth = _get_recurse_directive_depth(field_name, inner_unique_directives)
-            basic_blocks.append(blocks.Recurse(edge_direction,
-                                               edge_name,
-                                               recurse_depth,
-                                               within_optional_scope=within_optional_scope))
-            query_metadata_table.record_recurse_info(location,
-                                                     RecurseInfo(edge_direction=edge_direction,
-                                                                 edge_name=edge_name,
-                                                                 depth=recurse_depth))
+            basic_blocks.append(
+                blocks.Recurse(
+                    edge_direction,
+                    edge_name,
+                    recurse_depth,
+                    within_optional_scope=within_optional_scope,
+                )
+            )
+            query_metadata_table.record_recurse_info(
+                location,
+                RecurseInfo(
+                    edge_direction=edge_direction, edge_name=edge_name, depth=recurse_depth
+                ),
+            )
         else:
-            basic_blocks.append(blocks.Traverse(edge_direction, edge_name,
-                                                optional=edge_traversal_is_optional,
-                                                within_optional_scope=within_optional_scope))
+            basic_blocks.append(
+                blocks.Traverse(
+                    edge_direction,
+                    edge_name,
+                    optional=edge_traversal_is_optional,
+                    within_optional_scope=within_optional_scope,
+                )
+            )
 
-        inner_basic_blocks = _compile_ast_node_to_ir(schema, field_schema_type, field_ast,
-                                                     inner_location, context)
+        inner_basic_blocks = _compile_ast_node_to_ir(
+            schema, field_schema_type, field_ast, inner_location, context
+        )
         basic_blocks.extend(inner_basic_blocks)
 
         if edge_traversal_is_folded:
             has_count_filter = has_fold_count_filter(context)
             _validate_fold_has_outputs_or_count_filter(
-                get_context_fold_info(context), has_count_filter, query_metadata_table)
+                get_context_fold_info(context), has_count_filter, query_metadata_table
+            )
             basic_blocks.append(blocks.Unfold())
             unmark_context_fold_scope(context)
             if has_count_filter:
@@ -567,9 +641,8 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
         # If we are currently evaluating a @fold vertex,
         # we didn't Traverse into it, so we don't need to backtrack out either.
         # We also don't backtrack if we've reached an @output_source.
-        backtracking_required = (
-            (not fold_directive) and
-            (not has_encountered_output_source(context))
+        backtracking_required = (not fold_directive) and (
+            not has_encountered_output_source(context)
         )
         if backtracking_required:
             if edge_traversal_is_optional:
@@ -592,10 +665,10 @@ def _compile_vertex_ast(schema, current_schema_type, ast,
 def _are_locations_in_same_fold(first_location, second_location):
     """Return True if locations are contained in the same fold scope."""
     return (
-        isinstance(first_location, FoldScopeLocation) and
-        isinstance(second_location, FoldScopeLocation) and
-        first_location.base_location == second_location.base_location and
-        first_location.get_first_folded_edge() == second_location.get_first_folded_edge()
+        isinstance(first_location, FoldScopeLocation)
+        and isinstance(second_location, FoldScopeLocation)
+        and first_location.base_location == second_location.base_location
+        and first_location.get_first_folded_edge() == second_location.get_first_folded_edge()
     )
 
 
@@ -615,10 +688,11 @@ def _validate_fold_has_outputs_or_count_filter(
         if _are_locations_in_same_fold(output_info.location, fold_scope_location):
             return True
 
-    raise GraphQLCompilationError(u'Found a @fold scope that has no effect on the query. '
-                                  u'Each @fold scope must either perform filtering, or contain at '
-                                  u'least one field marked for output. Fold location: {}'
-                                  .format(fold_scope_location))
+    raise GraphQLCompilationError(
+        "Found a @fold scope that has no effect on the query. "
+        "Each @fold scope must either perform filtering, or contain at "
+        "least one field marked for output. Fold location: {}".format(fold_scope_location)
+    )
 
 
 def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
@@ -635,7 +709,7 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     Returns:
         list of basic blocks, the compiled output of the vertex AST node
     """
-    query_metadata_table = context['metadata']
+    query_metadata_table = context["metadata"]
 
     # step F-2. Emit a type coercion block if appropriate,
     #           then recurse into the fragment's selection.
@@ -648,11 +722,10 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
     # No coercion is necessary if coercing to the current type of the scope,
     # or if the scope is of union type, to the base type of the union as defined by
     # the type_equivalence_hints compilation parameter.
-    is_same_type_as_scope = current_schema_type.is_same_type(coerces_to_type_obj)
-    equivalent_union_type = context['type_equivalence_hints'].get(coerces_to_type_obj, None)
-    is_base_type_of_union = (
-        isinstance(current_schema_type, GraphQLUnionType) and
-        current_schema_type.is_same_type(equivalent_union_type)
+    is_same_type_as_scope = is_same_type(current_schema_type, coerces_to_type_obj)
+    equivalent_union_type = context["type_equivalence_hints"].get(coerces_to_type_obj, None)
+    is_base_type_of_union = isinstance(current_schema_type, GraphQLUnionType) and is_same_type(
+        current_schema_type, equivalent_union_type
     )
 
     if not (is_same_type_as_scope or is_base_type_of_union):
@@ -661,7 +734,8 @@ def _compile_fragment_ast(schema, current_schema_type, ast, location, context):
         basic_blocks.append(blocks.CoerceType({coerces_to_type_name}))
 
     inner_basic_blocks = _compile_ast_node_to_ir(
-        schema, coerces_to_type_obj, ast, location, context)
+        schema, coerces_to_type_obj, ast, location, context
+    )
     basic_blocks.extend(inner_basic_blocks)
 
     return basic_blocks
@@ -688,28 +762,32 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
     fields = _get_fields(ast)
     vertex_fields, property_fields = fields
     fragment = _get_inline_fragment(ast)
-    filter_operations = get_local_filter_directives(
-        ast, current_schema_type, vertex_fields)
+    filter_operations = get_local_filter_directives(ast, current_schema_type, vertex_fields)
 
     # We don't support type coercion while at the same time selecting fields.
     # Either there are no fields, or there is no fragment, otherwise we raise a compilation error.
     fragment_exists = fragment is not None
     fields_exist = vertex_fields or property_fields
     if fragment_exists and fields_exist:
-        raise GraphQLCompilationError(u'Cannot compile GraphQL that has inline fragment and '
-                                      u'selected fields in the same selection. Please move the '
-                                      u'selected fields inside the inline fragment.')
+        raise GraphQLCompilationError(
+            "Cannot compile GraphQL that has inline fragment and "
+            "selected fields in the same selection. Please move the "
+            "selected fields inside the inline fragment."
+        )
 
     if location.field is not None:  # we're at a property field
         # sanity-check: cannot have an inline fragment at a property field
         if fragment_exists:
-            raise AssertionError(u'Found inline fragment at a property field: '
-                                 u'{} {}'.format(location, fragment))
+            raise AssertionError(
+                "Found inline fragment at a property field: {} {}".format(location, fragment)
+            )
 
         # sanity-check: locations at properties don't have their own property locations
         if len(property_fields) > 0:
-            raise AssertionError(u'Found property fields on a property field: '
-                                 u'{} {}'.format(location, property_fields))
+            raise AssertionError(
+                "Found property fields on a property field: "
+                "{} {}".format(location, property_fields)
+            )
 
     # step 1: apply local filter, if any
     for filter_operation_info in filter_operations:
@@ -730,18 +808,21 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
             visitor_fn = expressions.make_type_replacement_visitor(
                 expressions.ContextField,
                 lambda context_field: expressions.GlobalContextField(
-                    context_field.location, context_field.field_type))
+                    context_field.location, context_field.field_type
+                ),
+            )
             filter_block = filter_block.visit_and_update_expressions(visitor_fn)
 
             set_fold_count_filter(context)
-            context['global_filters'].append(filter_block)
+            context["global_filters"].append(filter_block)
         else:
             basic_blocks.append(filter_block)
 
     if location.field is not None:
         # The location is at a property, compile the property data following P-steps.
-        _compile_property_ast(schema, current_schema_type, ast,
-                              location, context, local_unique_directives)
+        _compile_property_ast(
+            schema, current_schema_type, ast, location, context, local_unique_directives
+        )
     else:
         # The location is at a vertex.
         if fragment_exists:
@@ -751,12 +832,21 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
             #       we pass the "fragment" in the AST parameter of the _compile_fragment_ast()
             #       function, rather than the current AST node as in the other compilation steps.
             basic_blocks.extend(
-                _compile_fragment_ast(schema, current_schema_type, fragment, location, context))
+                _compile_fragment_ast(schema, current_schema_type, fragment, location, context)
+            )
         else:
             # Compile the vertex data following V-steps.
             basic_blocks.extend(
-                _compile_vertex_ast(schema, current_schema_type, ast,
-                                    location, context, local_unique_directives, fields))
+                _compile_vertex_ast(
+                    schema,
+                    current_schema_type,
+                    ast,
+                    location,
+                    context,
+                    local_unique_directives,
+                    fields,
+                )
+            )
 
     return basic_blocks
 
@@ -773,10 +863,64 @@ def _validate_all_tags_are_used(metadata):
 
     unused_tags = tag_names - filter_arg_names
     if unused_tags:
-        raise GraphQLCompilationError(u'This GraphQL query contains @tag directives whose values '
-                                      u'are not used: {}. This is not allowed. Please either use '
-                                      u'them in a filter or remove them entirely.'
-                                      .format(unused_tags))
+        raise GraphQLCompilationError(
+            "This GraphQL query contains @tag directives whose values "
+            "are not used: {}. This is not allowed. Please either use "
+            "them in a filter or remove them entirely.".format(unused_tags)
+        )
+
+
+def _validate_and_create_output_metadata(
+    output_name: str, output_info: OutputInfo
+) -> OutputMetadata:
+    """Create a new OutputMetadata object after validating the output type.
+
+    Checks the following before creating a new OutputMetadata object:
+        - _x_count output is within a fold scope and has type GraphQLInt
+        - all other outputs within a fold scope have type GraphQLList
+
+    Args:
+        output_name: name of the output specified in a query
+        output_info: information about the output
+
+    Returns:
+        OutputMetadata containing metadata about the output
+
+    Raises:
+        AssertionError if an invalid output type is found
+    """
+    # Ensure _x_count is within a fold scope.
+    if output_info.location.field == COUNT_META_FIELD_NAME and not isinstance(
+        output_info.location, FoldScopeLocation
+    ):
+        raise AssertionError(
+            "Invalid output: {} was not in a fold scope.".format(COUNT_META_FIELD_NAME)
+        )
+    # Ensure folded outputs have valid type.
+    if isinstance(output_info.location, FoldScopeLocation):
+        # Ensure _x_count is a GraphQLInt.
+        if output_info.location.field == COUNT_META_FIELD_NAME and not is_same_type(
+            output_info.type, GraphQLInt
+        ):
+            raise AssertionError(
+                f"Invalid output: received {COUNT_META_FIELD_NAME} with type {output_info.type}, "
+                f"but {COUNT_META_FIELD_NAME} must always be of type Int"
+            )
+        # Ensure all other folded outputs are GraphQLList.
+        elif output_info.location.field != COUNT_META_FIELD_NAME and not isinstance(
+            output_info.type, GraphQLList
+        ):
+            raise AssertionError(
+                "Invalid output: non-{} folded output must have type "
+                "GraphQLList. Received type {} for folded output "
+                "{}.".format(COUNT_META_FIELD_NAME, output_info.type, output_name)
+            )
+
+    return OutputMetadata(
+        type=output_info.type,
+        optional=output_info.optional,
+        folded=isinstance(output_info.location, FoldScopeLocation),
+    )
 
 
 def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
@@ -789,18 +933,13 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
         type_equivalence_hints: optional dict of GraphQL type to equivalent GraphQL union
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - location_types: a dict of location objects -> GraphQL type objects at that location
-        - coerced_locations: a set of location objects indicating where type coercions have happened
+        IrAndMetadata for the given schema and AST
     """
     base_ast = get_only_selection_from_ast(ast, GraphQLCompilationError)
     base_start_type = get_ast_field_name(base_ast)  # This is the type at which querying starts.
 
     # Validation passed, so the base_start_type must exist as a field of the root query.
-    current_schema_type = get_field_type_from_schema(schema.get_query_type(), base_start_type)
+    current_schema_type = get_field_type_from_schema(schema.query_type, base_start_type)
 
     # Allow list types at the query root in the schema.
     if isinstance(current_schema_type, GraphQLList):
@@ -826,25 +965,23 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     context = {
         # 'metadata' is the QueryMetadataTable describing all the metadata collected during query
         # processing, including location metadata (e.g. which locations are folded or optional).
-        'metadata': query_metadata_table,
+        "metadata": query_metadata_table,
         # 'global_filters' is a list that may contain Filter blocks that are generated during
         # query processing, but apply to the global query scope and should be appended to the
         # IR blocks only after the GlobalOperationsStart block has been emitted.
-        'global_filters': [],
+        "global_filters": [],
         # 'inputs' is a dict mapping input parameter names to their respective expected GraphQL
         # types, as automatically inferred by inspecting the query structure
-        'inputs': dict(),
+        "inputs": dict(),
         # 'type_equivalence_hints' is a dict mapping GraphQL types to equivalent GraphQL unions
-        'type_equivalence_hints': type_equivalence_hints,
+        "type_equivalence_hints": type_equivalence_hints,
         # 'type_equivalence_hints_inverse' is the inverse of type_equivalence_hints,
         # which is always invertible.
-        'type_equivalence_hints_inverse': invert_dict(type_equivalence_hints),
+        "type_equivalence_hints_inverse": invert_dict(type_equivalence_hints),
     }
 
     # Add the query root basic block to the output.
-    basic_blocks = [
-        blocks.QueryRoot({base_start_type})
-    ]
+    basic_blocks = [blocks.QueryRoot({base_start_type})]
 
     # Ensure the GraphQL query root doesn't immediately have a fragment (type coercion).
     # Instead of starting at one type and coercing to another,
@@ -852,13 +989,15 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
     immediate_fragment = _get_inline_fragment(base_ast)
     if immediate_fragment is not None:
         msg_args = {
-            'coerce_to': immediate_fragment.type_condition.name.value,
-            'type_from': base_start_type,
+            "coerce_to": immediate_fragment.type_condition.name.value,
+            "type_from": base_start_type,
         }
-        raise GraphQLCompilationError(u'Found inline fragment coercing to type {coerce_to}, '
-                                      u'immediately inside query root asking for type {type_from}. '
-                                      u'This is a contrived pattern -- you should simply start '
-                                      u'your query at {coerce_to}.'.format(**msg_args))
+        raise GraphQLCompilationError(
+            "Found inline fragment coercing to type {coerce_to}, "
+            "immediately inside query root asking for type {type_from}. "
+            "This is a contrived pattern -- you should simply start "
+            "your query at {coerce_to}.".format(**msg_args)
+        )
 
     # Ensure the GraphQL query root doesn't have any vertex directives
     # that are disallowed on the root node.
@@ -866,30 +1005,34 @@ def _compile_root_ast_to_ir(schema, ast, type_equivalence_hints=None):
 
     # Compile and add the basic blocks for the query's base AST vertex.
     new_basic_blocks = _compile_ast_node_to_ir(
-        schema, current_schema_type, base_ast, location, context)
+        schema, current_schema_type, base_ast, location, context
+    )
     basic_blocks.extend(new_basic_blocks)
 
-    _validate_all_tags_are_used(context['metadata'])
+    _validate_all_tags_are_used(context["metadata"])
 
     # All operations after this point affect the global query scope, and are not related to
     # the "current" location in the query produced by the sequence of Traverse/Backtrack blocks.
     basic_blocks.append(blocks.GlobalOperationsStart())
 
     # Add any filters that apply to the global query scope.
-    basic_blocks.extend(context['global_filters'])
+    basic_blocks.extend(context["global_filters"])
 
-    # Based on the outputs context data, add an output step and construct the output metadata.
+    # Based on the outputs context data, add an output step.
     basic_blocks.append(_compile_output_step(query_metadata_table))
+
+    # Construct the output metadata, ensuring that all folded outputs have a valid type.
     output_metadata = {
-        name: OutputMetadata(type=info.type, optional=info.optional)
+        name: _validate_and_create_output_metadata(name, info)
         for name, info in query_metadata_table.outputs
     }
 
     return IrAndMetadata(
         ir_blocks=basic_blocks,
-        input_metadata=context['inputs'],
+        input_metadata=context["inputs"],
         output_metadata=output_metadata,
-        query_metadata_table=context['metadata'])
+        query_metadata_table=context["metadata"],
+    )
 
 
 def _compile_output_step(query_metadata_table):
@@ -905,8 +1048,10 @@ def _compile_output_step(query_metadata_table):
         a ConstructResult basic block that constructs appropriate outputs for the query
     """
     if next(query_metadata_table.outputs, None) is None:
-        raise GraphQLCompilationError(u'No fields were selected for output! Please mark at least '
-                                      u'one field with the @output directive.')
+        raise GraphQLCompilationError(
+            "No fields were selected for output! Please mark at least "
+            "one field with the @output directive."
+        )
 
     output_fields = {}
     for output_name, output_info in query_metadata_table.outputs:
@@ -919,8 +1064,9 @@ def _compile_output_step(query_metadata_table):
         # pylint: disable=redefined-variable-type
         if isinstance(location, FoldScopeLocation):
             if optional:
-                raise AssertionError(u'Unreachable state reached, optional in fold: '
-                                     u'{}'.format(output_info))
+                raise AssertionError(
+                    "Unreachable state reached, optional in fold: {}".format(output_info)
+                )
 
             if location.field == COUNT_META_FIELD_NAME:
                 expression = expressions.FoldCountContextField(location)
@@ -934,7 +1080,8 @@ def _compile_output_step(query_metadata_table):
 
         if existence_check:
             expression = expressions.TernaryConditional(
-                existence_check, expression, expressions.NullLiteral)
+                existence_check, expression, expressions.NullLiteral
+            )
         # pylint: enable=redefined-variable-type
 
         output_fields[output_name] = expression
@@ -947,14 +1094,17 @@ def _compile_output_step(query_metadata_table):
 ##############
 
 
-def ast_to_ir(schema, ast, type_equivalence_hints=None):
+def ast_to_ir(
+    schema: GraphQLSchema,
+    ast: DocumentNode,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None,
+) -> IrAndMetadata:
     """Convert the given GraphQL AST object into compiler IR, using the given schema object.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
-        ast: AST object to be compiled to IR
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
+        schema: schema object created using the GraphQL library for which the query must be valid
+        ast: query in AST form to transform into compiler IR
+        type_equivalence_hints: optional, used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
                                 workaround for Gremlin's total lack of inheritance-awareness.
                                 The key-value pairs in the dict specify that the "key" type
@@ -970,11 +1120,7 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - query_metadata_table: a QueryMetadataTable object containing location metadata
+        IrAndMetadata for the given schema and AST
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);
@@ -989,20 +1135,23 @@ def ast_to_ir(schema, ast, type_equivalence_hints=None):
     """
     validation_errors = validate_schema_and_query_ast(schema, ast)
     if validation_errors:
-        raise GraphQLValidationError(u'String does not validate: {}'.format(validation_errors))
+        raise GraphQLValidationError("String does not validate: {}".format(validation_errors))
 
     base_ast = get_only_query_definition(ast, GraphQLValidationError)
     return _compile_root_ast_to_ir(schema, base_ast, type_equivalence_hints=type_equivalence_hints)
 
 
-def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
+def graphql_to_ir(
+    schema: GraphQLSchema,
+    graphql_string: str,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType] = None,
+) -> IrAndMetadata:
     """Convert the given GraphQL string into compiler IR, using the given schema object.
 
     Args:
-        schema: GraphQL schema object, created using the GraphQL library
-        graphql_string: string containing the GraphQL to compile to compiler IR
-        type_equivalence_hints: optional dict of GraphQL interface or type -> GraphQL union.
-                                Used as a workaround for GraphQL's lack of support for
+        schema: schema object created using the GraphQL library for which the query must be valid
+        graphql_string: GraphQL query to transform into compiler IR
+        type_equivalence_hints: optional, used as a workaround for GraphQL's lack of support for
                                 inheritance across "types" (i.e. non-interfaces), as well as a
                                 workaround for Gremlin's total lack of inheritance-awareness.
                                 The key-value pairs in the dict specify that the "key" type
@@ -1018,11 +1167,7 @@ def graphql_to_ir(schema, graphql_string, type_equivalence_hints=None):
                                 *****
 
     Returns:
-        IrAndMetadata named tuple, containing fields:
-        - ir_blocks: a list of IR basic block objects
-        - input_metadata: a dict of expected input parameters (string) -> inferred GraphQL type
-        - output_metadata: a dict of output name (string) -> OutputMetadata object
-        - query_metadata_table: a QueryMetadataTable object containing location metadata
+        IrAndMetadata for the given schema and GraphQL query string
 
     Raises flavors of GraphQLError in the following cases:
         - if the query is invalid GraphQL (GraphQLParsingError);

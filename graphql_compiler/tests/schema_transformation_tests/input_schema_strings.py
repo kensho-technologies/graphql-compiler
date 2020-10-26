@@ -3,10 +3,13 @@ from textwrap import dedent
 
 
 class InputSchemaStrings(object):
-    basic_schema = dedent('''\
+    basic_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         type Human {
           id: String
@@ -15,9 +18,29 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Human: Human
         }
-    ''')
+    """
+    )
 
-    multiple_objects_schema = dedent('''\
+    type_field_directive_same_name_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+        type stitch {
+          stitch: String
+        }
+
+        type SchemaQuery {
+          stitch: stitch
+        }
+    """
+    )
+
+    multiple_objects_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -39,9 +62,11 @@ class InputSchemaStrings(object):
           Droid: Droid
           Dog: Dog
         }
-    ''')
+    """
+    )
 
-    enum_schema = dedent('''\
+    enum_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -58,9 +83,37 @@ class InputSchemaStrings(object):
           TALL
           SHORT
         }
-    ''')
+    """
+    )
 
-    interface_schema = dedent('''\
+    multiple_enums_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Droid {
+          height: Height
+        }
+
+        type SchemaQuery {
+          Droid: Droid
+        }
+
+        enum Height {
+          TALL
+          SHORT
+        }
+
+        enum Size {
+          BIG
+          SMALL
+        }
+    """
+    )
+
+    interface_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -77,9 +130,11 @@ class InputSchemaStrings(object):
           Character: Character
           Kid: Kid
         }
-    ''')
+    """
+    )
 
-    multiple_interfaces_schema = dedent('''\
+    multiple_interfaces_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -92,7 +147,7 @@ class InputSchemaStrings(object):
           age: Int
         }
 
-        type Human implements Character, Creature {
+        type Human implements Character & Creature {
           id: String
           age: Int
         }
@@ -102,12 +157,16 @@ class InputSchemaStrings(object):
           Creature: Creature
           Human: Human
         }
-    ''')
+    """
+    )
 
-    scalar_schema = dedent('''\
+    scalar_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         type Human {
           id: String
@@ -119,9 +178,11 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Human: Human
         }
-    ''')
+    """
+    )
 
-    union_schema = dedent('''\
+    union_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -140,9 +201,39 @@ class InputSchemaStrings(object):
           Human: Human
           Droid: Droid
         }
-    ''')
+    """
+    )
 
-    list_schema = dedent('''\
+    extended_union_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Human {
+          id: String
+        }
+
+        type Droid {
+          id: String
+        }
+
+        type Dog {
+          nickname: String
+        }
+
+        union HumanOrDroid = Human | Droid
+
+        type SchemaQuery {
+          Human: Human
+          Droid: Droid
+          Dog: Dog
+        }
+    """
+    )
+
+    list_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -169,9 +260,11 @@ class InputSchemaStrings(object):
           TALL
           SHORT
         }
-    ''')
+    """
+    )
 
-    non_null_schema = dedent('''\
+    non_null_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -181,12 +274,19 @@ class InputSchemaStrings(object):
           friend: Dog!
         }
 
+        type Cat {
+            id: String
+        }
+
         type SchemaQuery {
           Dog: Dog!
+          Cat: Cat
         }
-    ''')
+    """
+    )
 
-    directive_schema = dedent('''\
+    directive_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -206,9 +306,11 @@ class InputSchemaStrings(object):
           Human: Human
           Droid: Droid
         }
-    ''')
+    """
+    )
 
-    various_types_schema = dedent('''\
+    various_types_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -233,6 +335,10 @@ class InputSchemaStrings(object):
         type Giraffe implements Character {
           id: String
           height: Height
+        }
+
+        type Dog {
+          nickname: String
         }
 
         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
@@ -240,47 +346,13 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Human: Human
           Giraffe: Giraffe
+          Dog: Dog
         }
-    ''')
+    """
+    )
 
-    multiple_scalars_schema = dedent('''\
-        schema {
-          query: SchemaQuery
-        }
-
-        scalar Date
-
-        scalar DateTime
-
-        scalar Decimal
-
-        enum Height {
-          TALL
-          SHORT
-        }
-
-        interface Character {
-          id: String
-        }
-
-        type Human implements Character {
-          id: String
-          name: String
-          birthday: Date
-        }
-
-        type Giraffe implements Character {
-          id: String
-          height: Height
-        }
-
-        type SchemaQuery {
-          Human: Human
-          Giraffe: Giraffe
-        }
-    ''')
-
-    same_field_schema = dedent('''\
+    same_field_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
@@ -292,12 +364,16 @@ class InputSchemaStrings(object):
         type SchemaQuery {
           Person: Person
         }
-    ''')
+    """
+    )
 
-    interface_with_subclasses_schema = dedent('''\
+    interface_with_subclasses_schema = dedent(
+        """\
         schema {
           query: SchemaQuery
         }
+
+        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         interface Individual {
           ID: String
@@ -312,9 +388,11 @@ class InputSchemaStrings(object):
           Individual: Individual
           President: President
         }
-    ''')
+    """
+    )
 
-    union_with_subclasses_schema = dedent('''\
+    union_with_subclasses_schema = dedent(
+        """\
         schema {
          query: SchemaQuery
         }
@@ -334,4 +412,50 @@ class InputSchemaStrings(object):
           Person: Person
           Kid: Kid
         }
-    ''')
+    """
+    )
+
+    multiple_fields_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Human  {
+          id: String
+          name: String
+          pet: Dog
+        }
+
+        type Dog {
+          nickname: String
+        }
+
+        type SchemaQuery {
+          Human: Human
+          Dog: Dog
+        }
+    """
+    )
+
+    recursive_field_schema = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        type Human  {
+          friend: Human
+          name: String
+        }
+
+        type Dog {
+          nickname: String
+        }
+
+        type SchemaQuery {
+          Human: Human
+          Dog: Dog
+        }
+    """
+    )

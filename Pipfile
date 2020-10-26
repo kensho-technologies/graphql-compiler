@@ -4,41 +4,51 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 
 [dev-packages]
-# The Cython dependency of pymssql is not correctly resolved on all systems
-# so it is explicitly included here.
-cython = "==0.29.2"
-
 # Test requirements that are not otherwise necessary when using the package.
-mysqlclient = "==1.3.14"
+mysqlclient = ">=1.4.6,<2"
 neo4j = ">=1.7.4,<2"
-psycopg2 = "==2.7.5"
-pymssql = "==2.1.4"
+psycopg2-binary = "==2.8.4"
+pyodbc = "==4.0.27"
 pyorient = "==1.5.5"
 redis = ">=3.2.1,<4"
 redisgraph = ">=1.7,<1.9"
 
 # Linters and other development tools
 bandit = ">=1.5.1,<2"
-coveralls = ">=1.5.1,<2"
+black = "==20.8b1"  # This is still marked as a beta release, pin it explicitly: https://github.com/pypa/pipenv/issues/1760
+codecov = ">=2.0.15,<3"
 flake8 = ">=3.6.0,<4"
+flake8-bugbear = ">=19.8.0"
 flake8-print = ">=3.1.0,<4"
-flake8-quotes = ">=1.0.0,<2"
 isort = ">=4.3.4,<5"
+mypy = ">=0.750,<1"
 parameterized = ">=0.6.1,<1"
-pydocstyle = ">=3.0.0,<4"
-pylint = "==1.9.4"  # v1.9.5 is marked as "python_requires < 3.7", update this after we're Py3+ only
-pytest = ">=4.1.0,<5"
+pydocstyle = ">=5.0.1,<6"
+pylint = ">=2.4.4,<2.5"
+pytest = ">=5.1.3,<6"
 pytest-cov = ">=2.6.1,<3"
 snapshottest = ">=0.5.1,<1"
+typing-copilot = {version = "==0.5.4", markers = "python_version >= '3.7'"}
+
+# TODO: add dependency on https://github.com/dropbox/sqlalchemy-stubs and corresponding mypy plugin
+#       when we can make everything type-check correctly with it.
+
+# Documentation requirements. Keep in sync with docs/requirements.txt.
+# Read the Docs doesn't support pipfiles: https://github.com/readthedocs/readthedocs.org/issues/3181
+sphinx-rtd-theme = ">=0.4.3,<1"
+sphinx = ">=1.8,<2"
 
 [packages]  # Make sure to keep in sync with setup.py requirements.
 arrow = ">=0.15.0,<1"
-frozendict = ">=1.2,<2"
 funcy = ">=1.7.3,<2"
-graphql-core = ">=2.1,<3"
+graphql-core = ">=3.1.2,<3.2"  # minor versions sometimes contain breaking changes
 pytz = ">=2017.2"
 six = ">=1.10.0"
 sqlalchemy = ">=1.3.0,<2"
 
+# The below is necessary to make a few pylint passes work properly, since pylint expects to be able
+# to run "import graphql_compiler" in the environment in which it runs.
+graphql-compiler = {editable = true, path = "."}
+
 [requires]
-python_version = "3.6"
+python_version = "3.8"

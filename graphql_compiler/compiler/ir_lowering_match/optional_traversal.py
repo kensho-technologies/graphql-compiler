@@ -5,18 +5,30 @@ import six
 
 from ..blocks import ConstructResult, Filter, Traverse
 from ..expressions import (
-    BinaryComposition, ContextField, FoldedContextField, Literal, LocalField, OutputContextField,
-    TernaryConditional, TrueLiteral, UnaryTransformation, Variable
+    BinaryComposition,
+    ContextField,
+    FoldedContextField,
+    Literal,
+    LocalField,
+    OutputContextField,
+    TernaryConditional,
+    TrueLiteral,
+    UnaryTransformation,
+    Variable,
 )
 from ..match_query import MatchQuery, MatchStep
 from .utils import (
-    BetweenClause, CompoundMatchQuery, construct_optional_traversal_tree,
-    expression_list_to_conjunction, filter_edge_field_non_existence
+    BetweenClause,
+    CompoundMatchQuery,
+    construct_optional_traversal_tree,
+    expression_list_to_conjunction,
+    filter_edge_field_non_existence,
 )
 
 
-def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
-                                            complex_optional_roots, location_to_optional_roots):
+def _prune_traverse_using_omitted_locations(
+    match_traversal, omitted_locations, complex_optional_roots, location_to_optional_roots
+):
     """Return a prefix of the given traverse, excluding any blocks after an omitted optional.
 
     Given a subset (omitted_locations) of complex_optional_roots, return a new match traversal
@@ -45,9 +57,12 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
             optional_root_location = optional_root_locations_stack[-1]
 
             if optional_root_location is None:
-                raise AssertionError(u'Found optional Traverse location {} that was not present '
-                                     u'in location_to_optional_roots dict: {}'
-                                     .format(current_location, location_to_optional_roots))
+                raise AssertionError(
+                    "Found optional Traverse location {} that was not present "
+                    "in location_to_optional_roots dict: {}".format(
+                        current_location, location_to_optional_roots
+                    )
+                )
             elif optional_root_location in omitted_locations:
                 # Add filter to indicate that the omitted edge(s) shoud not exist
                 field_name = step.root_block.get_field_name()
@@ -60,9 +75,8 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
 
                 old_filter = new_match_traversal[-1].where_block
                 if old_filter is not None:
-                    new_predicate = BinaryComposition(u'&&', old_filter.predicate, new_predicate)
-                new_match_step = new_match_traversal[-1]._replace(
-                    where_block=Filter(new_predicate))
+                    new_predicate = BinaryComposition("&&", old_filter.predicate, new_predicate)
+                new_match_step = new_match_traversal[-1]._replace(where_block=Filter(new_predicate))
                 new_match_traversal[-1] = new_match_step
 
                 # Discard all steps following the omitted @optional traverse
@@ -89,7 +103,8 @@ def _prune_traverse_using_omitted_locations(match_traversal, omitted_locations,
 
 
 def convert_optional_traversals_to_compound_match_query(
-        match_query, complex_optional_roots, location_to_optional_roots):
+    match_query, complex_optional_roots, location_to_optional_roots
+):
     """Return 2^n distinct MatchQuery objects in a CompoundMatchQuery.
 
     Given a MatchQuery containing `n` optional traverses that expand vertex fields,
@@ -111,8 +126,7 @@ def convert_optional_traversals_to_compound_match_query(
         CompoundMatchQuery object containing 2^n MatchQuery objects,
         one for each possible subset of the n optional edges being followed
     """
-    tree = construct_optional_traversal_tree(
-        complex_optional_roots, location_to_optional_roots)
+    tree = construct_optional_traversal_tree(complex_optional_roots, location_to_optional_roots)
     rooted_optional_root_location_subsets = tree.get_all_rooted_subtrees_as_lists()
 
     omitted_location_subsets = [
@@ -134,8 +148,11 @@ def convert_optional_traversals_to_compound_match_query(
 
             if optional_root_location is None or optional_root_location not in omitted_locations:
                 new_match_traversal = _prune_traverse_using_omitted_locations(
-                    match_traversal, set(omitted_locations),
-                    complex_optional_roots, location_to_optional_roots)
+                    match_traversal,
+                    set(omitted_locations),
+                    complex_optional_roots,
+                    location_to_optional_roots,
+                )
                 new_match_traversals.append(new_match_traversal)
             else:
                 # The root_block is within an omitted scope.
@@ -189,9 +206,12 @@ def _get_present_locations(match_traversals):
                     present_non_optional_locations.add(location_name)
 
     if not present_non_optional_locations.issubset(present_locations):
-        raise AssertionError(u'present_non_optional_locations {} was not a subset of '
-                             u'present_locations {}. THis hould never happen.'
-                             .format(present_non_optional_locations, present_locations))
+        raise AssertionError(
+            "present_non_optional_locations {} was not a subset of "
+            "present_locations {}. THis hould never happen.".format(
+                present_non_optional_locations, present_locations
+            )
+        )
 
     return present_locations, present_non_optional_locations
 
@@ -213,8 +233,9 @@ def prune_non_existent_outputs(compound_match_query):
     if len(compound_match_query.match_queries) == 1:
         return compound_match_query
     elif len(compound_match_query.match_queries) == 0:
-        raise AssertionError(u'Received CompoundMatchQuery with '
-                             u'an empty list of MatchQuery objects.')
+        raise AssertionError(
+            "Received CompoundMatchQuery with an empty list of MatchQuery objects."
+        )
     else:
         match_queries = []
         for match_query in compound_match_query.match_queries:
@@ -232,9 +253,10 @@ def prune_non_existent_outputs(compound_match_query):
                     # be in present_locations, and the output is never pruned.
                     location_name, _ = expression.location.get_location_name()
                     if location_name not in present_locations:
-                        raise AssertionError(u'Non-optional output location {} was not found in '
-                                             u'present_locations: {}'
-                                             .format(expression.location, present_locations))
+                        raise AssertionError(
+                            "Non-optional output location {} was not found in "
+                            "present_locations: {}".format(expression.location, present_locations)
+                        )
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, FoldedContextField):
                     # A FoldedContextField as an output Expression indicates that we are not
@@ -243,9 +265,10 @@ def prune_non_existent_outputs(compound_match_query):
                     base_location = expression.fold_scope_location.base_location
                     location_name, _ = base_location.get_location_name()
                     if location_name not in present_locations:
-                        raise AssertionError(u'Folded output location {} was found in '
-                                             u'present_locations: {}'
-                                             .format(base_location, present_locations))
+                        raise AssertionError(
+                            "Folded output location {} was found in "
+                            "present_locations: {}".format(base_location, present_locations)
+                        )
                     new_output_fields[output_name] = expression
                 elif isinstance(expression, TernaryConditional):
                     # A TernaryConditional indicates that this output is within some optional scope.
@@ -257,8 +280,10 @@ def prune_non_existent_outputs(compound_match_query):
                         else:
                             new_output_fields[output_name] = expression
                 else:
-                    raise AssertionError(u'Invalid expression of type {} in output block: '
-                                         u'{}'.format(type(expression).__name__, output_block))
+                    raise AssertionError(
+                        "Invalid expression of type {} in output block: "
+                        "{}".format(type(expression).__name__, output_block)
+                    )
 
             match_queries.append(
                 MatchQuery(
@@ -291,8 +316,7 @@ def _construct_location_to_filter_list(match_query):
             current_filter = match_step.where_block
             if current_filter is not None:
                 current_location = match_step.as_block.location
-                location_to_filters.setdefault(current_location, []).append(
-                    current_filter)
+                location_to_filters.setdefault(current_location, []).append(current_filter)
 
     return location_to_filters
 
@@ -300,16 +324,17 @@ def _construct_location_to_filter_list(match_query):
 def _filter_list_to_conjunction_expression(filter_list):
     """Convert a list of filters to an Expression that is the conjunction of all of them."""
     if not isinstance(filter_list, list):
-        raise AssertionError(u'Expected `list`, Received: {}.'.format(filter_list))
+        raise AssertionError("Expected `list`, Received: {}.".format(filter_list))
     if any((not isinstance(filter_block, Filter) for filter_block in filter_list)):
-        raise AssertionError(u'Expected list of Filter objects. Received: {}'.format(filter_list))
+        raise AssertionError("Expected list of Filter objects. Received: {}".format(filter_list))
 
     expression_list = [filter_block.predicate for filter_block in filter_list]
     return expression_list_to_conjunction(expression_list)
 
 
-def _apply_filters_to_first_location_occurrence(match_traversal, location_to_filters,
-                                                already_filtered_locations):
+def _apply_filters_to_first_location_occurrence(
+    match_traversal, location_to_filters, already_filtered_locations
+):
     """Apply all filters for a specific location into its first occurrence in a given traversal.
 
     For each location in the given match traversal,
@@ -333,16 +358,21 @@ def _apply_filters_to_first_location_occurrence(match_traversal, location_to_fil
         current_location = match_step.as_block.location
 
         if current_location in newly_filtered_locations:
-            raise AssertionError(u'The same location {} was encountered twice in a single '
-                                 u'match traversal: {}. This should never happen.'
-                                 .format(current_location, match_traversal))
-
-        if all((current_location in location_to_filters,
-                current_location not in already_filtered_locations)):
-            where_block = Filter(
-                _filter_list_to_conjunction_expression(
-                    location_to_filters[current_location]
+            raise AssertionError(
+                "The same location {} was encountered twice in a single "
+                "match traversal: {}. This should never happen.".format(
+                    current_location, match_traversal
                 )
+            )
+
+        if all(
+            (
+                current_location in location_to_filters,
+                current_location not in already_filtered_locations,
+            )
+        ):
+            where_block = Filter(
+                _filter_list_to_conjunction_expression(location_to_filters[current_location])
             )
             # No further filters needed for this location. If the same location is found in
             # another call to this function, no filters will be added.
@@ -354,7 +384,7 @@ def _apply_filters_to_first_location_occurrence(match_traversal, location_to_fil
             root_block=match_step.root_block,
             coerce_type_block=match_step.coerce_type_block,
             where_block=where_block,
-            as_block=match_step.as_block
+            as_block=match_step.as_block,
         )
         new_match_traversal.append(new_match_step)
 
@@ -390,7 +420,8 @@ def collect_filters_to_first_location_occurrence(compound_match_query):
         new_match_traversals = []
         for match_traversal in match_query.match_traversals:
             result = _apply_filters_to_first_location_occurrence(
-                match_traversal, location_to_filters, already_filtered_locations)
+                match_traversal, location_to_filters, already_filtered_locations
+            )
             new_match_traversal, newly_filtered_locations = result
 
             new_match_traversals.append(new_match_traversal)
@@ -419,10 +450,13 @@ def _update_context_field_binary_composition(present_locations, expression):
         TrueLiteral iff either ContextField operand is not in `present_locations`,
         and the original expression otherwise
     """
-    if not any((isinstance(expression.left, ContextField),
-                isinstance(expression.right, ContextField))):
-        raise AssertionError(u'Received a BinaryComposition {} without any ContextField '
-                             u'operands. This should never happen.'.format(expression))
+    if not any(
+        (isinstance(expression.left, ContextField), isinstance(expression.right, ContextField))
+    ):
+        raise AssertionError(
+            "Received a BinaryComposition {} without any ContextField "
+            "operands. This should never happen.".format(expression)
+        )
 
     if isinstance(expression.left, ContextField):
         context_field = expression.left
@@ -450,17 +484,18 @@ def _simplify_non_context_field_binary_composition(expression):
         and one of it's operands is a TrueLiteral,
         and the original expression otherwise
     """
-    if any((isinstance(expression.left, ContextField),
-            isinstance(expression.right, ContextField))):
-        raise AssertionError(u'Received a BinaryComposition {} with a ContextField '
-                             u'operand. This should never happen.'.format(expression))
+    if any((isinstance(expression.left, ContextField), isinstance(expression.right, ContextField))):
+        raise AssertionError(
+            "Received a BinaryComposition {} with a ContextField "
+            "operand. This should never happen.".format(expression)
+        )
 
-    if expression.operator == u'||':
+    if expression.operator == "||":
         if expression.left == TrueLiteral or expression.right == TrueLiteral:
             return TrueLiteral
         else:
             return expression
-    elif expression.operator == u'&&':
+    elif expression.operator == "&&":
         if expression.left == TrueLiteral:
             return expression.right
         if expression.right == TrueLiteral:
@@ -501,17 +536,23 @@ def _update_context_field_expression(present_locations, expression):
         lower_bound = expression.lower_bound
         upper_bound = expression.upper_bound
         if isinstance(lower_bound, ContextField) or isinstance(upper_bound, ContextField):
-            raise AssertionError(u'Found BetweenClause with ContextFields as lower/upper bounds. '
-                                 u'This should never happen: {}'.format(expression))
+            raise AssertionError(
+                "Found BetweenClause with ContextFields as lower/upper bounds. "
+                "This should never happen: {}".format(expression)
+            )
         return expression
     elif isinstance(expression, (OutputContextField, FoldedContextField)):
-        raise AssertionError(u'Found unexpected expression of type {}. This should never happen: '
-                             u'{}'.format(type(expression).__name__, expression))
+        raise AssertionError(
+            "Found unexpected expression of type {}. This should never happen: "
+            "{}".format(type(expression).__name__, expression)
+        )
     elif isinstance(expression, no_op_blocks):
         return expression
 
-    raise AssertionError(u'Found unhandled expression of type {}. This should never happen: '
-                         u'{}'.format(type(expression).__name__, expression))
+    raise AssertionError(
+        "Found unhandled expression of type {}. This should never happen: "
+        "{}".format(type(expression).__name__, expression)
+    )
 
 
 def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
@@ -519,7 +560,7 @@ def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
 
     Expressions involving non-existent ContextFields are evaluated to TrueLiteral.
     BinaryCompositions, where one of the operands is lowered to a TrueLiteral,
-    are lowered appropriately based on the present operator (u'||' and u'&&' are affected).
+    are lowered appropriately based on the present operator ('||' and '&&' are affected).
     TernaryConditionals, where the predicate is lowered to a TrueLiteral,
     are replaced by their if_true predicate.
     The `visitor_fn` implements these behaviors (see `_update_context_field_expression`).
@@ -553,8 +594,11 @@ def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
 def lower_context_field_expressions(compound_match_query):
     """Lower Expressons involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
-        raise AssertionError(u'Received CompoundMatchQuery {} with no MatchQuery objects.'
-                             .format(compound_match_query))
+        raise AssertionError(
+            "Received CompoundMatchQuery {} with no MatchQuery objects.".format(
+                compound_match_query
+            )
+        )
     elif len(compound_match_query.match_queries) == 1:
         # All ContextFields exist if there is only one MatchQuery
         # becuase none of the traverses were omitted, and all locations exist (are defined).
@@ -567,7 +611,8 @@ def lower_context_field_expressions(compound_match_query):
             current_visitor_fn = partial(_update_context_field_expression, present_locations)
 
             new_match_traversals = _lower_non_existent_context_field_filters(
-                match_traversals, current_visitor_fn)
+                match_traversals, current_visitor_fn
+            )
             new_match_queries.append(
                 MatchQuery(
                     match_traversals=new_match_traversals,

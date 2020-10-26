@@ -86,7 +86,15 @@ with runtime parameter
       "name": "Charles"
     }
 
-would output an empty list because the :code:`Person_Knows` edge from
+would output
+
+.. code:: python
+
+    [
+        { name: 'Betty' },
+    ]
+
+because the :code:`Person_Knows` edge from
 :code:`Albert` to :code:`Betty` satisfies the :code:`@optional` directive, but
 :code:`Betty` doesn't match the filter checking for a node with name
 :code:`Charles`.
@@ -96,12 +104,14 @@ the output would be
 
 .. code:: python
 
-    {
-      name: 'Albert'
-    }
+    [
+        { name: 'Albert' },
+        { name: 'Betty' },
+    ]
 
 because no such edge can satisfy the :code:`@optional` directive, and no
-filtering happens.
+filtering happens. In both examples, :code:`Betty` is always returned
+because :code:`Betty` does not have any outgoing :code:`Person_Knows` edges.
 
 @output
 -------
@@ -154,7 +164,7 @@ captured in a :code:`@fold`. The :code:`_x_count` meta field that is available
 within :code:`@fold` scopes represents the number of elements in the fold,
 and may be filtered or output as usual. As :code:`_x_count` represents a
 count of elements, marking it :code:`@output` will produce an integer value.
-See the `\_x\_count <#x-count>`__ section for more details.
+See the :ref:`\_x\_count <x_count>` section for more details.
 
 Example Use
 ~~~~~~~~~~~
@@ -332,7 +342,7 @@ used as part of a :code:`@filter` directive.
 
 To supply a tagged value to a :code:`@filter` directive, place the tag name
 (prefixed with a :code:`%` symbol) in the :code:`@filter`'s :code:`value` array. See
-`Passing parameters <#passing-parameters>`__ for more details.
+:ref:`Passing parameters <passing_parameters>` for more details.
 
 Example Use
 ~~~~~~~~~~~
@@ -341,18 +351,16 @@ Example Use
 
     {
         Animal {
-            name @tag(tag_name: "parent_name")
+            limbs @tag(tag_name: "parent_limbs")
             out_Animal_ParentOf {
-                name @filter(op_name: "<", value: ["%parent_name"])
-                     @output(out_name: "child_name")
+                limbs @filter(op_name: "<", value: ["%parent_limbs"])
+                name @output(out_name: "child_name")
             }
         }
     }
 
-Each row returned by this query contains, in the :code:`child_name` column,
-the name of an :code:`Animal` that is the child of another :code:`Animal`, and
-has a name that is lexicographically smaller than the name of its
-parent.
+Each result returned by this query contains the name of an :code:`Animal` who is a
+child of another animal and has fewer limbs than its parent.
 
 Constraints and Rules
 ~~~~~~~~~~~~~~~~~~~~~
@@ -373,7 +381,7 @@ Allows filtering of the data to be returned, based on any of a set of
 filtering operations. Conceptually, it is the GraphQL equivalent of the
 SQL :code:`WHERE` keyword.
 
-See `Supported filtering operations <#supported-filtering-operations>`__
+See :ref:`Supported filtering operations <supported_filtering_operations>`
 for details on the various types of filtering that the compiler
 currently supports. These operations are currently hardcoded in the
 compiler; in the future, we may enable the addition of custom filtering
@@ -386,6 +394,8 @@ were joined by SQL :code:`AND` keywords.
 Using a :code:`@tag` and a :code:`@filter` that references the tag within the
 same vertex is allowed, so long as the two do not appear on the exact
 same property field.
+
+.. _passing_parameters:
 
 Passing Parameters
 ~~~~~~~~~~~~~~~~~~
@@ -626,6 +636,8 @@ Constraints and Rules
    depth 0, so the recursion scope always includes the vertex at the
    scope that encloses the vertex field marked :code:`@recurse`.
 
+.. _output_source:
+
 @output_source
 --------------
 
@@ -697,7 +709,7 @@ only a partial result list resembling the following:
 
 Due to limitations in the underlying query language, :code:`gremlin` will by
 default produce at most one result for each of the starting locations in
-the query. The above Gr aphQL query started at the type :code:`S`, so each
+the query. The above GraphQL query started at the type :code:`S`, so each
 :code:`s_name` in the returned result list is therefore distinct.
 Furthermore, there is no guarantee (and no way to know ahead of time)
 whether :code:`x` or :code:`y` will be returned as the :code:`t_name` value in each
@@ -751,6 +763,7 @@ Constraints and Rules
    used in the query.
 -  Cannot be used within a scope marked :code:`@optional` or :code:`@fold`.
 
+.. _supported_filtering_operations:
 
 Supported filtering operations
 ------------------------------
@@ -1122,7 +1135,7 @@ Example Use
     {
         Animal {
             name @output(out_name: "animal_name")
-            color @filter(op_name: "is_null", value: [])
+            color @filter(op_name: "is_null")
         }
     }
 
@@ -1133,7 +1146,7 @@ Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
--  :code:`value` must be empty.
+-  :code:`value` must either not appear in the filter (shown in the example) or be an empty list.
 
 is\_not\_null
 ~~~~~~~~~~~~~
@@ -1146,7 +1159,7 @@ Example Use
     {
         Animal {
             name @output(out_name: "animal_name")
-            color @filter(op_name: "is_not_null", value: [])
+            color @filter(op_name: "is_not_null")
         }
     }
 
@@ -1156,4 +1169,4 @@ Constraints and Rules
 ^^^^^^^^^^^^^^^^^^^^^
 
 -  Must be applied on a property field.
--  :code:`value` must be empty.
+-  :code:`value` must either not appear in the filter (shown in the example) or be an empty list.

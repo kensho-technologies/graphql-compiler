@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 """Read-only helpers for traversing AST objects."""
 from graphql import GraphQLList
-from graphql.language.ast import Field, InlineFragment, OperationDefinition
+from graphql.language.ast import FieldNode, InlineFragmentNode, OperationDefinitionNode
 
 from ...ast_manipulation import get_ast_field_name
 from ...compiler.helpers import get_field_type_from_schema, get_vertex_field_type
@@ -23,14 +23,14 @@ def _yield_ast_nodes_with_directives(ast):
     for directive in ast.directives:
         yield (ast, directive)
 
-    if isinstance(ast, (Field, InlineFragment, OperationDefinition)):
+    if isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         if ast.selection_set is not None:
             for sub_selection_set in ast.selection_set.selections:
                 # TODO(predrag): When we make the compiler py3-only, use a "yield from" here.
                 for entry in _yield_ast_nodes_with_directives(sub_selection_set):
                     yield entry
     else:
-        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+        raise AssertionError("Unexpected AST type received: {} {}".format(type(ast), ast))
 
 
 def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type):
@@ -40,25 +40,27 @@ def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type)
         if directive.name.value == MacroEdgeTargetDirective.name:
             return current_type
 
-    if not isinstance(ast, (Field, InlineFragment, OperationDefinition)):
-        raise AssertionError(u'Unexpected AST type received: {} {}'.format(type(ast), ast))
+    if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
+        raise AssertionError("Unexpected AST type received: {} {}".format(type(ast), ast))
 
     # Recurse
     if ast.selection_set is not None:
         for selection in ast.selection_set.selections:
             type_in_selection = None
-            if isinstance(selection, Field):
+            if isinstance(selection, FieldNode):
                 if selection.selection_set is not None:
                     type_in_selection = get_vertex_field_type(current_type, selection.name.value)
-            elif isinstance(selection, InlineFragment):
+            elif isinstance(selection, InlineFragmentNode):
                 type_in_selection = schema.get_type(selection.type_condition.name.value)
             else:
-                raise AssertionError(u'Unexpected selection type received: {} {}'
-                                     .format(type(selection), selection))
+                raise AssertionError(
+                    "Unexpected selection type received: {} {}".format(type(selection), selection)
+                )
 
             if type_in_selection is not None:
                 type_at_target = _get_type_at_macro_edge_target_using_current_type(
-                    schema, selection, type_in_selection)
+                    schema, selection, type_in_selection
+                )
                 if type_at_target is not None:
                     return type_at_target
 
@@ -68,6 +70,7 @@ def _get_type_at_macro_edge_target_using_current_type(schema, ast, current_type)
 # ############
 # Public API #
 # ############
+
 
 def get_directives_for_ast(ast):
     """Return a dict of directive name -> list of (ast, directive) where that directive is used.
@@ -110,7 +113,7 @@ def get_all_tag_names(ast):
 def get_type_at_macro_edge_target(schema, ast):
     """Return the GraphQL type at the @macro_edge_target or None if there is no target."""
     root_type = get_ast_field_name(ast)
-    root_schema_type = get_field_type_from_schema(schema.get_query_type(), root_type)
+    root_schema_type = get_field_type_from_schema(schema.query_type, root_type)
 
     # Allow list types at the query root in the schema.
     if isinstance(root_schema_type, GraphQLList):

@@ -1,28 +1,39 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 import six
 
+from ...schema.schema_info import CommonSchemaInfo
 from ..blocks import Filter
+from ..compiler_frontend import IrAndMetadata
 from ..ir_lowering_common.common import (
-    extract_optional_location_root_info, extract_simple_optional_location_info,
-    lower_context_field_existence, merge_consecutive_filter_clauses,
-    optimize_boolean_expression_comparisons, remove_end_optionals
+    extract_optional_location_root_info,
+    extract_simple_optional_location_info,
+    lower_context_field_existence,
+    merge_consecutive_filter_clauses,
+    optimize_boolean_expression_comparisons,
+    remove_end_optionals,
 )
 from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
-from ..match_query import convert_to_match_query
+from ..match_query import MatchQuery, convert_to_match_query
 from ..workarounds import (
-    orientdb_class_with_while, orientdb_eval_scheduling, orientdb_query_execution
+    orientdb_class_with_while,
+    orientdb_eval_scheduling,
+    orientdb_query_execution,
 )
 from .between_lowering import lower_comparisons_to_between
 from .ir_lowering import (
-    lower_backtrack_blocks, lower_folded_coerce_types_into_filter_blocks, lower_string_operators,
-    remove_backtrack_blocks_from_fold, rewrite_binary_composition_inside_ternary_conditional,
+    lower_backtrack_blocks,
+    lower_folded_coerce_types_into_filter_blocks,
+    lower_string_operators,
+    remove_backtrack_blocks_from_fold,
+    rewrite_binary_composition_inside_ternary_conditional,
     truncate_repeated_single_step_traversals,
-    truncate_repeated_single_step_traversals_in_sub_queries
+    truncate_repeated_single_step_traversals_in_sub_queries,
 )
 from .optional_traversal import (
     collect_filters_to_first_location_occurrence,
-    convert_optional_traversals_to_compound_match_query, lower_context_field_expressions,
-    prune_non_existent_outputs
+    convert_optional_traversals_to_compound_match_query,
+    lower_context_field_expressions,
+    prune_non_existent_outputs,
 )
 from .utils import construct_where_filter_predicate
 
@@ -32,7 +43,7 @@ from .utils import construct_where_filter_predicate
 ##############
 
 
-def lower_ir(schema_info, ir):
+def lower_ir(schema_info: CommonSchemaInfo, ir: IrAndMetadata) -> MatchQuery:
     """Lower the IR into an IR form that can be represented in MATCH queries.
 
     Args:
@@ -61,14 +72,16 @@ def lower_ir(schema_info, ir):
     location_to_optional_results = extract_optional_location_root_info(ir.ir_blocks)
     complex_optional_roots, location_to_optional_roots = location_to_optional_results
     simple_optional_root_info = extract_simple_optional_location_info(
-        ir.ir_blocks, complex_optional_roots, location_to_optional_roots)
+        ir.ir_blocks, complex_optional_roots, location_to_optional_roots
+    )
     ir_blocks = remove_end_optionals(ir.ir_blocks)
 
     # Append global operation block(s) to filter out incorrect results
     # from simple optional match traverses (using a WHERE statement)
     if len(simple_optional_root_info) > 0:
         where_filter_predicate = construct_where_filter_predicate(
-            ir.query_metadata_table, simple_optional_root_info)
+            ir.query_metadata_table, simple_optional_root_info
+        )
         # The GlobalOperationsStart block should already exist at this point. It is inserted
         # in the compiler_frontend, and this function asserts that at the beginning.
         ir_blocks.insert(-1, Filter(where_filter_predicate))
@@ -80,7 +93,8 @@ def lower_ir(schema_info, ir):
     ir_blocks = merge_consecutive_filter_clauses(ir_blocks)
     ir_blocks = lower_string_operators(ir_blocks)
     ir_blocks = orientdb_eval_scheduling.workaround_lowering_pass(
-        ir_blocks, ir.query_metadata_table)
+        ir_blocks, ir.query_metadata_table
+    )
 
     # Here, we lower from raw IR blocks into a MatchQuery object.
     # From this point on, the lowering / optimization passes work on the MatchQuery representation.
@@ -104,14 +118,17 @@ def lower_ir(schema_info, ir):
     match_query = match_query._replace(folds=new_folds)
 
     compound_match_query = convert_optional_traversals_to_compound_match_query(
-        match_query, complex_optional_roots, location_to_optional_roots)
+        match_query, complex_optional_roots, location_to_optional_roots
+    )
     compound_match_query = prune_non_existent_outputs(compound_match_query)
     compound_match_query = collect_filters_to_first_location_occurrence(compound_match_query)
     compound_match_query = lower_context_field_expressions(compound_match_query)
 
     compound_match_query = truncate_repeated_single_step_traversals_in_sub_queries(
-        compound_match_query)
+        compound_match_query
+    )
     compound_match_query = orientdb_query_execution.expose_ideal_query_execution_start_points(
-        compound_match_query, location_types, coerced_locations)
+        compound_match_query, location_types, coerced_locations
+    )
 
     return compound_match_query

@@ -1,8 +1,26 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from abc import ABCMeta, abstractmethod
+from dataclasses import dataclass
+import datetime
+import math
+from typing import Any, Dict, List, Optional, Tuple
 
-from frozendict import frozendict
 import six
+
+
+@dataclass
+class VertexSamplingSummary:
+    """Results extracted from sampling a random subset that are relevant for statistics."""
+
+    # The class this summary describes
+    vertex_name: str
+
+    # Mapping field_name -> (field_value -> observed_count) for all field names and observed
+    # field values on this vertex class.
+    value_counts: Dict[str, Dict[Any, int]]
+
+    # The number_of_instances / number_of_samples ratio
+    sample_ratio: int
 
 
 @six.python_2_unicode_compatible
@@ -97,13 +115,39 @@ class Statistics(object):
         """
         return None
 
+    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[float]:
+        """Return the estimated number of times the given value appears in the database.
+
+        Args:
+            vertex_name: vertex on which the field is defined
+            field_name: field for which the value stands
+            value: value to be counted
+
+        Returns:
+            An estimate on how often this value currently appears in the given field, or None
+            if unknown.
+        """
+        return None
+
 
 class LocalStatistics(Statistics):
     """Statistics class that receives all statistics at initialization, storing them in-memory."""
 
+    # See __init__ docstring for definitions.
+    _class_counts: Dict[str, int]
+    _vertex_edge_vertex_counts: Dict[Tuple[str, str, str], int]
+    _distinct_field_values_counts: Dict[Tuple[str, str], int]
+    _field_quantiles: Dict[Tuple[str, str], List[Any]]
+    _sampling_summaries: Dict[str, VertexSamplingSummary]
+
     def __init__(
-        self, class_counts, vertex_edge_vertex_counts=None,
-        distinct_field_values_counts=None, field_quantiles=None
+        self,
+        class_counts: Dict[str, int],
+        *,
+        vertex_edge_vertex_counts: Optional[Dict[Tuple[str, str, str], int]] = None,
+        distinct_field_values_counts: Optional[Dict[Tuple[str, str], int]] = None,
+        field_quantiles: Optional[Dict[Tuple[str, str], List[Any]]] = None,
+        sampling_summaries: Optional[Dict[str, VertexSamplingSummary]] = None,
     ):
         """Initialize statistics with the given data.
 
@@ -123,7 +167,14 @@ class LocalStatistics(Statistics):
                              equal size. The first element of the list is the smallest known value,
                              and the last element is the largest known value. The i-th
                              element is a value greater than or equal to i/N of all present
-                             values. The number N can be different for each entry.
+                             values. The number N can be different for each entry. N has to be at
+                             least 2 for every entry present in the dict.
+            sampling_summaries: optional SamplingSummaries for some classes
+
+        TODO(bojanserafimov): Enforce a canonical representation for quantile values and
+                              sampling summaries. Datetimes should be in utc, decimals should
+                              have type float, etc.
+        TODO(bojanserafimov): Sanity-check class_counts against sample_ratio * num_samples
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()
@@ -131,18 +182,33 @@ class LocalStatistics(Statistics):
             distinct_field_values_counts = dict()
         if field_quantiles is None:
             field_quantiles = dict()
+        if sampling_summaries is None:
+            sampling_summaries = dict()
 
-        self._class_counts = frozendict(class_counts)
-        self._vertex_edge_vertex_counts = frozendict(vertex_edge_vertex_counts)
-        self._distinct_field_values_counts = frozendict(distinct_field_values_counts)
-        self._field_quantiles = frozendict(field_quantiles)
+        # Validate arguments
+        for (vertex_name, field_name), quantile_list in six.iteritems(field_quantiles):
+            if len(quantile_list) < 2:
+                raise AssertionError(
+                    f"The number of quantiles should be at least 2. Field "
+                    f"{vertex_name}.{field_name} has {len(quantile_list)}."
+                )
+            for quantile in quantile_list:
+                if isinstance(quantile, datetime.datetime):
+                    if quantile.tzinfo is not None:
+                        raise NotImplementedError(
+                            f"Range reasoning for tz-aware datetimes is not implemented. "
+                            f"found tz-aware quantiles for {vertex_name}.{field_name}."
+                        )
+
+        self._class_counts = class_counts
+        self._vertex_edge_vertex_counts = vertex_edge_vertex_counts
+        self._distinct_field_values_counts = distinct_field_values_counts
+        self._field_quantiles = field_quantiles
+        self._sampling_summaries = sampling_summaries
 
     def get_class_count(self, class_name):
         """See base class."""
-        if class_name not in self._class_counts:
-            raise AssertionError(u'Class count statistic is required, but entry not found for: '
-                                 u'{}'.format(class_name))
-        return self._class_counts[class_name]
+        return self._class_counts.get(class_name)
 
     def get_vertex_edge_vertex_count(
         self, vertex_source_class_name, edge_class_name, vertex_target_class_name
@@ -160,3 +226,25 @@ class LocalStatistics(Statistics):
         """See base class."""
         statistic_key = (vertex_name, field_name)
         return self._field_quantiles.get(statistic_key)
+
+    def get_value_count(self, vertex_name: str, field_name: str, value: Any) -> Optional[float]:
+        """See base class."""
+        vertex_sampling_summary = self._sampling_summaries.get(vertex_name)
+        if vertex_sampling_summary is None:
+            return None
+
+        field_sampled_value_counts = vertex_sampling_summary.value_counts.get(field_name)
+        if field_sampled_value_counts is None:
+            return None
+
+        sampled_value_count = field_sampled_value_counts.get(value)
+        if sampled_value_count is not None:
+            return sampled_value_count * vertex_sampling_summary.sample_ratio
+        else:
+            # We want to minimize the error ratio: max(true_value/estimate, estimate/true_value).
+            # By rule of 3 (https://en.wikipedia.org/wiki/Rule_of_three_(statistics)), we have 95%
+            # confidence that the true value count is less than (3 * sample_ratio). So we have
+            # 95% confidence that the error ratio is at most math.sqrt(3 * sample_ratio). Some
+            # intuition: with a sample ratio of 1000 the error ratio bound evaluates to about
+            # sqrt(3000) ~= 55.
+            return max(1, math.sqrt(3 * vertex_sampling_summary.sample_ratio))

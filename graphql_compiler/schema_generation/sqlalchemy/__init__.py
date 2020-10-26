@@ -5,7 +5,7 @@ from .edge_descriptors import get_join_descriptors_from_edge_descriptors
 from .schema_graph_builder import get_sqlalchemy_schema_graph
 
 
-def get_sqlalchemy_schema_info_from_specified_metadata(
+def get_sqlalchemy_schema_info(
     vertex_name_to_table, direct_edges, dialect, class_to_field_type_overrides=None
 ):
     """Return a SQLAlchemySchemaInfo from the metadata.
@@ -46,17 +46,20 @@ def get_sqlalchemy_schema_info_from_specified_metadata(
                                        (string -> {string -> GraphQLType}). Used to override the
                                        type of a field in the class where it's first defined and all
                                        the class's subclasses.
-    Return:
+
+    Returns:
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
     schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
 
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
-        schema_graph, class_to_field_type_overrides=class_to_field_type_overrides,
-        hidden_classes=set()
+        schema_graph,
+        class_to_field_type_overrides=class_to_field_type_overrides,
+        hidden_classes=set(),
     )
 
     join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
 
     return SQLAlchemySchemaInfo(
-        graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors)
+        graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
+    )

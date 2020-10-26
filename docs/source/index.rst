@@ -1,5 +1,5 @@
-The GraphQL Compiler
-====================
+GraphQL compiler
+================
 
 .. EDUCATIONAL: The toctree (Table Of Contents Tree) specifies the table of contents at the left
    side of the page. The maxdepth indicates which headers to include in the table of contents.
@@ -18,7 +18,7 @@ The GraphQL Compiler
             this solution.
          -  Another way is to write "Home <index>" instead of "Home <self>". This is a hack
             that fixes the issue, but leads to some error messages that will be confusing for
-            GraphQL Compiler Readthedocs contributors.
+            GraphQL compiler Read the Docs contributors.
 
 .. toctree::
    :hidden:
@@ -30,11 +30,11 @@ The GraphQL Compiler
    :description: Turn complex GraphQL queries into optimized database queries.
    :keywords: graphql compiler, database, orientdb, sql
 
-The GraphQL Compiler is a library that simplifies database querying and exploration by exposing one
-common query language for multiple database backends. The query language is:
+GraphQL compiler is a library that simplifies data querying and exploration by exposing one
+simple query language to target multiple database backends. The query language is:
 
 .. EDUCATIONAL: The pattern below is what you would call a definition list in restructuredtext.
-   The "terms" get special rendering in the readthedocs html file.
+   The "terms" get special rendering in the Read the Docs html file.
 
 Written in valid GraphQL syntax
    Since it uses GraphQL syntax, the user get access to the entire GraphQL ecosystem,
@@ -58,7 +58,7 @@ Generating the necessary schema info
 
 ..  TODO: Encapsulate all schema info in a SchemaInfo class.
 
-To use the GraphQL compiler the first thing one needs to do is to generate the schema info from the
+To use GraphQL compiler the first thing one needs to do is to generate the schema info from the
 underlying database as in the example below. Even though the example targets an OrientDB
 database, it is meant as a generic schema info generation example. See the homepage of your target
 database for more instructions on how to generate the necessary schema info.
@@ -82,6 +82,8 @@ In the snippet above the are two pieces of schema info:
 - :code:`schema` which represents the database using GraphQL's type system.
 - :code:`type_equivalence_hints` which helps deal with GraphQL's lack of concrete inheritance,
   (see :doc:`schema types <language_specification/schema_types>` for more info).
+
+When compiling, these will need to be bundled in a :code:`CommonSchemaInfo` object.
 
 Besides representing the database schema, a GraphQL schema includes other metadata such as a list
 of custom scalar types used by the compiler. We'll talk more about this metadata in
@@ -189,6 +191,7 @@ types of database backends:
 
 - :doc:`OrientDB <supported_databases/orientdb>`
 - :doc:`SQL Databases <supported_databases/sql>`, including SQL Server, Postgres and more.
+- :doc:`Neo4j/Redisgraph <supported_databases/neo4j_and_redisgraph>`
 
 .. toctree::
    :caption: Supported Databases
@@ -196,17 +199,20 @@ types of database backends:
 
    OrientDB <supported_databases/orientdb>
    SQL <supported_databases/sql>
+   Neo4j/Redisgraph <supported_databases/neo4j_and_redisgraph>
 
 Advanced Features
 ~~~~~~~~~~~~~~~~~
 
 To learn more about the advanced features in the GraphQL compiler see:
 
-- :doc:`Macro System <advanced_features/macro_system>`, to learn how to write "macro edges",
+- :doc:`Macro System <advanced_features/macro_system>` to learn how to write "macro edges",
   which allow users to define new edges that become part of the GraphQL schema, using existing
   edges as building blocks.
-- :doc:`Schema Graph <advanced_features/schema_graph>`, for an utility that makes it
+- :doc:`Schema Graph <advanced_features/schema_graph>` for an utility that makes it
   easy to explore the schema of a database, including the databases indexes.
+- :doc:`Additional Tools <advanced_features/additional_tools>` for a list of additional tools
+  included in the package, including a query pretty printer.
 
 .. toctree::
    :caption: Advanced Features
@@ -214,3 +220,26 @@ To learn more about the advanced features in the GraphQL compiler see:
 
    Macro System <advanced_features/macro_system>
    Schema Graph <advanced_features/schema_graph>
+   Additional Tools <advanced_features/additional_tools>
+
+About GraphQL compiler
+~~~~~~~~~~~~~~~~~~~~~~
+
+To learn more about the GraphQL compiler project see:
+
+- :doc:`Contributing <about/contributing>` for instructions on how you can contribute.
+- :doc:`Code of Conduct <about/code_of_conduct>` for the contributor code of conduct.
+- :doc:`Changelog <about/changelog>` for a history of changes.
+- :doc:`FAQ <about/faq>` for a list of frequently asked questions.
+- :doc:`Execution Model <about/execution_model>` to learn more about the design principles guiding
+  the development of the compiler and the guarantees the compiler provides.
+
+.. toctree::
+   :caption: About GraphQL compiler
+   :hidden:
+
+   Contributing <about/contributing>
+   Code of Conduct <about/code_of_conduct>
+   Changelog <about/changelog>
+   FAQ <about/faq>
+   Execution Model <about/execution_model>

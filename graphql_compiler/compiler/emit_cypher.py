@@ -14,21 +14,22 @@ def _emit_code_from_cypher_step(cypher_step):
     step_is_query_root = isinstance(cypher_step.step_block, QueryRoot)
 
     if no_linked_location ^ step_is_query_root:
-        raise AssertionError(u'Received an illegal CypherStep. Not having a linked location is '
-                             u'allowed if and only if the step is with a QueryRoot object. {}'
-                             .format(cypher_step))
+        raise AssertionError(
+            "Received an illegal CypherStep. Not having a linked location is "
+            "allowed if and only if the step is with a QueryRoot object. {}".format(cypher_step)
+        )
 
     has_where_block = cypher_step.where_block is not None
-    is_optional_step = (
-        isinstance(cypher_step.step_block, Traverse) and
-        (cypher_step.step_block.optional or
-         cypher_step.step_block.within_optional_scope)
+    is_optional_step = isinstance(cypher_step.step_block, Traverse) and (
+        cypher_step.step_block.optional or cypher_step.step_block.within_optional_scope
     )
     if has_where_block and is_optional_step:
-        raise AssertionError(u'Received an illegal CypherStep containing an optional step together '
-                             u'with a "where" Filter block. This is a bug in the lowering code, as '
-                             u'it should have moved the filtering to the global operations '
-                             u'section. {}'.format(cypher_step))
+        raise AssertionError(
+            "Received an illegal CypherStep containing an optional step together "
+            'with a "where" Filter block. This is a bug in the lowering code, as '
+            "it should have moved the filtering to the global operations "
+            "section. {}".format(cypher_step)
+        )
 
     step_location = cypher_step.as_block.location  # destination vertex for current step's traversal
     step_location_name = cypher_helpers.get_unique_vertex_name_from_location(step_location)
@@ -36,35 +37,36 @@ def _emit_code_from_cypher_step(cypher_step):
     is_fold_step = isinstance(step_location, FoldScopeLocation)
 
     template_data = {
-        'step_location': step_location_name,
-        'step_vertex_type': u':'.join(sorted(cypher_step.step_types)),
-        'quantifier': u'',
-        'left_edge_mark': u'',
-        'right_edge_mark': u'',
+        "step_location": step_location_name,
+        "step_vertex_type": ":".join(sorted(cypher_step.step_types)),
+        "quantifier": "",
+        "left_edge_mark": "",
+        "right_edge_mark": "",
     }
-    step_vertex_pattern = u'(%(step_location)s:%(step_vertex_type)s)'
+    step_vertex_pattern = "(%(step_location)s:%(step_vertex_type)s)"
 
     if cypher_step.linked_location is None:
-        pattern = u'MATCH ' + step_vertex_pattern
+        pattern = "MATCH " + step_vertex_pattern
     else:
         pattern = (
-            u'MATCH (%(linked_location)s)'
-            u'%(left_edge_mark)s-[:%(edge_type)s%(quantifier)s]-%(right_edge_mark)s' +
-            step_vertex_pattern
+            "MATCH (%(linked_location)s)"
+            "%(left_edge_mark)s-[:%(edge_type)s%(quantifier)s]-%(right_edge_mark)s"
+            + step_vertex_pattern
         )
         linked_location_name = cypher_helpers.get_unique_vertex_name_from_location(
-            cypher_step.linked_location)
-        template_data['linked_location'] = linked_location_name
+            cypher_step.linked_location
+        )
+        template_data["linked_location"] = linked_location_name
 
     if has_where_block:
-        pattern += u'\n  WHERE %(predicate)s'
-        template_data['predicate'] = cypher_step.where_block.predicate.to_cypher()
+        pattern += "\n  WHERE %(predicate)s"
+        template_data["predicate"] = cypher_step.where_block.predicate.to_cypher()
 
     if is_optional_step or is_fold_step:
         # OPTIONAL for fold too because if there is no such path for the given fold traversal, we
         # still want to return an empty list. Without OPTIONAL, the entire row would be missing
         # from the output.
-        pattern = u'OPTIONAL ' + pattern
+        pattern = "OPTIONAL " + pattern
 
     if isinstance(cypher_step.step_block, (Traverse, Recurse, Fold)):
         if isinstance(cypher_step.step_block, Fold):
@@ -73,20 +75,20 @@ def _emit_code_from_cypher_step(cypher_step):
             direction = cypher_step.step_block.direction
             edge_name = cypher_step.step_block.edge_name
 
-        template_data['edge_type'] = edge_name
+        template_data["edge_type"] = edge_name
 
         direction_lookup = {
-            'in': ('left_edge_mark', u'<'),
-            'out': ('right_edge_mark', u'>'),
+            "in": ("left_edge_mark", "<"),
+            "out": ("right_edge_mark", ">"),
         }
         direction_symbol_name, direction_symbol = direction_lookup[direction]
         template_data[direction_symbol_name] = direction_symbol
 
     if isinstance(cypher_step.step_block, Recurse):
-        template_data['quantifier'] = u'*0..%d' % cypher_step.step_block.depth
+        template_data["quantifier"] = "*0..%d" % cypher_step.step_block.depth
 
     # Comply with Cypher style guidebook on whitespace a bit.
-    pattern += u'\n'
+    pattern += "\n"
 
     return pattern % template_data
 
@@ -108,12 +110,12 @@ def _emit_with_clause_components(cypher_steps):
     # Sort the locations, to ensure a deterministic order.
     for index, location_name in enumerate(sorted(location_names)):
         if index > 0:
-            result.append(u',')
+            result.append(",")
 
         # We intentionally "rename" each location to its own name, to work around a limitation
         # in RedisGraph where un-aliased "WITH" clauses are not supported:
         # https://oss.redislabs.com/redisgraph/known_limitations/#unaliased-with-entities
-        result.append(u'\n  %(name)s AS %(name)s' % {'name': location_name})
+        result.append("\n  %(name)s AS %(name)s" % {"name": location_name})
 
     return result
 
@@ -125,23 +127,29 @@ def _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cyphe
     vertex_names = {}
     for cypher_step in current_fold_scope_cypher_steps:
         if not isinstance(cypher_step, CypherStep):
-            raise TypeError(u'Expected current_fold_scope_cypher_steps to contain only CypherStep '
-                            u'objects. Instead, got object {} of type {}. '
-                            u'current_fold_scope_cypher_steps: {}'
-                            .format(cypher_step, type(cypher_step),
-                                    current_fold_scope_cypher_steps))
+            raise TypeError(
+                "Expected current_fold_scope_cypher_steps to contain only CypherStep "
+                "objects. Instead, got object {} of type {}. "
+                "current_fold_scope_cypher_steps: {}".format(
+                    cypher_step, type(cypher_step), current_fold_scope_cypher_steps
+                )
+            )
         fold_scope_location = cypher_step.as_block.location
         full_vertex_name = cypher_helpers.get_fold_scope_location_full_path_name(
-            fold_scope_location)
+            fold_scope_location
+        )
         collected_name = cypher_helpers.get_collected_vertex_list_name(full_vertex_name)
-        vertex_names[u'collect(' + full_vertex_name + ')'] = collected_name
+        vertex_names["collect(" + full_vertex_name + ")"] = collected_name
 
     # Sort the locations, to ensure a deterministic order.
     for index, collect_call in enumerate(sorted(vertex_names)):
         if index > 0:
-            result.append(u',')
-        result.append(u'\n  {collect_call} AS {collected_name}'
-                      .format(collect_call=collect_call, collected_name=vertex_names[collect_call]))
+            result.append(",")
+        result.append(
+            "\n  {collect_call} AS {collected_name}".format(
+                collect_call=collect_call, collected_name=vertex_names[collect_call]
+            )
+        )
     return result
 
 
@@ -217,7 +225,7 @@ def _emit_fold_scope(cypher_query):
             query_data.append(_emit_code_from_cypher_step(cypher_step))
 
         # step 3
-        query_data.append(u'WITH')
+        query_data.append("WITH")
 
         # First for all non-fold-scope CypherSteps, then all previous fold scope CypherSteps
         with_clause_steps = chain(cypher_query.steps, previous_fold_scope_cypher_steps)
@@ -225,17 +233,19 @@ def _emit_fold_scope(cypher_query):
 
         # Then for all current fold scope CypherSteps
         if current_fold_scope_cypher_steps:
-            query_data.append(u',')
+            query_data.append(",")
         query_data.extend(
-            _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cypher_steps))
+            _emit_with_clause_components_for_current_fold_scope(current_fold_scope_cypher_steps)
+        )
 
-        query_data.append(u'\n')
+        query_data.append("\n")
 
         # step 4 preparation:
         # Now that we've finished out this fold scope, we need to ensure these vertices get
         # passed on through all later WITH clauses as well.
         previous_fold_scope_cypher_steps.extend(current_fold_scope_cypher_steps)
     return query_data
+
 
 ##############
 # Public API #
@@ -248,11 +258,11 @@ def emit_code_from_ir(schema_info, cypher_query):
     # Cypher 9 (page 196) and we should be able to specify the Cypher version in the query.
     # Unfortunately, this turns out to be invalid in both Neo4j and RedisGraph-- Neo4j supports
     # Cypher version 2.3, 3.4, and 3.5 [1] while RedisGraph doesn't support the syntax at all [2].
-    # When this does eventually get resolved, we can change `query_data` back to `[u'CYPHER 9']`
+    # When this does eventually get resolved, we can change `query_data` back to `['CYPHER 9']`
     # [0] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     # [1] https://github.com/neo4j/neo4j/issues/12239
     # [2] https://github.com/RedisGraph/RedisGraph/issues/552
-    query_data = [u'']
+    query_data = [""]
 
     # if we have any fold directives in the query, this loop corresponds to step 1 described in
     # the comment in the function _emit_fold_scope().
@@ -263,23 +273,23 @@ def emit_code_from_ir(schema_info, cypher_query):
         query_data.extend(_emit_fold_scope(cypher_query))
 
     if cypher_query.global_where_block is not None:
-        query_data.append(u'WITH')
+        query_data.append("WITH")
         query_data.extend(_emit_with_clause_components(cypher_query.steps))
 
-        query_data.append(u'WHERE ')
+        query_data.append("WHERE ")
         query_data.append(cypher_query.global_where_block.predicate.to_cypher())
-        query_data.append(u'\n')
+        query_data.append("\n")
 
-    query_data.append(u'RETURN')
+    query_data.append("RETURN")
     output_fields = cypher_query.output_block.fields
     sorted_output_keys = sorted(output_fields.keys())
-    break_and_indent = u'\n  '
+    break_and_indent = "\n  "
     for output_index, output_name in enumerate(sorted_output_keys):
         if output_index > 0:
-            query_data.append(u',')
+            query_data.append(",")
 
         output_expression = output_fields[output_name]
         query_data.append(break_and_indent)
-        query_data.append(u'%s AS `%s`' % (output_expression.to_cypher(), output_name))
+        query_data.append("%s AS `%s`" % (output_expression.to_cypher(), output_name))
 
-    return u''.join(query_data)
+    return "".join(query_data)

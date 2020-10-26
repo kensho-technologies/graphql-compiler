@@ -19,10 +19,10 @@ End-to-End Example
 
 See :ref:`getting-started` for an end-to-end OrientDB example.
 
-
 Performance Penalties
 ---------------------
 
+.. _compound_optional_performance_penalty:
 
 Compound :code:`optional` Performance Penalty
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

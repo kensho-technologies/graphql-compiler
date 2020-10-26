@@ -21,19 +21,22 @@ def represent_float_as_str(value):
     # The best way to ensure precision is not lost is to convert to string via Decimal:
     # https://github.com/mogui/pyorient/pull/226/files
     if not isinstance(value, float):
-        raise GraphQLInvalidArgumentError(u'Attempting to represent a non-float as a float: '
-                                          u'{}'.format(value))
+        raise GraphQLInvalidArgumentError(
+            "Attempting to represent a non-float as a float: {}".format(value)
+        )
 
     with decimal.localcontext() as ctx:
         ctx.prec = 20  # floats are max 80-bits wide = 20 significant digits
-        return u'{:f}'.format(decimal.Decimal(value))
+        return "{:f}".format(decimal.Decimal(value))
 
 
 def type_check_and_str(python_type, value):
     """Type-check the value, and then just return str(value)."""
     if not isinstance(value, python_type):
-        raise GraphQLInvalidArgumentError(u'Attempting to represent a non-{type} as a {type}: '
-                                          u'{value}'.format(type=python_type, value=value))
+        raise GraphQLInvalidArgumentError(
+            "Attempting to represent a non-{type} as a {type}: "
+            "{value}".format(type=python_type, value=value)
+        )
 
     return str(value)
 

@@ -1,10 +1,10 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 
-POSTGRES = u'postgresql'
-MYSQL = u'mysql'
-MARIADB = u'mariadb'
-MSSQL = u'mssql'
-SQLITE = u'sqlite'
-ORIENTDB = u'orientdb'
-NEO4J = u'neo4j'
-REDISGRAPH = u'redisgraph'
+POSTGRES = "postgresql"
+MYSQL = "mysql"
+MARIADB = "mariadb"
+MSSQL = "mssql"
+SQLITE = "sqlite"
+ORIENTDB = "orientdb"
+NEO4J = "neo4j"
+REDISGRAPH = "redisgraph"
