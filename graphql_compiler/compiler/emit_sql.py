@@ -55,7 +55,7 @@ def _get_primary_key_name(alias: Alias, vertex_type_name: str, directive_name: s
         alias: the sqlalchemy object with primary key information
         vertex_type_name: The vertex name that represents the alias. Used for error messages
                           only.
-        directive_name: name of the directive that requires for the single-column
+        directive_name: name of the directive that requires the single-column
                         primary key to exist. Used in error messages only.
 
     Returns:
