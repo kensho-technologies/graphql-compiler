@@ -46,13 +46,15 @@ FOLD_OUTPUT_FORMAT_STRING = "fold_output_{}"
 FOLD_SUBQUERY_FORMAT_STRING = "folded_subquery_{}"
 
 
-def _get_primary_key_name(alias: Alias, directive_name: str) -> str:
+def _get_primary_key_name(alias: Alias, vertex_type_name: str, directive_name: str) -> str:
     """Return the name of the single-column primary key for the alias
 
     If there is no single-column primary key for this alias, an error is raised.
 
     Args:
         alias: the sqlalchemy object with primary key information
+        vertex_type_name: The vertex name that represents the alias. Used for error messages
+                          only.
         directive_name: name of the directive that requires for the single-column
                         primary key to exist. Used in error messages only.
 
@@ -63,12 +65,12 @@ def _get_primary_key_name(alias: Alias, directive_name: str) -> str:
 
     if not primary_keys:
         raise AssertionError(
-            f"The table for vertex {self._current_classname} has no primary key specified. "
+            f"The table for vertex {vertex_type_name} has no primary key specified. "
             f"This information is required to emit a {directive_name} directive."
         )
     if len(primary_keys) > 1:
         raise NotImplementedError(
-            f"The table for vertex {self._current_classname} has a composite primary key "
+            f"The table for vertex {vertex_type_name} has a composite primary key "
             f"{primary_keys}. The SQL backend does not support "
             f"{directive_name} on tables with composite primary keys."
         )
@@ -150,7 +152,7 @@ def _find_used_columns(
                 # The primary key may be used if the recursive cte base semijoins to
                 # the pre-recurse cte by primary key.
                 alias = sql_schema_info.vertex_name_to_table[location_info.type.name].alias()
-                primary_key_name = _get_primary_key_name(alias, "@recurse")
+                primary_key_name = _get_primary_key_name(alias, location_info.type.name, "@recurse")
                 used_columns.setdefault(get_vertex_path(location), set()).add(primary_key_name)
 
                 # The from_column is used at the destination as well, inside the recursive step
@@ -998,7 +1000,7 @@ class CompilationState(object):
             name of the single-column primary key
         """
         alias = self._sql_schema_info.vertex_name_to_table[self._current_classname].alias()
-        return _get_primary_key_name(alias, directive_name)
+        return _get_primary_key_name(alias, self._current_classname, directive_name)
 
     def recurse(self, vertex_field: str, depth: int) -> None:
         """Execute a Recurse Block."""
