@@ -157,7 +157,6 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         the process of query execution begins.
 
         Consider the following example schema:
-        ***
             schema {
                 query: RootSchemaQuery
             }
@@ -174,13 +173,12 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                 # This is the root query type for the schema, as defined at the top of the schema.
                 Foo: [Foo]
             }
-        ***
 
         Per the GraphQL specification, since the definition of RootSchemaQuery only contains the
         type named Foo, queries must start by querying for Foo in order to be valid for the schema:
             {
                 Foo {
-                    < ... some fields here ... >
+                    < ... stuff here ... >
                 }
             }
 

@@ -1,3 +1,4 @@
+# Copyright 2020-present Kensho Technologies, LLC.
 from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import (

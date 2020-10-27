@@ -1805,6 +1805,45 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_inwards_recurse_after_traverse(self):
+        test_data = test_input_data.inwards_recurse_after_traverse()
+
+        base_location = helpers.Location(("Species",))
+        child_location = base_location.navigate_to_subpath("in_Animal_OfSpecies")
+        recurse_location = child_location.navigate_to_subpath("in_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Species"}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse("in", "Animal_OfSpecies"),
+            blocks.MarkLocation(child_location),
+            blocks.Recurse("in", "Animal_ParentOf", 1),
+            blocks.MarkLocation(recurse_location),
+            blocks.Backtrack(child_location),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "species_name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "animal_name": expressions.OutputContextField(
+                        child_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "ancestor_name": expressions.OutputContextField(
+                        recurse_location.navigate_to_field("name"), GraphQLString
+                    ),
+                }
+            ),
+        ]
+        expected_location_types = {
+            base_location: "Species",
+            child_location: "Animal",
+            recurse_location: "Animal",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_recurse_with_new_output_inside_recursion_and_filter_at_root(self):
         test_data = test_input_data.recurse_with_new_output_inside_recursion_and_filter_at_root()
 
@@ -3694,6 +3733,49 @@ class IrGenerationTests(unittest.TestCase):
             parent_location: "Animal",
             sibling_fold: "Animal",
             sibling_species_fold: "Species",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_fold_and_filter_and_traverse_and_output(self):
+        test_data = test_input_data.fold_and_filter_and_traverse_and_output()
+
+        base_location = helpers.Location(("Animal",))
+        parent_fold = base_location.navigate_to_fold("in_Animal_ParentOf")
+        grand_parent_fold = parent_fold.navigate_to_subpath("in_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Animal"}),
+            blocks.MarkLocation(base_location),
+            blocks.Fold(parent_fold),
+            blocks.Filter(
+                expressions.BinaryComposition(
+                    ">",
+                    expressions.LocalField("net_worth", GraphQLDecimal),
+                    expressions.Variable("$parent_min_worth", GraphQLDecimal),
+                )
+            ),
+            blocks.MarkLocation(parent_fold),
+            blocks.Traverse("in", "Animal_ParentOf"),
+            blocks.MarkLocation(grand_parent_fold),
+            blocks.Backtrack(parent_fold),
+            blocks.Unfold(),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "animal_name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "grand_parent_list": expressions.FoldedContextField(
+                        grand_parent_fold.navigate_to_field("name"), GraphQLList(GraphQLString)
+                    ),
+                }
+            ),
+        ]
+        expected_location_types = {
+            base_location: "Animal",
+            parent_fold: "Animal",
+            grand_parent_fold: "Animal",
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)

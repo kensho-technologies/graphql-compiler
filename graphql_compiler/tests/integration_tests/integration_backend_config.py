@@ -54,8 +54,9 @@ SQL_BACKEND_TO_CONNECTION_STRING = {
     #                       databases and schemas. I'm keeping the code to remember the connection
     #                       string formats.
     #
-    # test_backend.POSTGRES:
-    #     'postgresql://postgres:{password}@localhost:5433'.format(password=DEFAULT_ROOT_PASSWORD),
+    test_backend.POSTGRES: "postgresql://postgres:{password}@localhost:5433".format(
+        password=DEFAULT_ROOT_PASSWORD
+    ),
     # test_backend.MYSQL:
     #     'mysql://root:{password}@127.0.0.1:3307'.format(password=DEFAULT_ROOT_PASSWORD),
     # test_backend.MARIADB:
