@@ -47,7 +47,7 @@ FOLD_SUBQUERY_FORMAT_STRING = "folded_subquery_{}"
 
 
 def _get_primary_key_name(alias: Alias, vertex_type_name: str, directive_name: str) -> str:
-    """Return the name of the single-column primary key for the alias
+    """Return the name of the single-column primary key for the alias.
 
     If there is no single-column primary key for this alias, an error is raised.
 
