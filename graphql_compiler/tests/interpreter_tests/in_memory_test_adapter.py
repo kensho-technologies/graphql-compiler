@@ -1,22 +1,23 @@
 from itertools import chain, repeat
-from typing import Any, Iterable, Tuple
+from typing import Any, Collection, Iterable, Mapping, Optional, Tuple
 
-from ...interpreter import DataContext, EdgeInfo, InterpreterAdapter
+from ...compiler.helpers import get_parameter_name, is_runtime_parameter
+from ...interpreter import DataContext, EdgeInfo, FilterInfo, InterpreterAdapter
 
 
 vertices = {
     "Animal": [
-        {"name": "Scooby Doo", "uuid": "1001"},
-        {"name": "Hedwig", "uuid": "1002"},
-        {"name": "Beethoven", "uuid": "1003"},
+        {"name": "Scooby Doo", "uuid": "1001", "__typename": "Animal"},
+        {"name": "Hedwig", "uuid": "1002", "__typename": "Animal"},
+        {"name": "Beethoven", "uuid": "1003", "__typename": "Animal"},
         # 101 Dalmatians and sequels
-        {"name": "Pongo", "uuid": "1004"},
-        {"name": "Perdy", "uuid": "1005"},
-        {"name": "Dipstick", "uuid": "1006"},
-        {"name": "Dottie", "uuid": "1007"},
-        {"name": "Domino", "uuid": "1008"},
-        {"name": "Little Dipper", "uuid": "1009"},
-        {"name": "Oddball", "uuid": "1010"},
+        {"name": "Pongo", "uuid": "1004", "__typename": "Animal"},
+        {"name": "Perdy", "uuid": "1005", "__typename": "Animal"},
+        {"name": "Dipstick", "uuid": "1006", "__typename": "Animal"},
+        {"name": "Dottie", "uuid": "1007", "__typename": "Animal"},
+        {"name": "Domino", "uuid": "1008", "__typename": "Animal"},
+        {"name": "Little Dipper", "uuid": "1009", "__typename": "Animal"},
+        {"name": "Oddball", "uuid": "1010", "__typename": "Animal"},
     ],
 }
 edges = {
@@ -31,6 +32,11 @@ edges = {
         ("1007", "1010"),
     ],
 }
+subtypes_by_type = {
+    "Animal": ["Animal"],
+    "Entity": ["Entity", "Animal"],
+    "UniquelyIdentifiable": ["UniquelyIdentifiable", "Animal"],
+}
 vertices_by_uuid = {vertex["uuid"]: vertex for vertex in chain.from_iterable(vertices.values())}
 
 
@@ -43,10 +49,43 @@ class InMemoryTestAdapter(InterpreterAdapter[dict]):
     def get_tokens_of_type(
         self,
         type_name: str,
+        runtime_arg_hints: Optional[Mapping[str, Any]] = None,
+        filter_hints: Optional[Collection[FilterInfo]] = None,
         **hints: Any,
     ) -> Iterable[dict]:
         """Return an iterable of vertices of the given type."""
-        return vertices.get(type_name, [])  # vertex types without specified data have no instances
+        equals_uuids: Optional[Collection[str]] = None
+        if filter_hints is not None:
+            for filter_hint in filter_hints:
+                if filter_hint.fields == ("uuid",) and len(filter_hint.args) > 0:
+                    first_argument = filter_hint.args[0]
+                    if is_runtime_parameter(first_argument):
+                        first_argument_name = get_parameter_name(first_argument)
+                        if filter_hint.op_name == "=":
+                            equals_uuids = [runtime_arg_hints[first_argument_name]]
+                            break
+                        elif filter_hint.op_name == "in_collection":
+                            equals_uuids = runtime_arg_hints[first_argument_name]
+                            break
+
+        if equals_uuids is not None:
+            # Use the provided hints to optimize loading vertices:
+            # only yield vertices with matching uuids.
+            expected_types = frozenset(subtypes_by_type.get(type_name, []))
+            vertex: Optional[dict] = None
+            for equals_uuid in equals_uuids:
+                vertex = vertices_by_uuid.get(equals_uuid, None)
+                if vertex["__typename"] not in expected_types:
+                    # The vertex by that uuid exists, but is not of appropriate type to be returned.
+                    vertex = None
+
+                if vertex is not None:
+                    yield vertex
+        else:
+            # We were not able to use hints, yield all vertices of the given type.
+            for subtype_name in subtypes_by_type.get(type_name, []):
+                # Vertex types without specified data have no instances, hence the .get() calls.
+                yield from vertices.get(subtype_name, [])
 
     def project_property(
         self,

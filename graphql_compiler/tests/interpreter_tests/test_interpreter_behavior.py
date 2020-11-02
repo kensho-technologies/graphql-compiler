@@ -175,7 +175,7 @@ class InterpreterBehaviorTests(TestCase):
 
         trace = adapter.recorder.get_trace()
 
-        scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001"}
+        scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001", "__typename": "Animal"}
         scooby_doo_base_context = DataContext[dict](
             scooby_doo_token,
             {
@@ -253,25 +253,25 @@ class InterpreterBehaviorTests(TestCase):
 
         query = """{
             Animal {
-                name @output(out_name: "name")
-                uuid @filter(op_name: "=", value: ["$scooby_uuid"])
+                name @filter(op_name: "=", value: ["$scooby_name"])
+                uuid @output(out_name: "uuid")
             }
         }"""
         args: Dict[str, Any] = {
-            "scooby_uuid": "1001",
+            "scooby_name": "Scooby Doo",
         }
 
         result_gen = interpret_query(adapter, self.schema, query, args)
 
         next_row = next(result_gen)  # advance the generator one step
         expected_next_row = {
-            "name": "Scooby Doo",
+            "uuid": "1001",
         }
         self.assertEqual(expected_next_row, next_row)
 
         trace = adapter.recorder.get_trace()
 
-        scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001"}
+        scooby_doo_token = {"name": "Scooby Doo", "uuid": "1001", "__typename": "Animal"}
         scooby_doo_local_context = DataContext[dict](
             scooby_doo_token,
             {},
@@ -293,10 +293,10 @@ class InterpreterBehaviorTests(TestCase):
         )
         expected_hints = {
             "runtime_arg_hints": {
-                "scooby_uuid": "1001",
+                "scooby_name": "Scooby Doo",
             },
             "used_property_hints": frozenset({"name", "uuid"}),
-            "filter_hints": [FilterInfo(("uuid",), "=", ("$scooby_uuid",))],
+            "filter_hints": [FilterInfo(("name",), "=", ("$scooby_name",))],
             "neighbor_hints": [],
         }
         expected_trace = RecordedTrace[dict](
@@ -307,7 +307,7 @@ class InterpreterBehaviorTests(TestCase):
                     0,
                     RecordedTrace.DEFAULT_ROOT_UID,
                     (
-                        ("__input_iterable", "Animal", "name"),
+                        ("__input_iterable", "Animal", "uuid"),
                         expected_hints,
                     ),
                 ),
@@ -317,7 +317,7 @@ class InterpreterBehaviorTests(TestCase):
                     1,
                     RecordedTrace.DEFAULT_ROOT_UID,
                     (
-                        ("__input_iterable", "Animal", "uuid"),
+                        ("__input_iterable", "Animal", "name"),
                         expected_hints,
                     ),
                 ),
@@ -350,7 +350,7 @@ class InterpreterBehaviorTests(TestCase):
                     "project_property",
                     5,
                     1,
-                    (scooby_doo_local_context, "1001"),
+                    (scooby_doo_local_context, "Scooby Doo"),
                 ),
                 AdapterOperation(
                     "yield",
@@ -364,7 +364,133 @@ class InterpreterBehaviorTests(TestCase):
                     "project_property",
                     7,
                     0,
-                    (scooby_doo_global_context, "Scooby Doo"),
+                    (scooby_doo_global_context, "1001"),
+                ),
+            )
+        )
+        self.assertEqual(expected_trace, trace)
+
+    def test_filter_hints_on_get_tokens_of_type_optimize_initial_data_loading(self) -> None:
+        adapter = InterpreterAdapterTap(InMemoryTestAdapter())
+
+        query = """{
+            Animal {
+                uuid @output(out_name: "uuid") @filter(op_name: "=", value: ["$uuid"])
+            }
+        }"""
+        args: Dict[str, Any] = {
+            "uuid": "1008",
+        }
+
+        result_gen = interpret_query(adapter, self.schema, query, args)
+
+        all_data = list(result_gen)  # drain the generator
+        expected_next_row = {
+            "uuid": "1008",
+        }
+        self.assertEqual([expected_next_row], all_data)
+
+        trace = adapter.recorder.get_trace()
+
+        domino_token = {"name": "Domino", "uuid": "1008", "__typename": "Animal"}
+        domino_local_context = DataContext[dict](
+            domino_token,
+            {},
+            make_empty_stack(),
+        )
+        domino_global_base_context = DataContext[dict](
+            domino_token,
+            {
+                Location(("Animal",), None, 1): domino_token,
+            },
+            make_empty_stack().push({}),
+        )
+        domino_global_context = DataContext[dict](
+            domino_token,
+            {
+                Location(("Animal",), None, 1): domino_token,
+            },
+            domino_global_base_context.expression_stack.push(domino_global_base_context),
+        )
+        expected_hints = {
+            "runtime_arg_hints": {
+                "uuid": "1008",
+            },
+            "used_property_hints": frozenset({"uuid"}),
+            "filter_hints": [FilterInfo(("uuid",), "=", ("$uuid",))],
+            "neighbor_hints": [],
+        }
+        expected_trace = RecordedTrace[dict](
+            (
+                AdapterOperation(
+                    "call",
+                    "project_property",
+                    0,
+                    RecordedTrace.DEFAULT_ROOT_UID,
+                    (
+                        ("__input_iterable", "Animal", "uuid"),
+                        expected_hints,
+                    ),
+                ),
+                AdapterOperation(
+                    "call",
+                    "project_property",
+                    1,
+                    RecordedTrace.DEFAULT_ROOT_UID,
+                    (
+                        ("__input_iterable", "Animal", "uuid"),
+                        expected_hints,
+                    ),
+                ),
+                AdapterOperation(
+                    "call",
+                    "get_tokens_of_type",
+                    2,
+                    RecordedTrace.DEFAULT_ROOT_UID,
+                    (
+                        ("Animal",),
+                        expected_hints,
+                    ),
+                ),
+                AdapterOperation(
+                    # This is the only "yield" from get_tokens_of_type(), since its implementation
+                    # is able to use the provided hints to eliminate other vertices. This is
+                    # an example of the predicate pushdown optimization: even though the filter
+                    # semantically happens later, it can be applied early by "pushing it down" into
+                    # the get_tokens_of_type() call.
+                    "yield",
+                    "get_tokens_of_type",
+                    3,
+                    2,
+                    domino_token,
+                ),
+                AdapterOperation(
+                    "yield",
+                    InterpreterAdapterTap.INPUT_ITERABLE_NAME,
+                    4,
+                    1,
+                    domino_local_context,
+                ),
+                AdapterOperation(
+                    "yield",
+                    "project_property",
+                    5,
+                    1,
+                    (domino_local_context, "1008"),
+                ),
+                AdapterOperation(
+                    "yield",
+                    InterpreterAdapterTap.INPUT_ITERABLE_NAME,
+                    6,
+                    0,
+                    domino_global_context,
+                ),
+                AdapterOperation(
+                    "yield",
+                    "project_property",
+                    7,
+                    0,
+                    (domino_global_context, "1008"),
                 ),
             )
         )
