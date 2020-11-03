@@ -5,6 +5,7 @@ from typing import Any, Iterator, List, cast
 
 from ..compiler.compiler_frontend import ast_to_ir
 from ..compiler.helpers import Location
+from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..cost_estimation.filter_selectivity_utils import get_integer_interval_for_filters_on_field
 from ..cost_estimation.helpers import is_uuid4_type
 from ..cost_estimation.int_value_conversion import (
@@ -196,8 +197,7 @@ def _compute_parameters_for_non_uuid_field(
 
 
 def generate_parameters_for_vertex_partition(
-    schema_info: QueryPlanningSchemaInfo,
-    query: ASTWithParameters,
+    analysis: QueryPlanningAnalysis,
     vertex_partition: VertexPartitionPlan,
 ) -> Iterator[Any]:
     """Return a generator of parameter values that realize the vertex partition.
@@ -222,32 +222,28 @@ def generate_parameters_for_vertex_partition(
         raise AssertionError("Invalid number of splits {}".format(vertex_partition))
 
     # Find the FilterInfos on the pagination field
-    query_metadata = ast_to_ir(
-        schema_info.schema,
-        query.query_ast,
-        type_equivalence_hints=schema_info.type_equivalence_hints,
-    ).query_metadata_table
-    query_location = Location(vertex_partition.query_path)
-    vertex_type = query_metadata.get_location_info(query_location).type.name
-    filter_infos = query_metadata.get_filter_infos(query_location)
+    vertex_type = analysis.types[vertex_partition.query_path].name
+    filter_infos = analysis.filters[vertex_partition.query_path]
     filters_on_field = {
         filter_info for filter_info in filter_infos if filter_info.fields == (pagination_field,)
     }
 
     # Get the value interval currently imposed by existing filters
     integer_interval = get_integer_interval_for_filters_on_field(
-        schema_info, filters_on_field, vertex_type, pagination_field, query.parameters
+        analysis.schema_info, filters_on_field, vertex_type,
+        pagination_field, analysis.ast_with_parameters.parameters
     )
     field_value_interval = _convert_int_interval_to_field_value_interval(
-        schema_info, vertex_type, pagination_field, integer_interval
+        analysis.schema_info, vertex_type, pagination_field, integer_interval
     )
 
     # Compute parameters
-    if is_uuid4_type(schema_info, vertex_type, pagination_field):
+    if is_uuid4_type(analysis.schema_info, vertex_type, pagination_field):
         return _compute_parameters_for_uuid_field(
-            schema_info, integer_interval, vertex_partition, vertex_type, pagination_field
+            analysis.schema_info, integer_interval, vertex_partition, vertex_type, pagination_field
         )
     else:
         return _compute_parameters_for_non_uuid_field(
-            schema_info, field_value_interval, vertex_partition, vertex_type, pagination_field
+            analysis.schema_info, field_value_interval,
+            vertex_partition, vertex_type, pagination_field
         )
