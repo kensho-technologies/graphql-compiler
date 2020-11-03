@@ -208,8 +208,7 @@ def generate_parameters_for_vertex_partition(
     the same results.
 
     Args:
-        schema_info: contains statistics and relevant schema information
-        query: the query for which we are generating parameters
+        analysis: the query augmented with various analysis steps
         vertex_partition: the pagination plan we are working on
 
     Returns:
