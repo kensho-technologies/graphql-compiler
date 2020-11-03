@@ -3,8 +3,6 @@ import bisect
 import itertools
 from typing import Any, Iterator, List, cast
 
-from ..compiler.compiler_frontend import ast_to_ir
-from ..compiler.helpers import Location
 from ..cost_estimation.analysis import QueryPlanningAnalysis
 from ..cost_estimation.filter_selectivity_utils import get_integer_interval_for_filters_on_field
 from ..cost_estimation.helpers import is_uuid4_type
@@ -14,7 +12,6 @@ from ..cost_estimation.int_value_conversion import (
     convert_int_to_field_value,
 )
 from ..cost_estimation.interval import Interval, intersect_int_intervals, measure_int_interval
-from ..global_utils import ASTWithParameters
 from ..schema.schema_info import QueryPlanningSchemaInfo
 from .pagination_planning import VertexPartitionPlan
 
@@ -229,8 +226,11 @@ def generate_parameters_for_vertex_partition(
 
     # Get the value interval currently imposed by existing filters
     integer_interval = get_integer_interval_for_filters_on_field(
-        analysis.schema_info, filters_on_field, vertex_type,
-        pagination_field, analysis.ast_with_parameters.parameters
+        analysis.schema_info,
+        filters_on_field,
+        vertex_type,
+        pagination_field,
+        analysis.ast_with_parameters.parameters,
     )
     field_value_interval = _convert_int_interval_to_field_value_interval(
         analysis.schema_info, vertex_type, pagination_field, integer_interval
@@ -243,6 +243,9 @@ def generate_parameters_for_vertex_partition(
         )
     else:
         return _compute_parameters_for_non_uuid_field(
-            analysis.schema_info, field_value_interval,
-            vertex_partition, vertex_type, pagination_field
+            analysis.schema_info,
+            field_value_interval,
+            vertex_partition,
+            vertex_type,
+            pagination_field,
         )
