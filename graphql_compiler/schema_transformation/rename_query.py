@@ -91,12 +91,11 @@ class RenameQueryVisitor(Visitor):
         """Change the name of the input node if necessary, according to renamings.
 
         Args:
-            node: represents a field in an AST, containing a .name attribute
-                  corresponding to an AST node of type Name. It is not modified
+            node: represents a field in an AST, containing a .name attribute. It is not modified
 
         Returns:
-            FieldNode, possibly with a new name. If the name was not changed, the returned object
-            is the exact same object as the input
+            Node that is almost identical to the input node except for a possibly different name. If
+            the name was not changed, the returned object is the exact same object as the input
         """
         name_string = node.name.value
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
