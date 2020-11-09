@@ -1,13 +1,25 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from graphql.language.ast import FieldNode
-from graphql.language.visitor import Visitor, visit
+from typing import Any, Dict, List, Union
+
+from graphql.language.ast import (
+    DocumentNode,
+    FieldNode,
+    NamedTypeNode,
+    OperationDefinitionNode,
+    OperationType,
+    SelectionSetNode,
+)
+from graphql.language.visitor import Visitor, VisitorAction, visit
 from graphql.validation import validate
 
 from ..exceptions import GraphQLValidationError
-from .utils import get_copy_of_node_with_new_name
+from .rename_schema import RenamedSchemaDescriptor
+from .utils import RenameQueryNodeTypesT, get_copy_of_node_with_new_name
 
 
-def rename_query(ast, renamed_schema_descriptor):
+def rename_query(
+    ast: DocumentNode, renamed_schema_descriptor: RenamedSchemaDescriptor
+) -> DocumentNode:
     """Translate names of types using reverse_name_map of the input RenamedSchemaDescriptor.
 
     The direction in which types and fields are renamed is opposite of the process that
@@ -18,15 +30,14 @@ def rename_query(ast, renamed_schema_descriptor):
     of the query type) will be renamed. No other field names will be renamed.
 
     Args:
-        ast: Document, representing a query
-        renamed_schema_descriptor: RenamedSchemaDescriptor, a namedtuple including the
-                                   attribute reverse_name_map, which maps the new, renamed
-                                   names of types to their original names. This function will
-                                   revert these renamed types in the query ast back to their
-                                   original names
+        ast: represents a query
+        renamed_schema_descriptor: namedtuple including the attribute reverse_name_map, which maps
+                                   the new, renamed names of types to their original names. This
+                                   function will revert these renamed types in the query ast back to
+                                   their original names
 
     Returns:
-        Document, a new AST representing the renamed query
+        New AST representing the renamed query
 
     Raises:
         - GraphQLValidationError if the AST does not have the expected form; in particular,
@@ -43,6 +54,14 @@ def rename_query(ast, renamed_schema_descriptor):
         )
 
     query_definition = ast.definitions[0]
+    if not (
+        isinstance(query_definition, OperationDefinitionNode)
+        and query_definition.operation == OperationType.QUERY
+    ):
+        raise AssertionError(
+            f"AST argument for rename_query is not a query. Instead, query definition was of type "
+            f"{type(query_definition)}."
+        )
 
     for selection in query_definition.selection_set.selections:
         if not isinstance(selection, FieldNode):  # possibly an InlineFragment
@@ -58,27 +77,25 @@ def rename_query(ast, renamed_schema_descriptor):
 
 
 class RenameQueryVisitor(Visitor):
-    def __init__(self, renamings):
+    def __init__(self, renamings: Dict[str, str]) -> None:
         """Create a visitor for renaming types and root vertex fields in a query AST.
 
         Args:
-            renamings: Dict[str, str]. Any type or root field of the AST whose name appears as
-                       a key in the dict will be renamed to the corresponding value in the dict.
+            renamings: Maps type or root field names to the new value in the dict.
                        Any name not in the dict will be unchanged
         """
         self.renamings = renamings
         self.selection_set_level = 0
 
-    def _rename_name(self, node):
+    def _rename_name(self, node: RenameQueryNodeTypesT) -> RenameQueryNodeTypesT:
         """Change the name of the input node if necessary, according to renamings.
 
         Args:
-            node: Field, an object representing a field in an AST, containing a .name attribute
-                  corresponding to an AST node of type Name. It is not modified
+            node: represents a field in an AST, containing a .name attribute. It is not modified
 
         Returns:
-            Field, possibly with a new name. If the name was not changed, the returned object
-            is the exact same object as the input
+            Node that is almost identical to the input node except for a possibly different name. If
+            the name was not changed, the returned object is the exact same object as the input
         """
         name_string = node.name.value
         new_name_string = self.renamings.get(name_string, name_string)  # Default use original
@@ -88,7 +105,9 @@ class RenameQueryVisitor(Visitor):
             node_with_new_name = get_copy_of_node_with_new_name(node, new_name_string)
             return node_with_new_name
 
-    def enter_named_type(self, node, *args):
+    def enter_named_type(
+        self, node: NamedTypeNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> Union[NamedTypeNode, VisitorAction]:
         """Rename name of node."""
         # NamedType nodes describe types in the schema, appearing in InlineFragments
         renamed_node = self._rename_name(node)
@@ -97,15 +116,21 @@ class RenameQueryVisitor(Visitor):
         else:  # Name changed, return new node, `visit` will make shallow copies along path
             return renamed_node
 
-    def enter_selection_set(self, node, *args):
+    def enter_selection_set(
+        self, node: SelectionSetNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Record that we entered another nested level of selections."""
         self.selection_set_level += 1
 
-    def leave_selection_set(self, node, *args):
+    def leave_selection_set(
+        self, node: SelectionSetNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Record that we left a level of selections."""
         self.selection_set_level -= 1
 
-    def enter_field(self, node, *args):
+    def enter_field(
+        self, node: FieldNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> Union[FieldNode, VisitorAction]:
         """Rename root vertex fields."""
         # For a Field to be a root vertex field, it needs to be the first level of
         # selections (fields in more nested selections are normal fields that should not be

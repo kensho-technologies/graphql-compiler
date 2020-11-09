@@ -217,6 +217,12 @@ RenameNodes = Union[
 ]
 RenameNodesT = TypeVar("RenameNodesT", bound=RenameNodes)
 
+# Contains the node types that may be renamed in rename_query. NamedTypeNode is here for type
+# renaming and FieldNode is here for renaming field nodes in the root vertex (as described in
+# RenameQueryVisitor).
+RenameQueryNodeTypes = Union[NamedTypeNode, FieldNode]
+RenameQueryNodeTypesT = TypeVar("RenameQueryNodeTypesT", bound=RenameQueryNodeTypes)
+
 
 def check_schema_identifier_is_valid(identifier: str) -> None:
     """Check if input is a valid identifier, made of alphanumeric and underscore characters.
