@@ -415,12 +415,13 @@ def _rename_and_suppress_types(
     visitor = RenameSchemaTypesVisitor(type_renamings, query_type, custom_scalar_names)
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.invalid_type_names:
+        sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
         raise InvalidTypeNameError(
             f"Applying the renaming would rename types with names that are not valid, unreserved "
             f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
             f"characters and underscores, must not start with a numeric character, and must not "
             f"start with double underscores. The following dictionary maps each type's original "
-            f"name to what would be the new name: {visitor.invalid_type_names}"
+            f"name to what would be the new name: {sorted_invalid_type_names}"
         )
     if visitor.type_name_conflicts or visitor.type_renamed_to_builtin_scalar_conflicts:
         raise SchemaRenameNameConflictError(
