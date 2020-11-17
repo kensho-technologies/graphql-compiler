@@ -118,7 +118,7 @@ from .utils import (
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
-    is_valid_unreserved_name,
+    type_name_is_valid,
 )
 
 
@@ -624,7 +624,7 @@ class RenameSchemaTypesVisitor(Visitor):
             # Suppress the type
             self.suppressed_type_names.add(type_name)
             return REMOVE
-        if not is_valid_unreserved_name(desired_type_name):
+        if not type_name_is_valid(desired_type_name):
             self.invalid_type_names[type_name] = desired_type_name
 
         # Renaming conflict arises when two types with different names in the original schema have
