@@ -96,12 +96,7 @@ def compile_and_run_sql_query(
 
     # We print the query and re-attach the parameters to it to test serialization capabilities
     printed_query = print_sqlalchemy_query_string(query, sql_schema_info.dialect)
-    try:
-        query_with_parameters = bind_parameters_to_query_string(printed_query, parameters)
-    except Exception as e:
-        import sqlalchemy.dialects.postgresql as postgresql
-        import pdb; pdb.set_trace()
-        print("ok")
+    query_with_parameters = bind_parameters_to_query_string(printed_query, parameters)
 
     results = []
     for result in engine.execute(query_with_parameters):

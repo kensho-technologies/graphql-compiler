@@ -75,7 +75,6 @@ def print_sqlalchemy_query_string(query, dialect):
                 # "([EXPANDING_param])" by default. This is an internal sqlalchemy
                 # representation that is not understood by databases, so we explicitly
                 # make sure to print it as ":param".
-                bindparam.expanding = False
                 return f":{bindparam.key}"
 
         return str(BindparamCompiler(dialect, query).process(query))
