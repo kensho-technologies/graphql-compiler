@@ -107,10 +107,10 @@ from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..typedefs import Protocol
 from .utils import (
     CascadingSuppressionError,
+    InvalidTypeNameError,
     NoOpRenamingError,
     RenameTypes,
     RenameTypesT,
-    SchemaRenameInvalidNameError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
@@ -175,17 +175,17 @@ def rename_schema(
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
         - SchemaTransformError if type_renamings suppressed every type. Note that this is a
-          superclass of CascadingSuppressionError, SchemaRenameInvalidNameError,
-          SchemaStructureError, and SchemaRenameNameConflictError, so handling exceptions of type
-          SchemaTransformError will also catch all of its subclasses. This will change after the
-          error classes are modified so that errors can be fixed programmatically, at which point it
-          will make sense for the user to attempt to treat different errors differently
+          superclass of CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
+          SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
+          also catch all of its subclasses. This will change after the error classes are modified so
+          that errors can be fixed programmatically, at which point it will make sense for the user
+          to attempt to treat different errors differently
         - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
           type implementing an interface
-        - SchemaRenameInvalidNameError if the user attempts to rename a type to an invalid
-          name. A name is considered invalid if it does not consist of alphanumeric characters and
-          underscores, if it starts with a numeric character, or if it starts with double
-          underscores
+        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+          to rename a type to an invalid name. A name is considered invalid if it does not consist
+          of alphanumeric characters and underscores, if it starts with a numeric character, or
+          if it starts with double underscores
         - SchemaStructureError if the schema does not have the expected form; in particular, if
           the AST does not represent a valid schema, if any query type field does not have the
           same name as the type that it queries, if the schema contains type extensions or
@@ -408,14 +408,20 @@ def _rename_and_suppress_types(
         renamed.
 
     Raises:
-        - SchemaRenameInvalidNameError if the user attempts to rename a type to an invalid name
+        - InvalidTypeNameError if the user attempts to rename a type to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
         - NoOpRenamingError if renamings contains no-op renamings and renamings are iterable
     """
     visitor = RenameSchemaTypesVisitor(type_renamings, query_type, custom_scalar_names)
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.invalid_type_names:
-        raise SchemaRenameInvalidNameError(visitor.invalid_type_names)
+        raise InvalidTypeNameError(
+            f"Applying the renaming would rename types with names that are not valid, unreserved "
+            f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            f"characters and underscores, must not start with a numeric character, and must not "
+            f"start with double underscores. The following dictionary maps each type's original "
+            f"name to what would be the new name: {visitor.invalid_type_names}"
+        )
     if visitor.type_name_conflicts or visitor.type_renamed_to_builtin_scalar_conflicts:
         raise SchemaRenameNameConflictError(
             visitor.type_name_conflicts, visitor.type_renamed_to_builtin_scalar_conflicts

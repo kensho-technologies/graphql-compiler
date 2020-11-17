@@ -11,8 +11,8 @@ from graphql.pyutils import snake_to_camel
 from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
+    InvalidTypeNameError,
     NoOpRenamingError,
-    SchemaRenameInvalidNameError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
@@ -985,7 +985,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_illegal_rename_type_start_with_number(self) -> None:
-        with self.assertRaises(SchemaRenameInvalidNameError) as e:
+        with self.assertRaises(InvalidTypeNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "0Human"})
         self.assertEqual(
             "Applying the type renaming would rename types with names that are not valid, "
@@ -1000,7 +1000,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_illegal_rename_type_contains_illegal_char(self) -> None:
-        with self.assertRaises(SchemaRenameInvalidNameError) as e:
+        with self.assertRaises(InvalidTypeNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "Human!"})
         self.assertEqual(
             "Applying the type renaming would rename types with names that are not valid, "
@@ -1013,7 +1013,7 @@ class TestRenameSchema(unittest.TestCase):
             "original_name would be renamed to: [('Human', 'Human!')]",
             str(e.exception),
         )
-        with self.assertRaises(SchemaRenameInvalidNameError) as e:
+        with self.assertRaises(InvalidTypeNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"})
         self.assertEqual(
             "Applying the type renaming would rename types with names that are not valid, "
@@ -1026,7 +1026,7 @@ class TestRenameSchema(unittest.TestCase):
             "original_name would be renamed to: [('Human', 'H-uman')]",
             str(e.exception),
         )
-        with self.assertRaises(SchemaRenameInvalidNameError) as e:
+        with self.assertRaises(InvalidTypeNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"})
         self.assertEqual(
             "Applying the type renaming would rename types with names that are not valid, "
@@ -1041,7 +1041,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_illegal_rename_type_to_double_underscore(self) -> None:
-        with self.assertRaises(SchemaRenameInvalidNameError) as e:
+        with self.assertRaises(InvalidTypeNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "__Human"})
         self.assertEqual(
             "Applying the type renaming would rename types with names that are not valid, "
@@ -1056,7 +1056,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_illegal_rename_type_to_reserved_name_type(self) -> None:
-        with self.assertRaises(SchemaRenameInvalidNameError) as e:
+        with self.assertRaises(InvalidTypeNameError) as e:
             rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
         self.assertEqual(
             "Applying the type renaming would rename types with names that are not valid, "
