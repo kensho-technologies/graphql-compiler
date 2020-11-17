@@ -90,7 +90,6 @@ def compile_and_run_sql_query(
     engine: Engine,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, OutputMetadata]]:
     """Compile and run a SQL query against the SQL engine, return result and output metadata."""
-    # compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     compilation_result = compile_graphql_to_sql(sql_schema_info, graphql_query)
     query = compilation_result.query
 
