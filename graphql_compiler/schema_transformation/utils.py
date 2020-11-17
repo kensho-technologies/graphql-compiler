@@ -50,9 +50,9 @@ class InvalidTypeNameError(SchemaTransformError):
 
     This may be raised if the input schema contains invalid names, or if the user attempts to
     rename a type/field to an invalid name. A name is considered valid if it consists of
-    alphanumeric characters and underscores and doesn't start with a numeric character (as
-    required by GraphQL), and doesn't start with double underscores as such type names are
-    reserved for GraphQL internal use.
+    alphanumeric characters and underscores and doesn't start with a numeric character (as required
+    by GraphQL), and doesn't start with double underscores as such type names are reserved for
+    GraphQL internal use.
     """
 
 
@@ -99,13 +99,14 @@ class SchemaRenameNameConflictError(SchemaTransformError):
             ]
             type_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple types have the "
-                f"same name, which is an illegal schema state. To fix this, modify the renamings "
-                f"argument of rename_schema to ensure that no two types in the renamed schema have "
-                f"the same name. The following is a list of tuples that describes what needs to be "
-                f"fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
-                f"where new_type_name is the type name that would appear in the new schema and "
-                f"original_schema_type_names is a list of types in the original schema that get "
-                f"mapped to new_type_name: {sorted_type_name_conflicts}"
+                f"same name, which is an illegal schema state. To fix this, modify the "
+                f"type_renamings argument of rename_schema to ensure that no two types in the "
+                f"renamed schema have the same name. The following is a list of tuples that "
+                f"describes what needs to be fixed. Each tuple is of the form "
+                f"(new_type_name, original_schema_type_names) where new_type_name is the type name "
+                f"that would appear in the new schema and original_schema_type_names is a list of "
+                f"types in the original schema that get mapped to new_type_name: "
+                f"{sorted_type_name_conflicts}"
             )
         renamed_to_builtin_scalar_conflicts_message = ""
         if self.renamed_to_builtin_scalar_conflicts:
@@ -149,28 +150,34 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if renamings argument is iterable and contains no-op renames.
+    """Raised if renamings are iterable and contains no-op renames.
 
     No-op renames can occur in these ways:
-    * renamings contains a string type_name but there doesn't exist a type in the schema named
-      type_name
-    * renamings maps a string type_name to itself, i.e. renamings[type_name] == type_name
+    * type_renamings is iterable and contains a string type_name but there doesn't exist a type in
+      the schema named type_name
+    * type_renamings is iterable and maps a string type_name to itself, i.e.
+      type_renamings[type_name] == type_name
     """
 
-    no_op_renames: Set[str]
+    no_op_type_renames: Set[str]
 
-    def __init__(self, no_op_renames: Set[str]) -> None:
-        """Record all renaming conflicts."""
+    def __init__(self, no_op_type_renames: Set[str]) -> None:
+        """Record all no-op renamings."""
+        if not no_op_type_renames:
+            raise ValueError(
+                "Cannot raise NoOpRenamingError without at least one invalid name, but "
+                "all arguments were empty."
+            )
         super().__init__()
-        self.no_op_renames = no_op_renames
+        self.no_op_type_renames = no_op_type_renames
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
         return (
-            f"Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            f"entries exist in the renamings argument, which either rename a type to itself or "
-            f"would rename a type that doesn't exist in the schema, both of which are invalid: "
-            f"{sorted(self.no_op_renames)}"
+            f"type_renamings is iterable, so it cannot have no-op renamings. However, the "
+            f"following entries exist in the type_renamings argument, which either rename a "
+            f"type to itself or would rename a type that doesn't exist in the schema, both of "
+            f"which are invalid: {sorted(self.no_op_type_renames)}"
         )
 
 

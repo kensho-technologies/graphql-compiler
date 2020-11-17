@@ -40,13 +40,6 @@ data.
         secondname: String
     }
 
-For both 1-1 or 1-many renaming, renamings only apply to types, fields, and enum values that exist
-in the original schema. For example, if a schema contains a type named "Foo" and a type named "Bar"
-but not a type named "Baz" and renamings maps "Foo" to "Bar" and "Bar" to "Baz", then the renamed
-schema will contain a type named "Bar" (corresponding to the original schema's type "Foo") and a
-type named "Baz" (corresponding to the original schema's type "Bar"), instead of containing two
-types both named "Baz".
-
 Suppressing part of the schema removes it altogether. For instance, given the following part of a
 schema:
     type Dog {
@@ -55,6 +48,13 @@ schema:
 suppressing "Dog" would produce an otherwise-identical schema but with that type (and therefore all
 its fields) removed. If "Dog" also appeared as a field in the schema's root type, it would be
 removed there as well.
+
+For both 1-1 or 1-many renaming, renamings only apply to types, fields, and enum values that exist
+in the original schema. For example, if a schema contains a type named "Foo" and a type named "Bar"
+but not a type named "Baz" and type_renamings maps "Foo" to "Bar" and "Bar" to "Baz", then the
+renamed schema will contain a type named "Bar" (corresponding to the original schema's type "Foo")
+and a type named "Baz" (corresponding to the original schema's type "Bar"), instead of containing
+two types both named "Baz".
 
 Operations that are already supported:
 - 1-1 renaming of object types, unions, enums, and interfaces.
@@ -76,14 +76,15 @@ Renaming constraints:
 - All names must be valid GraphQL names.
 - Names may not conflict with each other. For instance, you may not rename both "Foo" and "Bar" to
   "Baz". You also may not rename anything to "Baz" if a type "Baz" already exists and is not also
-  being renamed or suppressed.
-- Special rules apply to the renamings argument if it's iterable (e.g. if a dict). If iterable,
-  renamings may not contain no-op entries. In other words:
-    - A string type_name may be in renamings only if there exists a type in the schema named
-      type_name (since otherwise that entry would not affect any type in the schema).
-    - A string type_name is in renamings, then renamings[type_name] != type_name (since applying the
-      renaming would not change the type named type_name).
-  If not iterable, then these no-op rules don't apply.
+  being renamed or suppressed. The same rules apply for fields that belong to the same type, since
+  they share a namespace as well.
+- There exist special rules for iterable renamings (e.g. if renamings are represented as a
+  dictionary)-- specifically, no-op renamings are not allowed.
+  - If type_renamings argument is iterable:
+    - A string type_name may be in type_renamings only if there exists a type in the original schema
+      named type_name (since otherwise that entry would not affect any type in the schema).
+    - If string type_name is in type_renamings, then type_renamings[type_name] != type_name (since
+      if they were the same, then applying the renaming would not change the type named type_name).
 """
 from collections import namedtuple
 from collections.abc import Iterable
@@ -137,19 +138,21 @@ RenamedSchemaDescriptor = namedtuple(
 VisitorReturnType = Union[Node, VisitorAction]
 
 
-class RenamingMapping(Protocol):
+class TypeRenamingMapping(Protocol):
     def get(self, key: str, default: Optional[str]) -> Optional[str]:
-        """Define mapping for renaming object."""
+        """Define mapping for type_renamings object."""
         ...
 
 
-def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> RenamedSchemaDescriptor:
-    """Create a RenamedSchemaDescriptor; rename/suppress types and root type fields using renamings.
+def rename_schema(
+    schema_ast: DocumentNode, type_renamings: TypeRenamingMapping
+) -> RenamedSchemaDescriptor:
+    """Create a RenamedSchemaDescriptor; rename/suppress types and root type fields.
 
-    Any type, interface, enum, or fields of the root type/query type whose name
-    appears in renamings will be renamed to the corresponding value if the value is not None. If the
-    value is None, it will be suppressed in the renamed schema and queries will not be able to
-    access it.
+    Any object type, interface type, enum type, or field of the root type/query type has a name. Let
+    the name be called type_name. If type_renamings.get(type_name, type_name) is not None, the type
+    or field of the root type/query type will be renamed to the returned value. If the value is
+    None, it will be suppressed in the renamed schema and queries will not be able to access it.
 
     Any such names that do not appear in renamings will be unchanged. Directives will never be
     renamed.
@@ -161,9 +164,9 @@ def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> Renam
         schema_ast: represents a valid schema that does not contain extensions, input object
                     definitions, mutations, or subscriptions, whose fields of the query type share
                     the same name as the types they query. Not modified by this function
-        renamings: maps original type name to renamed name or None (for type suppression). A type
-                   named "Foo" will be unchanged iff renamings does not map "Foo" to anything, i.e.
-                   renamings.get("Foo", "Foo") returns "Foo".
+        type_renamings: maps original type name to renamed name or None (for type suppression). A
+                        type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
 
     Returns:
         RenamedSchemaDescriptor containing the AST of the renamed schema, and the map of renamed
@@ -171,14 +174,14 @@ def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> Renam
 
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
-        - SchemaTransformError if renamings suppressed every type. Note that this is a superclass of
-          CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
+        - SchemaTransformError if type_renamings suppressed every type. Note that this is a
+          superclass of CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
           SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
           also catch all of its subclasses. This will change after the error classes are modified so
           that errors can be fixed programmatically, at which point it will make sense for the user
           to attempt to treat different errors differently
-        - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
-          implementing an interface
+        - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
+          type implementing an interface
         - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
           to rename a type to an invalid name. A name is considered invalid if it does not consist
           of alphanumeric characters and underscores, if it starts with a numeric character, or
@@ -187,7 +190,9 @@ def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> Renam
           the AST does not represent a valid schema, if any query type field does not have the
           same name as the type that it queries, if the schema contains type extensions or
           input object definitions, or if the schema contains mutations or subscriptions
-        - SchemaRenameNameConflictError if there are conflicts between the renamed types or fields
+        - SchemaRenameNameConflictError if there are name conflicts between the renamed types or
+          fields
+        - NoOpRenamingError if the renamings contain no-op renamings and are iterable
     """
     # Check input schema satisfies various structural requirements
     check_ast_schema_is_valid(schema_ast)
@@ -196,11 +201,11 @@ def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> Renam
     query_type = get_query_type_name(schema)
     custom_scalar_names = get_custom_scalar_names(schema)
 
-    _validate_renamings(schema_ast, renamings, query_type, custom_scalar_names)
+    _validate_renamings(schema_ast, type_renamings, query_type, custom_scalar_names)
 
     # Rename types, interfaces, enums, unions and suppress types, unions
     schema_ast, reverse_name_map = _rename_and_suppress_types(
-        schema_ast, renamings, query_type, custom_scalar_names
+        schema_ast, type_renamings, query_type, custom_scalar_names
     )
     reverse_name_map_changed_names_only = {
         renamed_name: original_name
@@ -208,7 +213,7 @@ def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> Renam
         if renamed_name != original_name
     }
 
-    schema_ast = _rename_and_suppress_query_type_fields(schema_ast, renamings, query_type)
+    schema_ast = _rename_and_suppress_query_type_fields(schema_ast, type_renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=schema_ast,
         schema=build_ast_schema(schema_ast),
@@ -218,14 +223,14 @@ def rename_schema(schema_ast: DocumentNode, renamings: RenamingMapping) -> Renam
 
 def _validate_renamings(
     schema_ast: DocumentNode,
-    renamings: RenamingMapping,
+    type_renamings: TypeRenamingMapping,
     query_type: str,
     custom_scalar_names: AbstractSet[str],
 ) -> None:
-    """Validate the renamings argument before attempting to rename the schema.
+    """Validate the type_renamings argument before attempting to rename the schema.
 
     Check for fields with suppressed types or unions whose members were all suppressed. Also,
-    confirm renamings contains no enums, interfaces, or interface implementation suppressions
+    confirm type_renamings contains no enums, interfaces, or interface implementation suppressions
     because that hasn't been implemented yet. Confirm that no scalars would be suppressed or
     renamed.
 
@@ -235,32 +240,32 @@ def _validate_renamings(
         schema_ast: represents a valid schema that does not contain extensions, input object
                     definitions, mutations, or subscriptions, whose fields of the query type share
                     the same name as the types they query. Not modified by this function
-        renamings: maps original type name to renamed name or None (for type suppression). A type
-                   named "Foo" will be unchanged iff renamings does not map "Foo" to anything, i.e.
-                   renamings.get("Foo", "Foo") returns "Foo".
+        type_renamings: maps original type name to renamed name or None (for type suppression). A
+                        type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
 
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
-        - NotImplementedError if renamings attempts to suppress an enum, an interface, or a type
-          implementing an interface
+        - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
+          type implementing an interface
     """
-    _ensure_no_cascading_type_suppressions(schema_ast, renamings, query_type)
-    _ensure_no_unsupported_operations(schema_ast, renamings, custom_scalar_names)
+    _ensure_no_cascading_type_suppressions(schema_ast, type_renamings, query_type)
+    _ensure_no_unsupported_operations(schema_ast, type_renamings, custom_scalar_names)
 
 
 def _ensure_no_cascading_type_suppressions(
-    schema_ast: DocumentNode, renamings: RenamingMapping, query_type: str
+    schema_ast: DocumentNode, type_renamings: TypeRenamingMapping, query_type: str
 ) -> None:
     """Check for fields with suppressed types or unions whose members were all suppressed."""
-    visitor = CascadingSuppressionCheckVisitor(renamings, query_type)
+    visitor = CascadingSuppressionCheckVisitor(type_renamings, query_type)
     visit(schema_ast, visitor)
     if visitor.fields_to_suppress or visitor.union_types_to_suppress:
         error_message_components = [
-            f"Type renamings {renamings} would require further suppressions to produce a valid "
-            f"renamed schema."
+            f"Type renamings {type_renamings} would require further suppressions to produce a "
+            f"valid renamed schema."
         ]
         if visitor.fields_to_suppress:
             for object_type in visitor.fields_to_suppress:
@@ -287,58 +292,58 @@ def _ensure_no_cascading_type_suppressions(
                 )
             error_message_components.append(
                 "To fix this, you can suppress the union as well by adding union_type: None to the "
-                "renamings argument when renaming types, for each value of union_type described "
-                "here. Note that adding suppressions may lead to other types, fields, etc. "
-                "requiring suppression so you may need to iterate on this before getting a legal "
-                "schema."
+                "type_renamings argument when renaming types, for each value of union_type "
+                "described here. Note that adding suppressions may lead to other types, fields, "
+                "etc. requiring suppression so you may need to iterate on this before getting a "
+                "legal schema."
             )
         raise CascadingSuppressionError("\n".join(error_message_components))
 
 
 def _ensure_no_unsupported_operations(
     schema_ast: DocumentNode,
-    renamings: RenamingMapping,
+    type_renamings: TypeRenamingMapping,
     custom_scalar_names: AbstractSet[str],
 ) -> None:
     """Check for unsupported renaming or suppression operations."""
-    _ensure_no_unsupported_scalar_operations(renamings, custom_scalar_names)
-    _ensure_no_unsupported_suppressions(schema_ast, renamings)
+    _ensure_no_unsupported_scalar_operations(type_renamings, custom_scalar_names)
+    _ensure_no_unsupported_suppressions(schema_ast, type_renamings)
 
 
 def _ensure_no_unsupported_scalar_operations(
-    renamings: RenamingMapping,
+    type_renamings: TypeRenamingMapping,
     custom_scalar_names: AbstractSet[str],
 ) -> None:
     """Check for unsupported scalar operations."""
     unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
     for scalar_name in custom_scalar_names:
-        possibly_renamed_scalar_name = renamings.get(scalar_name, scalar_name)
-        # renamings.get(scalar_name, scalar_name) returns something that is not scalar iff it
+        possibly_renamed_scalar_name = type_renamings.get(scalar_name, scalar_name)
+        # type_renamings.get(scalar_name, scalar_name) returns something that is not scalar iff it
         # attempts to do something with the scalar (i.e. renaming or suppressing it)
         if possibly_renamed_scalar_name != scalar_name:
             unsupported_scalar_operations[scalar_name] = possibly_renamed_scalar_name
     for builtin_scalar_name in builtin_scalar_type_names:
-        possibly_renamed_builtin_scalar_name = renamings.get(
+        possibly_renamed_builtin_scalar_name = type_renamings.get(
             builtin_scalar_name, builtin_scalar_name
         )
         if possibly_renamed_builtin_scalar_name != builtin_scalar_name:
-            # Check that built-in scalar types remain unchanged during renaming.
+            # Check that built-in scalar types remain unchanged during type renaming.
             unsupported_scalar_operations[
                 builtin_scalar_name
             ] = possibly_renamed_builtin_scalar_name
     if unsupported_scalar_operations:
         raise NotImplementedError(
-            f"Scalar renaming and suppression is not implemented yet, but renamings attempted to "
-            f"modify the following scalars: {unsupported_scalar_operations}. To fix this, remove "
-            f"them from renamings."
+            f"Scalar renaming and suppression is not implemented yet, but type_renamings attempted "
+            f"to modify the following scalars: {unsupported_scalar_operations}. To fix this, "
+            f"remove them from type_renamings."
         )
 
 
 def _ensure_no_unsupported_suppressions(
-    schema_ast: DocumentNode, renamings: RenamingMapping
+    schema_ast: DocumentNode, type_renamings: TypeRenamingMapping
 ) -> None:
-    """Confirm renamings contains no enums, interfaces, or interface implementation suppressions."""
-    visitor = SuppressionNotImplementedVisitor(renamings)
+    """Confirm type_renamings has no enums, interfaces, or interface implementation suppressions."""
+    visitor = SuppressionNotImplementedVisitor(type_renamings)
     visit(schema_ast, visitor)
     if (
         not visitor.unsupported_enum_suppressions
@@ -348,37 +353,37 @@ def _ensure_no_unsupported_suppressions(
         return
     # Otherwise, attempted to suppress something we shouldn't suppress.
     error_message_components = [
-        f"Type renamings {renamings} attempted to suppress parts of the schema for which "
+        f"Type renamings {type_renamings} attempted to suppress parts of the schema for which "
         f"suppression is not implemented yet."
     ]
     if visitor.unsupported_enum_suppressions:
         error_message_components.append(
             f"Type renamings mapped these schema enums to None: "
             f"{visitor.unsupported_enum_suppressions}, attempting to suppress them. However, "
-            f"schema renaming has not implemented enum suppression yet."
+            f"type renaming has not implemented enum suppression yet."
         )
     if visitor.unsupported_interface_suppressions:
         error_message_components.append(
             f"Type renamings mapped these schema interfaces to None: "
             f"{visitor.unsupported_interface_suppressions}, attempting to suppress them. However, "
-            f"schema renaming has not implemented interface suppression yet."
+            f"type renaming has not implemented interface suppression yet."
         )
     if visitor.unsupported_interface_implementation_suppressions:
         error_message_components.append(
             f"Type renamings mapped these object types to None: "
             f"{visitor.unsupported_interface_implementation_suppressions}, attempting to suppress "
             f"them. Normally, this would be fine. However, these types each implement at least one "
-            f"interface and schema renaming has not implemented this particular suppression yet."
+            f"interface and type renaming has not implemented this particular suppression yet."
         )
     error_message_components.append(
-        "To avoid these suppressions, remove the mappings from the renamings argument."
+        "To avoid these suppressions, remove the mappings from the type_renamings argument."
     )
     raise NotImplementedError("\n".join(error_message_components))
 
 
 def _rename_and_suppress_types(
     schema_ast: DocumentNode,
-    renamings: RenamingMapping,
+    type_renamings: TypeRenamingMapping,
     query_type: str,
     custom_scalar_names: AbstractSet[str],
 ) -> Tuple[DocumentNode, Dict[str, str]]:
@@ -390,9 +395,9 @@ def _rename_and_suppress_types(
 
     Args:
         schema_ast: schema that we're returning a modified version of
-        renamings: maps original type name to renamed name or None (for type suppression). A type
-                   named "Foo" will be unchanged iff renamings does not map "Foo" to anything, i.e.
-                   renamings.get("Foo", "Foo") returns "Foo".
+        type_renamings: maps original type name to renamed name or None (for type suppression). A
+                        type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
@@ -405,44 +410,49 @@ def _rename_and_suppress_types(
     Raises:
         - InvalidTypeNameError if the user attempts to rename a type to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
+        - NoOpRenamingError if renamings contains no-op renamings and renamings are iterable
     """
-    visitor = RenameSchemaTypesVisitor(renamings, query_type, custom_scalar_names)
+    visitor = RenameSchemaTypesVisitor(type_renamings, query_type, custom_scalar_names)
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.invalid_type_names:
+        sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
         raise InvalidTypeNameError(
             f"Applying the renaming would rename types with names that are not valid, unreserved "
             f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
             f"characters and underscores, must not start with a numeric character, and must not "
             f"start with double underscores. The following dictionary maps each type's original "
-            f"name to what would be the new name: {visitor.invalid_type_names}"
+            f"name to what would be the new name: {sorted_invalid_type_names}"
         )
-    if visitor.type_name_conflicts or visitor.renamed_to_builtin_scalar_conflicts:
+    if visitor.type_name_conflicts or visitor.type_renamed_to_builtin_scalar_conflicts:
         raise SchemaRenameNameConflictError(
-            visitor.type_name_conflicts, visitor.renamed_to_builtin_scalar_conflicts
+            visitor.type_name_conflicts, visitor.type_renamed_to_builtin_scalar_conflicts
         )
-    if isinstance(renamings, Iterable):
-        # If renamings is iterable, then every renaming must be used and no renaming can map a
+    no_op_type_renames: Set[str] = set()
+    if isinstance(type_renamings, Iterable):
+        # If type_renamings is iterable, then every renaming must be used and no renaming can map a
         # name to itself
-        for type_name in visitor.suppressed_types:
-            if type_name not in renamings:
+        for type_name in visitor.suppressed_type_names:
+            if type_name not in type_renamings:
                 raise AssertionError(
-                    f"suppressed_types should be a subset of the set of keys in renamings, but "
-                    f"found {type_name} in suppressed_types that is not a key in renamings. This "
-                    f"is a bug."
+                    f"suppressed_type_names should be a subset of the set of keys in "
+                    f"type_renamings, but found {type_name} in suppressed_type_names that is not a "
+                    f"key in type_renamings. This is a bug."
                 )
         renamed_types = {
             visitor.reverse_name_map[type_name]
             for type_name in visitor.reverse_name_map
             if type_name != visitor.reverse_name_map[type_name]
         }
-        no_op_renames: Set[str] = set(renamings) - renamed_types - set(visitor.suppressed_types)
-        if no_op_renames:
-            raise NoOpRenamingError(no_op_renames)
+        no_op_type_renames = (
+            set(type_renamings) - renamed_types - set(visitor.suppressed_type_names)
+        )
+    if no_op_type_renames:
+        raise NoOpRenamingError(no_op_type_renames)
     return renamed_schema_ast, visitor.reverse_name_map
 
 
 def _rename_and_suppress_query_type_fields(
-    schema_ast: DocumentNode, renamings: RenamingMapping, query_type: str
+    schema_ast: DocumentNode, type_renamings: TypeRenamingMapping, query_type: str
 ) -> DocumentNode:
     """Rename or suppress all fields of the query type.
 
@@ -450,18 +460,18 @@ def _rename_and_suppress_query_type_fields(
 
     Args:
         schema_ast: schema that we're returning a modified version of
-        renamings: maps original type name to renamed name or None (for type suppression). A type
-                   named "Foo" will be unchanged iff renamings does not map "Foo" to anything, i.e.
-                   renamings.get("Foo", "Foo") returns "Foo".
+        type_renamings: maps original type name to renamed name or None (for type suppression). A
+                        type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
         modified version of the input schema AST
 
     Raises:
-        - SchemaTransformError if renamings suppressed every type
+        - SchemaTransformError if type_renamings suppressed every type
     """
-    visitor = RenameQueryTypeFieldsVisitor(renamings, query_type)
+    visitor = RenameQueryTypeFieldsVisitor(type_renamings, query_type)
     renamed_schema_ast = visit(schema_ast, visitor)
     return renamed_schema_ast
 
@@ -510,6 +520,7 @@ class RenameSchemaTypesVisitor(Visitor):
             "ScalarTypeExtensionNode",
         }
     )
+
     # rename_types must be a set of strings corresponding to the names of the classes in
     # RenameTypes. The duplication exists because introspection for Unions via typing.get_args()
     # doesn't exist until Python 3.8. In Python 3.8, this would be a valid way to define
@@ -529,50 +540,56 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
+
     # Collects naming conflict errors involving types that are not built-in scalar types. If
-    # renaming would result in multiple types being named "Foo", type_name_conflicts will map "Foo"
-    # to a set containing the name of each such type
+    # type_renamings would result in multiple types being named "Foo", type_name_conflicts will map
+    # "Foo" to a set containing the name of each such type
     type_name_conflicts: Dict[str, Set[str]]
-    # Collects naming conflict errors involving built-in scalar types. If renaming would rename a
-    # type named "Foo" to "String", renamed_to_scalar_conflicts will map "Foo" to "String"
-    renamed_to_builtin_scalar_conflicts: Dict[str, str]
+
+    # Collects naming conflict errors involving built-in scalar types. If type_renamings would
+    # rename a type named "Foo" to "String", type_renamed_to_builtin_scalar_conflicts will map
+    # "Foo" to "String"
+    type_renamed_to_builtin_scalar_conflicts: Dict[str, str]
+
     # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
     # non-scalar types, including those that were unchanged. Must contain unchanged names to prevent
-    # renaming conflicts and raise SchemaRenameNameConflictError when they arise
+    # type renaming conflicts and raise SchemaRenameNameConflictError when they arise
     reverse_name_map: Dict[str, str]
-    # Collects invalid type names in renamings. If renaming would rename a type named "Foo" to a
-    # string that is not a valid, unreserved GraphQL type name (see definition in the
-    # type_name_is_valid function in utils), invalid_type_names will map "Foo" to the invalid type
-    # name.
+
+    # Collects invalid type names in type_renamings. If type_renamings would rename a type named
+    # "Foo" to a string that is not a valid, unreserved GraphQL type name (valid, unreserved names
+    # consist only of alphanumeric characters and underscores, do not start with a number, and do
+    # not start with two underscores), invalid_type_names will map "Foo" to the invalid type name.
     invalid_type_names: Dict[str, str]
-    # Collects the type names for types that get suppressed. If renaming would suppress a type named
-    # "Foo", renamed_types will contain "Foo".
-    suppressed_types: Set[str]
+
+    # Collects the type names for types that get suppressed. If type_renamings would suppress a type
+    # named "Foo", suppressed_type_names will contain "Foo".
+    suppressed_type_names: Set[str]
 
     def __init__(
         self,
-        renamings: RenamingMapping,
+        type_renamings: TypeRenamingMapping,
         query_type: str,
         custom_scalar_names: AbstractSet[str],
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
         Args:
-            renamings: maps original type name to renamed name or None (for type suppression). A
-                       type named "Foo" will be unchanged iff renamings does not map "Foo" to
-                       anything, i.e. renamings.get("Foo", "Foo") returns "Foo".
+            type_renamings: maps original type name to renamed name or None (for type suppression).
+                            A type named "Foo" will be unchanged iff type_renamings does not map
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
             custom_scalar_names: set of all user defined scalars used in the schema (excluding
                                  builtin scalars)
         """
-        self.renamings = renamings
+        self.type_renamings = type_renamings
         self.reverse_name_map = {}
         self.type_name_conflicts = {}
-        self.renamed_to_builtin_scalar_conflicts = {}
+        self.type_renamed_to_builtin_scalar_conflicts = {}
         self.invalid_type_names = {}
         self.query_type = query_type
         self.custom_scalar_names = frozenset(custom_scalar_names)
-        self.suppressed_types = set()
+        self.suppressed_type_names = set()
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -603,10 +620,10 @@ class RenameSchemaTypesVisitor(Visitor):
         ):
             return IDLE
 
-        desired_type_name = self.renamings.get(type_name, type_name)  # Default use original
+        desired_type_name = self.type_renamings.get(type_name, type_name)  # Default use original
         if desired_type_name is None:
             # Suppress the type
-            self.suppressed_types.add(type_name)
+            self.suppressed_type_names.add(type_name)
             return REMOVE
         if not type_name_is_valid(desired_type_name):
             self.invalid_type_names[type_name] = desired_type_name
@@ -653,7 +670,7 @@ class RenameSchemaTypesVisitor(Visitor):
             self.type_name_conflicts[desired_type_name].add(type_name)
 
         if desired_type_name in builtin_scalar_type_names:
-            self.renamed_to_builtin_scalar_conflicts[type_name] = desired_type_name
+            self.type_renamed_to_builtin_scalar_conflicts[type_name] = desired_type_name
 
         self.reverse_name_map[desired_type_name] = type_name
         if desired_type_name == type_name:
@@ -677,7 +694,7 @@ class RenameSchemaTypesVisitor(Visitor):
             return IDLE
         elif node_type in self.rename_types:
             # Process the node by either renaming, suppressing, or not doing anything with it
-            # (depending on what renamings specifies)
+            # (depending on what type_renamings specifies)
             return self._rename_or_suppress_or_ignore_name_and_add_to_record(
                 cast(RenameTypes, node)
             )
@@ -687,13 +704,13 @@ class RenameSchemaTypesVisitor(Visitor):
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
-    def __init__(self, renamings: RenamingMapping, query_type: str) -> None:
+    def __init__(self, type_renamings: TypeRenamingMapping, query_type: str) -> None:
         """Create a visitor for renaming or suppressing fields of the query type in a schema AST.
 
         Args:
-            renamings: maps original type name to renamed name or None (for type suppression). A
-                       type named "Foo" will be unchanged iff renamings does not map "Foo" to
-                       anything, i.e. renamings.get("Foo", "Foo") returns "Foo".
+            type_renamings: maps original type name to renamed name or None (for type suppression).
+                            A type named "Foo" will be unchanged iff type_renamings does not map
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             query_type: name of the query type (e.g. RootSchemaQuery)
 
         Raises:
@@ -702,7 +719,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         # Note that as field names and type names have been confirmed to match up, any renamed
         # query type field already has a corresponding renamed type.
         self.in_query_type = False
-        self.renamings = renamings
+        self.type_renamings = type_renamings
         self.query_type = query_type
 
     def enter_object_type_definition(
@@ -728,9 +745,9 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         """If the node's name matches the query type, record that we left the query type."""
         if not node.fields:
             raise SchemaTransformError(
-                f"Type renamings {self.renamings} suppressed every type in the schema so it will "
-                f"be impossible to query for anything. To fix this, check why the `renamings` "
-                f"argument of `rename_schema` mapped every type to None."
+                f"Type renamings {self.type_renamings} suppressed every type in the schema so it "
+                f"will be impossible to query for anything. To fix this, check why the "
+                f"type_renamings argument of rename_schema mapped every type to None."
             )
         if node.name.value == self.query_type:
             self.in_query_type = False
@@ -743,10 +760,10 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> VisitorReturnType:
-        """If inside query type, rename or remove field as specified by renamings."""
+        """If inside query type, rename or remove field as specified by type_renamings."""
         if self.in_query_type:
             field_name = node.name.value
-            new_field_name = self.renamings.get(field_name, field_name)  # Default use original
+            new_field_name = self.type_renamings.get(field_name, field_name)  # Default use original
             if new_field_name == field_name:
                 return IDLE
             if new_field_name is None:
@@ -776,16 +793,16 @@ class CascadingSuppressionCheckVisitor(Visitor):
     fields_to_suppress: Dict[str, Dict[str, str]]
     union_types_to_suppress: List[UnionTypeDefinitionNode]
 
-    def __init__(self, renamings: RenamingMapping, query_type: str) -> None:
+    def __init__(self, type_renamings: TypeRenamingMapping, query_type: str) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
 
         Args:
-            renamings: maps original type name to renamed name or None (for type suppression). A
-                       type named "Foo" will be unchanged iff renamings does not map "Foo" to
-                       anything, i.e. renamings.get("Foo", "Foo") returns "Foo".
+            type_renamings: maps original type name to renamed name or None (for type suppression).
+                            A type named "Foo" will be unchanged iff type_renamings does not map
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             query_type: name of the query type (e.g. RootSchemaQuery)
         """
-        self.renamings = renamings
+        self.type_renamings = type_renamings
         self.query_type = query_type
         self.current_type: Optional[str] = None
         self.fields_to_suppress = {}
@@ -827,7 +844,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         # At a field of a type that is not the query type
         field_name = node.name.value
         field_type = get_ast_with_non_null_and_list_stripped(node.type).name.value
-        if self.renamings.get(field_type, field_type):
+        if self.type_renamings.get(field_type, field_type):
             return IDLE
         # Reaching this point means this field is of a type to be suppressed.
         if self.current_type is None:
@@ -858,11 +875,11 @@ class CascadingSuppressionCheckVisitor(Visitor):
         # Check if all the union members are suppressed.
         for union_member in node.types:
             union_member_type = get_ast_with_non_null_and_list_stripped(union_member).name.value
-            if self.renamings.get(union_member_type, union_member_type):
+            if self.type_renamings.get(union_member_type, union_member_type):
                 # Then at least one member of the union is not suppressed, so there is no cascading
                 # suppression error concern.
                 return IDLE
-        if self.renamings.get(union_name, union_name) is None:
+        if self.type_renamings.get(union_name, union_name) is None:
             # If the union is also suppressed, then nothing needs to happen here
             return IDLE
         self.union_types_to_suppress.append(node)
@@ -873,12 +890,12 @@ class CascadingSuppressionCheckVisitor(Visitor):
 class SuppressionNotImplementedVisitor(Visitor):
     """Traverse the schema to check for suppressions that are not yet implemented.
 
-    Each attribute that mentions an unsupported suppression records the types that renamings
+    Each attribute that mentions an unsupported suppression records the types that type_renamings
     attempts to suppress.
 
     After calling visit() on the schema using this visitor, if any of these attributes are non-empty
-    then some suppressions specified by renamings are unsupported, so the code should then raise a
-    NotImplementedError.
+    then some suppressions specified by type_renamings are unsupported, so the code should then
+    raise a NotImplementedError.
 
     """
 
@@ -886,15 +903,15 @@ class SuppressionNotImplementedVisitor(Visitor):
     unsupported_interface_suppressions: Set[str]
     unsupported_interface_implementation_suppressions: Set[str]
 
-    def __init__(self, renamings: RenamingMapping) -> None:
-        """Confirm renamings does not attempt to suppress enum/interface/interface implementation.
+    def __init__(self, type_renamings: TypeRenamingMapping) -> None:
+        """Confirm type_renamings doesn't try to suppress enum/interface/interface implementation.
 
         Args:
-            renamings: from original field name to renamed field name or None (for type
-                       suppression). A type named "Foo" will be unchanged iff renamings does not map
-                       "Foo" to anything, i.e. renamings.get("Foo", "Foo") returns "Foo".
+            type_renamings: maps original type name to renamed name or None (for type suppression).
+                            A type named "Foo" will be unchanged iff type_renamings does not map
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         """
-        self.renamings = renamings
+        self.type_renamings = type_renamings
         self.unsupported_enum_suppressions = set()
         self.unsupported_interface_suppressions = set()
         self.unsupported_interface_implementation_suppressions = set()
@@ -907,9 +924,9 @@ class SuppressionNotImplementedVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """If renamings has enum suppression, record it for error message."""
+        """If type_renamings suppresses enums, record it for error message."""
         enum_name = node.name.value
-        if self.renamings.get(enum_name, enum_name) is None:
+        if self.type_renamings.get(enum_name, enum_name) is None:
             self.unsupported_enum_suppressions.add(enum_name)
 
     def enter_interface_type_definition(
@@ -920,9 +937,9 @@ class SuppressionNotImplementedVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """If renamings has interface suppression, record it for error message."""
+        """If type_renamings suppresses interfaces, record it for error message."""
         interface_name = node.name.value
-        if self.renamings.get(interface_name, interface_name) is None:
+        if self.type_renamings.get(interface_name, interface_name) is None:
             self.unsupported_interface_suppressions.add(interface_name)
 
     def enter_object_type_definition(
@@ -933,10 +950,10 @@ class SuppressionNotImplementedVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
-        """If renamings has interface implementation suppression, record it for error message."""
+        """If type_renamings suppresses interface implementations, record it for error message."""
         if not node.interfaces:
             return
         object_name = node.name.value
-        if self.renamings.get(object_name, object_name) is None:
+        if self.type_renamings.get(object_name, object_name) is None:
             # Suppressing interface implementations isn't supported yet.
             self.unsupported_interface_implementation_suppressions.add(object_name)
