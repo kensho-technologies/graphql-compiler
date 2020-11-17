@@ -1,5 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 import sqlalchemy
+from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
+from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
 
 
 def contains_operator(collection, element):
@@ -64,15 +66,32 @@ def print_sqlalchemy_query_string(query, dialect):
     Returns:
         string that can be ran using sqlalchemy.sql.text(result)
     """
+    supported_dialects = (PGDialect_psycopg2, MSDialect_pyodbc)
+    if isinstance(dialect, supported_dialects):
+        class BindparamCompiler(dialect.statement_compiler):
+            def visit_bindparam(self, bindparam, **kwargs):
+                # A bound parameter with name param is represented as ":param". However,
+                # if the parameter is expanding (list-valued) it is represented as
+                # "([EXPANDING_param])" by default. This is an internal sqlalchemy
+                # representation that is not understood by databases, so we explicitly
+                # make sure to print it as ":param".
+                bindparam.expanding = False
+                return f":{bindparam.key}"
 
-    class BindparamCompiler(dialect.statement_compiler):
-        def visit_bindparam(self, bindparam, **kwargs):
-            # A bound parameter with name param is represented as ":param". However,
-            # if the parameter is expanding (list-valued) it is represented as
-            # "([EXPANDING_param])" by default. This is an internal sqlalchemy
-            # representation that is not understood by databases, so we explicitly
-            # make sure to print it as ":param".
-            bindparam.expanding = False
-            return super(BindparamCompiler, self).visit_bindparam(bindparam, **kwargs)
+        return str(BindparamCompiler(dialect, query).process(query))
+    else:
+        raise AssertionError(f"Unsupported dialect {dialect}. "
+                             f"Only {supported_dialects} are supported.")
 
-    return str(BindparamCompiler(dialect, query).process(query))
+
+def bind_parameters_to_query_string(query, parameters):
+    bound_parameters = [
+        sqlalchemy.bindparam(
+            parameter_name,
+            value=parameter_value,
+            expanding=isinstance(parameter_value, (list, tuple)),
+        )
+        for parameter_name, parameter_value in parameters.items()
+    ]
+
+    return sqlalchemy.text(query).bindparams(*bound_parameters)

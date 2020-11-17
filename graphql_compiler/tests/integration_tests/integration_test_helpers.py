@@ -11,7 +11,9 @@ from graphql_compiler.schema.schema_info import SQLAlchemySchemaInfo
 from graphql_compiler.tests.test_data_tools.neo4j_graph import Neo4jClient
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
+from ...compiler import compile_graphql_to_sql
 from ...compiler import compile_graphql_to_cypher
+from ...compiler.sqlalchemy_extensions import print_sqlalchemy_query_string, bind_parameters_to_query_string
 from ...compiler.compiler_frontend import OutputMetadata
 from ...schema.schema_info import CommonSchemaInfo
 
@@ -88,10 +90,21 @@ def compile_and_run_sql_query(
     engine: Engine,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, OutputMetadata]]:
     """Compile and run a SQL query against the SQL engine, return result and output metadata."""
-    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
+    # compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
+    compilation_result = compile_graphql_to_sql(sql_schema_info, graphql_query)
     query = compilation_result.query
+
+    # We print the query and re-attach the parameters to it to test serialization capabilities
+    printed_query = print_sqlalchemy_query_string(query, sql_schema_info.dialect)
+    try:
+        query_with_parameters = bind_parameters_to_query_string(printed_query, parameters)
+    except Exception as e:
+        import sqlalchemy.dialects.postgresql as postgresql
+        import pdb; pdb.set_trace()
+        print("ok")
+
     results = []
-    for result in engine.execute(query):
+    for result in engine.execute(query_with_parameters):
         results.append(dict(result))
     # Output metadata is needed for MSSQL fold postprocessing.
     return results, compilation_result.output_metadata
