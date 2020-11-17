@@ -150,9 +150,9 @@ def rename_schema(
     """Create a RenamedSchemaDescriptor; rename/suppress types and root type fields.
 
     Any object type, interface type, enum type, or field of the root type/query type has a name. Let
-    the name be called type_name. If type_renamings.get(type_name, _) is not None, the type or field
-    of the root type/query type will be renamed to the corresponding value. If the value is None, it
-    will be suppressed in the renamed schema and queries will not be able to access it.
+    the name be called type_name. If type_renamings.get(type_name, type_name) is not None, the type
+    or field of the root type/query type will be renamed to the returned value. If the value is
+    None, it will be suppressed in the renamed schema and queries will not be able to access it.
 
     Any such names that do not appear in renamings will be unchanged. Directives will never be
     renamed.
