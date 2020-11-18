@@ -8,7 +8,8 @@ from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
-from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
+from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema, \
+    TypeRenamingMapping
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
@@ -980,7 +981,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(parse(ISS.list_schema), {"Height": None})
 
     def test_rename_using_dict_like_prefixer_class(self) -> None:
-        class PrefixNewDict:
+        class PrefixNewDict(TypeRenamingMapping):
             def __init__(self, schema: GraphQLSchema):
                 self.schema = schema
                 super().__init__()
