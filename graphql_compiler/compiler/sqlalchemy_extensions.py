@@ -1,7 +1,11 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import Any, Dict, Union
+
 import sqlalchemy
 from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
+from sqlalchemy.sql.elements import TextClause
+from sqlalchemy.sql.selectable import Select
 
 
 def contains_operator(collection, element):
@@ -56,7 +60,9 @@ def not_contains_operator(collection, element):
     return element.notin_(collection)
 
 
-def print_sqlalchemy_query_string(query, dialect):
+def print_sqlalchemy_query_string(
+    query: Select, dialect: Union[PGDialect_psycopg2, MSDialect_pyodbc]
+) -> str:
     """Return a string form of the parameterized query.
 
     Args:
@@ -66,24 +72,22 @@ def print_sqlalchemy_query_string(query, dialect):
     Returns:
         string that can be ran using sqlalchemy.sql.text(result)
     """
-    supported_dialects = (PGDialect_psycopg2, MSDialect_pyodbc)
-    if isinstance(dialect, supported_dialects):
-        class BindparamCompiler(dialect.statement_compiler):
-            def visit_bindparam(self, bindparam, **kwargs):
-                # A bound parameter with name param is represented as ":param". However,
-                # if the parameter is expanding (list-valued) it is represented as
-                # "([EXPANDING_param])" by default. This is an internal sqlalchemy
-                # representation that is not understood by databases, so we explicitly
-                # make sure to print it as ":param".
-                return f":{bindparam.key}"
 
-        return str(BindparamCompiler(dialect, query).process(query))
-    else:
-        raise AssertionError(f"Unsupported dialect {dialect}. "
-                             f"Only {supported_dialects} are supported.")
+    # Silencing mypy here since it can't infer the type of dialect.statement_compiler
+    class BindparamCompiler(dialect.statement_compiler):  # type: ignore  # noqa
+        def visit_bindparam(self, bindparam, **kwargs):
+            # A bound parameter with name param is represented as ":param". However,
+            # if the parameter is expanding (list-valued) it is represented as
+            # "([EXPANDING_param])" by default. This is an internal sqlalchemy
+            # representation that is not understood by databases, so we explicitly
+            # make sure to print it as ":param".
+            return f":{bindparam.key}"
+
+    return str(BindparamCompiler(dialect, query).process(query))
 
 
-def bind_parameters_to_query_string(query, parameters):
+def bind_parameters_to_query_string(query: str, parameters: Dict[str, Any]) -> TextClause:
+    """Assign values to query parameters."""
     bound_parameters = [
         sqlalchemy.bindparam(
             parameter_name,

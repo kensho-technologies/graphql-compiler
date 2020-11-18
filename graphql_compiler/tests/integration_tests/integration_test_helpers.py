@@ -10,11 +10,13 @@ from sqlalchemy.engine.base import Engine
 from graphql_compiler.schema.schema_info import SQLAlchemySchemaInfo
 from graphql_compiler.tests.test_data_tools.neo4j_graph import Neo4jClient
 
-from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
-from ...compiler import compile_graphql_to_sql
-from ...compiler import compile_graphql_to_cypher
-from ...compiler.sqlalchemy_extensions import print_sqlalchemy_query_string, bind_parameters_to_query_string
+from ... import graphql_to_match, graphql_to_redisgraph_cypher
+from ...compiler import compile_graphql_to_cypher, compile_graphql_to_sql
 from ...compiler.compiler_frontend import OutputMetadata
+from ...compiler.sqlalchemy_extensions import (
+    bind_parameters_to_query_string,
+    print_sqlalchemy_query_string,
+)
 from ...schema.schema_info import CommonSchemaInfo
 
 
