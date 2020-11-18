@@ -8,8 +8,11 @@ from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
-from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema, \
-    TypeRenamingMapping
+from ...schema_transformation.rename_schema import (
+    RenameSchemaTypesVisitor,
+    TypeRenamingMapping,
+    rename_schema,
+)
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidTypeNameError,
