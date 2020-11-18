@@ -1,4 +1,5 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from copy import copy
 from typing import Any, Dict, Union
 
 import sqlalchemy
@@ -67,23 +68,41 @@ def print_sqlalchemy_query_string(
 
     Args:
         query: sqlalchemy.sql.selectable.Select
-        dialect: sqlalchemy.engine.interfaces.Dialect
+        dialect: a sqlalchemy.engine.interfaces.Dialect. Currently only postgres
+                 and mssql are supported because we have no tests for the others,
+                 but chances are that this function would still work.
 
     Returns:
         string that can be ran using sqlalchemy.sql.text(result)
     """
 
+    # The parameter style is one of the following:
+    # {
+    #     "pyformat": "%%(%(name)s)s",
+    #     "qmark": "?",
+    #     "format": "%%s",
+    #     "numeric": ":[_POSITION]",
+    #     "named": ":%(name)s",
+    # }
+    #
+    # We use the named parameter style since that's the only one
+    # that the regex parser in the sqlalchemy TextClause object
+    # understands.
+    printing_dialect = copy(dialect)
+    printing_dialect.paramstyle = "named"
+
     # Silencing mypy here since it can't infer the type of dialect.statement_compiler
-    class BindparamCompiler(dialect.statement_compiler):  # type: ignore  # noqa
+    class BindparamCompiler(printing_dialect.statement_compiler):  # type: ignore  # noqa
         def visit_bindparam(self, bindparam, **kwargs):
             # A bound parameter with name param is represented as ":param". However,
             # if the parameter is expanding (list-valued) it is represented as
             # "([EXPANDING_param])" by default. This is an internal sqlalchemy
             # representation that is not understood by databases, so we explicitly
             # make sure to print it as ":param".
-            return f":{bindparam.key}"
+            bindparam.expanding = False
+            return super(BindparamCompiler, self).visit_bindparam(bindparam, **kwargs)
 
-    return str(BindparamCompiler(dialect, query).process(query))
+    return str(BindparamCompiler(printing_dialect, query).process(query))
 
 
 def bind_parameters_to_query_string(query: str, parameters: Dict[str, Any]) -> TextClause:
