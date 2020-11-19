@@ -254,18 +254,18 @@ def check_schema_identifier_is_valid(identifier: str) -> None:
         )
 
 
-def type_name_is_valid(name: str) -> bool:
-    """Check if input is a valid, nonreserved GraphQL type name.
+def is_valid_unreserved_name(name: str) -> bool:
+    """Check if input is a valid, unreserved GraphQL name.
 
-    A GraphQL type name is valid iff it consists of only alphanumeric characters and underscores and
-    does not start with a numeric character. It is nonreserved (i.e. not reserved for GraphQL
+    A GraphQL name is valid iff it consists of only alphanumeric characters and underscores and
+    does not start with a numeric character. It is unreserved (i.e. not reserved for GraphQL
     internal use) if it does not start with double underscores.
 
     Args:
         name: to be checked
 
     Returns:
-        True iff name is a valid, nonreserved GraphQL type name.
+        True iff name is a valid, unreserved GraphQL type name.
     """
     return bool(re_name.match(name)) and not name.startswith("__")
 
@@ -454,7 +454,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         elif node_type in self.unexpected_types:
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
         elif isinstance(node, self.check_name_validity_types):
-            if not type_name_is_valid(node.name.value):
+            if not is_valid_unreserved_name(node.name.value):
                 raise InvalidNameError(
                     f"Node name {node.name.value} is not a valid, unreserved GraphQL name. Valid, "
                     f"unreserved GraphQL names must consist of only alphanumeric characters and "
