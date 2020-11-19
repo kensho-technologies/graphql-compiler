@@ -140,7 +140,7 @@ from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..typedefs import Protocol
 from .utils import (
     CascadingSuppressionError,
-    InvalidTypeNameError,
+    InvalidNameError,
     NoOpRenamingError,
     RenameTypes,
     RenameTypesT,
@@ -242,14 +242,14 @@ def rename_schema(
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
         - SchemaTransformError if type_renamings suppressed every type. Note that this is a
-          superclass of CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
+          superclass of CascadingSuppressionError, InvalidNameError, SchemaStructureError, and
           SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
           also catch all of its subclasses. This will change after the error classes are modified so
           that errors can be fixed programmatically, at which point it will make sense for the user
           to attempt to treat different errors differently
         - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
           type implementing an interface
-        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+        - InvalidNameError if the schema contains an invalid type name, or if the user attempts
           to rename a type to an invalid name. A name is considered invalid if it does not consist
           of alphanumeric characters and underscores, if it starts with a numeric character, or
           if it starts with double underscores
@@ -494,7 +494,7 @@ def _rename_and_suppress_types_and_fields(
         entries for all non-suppressed types/ fields, including those that were not renamed.
 
     Raises:
-        - InvalidTypeNameError if the user attempts to rename a type or field to an invalid name
+        - InvalidNameError if the user attempts to rename a type or field to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
         - NoOpRenamingError if renamings contains no-op renamings and renamings are iterable
     """
@@ -536,7 +536,7 @@ def _rename_and_suppress_types_and_fields(
             invalid_type_names_message,
             invalid_field_names_message,
         ]
-        raise InvalidTypeNameError(
+        raise InvalidNameError(
             "\n".join([i for i in error_message_components if i is not None])
         )
     if (

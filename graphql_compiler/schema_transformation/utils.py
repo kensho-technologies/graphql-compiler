@@ -45,8 +45,8 @@ class SchemaStructureError(SchemaTransformError):
     """
 
 
-class InvalidTypeNameError(SchemaTransformError):
-    """Raised if a type name is not valid.
+class InvalidNameError(SchemaTransformError):
+    """Raised if a type/ field name is not valid.
 
     This may be raised if the input schema contains invalid names, or if the user attempts to
     rename a type/field to an invalid name. A name is considered valid if it consists of
@@ -518,7 +518,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
     """Check that the AST does not contain invalid types or types with invalid names.
 
     If AST contains invalid types, raise SchemaStructureError; if AST contains types with
-    invalid names, raise InvalidTypeNameError.
+    invalid names, raise InvalidNameError.
     """
 
     disallowed_types = frozenset(
@@ -557,7 +557,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         Raises:
             - SchemaStructureError if the node is an InputObjectTypeDefinition,
               TypeExtensionDefinition, or a type that shouldn't exist in a schema definition
-            - InvalidTypeNameError if a node has an invalid name
+            - InvalidNameError if a node has an invalid name
         """
         node_type = type(node).__name__
         if node_type in self.disallowed_types:
@@ -566,7 +566,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
         elif isinstance(node, self.check_name_validity_types):
             if not is_valid_unreserved_name(node.name.value):
-                raise InvalidTypeNameError(
+                raise InvalidNameError(
                     f"Node name {node.name.value} is not a valid, unreserved GraphQL name. Valid, "
                     f"unreserved GraphQL names must consist of only alphanumeric characters and "
                     f"underscores, must not start with a numeric character, and must not start "
@@ -653,7 +653,7 @@ def check_ast_schema_is_valid(ast: DocumentNode) -> None:
         - SchemaStructureError if the AST cannot be built into a valid schema, if the schema
           contains mutations, subscriptions, InputObjectTypeDefinitions, TypeExtensionsDefinitions,
           or if any query type field does not match the queried type.
-        - InvalidTypeNameError if a type has a type name that is invalid or reserved
+        - InvalidNameError if a type has a type name that is invalid or reserved
     """
     schema = build_ast_schema(ast)
 
