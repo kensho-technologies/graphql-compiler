@@ -15,11 +15,12 @@ from ...schema_transformation.rename_schema import (
 )
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
+    InvalidTypeNameError,
     NoOpRenamingError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
-    get_custom_scalar_names, InvalidTypeNameError,
+    get_custom_scalar_names,
 )
 from ..test_helpers import compare_schema_texts_order_independently
 from .input_schema_strings import InputSchemaStrings as ISS
@@ -1304,21 +1305,35 @@ class TestRenameSchema(unittest.TestCase):
             "the field in the new schema and original_field_names is a list of the names of all "
             "the fields in the original schema that would be renamed to desired_field_name: "
             "[('Human', [('id', ['id', 'name'])])]",
-            str(e.exception)
+            str(e.exception),
         )
 
     def test_invalid_name_error_message(self) -> None:
         with self.assertRaises(InvalidTypeNameError) as e:
             rename_schema(
                 parse(ISS.multiple_objects_schema),
-                {"Human": "0Human", "Dog": "__Dog", "Droid": "NewDroid"}, {"Human": {"name": {"0name"}}, "Droid": {"id": {"id!"}}, "Dog": {"nickname": "__nickname"}}
+                {"Human": "0Human", "Dog": "__Dog", "Droid": "NewDroid"},
+                {
+                    "Human": {"name": {"0name"}},
+                    "Droid": {"id": {"id!"}},
+                    "Dog": {"nickname": {"__nickname"}},
+                },
             )
         self.assertEqual(
-            "Applying the renaming would rename types with names that are not valid, unreserved "
+            "Applying the renaming would involve names that are not valid, unreserved "
             "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
             "characters and underscores, must not start with a numeric character, and must not "
-            "start with double underscores. The following dictionary maps each type's original "
-            "name to what would be the new name: [('Dog', '__Dog'), ('Human', '0Human')]",
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Dog', '__Dog'), ('Human', '0Human')]\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Dog', [('nickname', '__nickname')]), "
+            "('Droid', [('id', 'id!')]), ('Human', [('name', '0name')])]",
             str(e.exception),
         )
 

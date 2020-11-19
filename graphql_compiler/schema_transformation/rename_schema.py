@@ -139,6 +139,7 @@ from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..typedefs import Protocol
 from .utils import (
     CascadingSuppressionError,
+    InvalidTypeNameError,
     NoOpRenamingError,
     RenameTypes,
     RenameTypesT,
@@ -149,7 +150,7 @@ from .utils import (
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
-    is_valid_unreserved_name, InvalidTypeNameError,
+    is_valid_unreserved_name,
 )
 
 
@@ -500,14 +501,42 @@ def _rename_and_suppress_types_and_fields(
         type_renamings, field_renamings, query_type, custom_scalar_names
     )
     renamed_schema_ast = visit(schema_ast, visitor)
-    if visitor.invalid_type_names:
-        sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
+    if visitor.invalid_type_names or visitor.invalid_field_names:
+        explanation = (
+            "Applying the renaming would involve names that are not valid, unreserved "
+            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "characters and underscores, must not start with a numeric character, and must not "
+            "start with double underscores."
+        )
+        invalid_type_names_message = None
+        if visitor.invalid_type_names:
+            sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
+            invalid_type_names_message = (
+                f"The following is a list of tuples that describes what needs to be fixed for type "
+                f"renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+                f"original_name is the name in the original schema and invalid_new_name is what "
+                f"original_name would be renamed to: {sorted_invalid_type_names}"
+            )
+        invalid_field_names_message = None
+        if visitor.invalid_field_names:
+            sorted_invalid_field_names = [
+                (type_name, sorted(field_renamings.items()))
+                for type_name, field_renamings in sorted(visitor.invalid_field_names.items())
+            ]
+            invalid_field_names_message = (
+                f"The following is a list of tuples that describes what needs to be fixed for "
+                f"field renamings. Each tuple is of the form (type_name, field_renamings) "
+                f"where type_name is the name of the type in the original schema and "
+                f"field_renamings is a list of tuples mapping the original field name to the "
+                f"invalid GraphQL name it would be renamed to: {sorted_invalid_field_names}"
+            )
+        error_message_components = [
+            explanation,
+            invalid_type_names_message,
+            invalid_field_names_message,
+        ]
         raise InvalidTypeNameError(
-            f"Applying the renaming would rename types with names that are not valid, unreserved "
-            f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
-            f"characters and underscores, must not start with a numeric character, and must not "
-            f"start with double underscores. The following dictionary maps each type's original "
-            f"name to what would be the new name: {sorted_invalid_type_names}"
+            "\n".join([i for i in error_message_components if i is not None])
         )
     if (
         visitor.type_name_conflicts
