@@ -15,7 +15,7 @@ from ...schema_transformation.rename_schema import (
 )
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
-    InvalidTypeNameError,
+    InvalidNameError,
     NoOpRenamingError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
@@ -901,7 +901,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_invalid_name_error_message(self) -> None:
-        with self.assertRaises(InvalidTypeNameError) as e:
+        with self.assertRaises(InvalidNameError) as e:
             rename_schema(
                 parse(ISS.multiple_objects_schema),
                 {"Human": "0Human", "Dog": "__Dog", "Droid": "NewDroid"},
@@ -916,23 +916,23 @@ class TestRenameSchema(unittest.TestCase):
         )
 
     def test_illegal_rename_type_start_with_number(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "0Human"})
 
     def test_illegal_rename_type_contains_illegal_char(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "Human!"})
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"})
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"})
 
     def test_illegal_rename_type_to_double_underscore(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "__Human"})
 
     def test_illegal_rename_type_to_reserved_name_type(self) -> None:
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
 
     def test_suppress_every_type(self) -> None:
