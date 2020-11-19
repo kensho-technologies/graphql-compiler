@@ -98,8 +98,7 @@ def paginate_query_ast(
         elif len(pagination_plan.vertex_partitions) == 1:
             plan_vertex_partition = pagination_plan.vertex_partitions[0]
             parameter_generator = generate_parameters_for_vertex_partition(
-                query_analysis.schema_info,
-                query_analysis.ast_with_parameters,
+                query_analysis,
                 plan_vertex_partition,
             )
 

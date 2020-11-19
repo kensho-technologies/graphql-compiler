@@ -199,6 +199,7 @@ fi
 if  [[
         (
             ("$run_fast_linters" == 1) && (
+                ("$copyright_line_check_exit_code" != "0") ||
                 ("$isort_exit_code" != "0") ||
                 ("$black_exit_code" != "0") ||
                 ("$flake_exit_code" != "0") ||
@@ -218,6 +219,7 @@ if  [[
     echo -e "\n*** Lint failed. ***\n"
 
     if [ "$run_fast_linters" -eq 1 ]; then
+        echo -e "copyright line check exit: $copyright_line_check_exit_code"
         echo -e "isort exit: $isort_exit_code"
         echo -e "black exit: $black_exit_code"
         echo -e "flake8 exit: $flake_exit_code"

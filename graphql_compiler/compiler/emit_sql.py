@@ -46,6 +46,38 @@ FOLD_OUTPUT_FORMAT_STRING = "fold_output_{}"
 FOLD_SUBQUERY_FORMAT_STRING = "folded_subquery_{}"
 
 
+def _get_primary_key_name(alias: Alias, vertex_type_name: str, directive_name: str) -> str:
+    """Return the name of the single-column primary key for the alias.
+
+    If there is no single-column primary key for this alias, an error is raised.
+
+    Args:
+        alias: the sqlalchemy object with primary key information
+        vertex_type_name: The vertex name that represents the alias. Used for error messages
+                          only.
+        directive_name: name of the directive that requires the single-column
+                        primary key to exist. Used in error messages only.
+
+    Returns:
+        name of the single-column primary key
+    """
+    primary_keys = alias.primary_key
+
+    if not primary_keys:
+        raise AssertionError(
+            f"The table for vertex {vertex_type_name} has no primary key specified. "
+            f"This information is required to emit a {directive_name} directive."
+        )
+    if len(primary_keys) > 1:
+        raise NotImplementedError(
+            f"The table for vertex {vertex_type_name} has a composite primary key "
+            f"{primary_keys}. The SQL backend does not support "
+            f"{directive_name} on tables with composite primary keys."
+        )
+
+    return str(primary_keys[0].name)
+
+
 def _traverse_and_validate_blocks(ir: IrAndMetadata) -> Iterator[BasicBlock]:
     """Yield all blocks, while validating consistency."""
     found_query_root = False
@@ -103,7 +135,7 @@ def _find_used_columns(
             for field in filter_info.fields:
                 used_columns.setdefault(get_vertex_path(location), set()).add(field)
 
-    # Find foreign keys used
+    # Find columns used to emit edges
     for location, location_info in ir.query_metadata_table.registered_locations:
         for child_location in ir.query_metadata_table.get_child_locations(location):
             edge_direction, edge_name = get_edge_direction_and_name(
@@ -114,9 +146,16 @@ def _find_used_columns(
             used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
             used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.to_column)
 
-            # A recurse implies an outgoing foreign key usage
+            # Check if the edge is recursive
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
             if child_location_info.recursive_scopes_depth > location_info.recursive_scopes_depth:
+                # The primary key may be used if the recursive cte base semijoins to
+                # the pre-recurse cte by primary key.
+                alias = sql_schema_info.vertex_name_to_table[location_info.type.name].alias()
+                primary_key_name = _get_primary_key_name(alias, location_info.type.name, "@recurse")
+                used_columns.setdefault(get_vertex_path(location), set()).add(primary_key_name)
+
+                # The from_column is used at the destination as well, inside the recursive step
                 used_columns.setdefault(get_vertex_path(child_location), set()).add(
                     edge.from_column
                 )
@@ -130,17 +169,6 @@ def _find_used_columns(
     for _, tag_info in ir.query_metadata_table.tags:
         query_path = get_vertex_path(tag_info.location)
         used_columns.setdefault(query_path, set()).add(tag_info.location.field)
-
-    # Columns used in the base case of CTE recursions should be made available from parent scope
-    # TODO(bojanserafimov): Some of these are no longer needed, since we don't select from
-    #                       the base cte, but only semijoin to its primary key now.
-    for location, _ in ir.query_metadata_table.registered_locations:
-        for recurse_info in ir.query_metadata_table.get_recurse_infos(location):
-            traversal = f"{recurse_info.edge_direction}_{recurse_info.edge_name}"
-            used_columns[get_vertex_path(location)] = used_columns.get(
-                get_vertex_path(location), set()
-            ).union(used_columns[get_vertex_path(location) + (traversal,)])
-            used_columns[get_vertex_path(location)].add(edge.from_column)
 
     return used_columns
 
@@ -971,23 +999,8 @@ class CompilationState(object):
         Returns:
             name of the single-column primary key
         """
-        primary_keys = (
-            self._sql_schema_info.vertex_name_to_table[self._current_classname].alias().primary_key
-        )
-
-        if not primary_keys:
-            raise AssertionError(
-                f"The table for vertex {self._current_classname} has no primary key specified. "
-                f"This information is required to emit a {directive_name} directive."
-            )
-        if len(primary_keys) > 1:
-            raise NotImplementedError(
-                f"The table for vertex {self._current_classname} has a composite primary key "
-                f"{primary_keys}. The SQL backend does not support "
-                f"{directive_name} on tables with composite primary keys."
-            )
-
-        return str(primary_keys[0].name)
+        alias = self._sql_schema_info.vertex_name_to_table[self._current_classname].alias()
+        return _get_primary_key_name(alias, self._current_classname, directive_name)
 
     def recurse(self, vertex_field: str, depth: int) -> None:
         """Execute a Recurse Block."""

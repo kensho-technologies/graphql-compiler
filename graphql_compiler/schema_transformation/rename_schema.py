@@ -98,7 +98,7 @@ Renaming constraints:
   being renamed or suppressed. The same rules apply for fields that belong to the same type, since
   they share a namespace as well.
 - There exist special rules for iterable renamings (e.g. if renamings are represented as a
-  dictionary-- specifically that no-op renamings are not allowed.
+  dictionary)-- specifically, no-op renamings are not allowed.
   - If type_renamings argument is iterable:
     - A string type_name may be in type_renamings only if there exists a type in the original schema
       named type_name (since otherwise that entry would not affect any type in the schema).
@@ -142,7 +142,6 @@ from .utils import (
     NoOpRenamingError,
     RenameTypes,
     RenameTypesT,
-    SchemaRenameInvalidNameError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
     builtin_scalar_type_names,
@@ -150,7 +149,7 @@ from .utils import (
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
-    is_valid_unreserved_name,
+    is_valid_unreserved_name, InvalidTypeNameError,
 )
 
 
@@ -209,9 +208,9 @@ def rename_schema(
     """Create a RenamedSchemaDescriptor; rename/suppress types and fields.
 
     Any object type, interface type, enum type, or field of the root type/query type has a name. Let
-    the name be called type_name. If type_renamings.get(type_name, _) is not None, the type or field
-    of the root type/query type will be renamed to the corresponding value. If the value is None, it
-    will be suppressed in the renamed schema and queries will not be able to access it.
+    the name be called type_name. If type_renamings.get(type_name, type_name) is not None, the type
+    or field of the root type/query type will be renamed to the returned value. If the value is
+    None, it will be suppressed in the renamed schema and queries will not be able to access it.
 
     Fields belonging to object types may also be renamed or suppressed. For an object type named
     type_name, if field_renamings[type_name] is not None, then field_renamings[type_name] contains
@@ -241,24 +240,24 @@ def rename_schema(
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
         - SchemaTransformError if type_renamings suppressed every type. Note that this is a
-          superclass of CascadingSuppressionError, SchemaRenameInvalidNameError,
-          SchemaStructureError, and SchemaRenameNameConflictError, so handling exceptions of type
-          SchemaTransformError will also catch all of its subclasses. This will change after the
-          error classes are modified so that errors can be fixed programmatically, at which point it
-          will make sense for the user to attempt to treat different errors differently
+          superclass of CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
+          SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
+          also catch all of its subclasses. This will change after the error classes are modified so
+          that errors can be fixed programmatically, at which point it will make sense for the user
+          to attempt to treat different errors differently
         - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
           type implementing an interface
-        - SchemaRenameInvalidNameError if the user attempts to rename a type or field to an invalid
-          name. A name is considered invalid if it does not consist of alphanumeric characters and
-          underscores, if it starts with a numeric character, or if it starts with double
-          underscores
+        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+          to rename a type to an invalid name. A name is considered invalid if it does not consist
+          of alphanumeric characters and underscores, if it starts with a numeric character, or
+          if it starts with double underscores
         - SchemaStructureError if the schema does not have the expected form; in particular, if
           the AST does not represent a valid schema, if any query type field does not have the
           same name as the type that it queries, if the schema contains type extensions or
           input object definitions, or if the schema contains mutations or subscriptions
         - SchemaRenameNameConflictError if there are name conflicts between the renamed types or
           fields
-        - NoOpRenamingError if the renamings contain no-op renamings and are iterable.
+        - NoOpRenamingError if the renamings contain no-op renamings and are iterable
     """
     # Check input schema satisfies various structural requirements
     check_ast_schema_is_valid(schema_ast)
@@ -323,7 +322,7 @@ def _validate_renamings(
                     the same name as the types they query. Not modified by this function
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
@@ -479,7 +478,7 @@ def _rename_and_suppress_types_and_fields(
         schema_ast: schema that we're returning a modified version of
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         field_renamings: maps type names to the renamings for its fields. The renamings map field
                          names belonging to the type to a list of field names for the renamed
                          schema.
@@ -493,16 +492,23 @@ def _rename_and_suppress_types_and_fields(
         entries for all non-suppressed types/ fields, including those that were not renamed.
 
     Raises:
-        - SchemaRenameInvalidNameError if the user attempts to rename a type to an invalid name
+        - InvalidTypeNameError if the user attempts to rename a type or field to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
-        - NoOpRenamingError if renamings contains no-op renamings and renamings are iterable.
+        - NoOpRenamingError if renamings contains no-op renamings and renamings are iterable
     """
     visitor = RenameSchemaTypesVisitor(
         type_renamings, field_renamings, query_type, custom_scalar_names
     )
     renamed_schema_ast = visit(schema_ast, visitor)
-    if visitor.invalid_type_names or visitor.invalid_field_names:
-        raise SchemaRenameInvalidNameError(visitor.invalid_type_names, visitor.invalid_field_names)
+    if visitor.invalid_type_names:
+        sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
+        raise InvalidTypeNameError(
+            f"Applying the renaming would rename types with names that are not valid, unreserved "
+            f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            f"characters and underscores, must not start with a numeric character, and must not "
+            f"start with double underscores. The following dictionary maps each type's original "
+            f"name to what would be the new name: {sorted_invalid_type_names}"
+        )
     if (
         visitor.type_name_conflicts
         or visitor.type_renamed_to_builtin_scalar_conflicts
@@ -563,7 +569,7 @@ def _rename_and_suppress_query_type_fields(
         schema_ast: schema that we're returning a modified version of
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         query_type: name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
@@ -621,6 +627,7 @@ class RenameSchemaTypesVisitor(Visitor):
             "ScalarTypeExtensionNode",
         }
     )
+
     # rename_types must be a set of strings corresponding to the names of the classes in
     # RenameTypes. The duplication exists because introspection for Unions via typing.get_args()
     # doesn't exist until Python 3.8. In Python 3.8, this would be a valid way to define
@@ -640,32 +647,39 @@ class RenameSchemaTypesVisitor(Visitor):
             "UnionTypeDefinitionNode",
         }
     )
+
     # Collects naming conflict errors involving types that are not built-in scalar types. If
     # type_renamings would result in multiple types being named "Foo", type_name_conflicts will map
     # "Foo" to a set containing the name of each such type
     type_name_conflicts: Dict[str, Set[str]]
+
     # Collects naming conflict errors involving built-in scalar types. If type_renamings would
     # rename a type named "Foo" to "String", type_renamed_to_builtin_scalar_conflicts will map
     # "Foo" to "String"
     type_renamed_to_builtin_scalar_conflicts: Dict[str, str]
+
     # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
     # non-scalar types, including those that were unchanged. Must contain unchanged names to prevent
     # type renaming conflicts and raise SchemaRenameNameConflictError when they arise
     reverse_name_map: Dict[str, str]
+
     # Collects invalid type names in type_renamings. If type_renamings would rename a type named
     # "Foo" to a string that is not a valid, unreserved GraphQL type name (valid, unreserved names
     # consist only of alphanumeric characters and underscores, do not start with a number, and do
     # not start with two underscores), invalid_type_names will map "Foo" to the invalid type name.
     invalid_type_names: Dict[str, str]
+
     # Collects the type names for types that get suppressed. If type_renamings would suppress a type
     # named "Foo", suppressed_type_names will contain "Foo".
     suppressed_type_names: Set[str]
+
     # reverse_field_name_map maps type name to a dict, which in turn maps the name of a field in the
     # renamed schema to the name of the field in the original schema, if the field has different
     # names in the original schema and the new schema. If field_renamings would rename a field named
     # "foo" (in a type named "Baz") to "bar", then reverse_field_name_map["Baz"] will map "bar" to
     # "foo".
     reverse_field_name_map: DefaultDict[str, Dict[str, str]]
+
     # TODO(Leon): Would welcome suggestions for figuring out the clearest way to explain these data
     #  structures that NoOpRenamingError depends on.
     # Collects no-op renamings for fields, mapping the type name that contains the field to the set
@@ -675,21 +689,25 @@ class RenameSchemaTypesVisitor(Visitor):
     # when such a field does not exist, no_op_field_renamings will map "Bar" to a set containing
     # "foo".
     no_op_field_renamings: DefaultDict[str, Set[str]]
+
     # Collects type names for each object type that has field renamings and had them applied. After
     # every renaming is done, this is used to ensure that field_renamings contains no unused field
     # renamings for a particular type if field_renamings is iterable.
     types_with_field_renamings_processed: Set[str]
+
     # Collects invalid field names in field_renamings. If field_renamings would rename a field named
     # "foo" (in a type named "Bar") to a string that is not a valid, unreserved GraphQL type name
     # (valid, unreserved names consist only of alphanumeric characters and underscores, do not start
     # with a number, and do not start with two underscores), invalid_field_names will map "Bar" to a
     # dict that maps "foo" to the invalid field name.
     invalid_field_names: DefaultDict[str, Dict[str, str]]
+
     # Collects naming conflict errors involving fields. If field_renamings would rename multiple
     # fields (in a type named "Bar" in the original schema) to "foo", field_name_conflicts will map
     # "Bar" to a dict that maps "foo" to a set containing the names of the fields in the original
     # schema that would be renamed to "foo".
     field_name_conflicts: Dict[str, Dict[str, Set[str]]]
+
     # TODO(Leon): Would welcome suggestions on how to better organize the data structures in here,
     #  since this visitor class has picked up quite a few fields just because of the various types
     #  of errors that might arise during renaming and needing to keep track of it all.
@@ -706,7 +724,7 @@ class RenameSchemaTypesVisitor(Visitor):
         Args:
             type_renamings: maps original type name to renamed name or None (for type suppression).
                             A type named "Foo" will be unchanged iff type_renamings does not map
-                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             field_renamings: maps type names to the renamings for its fields. The renamings map
                              field names belonging to the type to a list of field names for the
                              renamed schema.
@@ -916,7 +934,7 @@ class RenameQueryTypeFieldsVisitor(Visitor):
         Args:
             type_renamings: maps original type name to renamed name or None (for type suppression).
                             A type named "Foo" will be unchanged iff type_renamings does not map
-                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                            "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             query_type: name of the query type (e.g. RootSchemaQuery)
 
         Raises:

@@ -2419,6 +2419,117 @@ class CompilerTests(unittest.TestCase):
             expected_postgresql,
         )
 
+    def test_inwards_recurse_after_traverse(self) -> None:
+        test_data = test_input_data.inwards_recurse_after_traverse()
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_mssql = """
+            WITH anon_2 AS (
+                SELECT
+                    [Species_1].name AS [Species__name],
+                    [Species_1].uuid AS [Species__uuid],
+                    [Animal_1].name AS [Species_in_Animal_OfSpecies__name],
+                    [Animal_1].parent AS [Species_in_Animal_OfSpecies__parent],
+                    [Animal_1].species AS [Species_in_Animal_OfSpecies__species],
+                    [Animal_1].uuid AS [Species_in_Animal_OfSpecies__uuid]
+                FROM
+                    db_1.schema_1.[Species] AS [Species_1]
+                    JOIN db_1.schema_1.[Animal] AS [Animal_1]
+                        ON [Species_1].uuid = [Animal_1].species
+            ),
+            anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+                SELECT
+                    [Animal_2].name AS name,
+                    [Animal_2].parent AS parent,
+                    [Animal_2].uuid AS uuid,
+                    [Animal_2].uuid AS __cte_key,
+                    0 AS __cte_depth
+                FROM
+                    db_1.schema_1.[Animal] AS [Animal_2]
+                WHERE
+                    [Animal_2].uuid IN (
+                        SELECT anon_2.[Species_in_Animal_OfSpecies__uuid] FROM anon_2
+                    )
+                UNION ALL
+                    SELECT
+                        [Animal_3].name AS name,
+                        [Animal_3].parent AS parent,
+                        [Animal_3].uuid AS uuid,
+                        anon_1.__cte_key AS __cte_key,
+                        anon_1.__cte_depth + 1 AS __cte_depth
+                    FROM
+                        anon_1
+                        JOIN db_1.schema_1.[Animal] AS [Animal_3]
+                            ON anon_1.parent = [Animal_3].uuid
+                    WHERE anon_1.__cte_depth < 1
+            )
+            SELECT
+                anon_1.name AS ancestor_name,
+                anon_2.[Species_in_Animal_OfSpecies__name] AS animal_name,
+                anon_2.[Species__name] AS species_name
+            FROM
+                anon_2
+                JOIN anon_1
+                    ON anon_2.[Species_in_Animal_OfSpecies__uuid] = anon_1.__cte_key
+        """
+        expected_cypher = SKIP_TEST
+        expected_postgresql = """
+        WITH RECURSIVE anon_2 AS (
+            SELECT
+                "Species_1".name AS "Species__name",
+                "Species_1".uuid AS "Species__uuid",
+                "Animal_1".name AS "Species_in_Animal_OfSpecies__name",
+                "Animal_1".parent AS "Species_in_Animal_OfSpecies__parent",
+                "Animal_1".species AS "Species_in_Animal_OfSpecies__species",
+                "Animal_1".uuid AS "Species_in_Animal_OfSpecies__uuid"
+            FROM
+                schema_1."Species" AS "Species_1"
+                JOIN schema_1."Animal" AS "Animal_1"
+                    ON "Species_1".uuid = "Animal_1".species),
+        anon_1(name, parent, uuid, __cte_key, __cte_depth) AS (
+            SELECT
+                "Animal_2".name AS name,
+                "Animal_2".parent AS parent,
+                "Animal_2".uuid AS uuid,
+                "Animal_2".uuid AS __cte_key,
+                0 AS __cte_depth
+            FROM
+                schema_1."Animal" AS "Animal_2"
+            WHERE
+                "Animal_2".uuid IN (SELECT anon_2."Species_in_Animal_OfSpecies__uuid" FROM anon_2)
+            UNION ALL
+            SELECT
+                "Animal_3".name AS name,
+                "Animal_3".parent AS parent,
+                "Animal_3".uuid AS uuid,
+                anon_1.__cte_key AS __cte_key,
+                anon_1.__cte_depth + 1 AS __cte_depth
+            FROM
+                anon_1
+                JOIN schema_1."Animal" AS "Animal_3"
+                    ON anon_1.parent = "Animal_3".uuid
+            WHERE anon_1.__cte_depth < 1
+        )
+        SELECT
+            anon_1.name AS ancestor_name,
+            anon_2."Species_in_Animal_OfSpecies__name" AS animal_name,
+            anon_2."Species__name" AS species_name
+        FROM
+            anon_2
+            JOIN anon_1
+                ON anon_2."Species_in_Animal_OfSpecies__uuid" = anon_1.__cte_key
+        """
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
+
     def test_recurse_with_new_output_inside_recursion_and_filter_at_root(self) -> None:
         test_data = test_input_data.recurse_with_new_output_inside_recursion_and_filter_at_root()
 
@@ -2427,9 +2538,7 @@ class CompilerTests(unittest.TestCase):
         expected_mssql = """
             WITH anon_2 AS (
                 SELECT
-                    [Animal_1].color AS [Animal__color],
                     [Animal_1].name AS [Animal__name],
-                    [Animal_1].parent AS [Animal__parent],
                     [Animal_1].uuid AS [Animal__uuid]
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
@@ -2491,7 +2600,6 @@ class CompilerTests(unittest.TestCase):
             WITH anon_2 AS (
                 SELECT
                     [Animal_1].name AS [Animal__name],
-                    [Animal_1].parent AS [Animal__parent],
                     [Animal_1].uuid AS [Animal__uuid]
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
@@ -9793,7 +9901,6 @@ class CompilerTests(unittest.TestCase):
                     [Animal_1].name AS [Animal__name],
                     [Animal_1].parent AS [Animal__parent],
                     [Animal_2].name AS [Animal_in_Animal_ParentOf__name],
-                    [Animal_2].parent AS [Animal_in_Animal_ParentOf__parent],
                     [Animal_2].uuid AS [Animal_in_Animal_ParentOf__uuid]
                 FROM
                     db_1.schema_1.[Animal] AS [Animal_1]
@@ -9844,7 +9951,6 @@ class CompilerTests(unittest.TestCase):
                     "Animal_1".name AS "Animal__name",
                     "Animal_1".parent AS "Animal__parent",
                     "Animal_2".name AS "Animal_in_Animal_ParentOf__name",
-                    "Animal_2".parent AS "Animal_in_Animal_ParentOf__parent",
                     "Animal_2".uuid AS "Animal_in_Animal_ParentOf__uuid"
                 FROM
                     schema_1."Animal" AS "Animal_1"
