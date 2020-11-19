@@ -81,10 +81,11 @@ Operations that are already supported:
 - Suppressions for fields belonging to object types
 
 Operations that are not yet supported but will be implemented:
-- Suppressions for fields belonging to interface types, enums, enum values, interfaces, and types
-  that implement interfaces.
-- Renamings and suppressions for scalar types
-- 1-1 and 1-many renamings for fields belonging to interface types and enum values.
+- Suppressions for enums, interfaces, and object types that implement interfaces.
+- Renamings and suppressions for scalar types.
+- Renamings and suppressions for fields that belong to either interface types or object types that
+  implement interfaces.
+- Renamings and suppressions for enum values.
 
 Renaming constraints:
 - If you suppress all member types in a union, you must also suppress the union.
@@ -98,7 +99,7 @@ Renaming constraints:
   being renamed or suppressed. The same rules apply for fields that belong to the same type, since
   they share a namespace as well.
 - There exist special rules for iterable renamings (e.g. if renamings are represented as a
-  dictionary)-- specifically, no-op renamings are not allowed.
+  dictionary)-- specifically that no-op renamings are not allowed.
   - If type_renamings argument is iterable:
     - A string type_name may be in type_renamings only if there exists a type in the original schema
       named type_name (since otherwise that entry would not affect any type in the schema).
@@ -161,10 +162,10 @@ RenamedSchemaDescriptor = namedtuple(
         "schema",  # GraphQLSchema, representing the same schema as schema_ast
         "reverse_name_map",  # Dict[str, str], renamed type/query type field name to original name
         # reverse_name_map only contains names that were changed
-        "reverse_field_name_map",  # Dict[str, Dict[str, str]], mappings of the form type_name:
-        # reverse_field_name_mapping, where type_name is the name of a type in the original schema
-        # and reverse_field_name_mapping is a dict mapping renamed field names to to original name
-        # for the given type. Contains only field names that were changed
+        "reverse_field_name_map",  # Dict[str, Dict[str, str]], mappings of the form
+        # type_name: reverse_field_name_mapping, where type_name is the name of a type in the
+        # original schema and reverse_field_name_mapping is a dict mapping renamed field names to
+        # original name for the given type. Contains only field names that were changed
     ),
 )
 
@@ -213,12 +214,12 @@ def rename_schema(
     or field of the root type/query type will be renamed to the returned value. If the value is
     None, it will be suppressed in the renamed schema and queries will not be able to access it.
 
-    Fields belonging to object types may also be renamed or suppressed. For an object type named
-    type_name, if field_renamings[type_name] is not None, then field_renamings[type_name] contains
-    the renamings for the fields belonging to that type.
+    Fields may also be renamed or suppressed if they belong to object types that don't implement an
+    interface. For an object type named type_name, if field_renamings[type_name] is not None, then
+    field_renamings[type_name] contains the renamings for the fields belonging to that type.
 
-    If a type or field doesn't appear in its renamings, it will be unchanged. Directives will never
-    be renamed.
+    If a type or field doesn't appear in the renamings arguments, it will be unchanged. Directives
+    will never be renamed.
 
     In addition, some operations have not been implemented yet (see module-level docstring for more
     details).
@@ -229,10 +230,10 @@ def rename_schema(
                     the same name as the types they query. Not modified by this function
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
-                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo".
+                        anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         field_renamings: maps type names to the renamings for its fields. The renamings map field
                          names belonging to the type to a list of field names for the renamed
-                         schema.
+                         schema
 
     Returns:
         RenamedSchemaDescriptor containing the AST of the renamed schema, and the maps of renamed
@@ -482,7 +483,7 @@ def _rename_and_suppress_types_and_fields(
                         anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
         field_renamings: maps type names to the renamings for its fields. The renamings map field
                          names belonging to the type to a list of field names for the renamed
-                         schema.
+                         schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
@@ -756,7 +757,7 @@ class RenameSchemaTypesVisitor(Visitor):
                             "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
             field_renamings: maps type names to the renamings for its fields. The renamings map
                              field names belonging to the type to a list of field names for the
-                             renamed schema.
+                             renamed schema
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
             custom_scalar_names: set of all user defined scalars used in the schema (excluding
                                  builtin scalars)
@@ -876,7 +877,7 @@ class RenameSchemaTypesVisitor(Visitor):
             return node_with_new_name
 
     def _rename_fields(self, node: ObjectTypeDefinitionNode) -> ObjectTypeDefinitionNode:
-        """Rename node's fields, if applicable and return new node."""
+        """Rename node's fields, if applicable and return new node with updated fields."""
         type_name = node.name.value
         current_type_field_renamings = self.field_renamings.get(type_name, None)
         if current_type_field_renamings is None:
@@ -888,6 +889,8 @@ class RenameSchemaTypesVisitor(Visitor):
             #  any field renamings.
             return node
         self.types_with_field_renamings_processed.add(type_name)
+        # Need to create a set of field nodes that the type will have after the field renamings,
+        # instead of just modifying them in place. This is to support 1-many renaming.
         new_field_nodes: Set[FieldDefinitionNode] = set()
         for field_node in node.fields:
             original_field_name = field_node.name.value
@@ -897,12 +900,15 @@ class RenameSchemaTypesVisitor(Visitor):
                 original_field_name
             }:
                 # Check for no-op 1-1 renamings when the renamings are iterable and would rename a
-                # field to itself.
+                # field to itself. Note the default return is the empty set(), which covers the
+                # (legal) situation where current_type_field_renamings doesn't contain an entry for
+                # the current field_node.
                 self.no_op_field_renamings[type_name].add(original_field_name)
             new_field_names = current_type_field_renamings.get(
                 original_field_name, {original_field_name}
             )
             for new_field_name in new_field_names:
+                # Validate the new field name before adding it to the schema.
                 if new_field_name in self.reverse_field_name_map[type_name]:
                     if new_field_name not in self.field_name_conflicts[type_name]:
                         conflictingly_renamed_field_name = self.reverse_field_name_map[
@@ -919,6 +925,8 @@ class RenameSchemaTypesVisitor(Visitor):
                 get_copy_of_node_with_new_name(field_node, new_field_name)
                 for new_field_name in new_field_names
             )
+        # Check that, having applied field renamings for every single field in node.fields, that
+        # there are no leftover field_renamings that would be illegal noops.
         if isinstance(current_type_field_renamings, Iterable):
             unused_field_renamings = set(current_type_field_renamings) - {
                 field.name.value for field in node.fields
@@ -928,7 +936,7 @@ class RenameSchemaTypesVisitor(Visitor):
                 # materialize an empty set, making it seem like there are no-op field renamings even
                 # when there aren't.
                 self.no_op_field_renamings[type_name].update(unused_field_renamings)
-        new_type_node = copy(node)  # shallow copy is enough
+        new_type_node = copy(node)
         new_type_node.fields = FrozenList(new_field_nodes)
         return new_type_node
 
