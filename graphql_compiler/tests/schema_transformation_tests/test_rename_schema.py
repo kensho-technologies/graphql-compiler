@@ -1158,42 +1158,6 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(SchemaRenameNameConflictError):
             rename_schema(parse(schema_string), {"Human2": "Human"}, {})
 
-    def test_clashing_type_one_unchanged_rename(self) -> None:
-        schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Human {
-              id: String
-            }
-
-            type Human2 {
-              id: String
-            }
-
-            type SchemaQuery {
-              Human: Human
-              Human2: Human2
-            }
-        """
-        )
-
-        with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(parse(schema_string), {"Human": "Human3", "Human2": "Human3"}, {})
-        self.assertEqual(
-            "Applying the renaming would produce a schema in which multiple types have the "
-            "same name, which is an illegal schema state. To fix this, modify the type_renamings "
-            "argument of rename_schema to ensure that no two types in the renamed schema have "
-            "the same name. The following is a list of tuples that describes what needs to be "
-            "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
-            "where new_type_name is the type name that would appear in the new schema and "
-            "original_schema_type_names is a list of types in the original schema that get "
-            "mapped to new_type_name: [('Human3', ['Human', 'Human2'])]",
-            str(e.exception),
-        )
-
     def test_clashing_scalar_type_rename(self) -> None:
         schema_string = dedent(
             """\
@@ -1233,17 +1197,8 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError) as e:
+        with self.assertRaises(SchemaRenameNameConflictError):
             rename_schema(parse(schema_string), {"Human": "String"}, {})
-        self.assertEqual(
-            "Applying the renaming would rename type(s) to a name already used by a built-in "
-            "GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
-            "scalar's name. The following is a list of tuples that describes what needs to be "
-            "fixed. Each tuple is of the form (type_name, scalar_name) where type_name is the "
-            "original name of the type and scalar_name is the name of the scalar that the "
-            "type would be renamed to: [('Human', 'String')]",
-            str(e.exception),
-        )
 
     def test_multiple_naming_conflicts(self) -> None:
         schema_string = dedent(
