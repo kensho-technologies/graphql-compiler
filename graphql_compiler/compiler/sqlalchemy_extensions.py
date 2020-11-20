@@ -2,6 +2,7 @@
 from copy import copy
 from typing import Any, Dict, List, Union
 
+from graphql.type.definition import GraphQLList, GraphQLType
 import sqlalchemy
 from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
 from sqlalchemy.dialects.postgresql.psycopg2 import PGDialect_psycopg2
@@ -105,16 +106,18 @@ def print_sqlalchemy_query_string(
     return str(BindparamCompiler(printing_dialect, query).process(query))
 
 
-def bind_parameters_to_query_string(query: str, parameters: Dict[str, Any]) -> TextClause:
+def bind_parameters_to_query_string(
+    query: str, input_metadata: Dict[str, GraphQLType], parameters: Dict[str, Any]
+) -> TextClause:
     """Assign values to query parameters."""
-    bound_parameters = [
-        sqlalchemy.bindparam(
-            parameter_name,
-            value=parameter_value,
-            expanding=isinstance(parameter_value, (list, tuple)),
+
+    bound_parameters = []
+    for parameter_name, parameter_value in parameters.items():
+        parameter_type = input_metadata[parameter_name]
+        is_list = isinstance(parameter_type, GraphQLList)
+        bound_parameters.append(
+            sqlalchemy.bindparam(parameter_name, value=parameter_value, expanding=is_list)
         )
-        for parameter_name, parameter_value in parameters.items()
-    ]
 
     return sqlalchemy.text(query).bindparams(*bound_parameters)
 

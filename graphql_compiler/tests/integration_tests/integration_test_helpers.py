@@ -94,9 +94,10 @@ def _compile_print_and_run_sql_query(
 ) -> List[Dict[str, Any]]:
     """Compile, print, bind the arguments, then execute the query."""
     compilation_result = compile_graphql_to_sql(sql_schema_info, graphql_query)
-    query = compilation_result.query
-    printed_query = print_sqlalchemy_query_string(query, sql_schema_info.dialect)
-    query_with_parameters = bind_parameters_to_query_string(printed_query, parameters)
+    printed_query = print_sqlalchemy_query_string(compilation_result.query, sql_schema_info.dialect)
+    query_with_parameters = bind_parameters_to_query_string(
+        printed_query, compilation_result.input_metadata, parameters
+    )
     return materialize_result_proxy(engine.execute(query_with_parameters))
 
 
