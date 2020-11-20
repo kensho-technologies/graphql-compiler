@@ -1207,27 +1207,37 @@ class TestRenameSchema(unittest.TestCase):
               query: SchemaQuery
             }
 
-            type Cat {
-              nickname: String
-            }
-
             type Dog {
               nickname: String
+              age: Int
+            }
+
+            type Cat {
+              nickname: String
+              age: Int
+            }
+
+            type Droid {
+              id: String
+              friends: [Droid]
             }
 
             type Human {
               id: String
+              name: String
+              age: Int
             }
 
             type SchemaQuery {
+              Dog: Dog
+              Cat: Cat
+              Droid: Droid
               Human: Human
             }
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(parse(schema_string), {"Human": "String", "Dog": "Cat"}, {})
-        self.assertEqual(
+        clashing_type_rename_error_message = (
             "Applying the renaming would produce a schema in which multiple types have the "
             "same name, which is an illegal schema state. To fix this, modify the type_renamings "
             "argument of rename_schema to ensure that no two types in the renamed schema have "
@@ -1235,20 +1245,17 @@ class TestRenameSchema(unittest.TestCase):
             "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
             "where new_type_name is the type name that would appear in the new schema and "
             "original_schema_type_names is a list of types in the original schema that get "
-            "mapped to new_type_name: [('Cat', ['Cat', 'Dog'])]\n"
+            "mapped to new_type_name: [('Droid', ['Dog', 'Droid', 'Human'])]"
+        )
+        type_rename_to_builtin_error_message = (
             "Applying the renaming would rename type(s) to a name already used by a built-in "
             "GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
             "scalar's name. The following is a list of tuples that describes what needs to be "
             "fixed. Each tuple is of the form (type_name, scalar_name) where type_name is the "
             "original name of the type and scalar_name is the name of the scalar that the "
-            "type would be renamed to: [('Human', 'String')]",
-            str(e.exception),
+            "type would be renamed to: [('Cat', 'String')]"
         )
-
-    def test_clashing_field_rename(self) -> None:
-        with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"name": {"name", "id"}}})
-        self.assertEqual(
+        clashing_field_rename_error_message = (
             "Applying the renaming would produce a schema in which multiple fields belonging to "
             "the same type have the same name, which is an illegal schema state. To fix this, "
             "modify the field_renamings argument of rename_schema to ensure that within each type "
@@ -1259,7 +1266,37 @@ class TestRenameSchema(unittest.TestCase):
             "(desired_field_name, original_field_names) where desired_field_name is the name of "
             "the field in the new schema and original_field_names is a list of the names of all "
             "the fields in the original schema that would be renamed to desired_field_name: "
-            "[('Human', [('id', ['id', 'name'])])]",
+            "[('Human', [('name', ['id', 'name'])])]"
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(parse(schema_string), {"Human": "Droid", "Dog": "Droid"}, {})
+        self.assertEqual(
+            clashing_type_rename_error_message,
+            str(e.exception),
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(
+                parse(schema_string), {"Cat": "String"}, {"Human": {"id": {"id", "name"}}}
+            )
+        self.assertEqual(
+            type_rename_to_builtin_error_message + "\n" + clashing_field_rename_error_message,
+            str(e.exception),
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(
+                parse(schema_string),
+                {"Cat": "String", "Human": "Droid", "Dog": "Droid"},
+                {"Human": {"id": {"id", "name"}}},
+            )
+        self.assertEqual(
+            clashing_type_rename_error_message
+            + "\n"
+            + type_rename_to_builtin_error_message
+            + "\n"
+            + clashing_field_rename_error_message,
             str(e.exception),
         )
 

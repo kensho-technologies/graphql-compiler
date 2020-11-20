@@ -536,9 +536,7 @@ def _rename_and_suppress_types_and_fields(
             invalid_type_names_message,
             invalid_field_names_message,
         ]
-        raise InvalidNameError(
-            "\n".join([i for i in error_message_components if i is not None])
-        )
+        raise InvalidNameError("\n".join([i for i in error_message_components if i is not None]))
     if (
         visitor.type_name_conflicts
         or visitor.type_renamed_to_builtin_scalar_conflicts
