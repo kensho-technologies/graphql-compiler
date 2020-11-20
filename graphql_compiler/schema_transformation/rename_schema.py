@@ -118,7 +118,7 @@ from .utils import (
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
-    is_valid_unreserved_name,
+    is_valid_nonreserved_name,
 )
 
 
@@ -417,8 +417,8 @@ def _rename_and_suppress_types(
     if visitor.invalid_type_names:
         sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
         raise InvalidNameError(
-            f"Applying the renaming would rename types with names that are not valid, unreserved "
-            f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            f"Applying the renaming would rename types with names that are not valid, nonreserved "
+            f"GraphQL names. Valid, nonreserved GraphQL names must consist of only alphanumeric "
             f"characters and underscores, must not start with a numeric character, and must not "
             f"start with double underscores. The following dictionary maps each type's original "
             f"name to what would be the new name: {sorted_invalid_type_names}"
@@ -557,7 +557,7 @@ class RenameSchemaTypesVisitor(Visitor):
     reverse_name_map: Dict[str, str]
 
     # Collects invalid type names in type_renamings. If type_renamings would rename a type named
-    # "Foo" to a string that is not a valid, unreserved GraphQL type name (valid, unreserved names
+    # "Foo" to a string that is not a valid, nonreserved GraphQL type name (valid, nonreserved names
     # consist only of alphanumeric characters and underscores, do not start with a number, and do
     # not start with two underscores), invalid_type_names will map "Foo" to the invalid type name.
     invalid_type_names: Dict[str, str]
@@ -625,7 +625,7 @@ class RenameSchemaTypesVisitor(Visitor):
             # Suppress the type
             self.suppressed_type_names.add(type_name)
             return REMOVE
-        if not is_valid_unreserved_name(desired_type_name):
+        if not is_valid_nonreserved_name(desired_type_name):
             self.invalid_type_names[type_name] = desired_type_name
 
         # Renaming conflict arises when two types with different names in the original schema have
