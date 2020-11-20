@@ -907,8 +907,8 @@ class TestRenameSchema(unittest.TestCase):
                 {"Human": "0Human", "Dog": "__Dog", "Droid": "NewDroid"},
             )
         self.assertEqual(
-            "Applying the renaming would rename types with names that are not valid, nonreserved "
-            "GraphQL names. Valid, nonreserved GraphQL names must consist of only alphanumeric "
+            "Applying the renaming would rename types with names that are not valid, non-reserved "
+            "GraphQL names. Valid, non-reserved GraphQL names must consist of only alphanumeric "
             "characters and underscores, must not start with a numeric character, and must not "
             "start with double underscores. The following dictionary maps each type's original "
             "name to what would be the new name: [('Dog', '__Dog'), ('Human', '0Human')]",

@@ -255,17 +255,17 @@ def check_schema_identifier_is_valid(identifier: str) -> None:
 
 
 def is_valid_nonreserved_name(name: str) -> bool:
-    """Check if input is a valid, nonreserved GraphQL name.
+    """Check if input is a valid, non-reserved GraphQL name.
 
     A GraphQL name is valid iff it consists of only alphanumeric characters and underscores and
-    does not start with a numeric character. It is nonreserved (i.e. not reserved for GraphQL
+    does not start with a numeric character. It is non-reserved (i.e. not reserved for GraphQL
     internal use) if it does not start with double underscores.
 
     Args:
         name: to be checked
 
     Returns:
-        True iff name is a valid, nonreserved GraphQL type name.
+        True iff name is a valid, non-reserved GraphQL type name.
     """
     return bool(re_name.match(name)) and not name.startswith("__")
 
@@ -456,10 +456,10 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         elif isinstance(node, self.check_name_validity_types):
             if not is_valid_nonreserved_name(node.name.value):
                 raise InvalidNameError(
-                    f"Node name {node.name.value} is not a valid, nonreserved GraphQL name. Valid, "
-                    f"nonreserved GraphQL names must consist of only alphanumeric characters and "
-                    f"underscores, must not start with a numeric character, and must not start "
-                    f"with double underscores."
+                    f"Node name {node.name.value} is not a valid, non-reserved GraphQL name. "
+                    f"Valid, non-reserved GraphQL names must consist of only alphanumeric "
+                    f"characters and underscores, must not start with a numeric character, and "
+                    f"must not start with double underscores."
                 )
 
 
