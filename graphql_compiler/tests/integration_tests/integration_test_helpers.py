@@ -10,11 +10,12 @@ from sqlalchemy.engine.base import Engine
 from graphql_compiler.schema.schema_info import SQLAlchemySchemaInfo
 from graphql_compiler.tests.test_data_tools.neo4j_graph import Neo4jClient
 
-from ... import graphql_to_match, graphql_to_redisgraph_cypher
+from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
 from ...compiler import compile_graphql_to_cypher, compile_graphql_to_sql
 from ...compiler.compiler_frontend import OutputMetadata
 from ...compiler.sqlalchemy_extensions import (
     bind_parameters_to_query_string,
+    materialize_result_proxy,
     print_sqlalchemy_query_string,
 )
 from ...schema.schema_info import CommonSchemaInfo
@@ -85,6 +86,20 @@ def compile_and_run_match_query(
     return results
 
 
+def _compile_print_and_run_sql_query(
+    sql_schema_info: SQLAlchemySchemaInfo,
+    graphql_query: str,
+    parameters: Dict[str, Any],
+    engine: Engine,
+) -> List[Dict[str, Any]]:
+    """Compile, print, bind the arguments, then execute the query."""
+    compilation_result = compile_graphql_to_sql(sql_schema_info, graphql_query)
+    query = compilation_result.query
+    printed_query = print_sqlalchemy_query_string(query, sql_schema_info.dialect)
+    query_with_parameters = bind_parameters_to_query_string(printed_query, parameters)
+    return materialize_result_proxy(engine.execute(query_with_parameters))
+
+
 def compile_and_run_sql_query(
     sql_schema_info: SQLAlchemySchemaInfo,
     graphql_query: str,
@@ -92,16 +107,20 @@ def compile_and_run_sql_query(
     engine: Engine,
 ) -> Tuple[List[Dict[str, Any]], Dict[str, OutputMetadata]]:
     """Compile and run a SQL query against the SQL engine, return result and output metadata."""
-    compilation_result = compile_graphql_to_sql(sql_schema_info, graphql_query)
+    compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query = compilation_result.query
+    results = materialize_result_proxy(engine.execute(query))
 
-    # We print the query and re-attach the parameters to it to test serialization capabilities
-    printed_query = print_sqlalchemy_query_string(query, sql_schema_info.dialect)
-    query_with_parameters = bind_parameters_to_query_string(printed_query, parameters)
+    # Check that when printed the query produces the same result
+    printed_query_results = _compile_print_and_run_sql_query(
+        sql_schema_info, graphql_query, parameters, engine
+    )
+    if sort_db_results(results) != sort_db_results(printed_query_results):
+        raise AssertionError(
+            f"Query {graphql_query} with args {parameters} produces different "
+            f"results when the compiled SQL query is printed before execution."
+        )
 
-    results = []
-    for result in engine.execute(query_with_parameters):
-        results.append(dict(result))
     # Output metadata is needed for MSSQL fold postprocessing.
     return results, compilation_result.output_metadata
 

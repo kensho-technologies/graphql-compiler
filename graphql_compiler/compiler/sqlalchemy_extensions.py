@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Union
 
 import sqlalchemy
 from sqlalchemy.dialects.mssql.pyodbc import MSDialect_pyodbc
@@ -117,3 +117,8 @@ def bind_parameters_to_query_string(query: str, parameters: Dict[str, Any]) -> T
     ]
 
     return sqlalchemy.text(query).bindparams(*bound_parameters)
+
+
+def materialize_result_proxy(result: sqlalchemy.engine.result.ResultProxy) -> List[Dict[str, Any]]:
+    """Drain the results from a result proxy into a list of dicts represenation."""
+    return [dict(row) for row in result]
