@@ -107,7 +107,7 @@ from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
 from ..typedefs import Protocol
 from .utils import (
     CascadingSuppressionError,
-    InvalidTypeNameError,
+    InvalidNameError,
     NoOpRenamingError,
     RenameTypes,
     RenameTypesT,
@@ -118,7 +118,7 @@ from .utils import (
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
-    type_name_is_valid,
+    is_valid_nonreserved_name,
 )
 
 
@@ -175,14 +175,14 @@ def rename_schema(
     Raises:
         - CascadingSuppressionError if a type suppression would require further suppressions
         - SchemaTransformError if type_renamings suppressed every type. Note that this is a
-          superclass of CascadingSuppressionError, InvalidTypeNameError, SchemaStructureError, and
+          superclass of CascadingSuppressionError, InvalidNameError, SchemaStructureError, and
           SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
           also catch all of its subclasses. This will change after the error classes are modified so
           that errors can be fixed programmatically, at which point it will make sense for the user
           to attempt to treat different errors differently
         - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
           type implementing an interface
-        - InvalidTypeNameError if the schema contains an invalid type name, or if the user attempts
+        - InvalidNameError if the schema contains an invalid type name, or if the user attempts
           to rename a type to an invalid name. A name is considered invalid if it does not consist
           of alphanumeric characters and underscores, if it starts with a numeric character, or
           if it starts with double underscores
@@ -408,7 +408,7 @@ def _rename_and_suppress_types(
         renamed.
 
     Raises:
-        - InvalidTypeNameError if the user attempts to rename a type to an invalid name
+        - InvalidNameError if the user attempts to rename a type to an invalid name
         - SchemaRenameNameConflictError if the rename causes name conflicts
         - NoOpRenamingError if renamings contains no-op renamings and renamings are iterable
     """
@@ -416,9 +416,9 @@ def _rename_and_suppress_types(
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.invalid_type_names:
         sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
-        raise InvalidTypeNameError(
-            f"Applying the renaming would rename types with names that are not valid, unreserved "
-            f"GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+        raise InvalidNameError(
+            f"Applying the renaming would rename types with names that are not valid, non-reserved "
+            f"GraphQL names. Valid, non-reserved GraphQL names must consist of only alphanumeric "
             f"characters and underscores, must not start with a numeric character, and must not "
             f"start with double underscores. The following dictionary maps each type's original "
             f"name to what would be the new name: {sorted_invalid_type_names}"
@@ -557,9 +557,10 @@ class RenameSchemaTypesVisitor(Visitor):
     reverse_name_map: Dict[str, str]
 
     # Collects invalid type names in type_renamings. If type_renamings would rename a type named
-    # "Foo" to a string that is not a valid, unreserved GraphQL type name (valid, unreserved names
-    # consist only of alphanumeric characters and underscores, do not start with a number, and do
-    # not start with two underscores), invalid_type_names will map "Foo" to the invalid type name.
+    # "Foo" to a string that is not a valid, non-reserved GraphQL type name (valid, non-reserved
+    # names consist only of alphanumeric characters and underscores, do not start with a number, and
+    # do not start with two underscores), invalid_type_names will map "Foo" to the invalid type
+    # name.
     invalid_type_names: Dict[str, str]
 
     # Collects the type names for types that get suppressed. If type_renamings would suppress a type
@@ -625,7 +626,7 @@ class RenameSchemaTypesVisitor(Visitor):
             # Suppress the type
             self.suppressed_type_names.add(type_name)
             return REMOVE
-        if not type_name_is_valid(desired_type_name):
+        if not is_valid_nonreserved_name(desired_type_name):
             self.invalid_type_names[type_name] = desired_type_name
 
         # Renaming conflict arises when two types with different names in the original schema have

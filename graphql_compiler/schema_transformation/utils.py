@@ -45,7 +45,7 @@ class SchemaStructureError(SchemaTransformError):
     """
 
 
-class InvalidTypeNameError(SchemaTransformError):
+class InvalidNameError(SchemaTransformError):
     """Raised if a type/field name is not valid.
 
     This may be raised if the input schema contains invalid names, or if the user attempts to
@@ -254,18 +254,18 @@ def check_schema_identifier_is_valid(identifier: str) -> None:
         )
 
 
-def type_name_is_valid(name: str) -> bool:
-    """Check if input is a valid, nonreserved GraphQL type name.
+def is_valid_nonreserved_name(name: str) -> bool:
+    """Check if input is a valid, non-reserved GraphQL name.
 
-    A GraphQL type name is valid iff it consists of only alphanumeric characters and underscores and
-    does not start with a numeric character. It is nonreserved (i.e. not reserved for GraphQL
+    A GraphQL name is valid iff it consists of only alphanumeric characters and underscores and
+    does not start with a numeric character. It is non-reserved (i.e. not reserved for GraphQL
     internal use) if it does not start with double underscores.
 
     Args:
         name: to be checked
 
     Returns:
-        True iff name is a valid, nonreserved GraphQL type name.
+        True iff name is a valid, non-reserved GraphQL type name.
     """
     return bool(re_name.match(name)) and not name.startswith("__")
 
@@ -407,7 +407,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
     """Check that the AST does not contain invalid types or types with invalid names.
 
     If AST contains invalid types, raise SchemaStructureError; if AST contains types with
-    invalid names, raise InvalidTypeNameError.
+    invalid names, raise InvalidNameError.
     """
 
     disallowed_types = frozenset(
@@ -446,7 +446,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         Raises:
             - SchemaStructureError if the node is an InputObjectTypeDefinition,
               TypeExtensionDefinition, or a type that shouldn't exist in a schema definition
-            - InvalidTypeNameError if a node has an invalid name
+            - InvalidNameError if a node has an invalid name
         """
         node_type = type(node).__name__
         if node_type in self.disallowed_types:
@@ -454,12 +454,12 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         elif node_type in self.unexpected_types:
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
         elif isinstance(node, self.check_name_validity_types):
-            if not type_name_is_valid(node.name.value):
-                raise InvalidTypeNameError(
-                    f"Node name {node.name.value} is not a valid, unreserved GraphQL name. Valid, "
-                    f"unreserved GraphQL names must consist of only alphanumeric characters and "
-                    f"underscores, must not start with a numeric character, and must not start "
-                    f"with double underscores."
+            if not is_valid_nonreserved_name(node.name.value):
+                raise InvalidNameError(
+                    f"Node name {node.name.value} is not a valid, non-reserved GraphQL name. "
+                    f"Valid, non-reserved GraphQL names must consist of only alphanumeric "
+                    f"characters and underscores, must not start with a numeric character, and "
+                    f"must not start with double underscores."
                 )
 
 
@@ -542,7 +542,7 @@ def check_ast_schema_is_valid(ast: DocumentNode) -> None:
         - SchemaStructureError if the AST cannot be built into a valid schema, if the schema
           contains mutations, subscriptions, InputObjectTypeDefinitions, TypeExtensionsDefinitions,
           or if any query type field does not match the queried type.
-        - InvalidTypeNameError if a type has a type name that is invalid or reserved
+        - InvalidNameError if a type has a type name that is invalid or reserved
     """
     schema = build_ast_schema(ast)
 
