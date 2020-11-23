@@ -270,7 +270,9 @@ def rename_schema(
     query_type = get_query_type_name(schema)
     custom_scalar_names = get_custom_scalar_names(schema)
 
-    _validate_renamings(schema_ast, type_renamings, field_renamings, query_type, custom_scalar_names)
+    _validate_renamings(
+        schema_ast, type_renamings, field_renamings, query_type, custom_scalar_names
+    )
 
     # Rename types, interfaces, enums, unions and suppress types, unions
     schema_ast, reverse_name_map, reverse_field_name_map = _rename_and_suppress_types_and_fields(
@@ -345,14 +347,17 @@ def _validate_renamings(
 
 
 def _ensure_no_cascading_type_suppressions(
-    schema_ast: DocumentNode, type_renamings: TypeRenamingMapping, field_renamings: FieldRenamingMapping, query_type: str
+    schema_ast: DocumentNode,
+    type_renamings: TypeRenamingMapping,
+    field_renamings: FieldRenamingMapping,
+    query_type: str,
 ) -> None:
     """Check for situations that would require further suppressions to produce a valid schema."""
     visitor = CascadingSuppressionCheckVisitor(type_renamings, field_renamings, query_type)
     visit(schema_ast, visitor)
     if visitor.fields_to_suppress or visitor.union_types_to_suppress or visitor.types_to_suppress:
         error_message_components = [
-            f"Renamings would require further suppressions to produce a valid renamed schema."
+            "Renamings would require further suppressions to produce a valid renamed schema."
         ]
         if visitor.fields_to_suppress:
             for object_type in visitor.fields_to_suppress:
@@ -1066,7 +1071,12 @@ class CascadingSuppressionCheckVisitor(Visitor):
     union_types_to_suppress: List[UnionTypeDefinitionNode]
     types_to_suppress: Set[str]
 
-    def __init__(self, type_renamings: TypeRenamingMapping, field_renamings: FieldRenamingMapping, query_type: str) -> None:
+    def __init__(
+        self,
+        type_renamings: TypeRenamingMapping,
+        field_renamings: FieldRenamingMapping,
+        query_type: str,
+    ) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
 
         Args:

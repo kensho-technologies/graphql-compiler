@@ -1,6 +1,6 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from textwrap import dedent
-from typing import Dict, Optional, Set
+from typing import Optional, Set
 import unittest
 
 from graphql import GraphQLSchema, build_ast_schema, parse
@@ -8,11 +8,7 @@ from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
-from ...schema_transformation.rename_schema import (
-    FieldRenamingsForParticularType,
-    RenameSchemaTypesVisitor,
-    rename_schema,
-)
+from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidNameError,
@@ -902,7 +898,7 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(
                 parse(ISS.multiple_objects_schema),
                 {"Human": "0Human", "Dog": "__Dog", "Droid": "NewDroid"},
-                {}
+                {},
             )
         self.assertEqual(
             "Applying the renaming would involve names that are not valid, non-reserved "
