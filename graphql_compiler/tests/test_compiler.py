@@ -290,7 +290,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".net_worth >= %(min_worth)s
+                "Animal_1".net_worth >= :min_worth
         """
         check_test_data(
             self,
@@ -553,7 +553,7 @@ class CompilerTests(unittest.TestCase):
                 FROM
                     schema_1."Animal" AS "Animal_1"
                 WHERE
-                    "Animal_1".name %(operator)s %%(wanted)s
+                    "Animal_1".name %(operator)s :wanted
             """ % {  # nosec, the operators are hardcoded above
                 "operator": operator,
             }
@@ -614,8 +614,8 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".name >= %(lower_bound)s
-                AND "Animal_1".name < %(upper_bound)s
+                "Animal_1".name >= :lower_bound
+                AND "Animal_1".name < :upper_bound
         """
 
         check_test_data(
@@ -1170,7 +1170,7 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN schema_1."Animal" AS "Animal_2"
                     ON "Animal_1".uuid = "Animal_2".parent
             WHERE
-                "Animal_2".name = %(name)s OR "Animal_2".parent IS NULL
+                "Animal_2".name = :name OR "Animal_2".parent IS NULL
         """
 
         check_test_data(
@@ -1237,8 +1237,8 @@ class CompilerTests(unittest.TestCase):
               ) AS folded_subquery_1
             ON "Species_1".uuid = folded_subquery_1.uuid
             WHERE
-                ("Animal_1".name = %(animal_name)s OR "Animal_1".species IS NULL) AND
-                folded_subquery_1.fold_output__x_count >= %(predators)s
+                ("Animal_1".name = :animal_name OR "Animal_1".species IS NULL) AND
+                folded_subquery_1.fold_output__x_count >= :predators
         """
 
         check_test_data(
@@ -1297,8 +1297,8 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".name >= %(lower)s
-                AND "Animal_1".name <= %(upper)s
+                "Animal_1".name >= :lower
+                AND "Animal_1".name <= :upper
         """
 
         check_test_data(
@@ -1364,8 +1364,8 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".birthday >= %(lower)s
-                AND "Animal_1".birthday <= %(upper)s
+                "Animal_1".birthday >= :lower
+                AND "Animal_1".birthday <= :upper
         """
 
         check_test_data(
@@ -1432,8 +1432,8 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Event" AS "Event_1"
             WHERE
-                "Event_1".event_date >= %(lower)s
-                AND "Event_1".event_date <= %(upper)s
+                "Event_1".event_date >= :lower
+                AND "Event_1".event_date <= :upper
         """
 
         check_test_data(
@@ -1492,8 +1492,8 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".name <= %(upper)s
-                AND "Animal_1".name >= %(lower)s
+                "Animal_1".name <= :upper
+                AND "Animal_1".name >= :lower
         """
 
         check_test_data(
@@ -1573,10 +1573,10 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".name <= %(upper)s
-                AND ("Animal_1".name LIKE '%%' || %(substring)s || '%%')
-                AND "Animal_1".name IN %(fauna)s
-                AND "Animal_1".name >= %(lower)s
+                "Animal_1".name <= :upper
+                AND ("Animal_1".name LIKE '%%' || :substring || '%%')
+                AND "Animal_1".name IN :fauna
+                AND "Animal_1".name >= :lower
         """
 
         check_test_data(
@@ -1637,9 +1637,9 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".name <= %(upper)s
-                AND "Animal_1".name >= %(lower0)s
-                AND "Animal_1".name >= %(lower1)s
+                "Animal_1".name <= :upper
+                AND "Animal_1".name >= :lower0
+                AND "Animal_1".name >= :lower1
         """
 
         check_test_data(
@@ -2160,7 +2160,7 @@ class CompilerTests(unittest.TestCase):
                 JOIN schema_1."FeedingEvent" AS "FeedingEvent_2"
                     ON "Animal_4".fed_at = "FeedingEvent_2".uuid
             WHERE
-                "Animal_1".name = %(animal_name)s AND (
+                "Animal_1".name = :animal_name AND (
                     "FeedingEvent_1".uuid IS NULL OR
                     "FeedingEvent_2".name = "FeedingEvent_1".name
                 ) AND (
@@ -3057,7 +3057,7 @@ class CompilerTests(unittest.TestCase):
                 JOIN anon_1
                     ON "Animal_1".uuid = anon_1.__cte_key
             WHERE
-                anon_1.color = %(wanted)s
+                anon_1.color = :wanted
         """
         check_test_data(
             self,
@@ -3212,7 +3212,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".name IN %(wanted)s
+                "Animal_1".name IN :wanted
         """
 
         check_test_data(
@@ -3390,7 +3390,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".name NOT IN %(wanted)s
+                "Animal_1".name NOT IN :wanted
         """
 
         check_test_data(
@@ -4046,7 +4046,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                ("Animal_1".name LIKE %(wanted)s || '%%')
+                ("Animal_1".name LIKE :wanted || '%%')
         """
 
         check_test_data(
@@ -4102,7 +4102,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                ("Animal_1".name LIKE '%%' || %(wanted)s)
+                ("Animal_1".name LIKE '%%' || :wanted)
         """
 
         check_test_data(
@@ -4158,7 +4158,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                ("Animal_1".name LIKE '%%' || %(wanted)s || '%%')
+                ("Animal_1".name LIKE '%%' || :wanted || '%%')
         """
 
         check_test_data(
@@ -4214,7 +4214,7 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                ("Animal_1".name LIKE '%%' || %(wanted)s || '%%')
+                ("Animal_1".name LIKE '%%' || :wanted || '%%')
         """
 
         expected_output_metadata = {
@@ -5406,7 +5406,7 @@ class CompilerTests(unittest.TestCase):
             LEFT OUTER JOIN schema_1."FeedingEvent" AS "FeedingEvent_1"
             ON "Animal_2".fed_at = "FeedingEvent_1".uuid
         WHERE
-            "Animal_2".uuid = %(uuid)s
+            "Animal_2".uuid = :uuid
         """
 
         check_test_data(
@@ -6506,7 +6506,7 @@ class CompilerTests(unittest.TestCase):
                 ON "Animal_2".parent = "Animal_4".uuid
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_4".parent = "Animal_3".uuid
-                WHERE "Animal_4".net_worth > %(parent_min_worth)s
+                WHERE "Animal_4".net_worth > :parent_min_worth
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
@@ -7322,7 +7322,7 @@ class CompilerTests(unittest.TestCase):
                 JOIN schema_1."Entity" AS "Entity_1"
                     ON "Animal_3".related_entity = "Entity_1".uuid
             WHERE
-                "Entity_1".name IN %(entity_names)s
+                "Entity_1".name IN :entity_names
         """
 
         check_test_data(
@@ -7407,7 +7407,7 @@ class CompilerTests(unittest.TestCase):
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_2".uuid = "Animal_3".parent
-                WHERE ("Animal_3".name LIKE '%%' || %(desired)s || '%%')
+                WHERE ("Animal_3".name LIKE '%%' || :desired || '%%')
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
@@ -7494,7 +7494,7 @@ class CompilerTests(unittest.TestCase):
                 FROM schema_1."Animal" AS "Animal_2"
                 JOIN schema_1."Animal" AS "Animal_3"
                 ON "Animal_2".uuid = "Animal_3".parent
-                WHERE "Animal_3".name = %(desired)s
+                WHERE "Animal_3".name = :desired
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
@@ -7958,7 +7958,7 @@ class CompilerTests(unittest.TestCase):
                 GROUP BY "Animal_2".uuid
             ) AS folded_subquery_1
             ON "Animal_1".uuid = folded_subquery_1.uuid
-            WHERE folded_subquery_1.fold_output__x_count >= %(min_children)s
+            WHERE folded_subquery_1.fold_output__x_count >= :min_children
         """
 
         expected_cypher = NotImplementedError
@@ -8266,8 +8266,8 @@ class CompilerTests(unittest.TestCase):
             ) AS folded_subquery_2
             ON "Animal_1".uuid = folded_subquery_2.uuid
             WHERE
-                folded_subquery_1.fold_output__x_count >= %(min_children)s AND
-                folded_subquery_2.fold_output__x_count >= %(min_related)s
+                folded_subquery_1.fold_output__x_count >= :min_children AND
+                folded_subquery_2.fold_output__x_count >= :min_related
         """
         expected_cypher = NotImplementedError
 
@@ -8316,11 +8316,11 @@ class CompilerTests(unittest.TestCase):
                 ON "Species_2".uuid = "Animal_1".species
                 JOIN schema_1."Location" AS "Location_1"
                 ON "Animal_1".lives_in = "Location_1".uuid
-                WHERE "Location_1".name = %(location)s
+                WHERE "Location_1".name = :location
                 GROUP BY "Species_2".uuid
             ) AS folded_subquery_1
             ON "Species_1".uuid = folded_subquery_1.uuid
-            WHERE folded_subquery_1.fold_output__x_count = %(num_animals)s
+            WHERE folded_subquery_1.fold_output__x_count = :num_animals
         """
 
         check_test_data(
@@ -8540,7 +8540,7 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN schema_1."Animal" AS "Animal_2"
                     ON "Animal_1".parent = "Animal_2".uuid
             WHERE (
-                "Animal_3".name LIKE '%%' || %(wanted)s || '%%'
+                "Animal_3".name LIKE '%%' || :wanted || '%%'
             ) AND (
                 "Animal_2".uuid IS NOT NULL OR
                 "Animal_1".uuid IS NULL
@@ -9034,7 +9034,7 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN schema_1."Species" AS "Species_1"
                     ON "Animal_3".species = "Species_1".uuid
             WHERE (
-                "Animal_1".name LIKE '%%' || %(wanted)s || '%%'
+                "Animal_1".name LIKE '%%' || :wanted || '%%'
             ) AND (
                 "Animal_4".parent IS NOT NULL OR
                 "Animal_2".uuid IS NULL
@@ -9207,7 +9207,7 @@ class CompilerTests(unittest.TestCase):
                 LEFT OUTER JOIN schema_1."Species" AS "Species_1"
                     ON "Animal_3".species = "Species_1".uuid
             WHERE (
-                "Animal_1".name LIKE '%%' || %(wanted)s || '%%'
+                "Animal_1".name LIKE '%%' || :wanted || '%%'
             ) AND (
                 "Species_1".uuid IS NOT NULL OR
                 "Animal_3".parent IS NULL
@@ -9795,7 +9795,7 @@ class CompilerTests(unittest.TestCase):
                 JOIN schema_1."FeedingEvent" AS "FeedingEvent_1"
                     ON "Animal_4".fed_at = "FeedingEvent_1".uuid
             WHERE
-                "Animal_1".name = %(animal_name)s AND (
+                "Animal_1".name = :animal_name AND (
                     "FeedingEvent_2".uuid IS NOT NULL OR
                     "Animal_3".uuid IS NULL
                 ) AND (
@@ -10802,9 +10802,9 @@ class CompilerTests(unittest.TestCase):
             FROM
                 schema_1."Animal" AS "Animal_1"
             WHERE
-                "Animal_1".uuid >= %(uuid_lower)s
-                AND "Animal_1".uuid <= %(uuid_upper)s
-                AND "Animal_1".birthday >= %(earliest_modified_date)s
+                "Animal_1".uuid >= :uuid_lower
+                AND "Animal_1".uuid <= :uuid_upper
+                AND "Animal_1".birthday >= :earliest_modified_date
         """
 
         check_test_data(
