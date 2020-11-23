@@ -1412,6 +1412,10 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(CascadingSuppressionError):
             rename_schema(parse(ISS.list_schema), {"Height": None}, {})
 
+    def test_suppress_every_field_in_type(self) -> None:
+        with self.assertRaises(CascadingSuppressionError):
+            rename_schema(parse(ISS.multiple_objects_schema), {}, {"Human": {"name": {}}})
+
     def test_rename_using_dict_like_prefixer_class(self) -> None:
         class PrefixNewDict:
             def __init__(self, schema: GraphQLSchema):

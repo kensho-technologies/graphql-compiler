@@ -92,6 +92,8 @@ Renaming constraints:
 - If you suppress a type X, no other type Y may keep fields of type X (those fields must be
   suppressed). However, if type X has a field of that type X, it is legal to suppress type X without
   explicitly suppressing that particular field.
+- If you suppress all the fields of a type X, then the type X must also be suppressed in
+  type_renamings.
 - You may not suppress all types in the schema's root type.
 - All names must be valid GraphQL names.
 - Names may not conflict with each other. For instance, you may not rename both "Foo" and "Bar" to
@@ -268,7 +270,7 @@ def rename_schema(
     query_type = get_query_type_name(schema)
     custom_scalar_names = get_custom_scalar_names(schema)
 
-    _validate_renamings(schema_ast, type_renamings, query_type, custom_scalar_names)
+    _validate_renamings(schema_ast, type_renamings, field_renamings, query_type, custom_scalar_names)
 
     # Rename types, interfaces, enums, unions and suppress types, unions
     schema_ast, reverse_name_map, reverse_field_name_map = _rename_and_suppress_types_and_fields(
@@ -306,6 +308,7 @@ def rename_schema(
 def _validate_renamings(
     schema_ast: DocumentNode,
     type_renamings: TypeRenamingMapping,
+    field_renamings: FieldRenamingMapping,
     query_type: str,
     custom_scalar_names: AbstractSet[str],
 ) -> None:
@@ -325,29 +328,31 @@ def _validate_renamings(
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
                         anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
+        field_renamings: maps type names to the renamings for its fields. The renamings map field
+                         names belonging to the type to a list of field names for the renamed
+                         schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
 
     Raises:
-        - CascadingSuppressionError if a type suppression would require further suppressions
+        - CascadingSuppressionError if a type/field suppression would require further suppressions
         - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
           type implementing an interface
     """
-    _ensure_no_cascading_type_suppressions(schema_ast, type_renamings, query_type)
+    _ensure_no_cascading_type_suppressions(schema_ast, type_renamings, field_renamings, query_type)
     _ensure_no_unsupported_operations(schema_ast, type_renamings, custom_scalar_names)
 
 
 def _ensure_no_cascading_type_suppressions(
-    schema_ast: DocumentNode, type_renamings: TypeRenamingMapping, query_type: str
+    schema_ast: DocumentNode, type_renamings: TypeRenamingMapping, field_renamings: FieldRenamingMapping, query_type: str
 ) -> None:
-    """Check for fields with suppressed types or unions whose members were all suppressed."""
-    visitor = CascadingSuppressionCheckVisitor(type_renamings, query_type)
+    """Check for situations that would require further suppressions to produce a valid schema."""
+    visitor = CascadingSuppressionCheckVisitor(type_renamings, field_renamings, query_type)
     visit(schema_ast, visitor)
-    if visitor.fields_to_suppress or visitor.union_types_to_suppress:
+    if visitor.fields_to_suppress or visitor.union_types_to_suppress or visitor.types_to_suppress:
         error_message_components = [
-            f"Type renamings {type_renamings} would require further suppressions to produce a "
-            f"valid renamed schema."
+            f"Renamings would require further suppressions to produce a valid renamed schema."
         ]
         if visitor.fields_to_suppress:
             for object_type in visitor.fields_to_suppress:
@@ -360,9 +365,8 @@ def _ensure_no_cascading_type_suppressions(
                     )
                 )
             error_message_components.append(
-                "A schema containing a field that is of a nonexistent type is invalid. When field "
-                "suppression is supported, you can fix this problem by suppressing the fields "
-                "shown above."
+                "A schema containing a field that is of a nonexistent type is invalid. To fix "
+                "this, suppress the fields using the field_renamings argument of rename_schema."
             )
         if visitor.union_types_to_suppress:
             for union_type in visitor.union_types_to_suppress:
@@ -373,12 +377,19 @@ def _ensure_no_cascading_type_suppressions(
                     (union_member.name.value for union_member in union_type.types)
                 )
             error_message_components.append(
-                "To fix this, you can suppress the union as well by adding union_type: None to the "
-                "type_renamings argument when renaming types, for each value of union_type "
-                "described here. Note that adding suppressions may lead to other types, fields, "
-                "etc. requiring suppression so you may need to iterate on this before getting a "
-                "legal schema."
+                "A schema containing a union with no members is invalid. To fix this, suppress the "
+                "unions using the type_renamings argument of rename_schema."
             )
+        if visitor.types_to_suppress:
+            error_message_components.append(
+                f"The following types have no non-suppressed fields, which is invalid: "
+                f"{sorted(visitor.types_to_suppress)}. To fix this, suppress the types using the "
+                f"type_renamings argument of rename_schema."
+            )
+        error_message_components.append(
+            "Note that adding suppressions may lead to other types, fields, etc. requiring "
+            "suppression so you may need to iterate on this before getting a legal schema."
+        )
         raise CascadingSuppressionError("\n".join(error_message_components))
 
 
@@ -1041,6 +1052,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
 
     The fields_to_suppress attribute records non-suppressed fields that depend on suppressed types.
     The union_types_to_suppress attribute records unions that had all its members suppressed.
+    The types_to_suppress attribute records types for which all fields were suppressed.
 
     After calling visit() on the schema using this visitor, if any of these attributes are non-empty
     then there are further suppressions required to produce a legal schema so the code should then
@@ -1052,21 +1064,27 @@ class CascadingSuppressionCheckVisitor(Visitor):
     # {"T": {"F": "V"}}
     fields_to_suppress: Dict[str, Dict[str, str]]
     union_types_to_suppress: List[UnionTypeDefinitionNode]
+    types_to_suppress: Set[str]
 
-    def __init__(self, type_renamings: TypeRenamingMapping, query_type: str) -> None:
+    def __init__(self, type_renamings: TypeRenamingMapping, field_renamings: FieldRenamingMapping, query_type: str) -> None:
         """Create a visitor to check that suppression does not cause an illegal state.
 
         Args:
             type_renamings: maps original type name to renamed name or None (for type suppression).
                             A type named "Foo" will be unchanged iff type_renamings does not map
                             "Foo" to anything, i.e. type_renamings.get("Foo", "Foo") returns "Foo"
-            query_type: name of the query type (e.g. RootSchemaQuery)
+            field_renamings: maps type names to the renamings for its fields. The renamings map
+                             field names belonging to the type to a list of field names for the
+                             renamed schema
+             query_type: name of the query type (e.g. RootSchemaQuery)
         """
         self.type_renamings = type_renamings
+        self.field_renamings = field_renamings
         self.query_type = query_type
         self.current_type: Optional[str] = None
         self.fields_to_suppress = {}
         self.union_types_to_suppress = []
+        self.types_to_suppress = set()
 
     def enter_object_type_definition(
         self,
@@ -1078,6 +1096,17 @@ class CascadingSuppressionCheckVisitor(Visitor):
     ) -> None:
         """Record the current type that the visitor is traversing."""
         self.current_type = node.name.value
+        current_type_field_renamings = self.field_renamings.get(self.current_type, None)
+        if not current_type_field_renamings:
+            # No field renamings for current type, so it's impossible for all its fields to have
+            # been suppressed.
+            return
+        for field in node.fields:
+            if current_type_field_renamings.get(field.name.value, {field.name.value}):
+                # Do nothing if there's at least one field for the current type that hasn't been
+                # suppressed.
+                return
+        self.types_to_suppress.add(self.current_type)
 
     def leave_object_type_definition(
         self,
