@@ -242,7 +242,7 @@ def rename_schema(
         type/field names to original names. Only renamed names will be included in the maps.
 
     Raises:
-        - CascadingSuppressionError if a type suppression would require further suppressions
+        - CascadingSuppressionError if type/field suppression would require further suppressions
         - SchemaTransformError if type_renamings suppressed every type. Note that this is a
           superclass of CascadingSuppressionError, InvalidNameError, SchemaStructureError, and
           SchemaRenameNameConflictError, so handling exceptions of type SchemaTransformError will
