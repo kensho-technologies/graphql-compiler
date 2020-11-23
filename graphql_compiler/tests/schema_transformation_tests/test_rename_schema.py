@@ -1312,8 +1312,8 @@ class TestRenameSchema(unittest.TestCase):
                 },
             )
         self.assertEqual(
-            "Applying the renaming would involve names that are not valid, unreserved "
-            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "Applying the renaming would involve names that are not valid, non-reserved "
+            "GraphQL names. Valid, non-reserved GraphQL names must consist of only alphanumeric "
             "characters and underscores, must not start with a numeric character, and must not "
             "start with double underscores.\n"
             "The following is a list of tuples that describes what needs to be fixed for type "

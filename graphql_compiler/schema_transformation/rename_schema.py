@@ -151,7 +151,7 @@ from .utils import (
     get_copy_of_node_with_new_name,
     get_custom_scalar_names,
     get_query_type_name,
-    is_valid_unreserved_name,
+    is_valid_nonreserved_name,
 )
 
 
@@ -504,8 +504,8 @@ def _rename_and_suppress_types_and_fields(
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.invalid_type_names or visitor.invalid_field_names:
         explanation = (
-            "Applying the renaming would involve names that are not valid, unreserved "
-            "GraphQL names. Valid, unreserved GraphQL names must consist of only alphanumeric "
+            "Applying the renaming would involve names that are not valid, non-reserved "
+            "GraphQL names. Valid, non-reserved GraphQL names must consist of only alphanumeric "
             "characters and underscores, must not start with a numeric character, and must not "
             "start with double underscores."
         )
@@ -692,9 +692,10 @@ class RenameSchemaTypesVisitor(Visitor):
     reverse_name_map: Dict[str, str]
 
     # Collects invalid type names in type_renamings. If type_renamings would rename a type named
-    # "Foo" to a string that is not a valid, unreserved GraphQL type name (valid, unreserved names
-    # consist only of alphanumeric characters and underscores, do not start with a number, and do
-    # not start with two underscores), invalid_type_names will map "Foo" to the invalid type name.
+    # "Foo" to a string that is not a valid, non-reserved GraphQL type name (valid, non-reserved
+    # names consist only of alphanumeric characters and underscores, do not start with a number, and
+    # do not start with two underscores), invalid_type_names will map "Foo" to the invalid type
+    # name.
     invalid_type_names: Dict[str, str]
 
     # Collects the type names for types that get suppressed. If type_renamings would suppress a type
@@ -724,10 +725,10 @@ class RenameSchemaTypesVisitor(Visitor):
     types_with_field_renamings_processed: Set[str]
 
     # Collects invalid field names in field_renamings. If field_renamings would rename a field named
-    # "foo" (in a type named "Bar") to a string that is not a valid, unreserved GraphQL type name
-    # (valid, unreserved names consist only of alphanumeric characters and underscores, do not start
-    # with a number, and do not start with two underscores), invalid_field_names will map "Bar" to a
-    # dict that maps "foo" to the invalid field name.
+    # "foo" (in a type named "Bar") to a string that is not a valid, non-reserved GraphQL type name
+    # (valid, non-reserved names consist only of alphanumeric characters and underscores, do not
+    # start with a number, and do not start with two underscores), invalid_field_names will map
+    # "Bar" to a dict that maps "foo" to the invalid field name.
     invalid_field_names: DefaultDict[str, Dict[str, str]]
 
     # Collects naming conflict errors involving fields. If field_renamings would rename multiple
@@ -809,7 +810,7 @@ class RenameSchemaTypesVisitor(Visitor):
             # Suppress the type
             self.suppressed_type_names.add(type_name)
             return REMOVE
-        if not is_valid_unreserved_name(desired_type_name):
+        if not is_valid_nonreserved_name(desired_type_name):
             self.invalid_type_names[type_name] = desired_type_name
 
         # Renaming conflict arises when two types with different names in the original schema have
@@ -916,7 +917,7 @@ class RenameSchemaTypesVisitor(Visitor):
                             conflictingly_renamed_field_name
                         }
                     self.field_name_conflicts[type_name][new_field_name].add(original_field_name)
-                if not is_valid_unreserved_name(new_field_name):
+                if not is_valid_nonreserved_name(new_field_name):
                     self.invalid_field_names[type_name][original_field_name] = new_field_name
                 self.reverse_field_name_map[type_name][new_field_name] = original_field_name
             new_field_nodes.update(

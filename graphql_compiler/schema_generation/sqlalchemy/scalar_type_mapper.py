@@ -210,7 +210,10 @@ def _deduce_graphql_type_for_oracle_number_type(number_type: TypeEngine) -> Grap
         # SQLAlchemy has decided that this number is a decimal. No reason for us to disagree.
         return GraphQLDecimal
 
-    if number_type.scale > 0:
+    if number_type.scale is None:
+        # This number has no explicit scale. The default in Oracle appears to be a scale of 0.
+        significant_figures = number_type.precision
+    elif number_type.scale > 0:
         # This number type has decimal places. It has to be either a decimal or a float.
         if number_type.precision >= 15:
             # This number type can hold more digits than a 64-bit float would support:
@@ -228,10 +231,12 @@ def _deduce_graphql_type_for_oracle_number_type(number_type: TypeEngine) -> Grap
     else:
         significant_figures = number_type.precision
 
-    if significant_figures >= 19:
-        # This number can hold more significant figures than a signed 64-bit integer could hold,
-        # since 2^63 - 1 < 10^19 i.e. not all 19-digit integers are representable in 64 signed bits.
-        # The best type for it is the Decimal type, the arbitrary-precision numeric data type.
+    if significant_figures is None or significant_figures >= 19:
+        # If significant_figures is None, Oracle's default "maximum precision" is used, which
+        # as of November 2020 is 38 digits, i.e. more significant figures than a signed 64-bit
+        # integer could hold. Since 2^63 - 1 < 10^19, 64-bit signed ints can only hold
+        # up to 18-digit integers. The best type here is the Decimal type, which is our
+        # arbitrary-precision numeric data type.
         return GraphQLDecimal
     else:
         return GraphQLInt
