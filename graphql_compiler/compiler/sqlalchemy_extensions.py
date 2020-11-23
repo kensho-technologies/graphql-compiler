@@ -69,9 +69,8 @@ def print_sqlalchemy_query_string(
 
     Args:
         query: sqlalchemy.sql.selectable.Select
-        dialect: a sqlalchemy.engine.interfaces.Dialect. Currently only postgres
-                 and mssql are supported because we have no tests for the others,
-                 but chances are that this function would still work.
+        dialect: currently only postgres and mssql are supported because we have no
+                 tests for the others, but chances are that this function would still work.
 
     Returns:
         string that can be ran using sqlalchemy.sql.text(result)
