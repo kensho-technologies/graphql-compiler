@@ -40,6 +40,7 @@ class InputSchemaStrings(object):
         }
     """
     )
+
     type_field_directive_same_name_schema = dedent(
         """\
         schema {

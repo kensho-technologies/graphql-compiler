@@ -99,7 +99,7 @@ Renaming constraints:
   being renamed or suppressed. The same rules apply for fields that belong to the same type, since
   they share a namespace as well.
 - There exist special rules for iterable renamings (e.g. if renamings are represented as a
-  dictionary)-- specifically that no-op renamings are not allowed.
+  dictionary)-- specifically, no-op renamings are not allowed.
   - If type_renamings argument is iterable:
     - A string type_name may be in type_renamings only if there exists a type in the original schema
       named type_name (since otherwise that entry would not affect any type in the schema).
