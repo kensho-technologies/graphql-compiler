@@ -109,7 +109,6 @@ def bind_parameters_to_query_string(
     query: str, input_metadata: Dict[str, GraphQLType], parameters: Dict[str, Any]
 ) -> TextClause:
     """Assign values to query parameters."""
-
     bound_parameters = []
     for parameter_name, parameter_value in parameters.items():
         parameter_type = input_metadata[parameter_name]
