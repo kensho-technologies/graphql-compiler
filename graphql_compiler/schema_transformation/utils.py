@@ -45,14 +45,14 @@ class SchemaStructureError(SchemaTransformError):
     """
 
 
-class InvalidTypeNameError(SchemaTransformError):
+class InvalidNameError(SchemaTransformError):
     """Raised if a type/field name is not valid.
 
     This may be raised if the input schema contains invalid names, or if the user attempts to
     rename a type/field to an invalid name. A name is considered valid if it consists of
-    alphanumeric characters and underscores and doesn't start with a numeric character (as
-    required by GraphQL), and doesn't start with double underscores as such type names are
-    reserved for GraphQL internal use.
+    alphanumeric characters and underscores and doesn't start with a numeric character (as required
+    by GraphQL), and doesn't start with double underscores as such type names are reserved for
+    GraphQL internal use.
     """
 
 
@@ -99,13 +99,14 @@ class SchemaRenameNameConflictError(SchemaTransformError):
             ]
             type_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple types have the "
-                f"same name, which is an illegal schema state. To fix this, modify the renamings "
-                f"argument of rename_schema to ensure that no two types in the renamed schema have "
-                f"the same name. The following is a list of tuples that describes what needs to be "
-                f"fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
-                f"where new_type_name is the type name that would appear in the new schema and "
-                f"original_schema_type_names is a list of types in the original schema that get "
-                f"mapped to new_type_name: {sorted_type_name_conflicts}"
+                f"same name, which is an illegal schema state. To fix this, modify the "
+                f"type_renamings argument of rename_schema to ensure that no two types in the "
+                f"renamed schema have the same name. The following is a list of tuples that "
+                f"describes what needs to be fixed. Each tuple is of the form "
+                f"(new_type_name, original_schema_type_names) where new_type_name is the type name "
+                f"that would appear in the new schema and original_schema_type_names is a list of "
+                f"types in the original schema that get mapped to new_type_name: "
+                f"{sorted_type_name_conflicts}"
             )
         renamed_to_builtin_scalar_conflicts_message = ""
         if self.renamed_to_builtin_scalar_conflicts:
@@ -149,28 +150,34 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if renamings argument is iterable and contains no-op renames.
+    """Raised if renamings are iterable and contains no-op renames.
 
     No-op renames can occur in these ways:
-    * renamings contains a string type_name but there doesn't exist a type in the schema named
-      type_name
-    * renamings maps a string type_name to itself, i.e. renamings[type_name] == type_name
+    * type_renamings is iterable and contains a string type_name but there doesn't exist a type in
+      the schema named type_name
+    * type_renamings is iterable and maps a string type_name to itself, i.e.
+      type_renamings[type_name] == type_name
     """
 
-    no_op_renames: Set[str]
+    no_op_type_renames: Set[str]
 
-    def __init__(self, no_op_renames: Set[str]) -> None:
-        """Record all renaming conflicts."""
+    def __init__(self, no_op_type_renames: Set[str]) -> None:
+        """Record all no-op renamings."""
+        if not no_op_type_renames:
+            raise ValueError(
+                "Cannot raise NoOpRenamingError without at least one invalid name, but "
+                "all arguments were empty."
+            )
         super().__init__()
-        self.no_op_renames = no_op_renames
+        self.no_op_type_renames = no_op_type_renames
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
         return (
-            f"Renamings is iterable, so it cannot have no-op renamings. However, the following "
-            f"entries exist in the renamings argument, which either rename a type to itself or "
-            f"would rename a type that doesn't exist in the schema, both of which are invalid: "
-            f"{sorted(self.no_op_renames)}"
+            f"type_renamings is iterable, so it cannot have no-op renamings. However, the "
+            f"following entries exist in the type_renamings argument, which either rename a "
+            f"type to itself or would rename a type that doesn't exist in the schema, both of "
+            f"which are invalid: {sorted(self.no_op_type_renames)}"
         )
 
 
@@ -217,6 +224,12 @@ RenameNodes = Union[
 ]
 RenameNodesT = TypeVar("RenameNodesT", bound=RenameNodes)
 
+# Contains the node types that may be renamed in rename_query. NamedTypeNode is here for type
+# renaming and FieldNode is here for renaming field nodes in the root vertex (as described in
+# RenameQueryVisitor).
+RenameQueryNodeTypes = Union[NamedTypeNode, FieldNode]
+RenameQueryNodeTypesT = TypeVar("RenameQueryNodeTypesT", bound=RenameQueryNodeTypes)
+
 
 def check_schema_identifier_is_valid(identifier: str) -> None:
     """Check if input is a valid identifier, made of alphanumeric and underscore characters.
@@ -241,18 +254,18 @@ def check_schema_identifier_is_valid(identifier: str) -> None:
         )
 
 
-def type_name_is_valid(name: str) -> bool:
-    """Check if input is a valid, nonreserved GraphQL type name.
+def is_valid_nonreserved_name(name: str) -> bool:
+    """Check if input is a valid, non-reserved GraphQL name.
 
-    A GraphQL type name is valid iff it consists of only alphanumeric characters and underscores and
-    does not start with a numeric character. It is nonreserved (i.e. not reserved for GraphQL
+    A GraphQL name is valid iff it consists of only alphanumeric characters and underscores and
+    does not start with a numeric character. It is non-reserved (i.e. not reserved for GraphQL
     internal use) if it does not start with double underscores.
 
     Args:
         name: to be checked
 
     Returns:
-        True iff name is a valid, nonreserved GraphQL type name.
+        True iff name is a valid, non-reserved GraphQL type name.
     """
     return bool(re_name.match(name)) and not name.startswith("__")
 
@@ -394,7 +407,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
     """Check that the AST does not contain invalid types or types with invalid names.
 
     If AST contains invalid types, raise SchemaStructureError; if AST contains types with
-    invalid names, raise InvalidTypeNameError.
+    invalid names, raise InvalidNameError.
     """
 
     disallowed_types = frozenset(
@@ -433,7 +446,7 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         Raises:
             - SchemaStructureError if the node is an InputObjectTypeDefinition,
               TypeExtensionDefinition, or a type that shouldn't exist in a schema definition
-            - InvalidTypeNameError if a node has an invalid name
+            - InvalidNameError if a node has an invalid name
         """
         node_type = type(node).__name__
         if node_type in self.disallowed_types:
@@ -441,12 +454,12 @@ class CheckValidTypesAndNamesVisitor(Visitor):
         elif node_type in self.unexpected_types:
             raise SchemaStructureError('Node type "{}" unexpected in schema AST'.format(node_type))
         elif isinstance(node, self.check_name_validity_types):
-            if not type_name_is_valid(node.name.value):
-                raise InvalidTypeNameError(
-                    f"Node name {node.name.value} is not a valid, unreserved GraphQL name. Valid, "
-                    f"unreserved GraphQL names must consist of only alphanumeric characters and "
-                    f"underscores, must not start with a numeric character, and must not start "
-                    f"with double underscores."
+            if not is_valid_nonreserved_name(node.name.value):
+                raise InvalidNameError(
+                    f"Node name {node.name.value} is not a valid, non-reserved GraphQL name. "
+                    f"Valid, non-reserved GraphQL names must consist of only alphanumeric "
+                    f"characters and underscores, must not start with a numeric character, and "
+                    f"must not start with double underscores."
                 )
 
 
@@ -529,7 +542,7 @@ def check_ast_schema_is_valid(ast: DocumentNode) -> None:
         - SchemaStructureError if the AST cannot be built into a valid schema, if the schema
           contains mutations, subscriptions, InputObjectTypeDefinitions, TypeExtensionsDefinitions,
           or if any query type field does not match the queried type.
-        - InvalidTypeNameError if a type has a type name that is invalid or reserved
+        - InvalidNameError if a type has a type name that is invalid or reserved
     """
     schema = build_ast_schema(ast)
 

@@ -7,11 +7,10 @@ from graphql import print_ast
 import pytest
 
 from .. import test_input_data
-from ...ast_manipulation import safe_parse_graphql
 from ...cost_estimation.analysis import analyze_query_string
 from ...cost_estimation.statistics import LocalStatistics
 from ...exceptions import GraphQLInvalidArgumentError
-from ...global_utils import ASTWithParameters, QueryStringWithParameters
+from ...global_utils import QueryStringWithParameters
 from ...query_pagination import paginate_query
 from ...query_pagination.pagination_planning import (
     InsufficientQuantiles,
@@ -842,17 +841,17 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
             }
-        }"""
-        args = {}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [25, 50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
@@ -888,17 +887,17 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
             }
-        }"""
-        args = {}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [10, 20]
         self.assertEqual(expected_parameters, list(generated_parameters))
@@ -941,18 +940,18 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
                 limbs @filter(op_name: ">=", value: ["$limbs_lower"])
             }
-        }"""
-        args = {"limbs_lower": 25}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {"limbs_lower": 25},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
@@ -981,18 +980,18 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
                 limbs @filter(op_name: ">=", value: ["$limbs_lower"])
             }
-        }"""
-        args = {"limbs_lower": 10}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 10)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {"limbs_lower": 10},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 10)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         first_parameter = next(generated_parameters)
         self.assertTrue(first_parameter > 10)
@@ -1023,18 +1022,18 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
                 limbs @filter(op_name: "<", value: ["$limbs_upper"])
             }
-        }"""
-        args = {"limbs_upper": 76}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {"limbs_upper": 76},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 3)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [25, 50]
         self.assertEqual(expected_parameters, list(generated_parameters))
@@ -1065,7 +1064,8 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 out_Entity_Related {
                     ... on Species {
@@ -1073,13 +1073,12 @@ class QueryPaginationTests(unittest.TestCase):
                     }
                 }
             }
-        }"""
-        args = {}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species", "out_Entity_Related"), "limbs", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species", "out_Entity_Related"), "limbs", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [25, 50, 75]
         self.assertEqual(expected_parameters, list(generated_parameters))
@@ -1107,18 +1106,18 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 limbs @filter(op_name: "<", value: ["$num_limbs"])
                 name @output(out_name: "species_name")
             }
-        }"""
-        args = {"num_limbs": 505}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {"num_limbs": 505},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         # XXX document why this is expected, see if bisect_left logic is correct
         expected_parameters = [130, 260, 390]
@@ -1150,17 +1149,17 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Event {
                 name @output(out_name: "event_name")
             }
-        }"""
-        args = {}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Event",), "event_date", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Event",), "event_date", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [
             datetime.datetime(2025, 1, 1, 0, 0),
@@ -1189,17 +1188,17 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal_name")
             }
-        }"""
-        args = {}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [
             "40000000-0000-0000-0000-000000000000",
@@ -1228,17 +1227,17 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 name @output(out_name: "animal_name")
             }
-        }"""
-        args = {}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [
             "00000000-0000-0000-0000-400000000000",
@@ -1267,20 +1266,20 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Animal {
                 uuid @filter(op_name: ">=", value: ["$uuid_lower"])
                 name @output(out_name: "animal_name")
             }
-        }"""
-        args = {
-            "uuid_lower": "00000000-0000-0000-0000-800000000000",
-        }
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {
+                "uuid_lower": "00000000-0000-0000-0000-800000000000",
+            },
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Animal",), "uuid", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         expected_parameters = [
             "00000000-0000-0000-0000-a00000000000",
@@ -1313,17 +1312,17 @@ class QueryPaginationTests(unittest.TestCase):
             uuid4_field_info=uuid4_field_info,
         )
 
-        query = """{
+        query = QueryStringWithParameters(
+            """{
             Species {
                 name @output(out_name: "species_name")
             }
-        }"""
-        args = {}
-        query_ast = safe_parse_graphql(query)
-        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
-        generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, ASTWithParameters(query_ast, args), vertex_partition
+        }""",
+            {},
         )
+        analysis = analyze_query_string(schema_info, query)
+        vertex_partition = VertexPartitionPlan(("Species",), "limbs", 4)
+        generated_parameters = generate_parameters_for_vertex_partition(analysis, vertex_partition)
 
         # Check that there are no duplicates
         list_parameters = list(generated_parameters)
@@ -1875,7 +1874,7 @@ class QueryPaginationTests(unittest.TestCase):
         vertex_partition_plan = VertexPartitionPlan(("Species", "out_Entity_Related"), "limbs", 2)
 
         generated_parameters = generate_parameters_for_vertex_partition(
-            schema_info, analysis.ast_with_parameters, vertex_partition_plan
+            analysis, vertex_partition_plan
         )
 
         sentinel = object()

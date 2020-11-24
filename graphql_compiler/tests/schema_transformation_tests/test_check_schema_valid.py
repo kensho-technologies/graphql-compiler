@@ -5,7 +5,7 @@ import unittest
 from graphql import parse
 
 from ...schema_transformation.utils import (
-    InvalidTypeNameError,
+    InvalidNameError,
     SchemaStructureError,
     check_ast_schema_is_valid,
 )
@@ -150,7 +150,7 @@ class TestCheckSchemaValid(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             check_ast_schema_is_valid(parse(schema_string))
 
     def test_illegal_reserved_name_type(self):
@@ -173,7 +173,7 @@ class TestCheckSchemaValid(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             check_ast_schema_is_valid(parse(schema_string))
 
     def test_illegal_reserved_name_enum(self):
@@ -197,7 +197,7 @@ class TestCheckSchemaValid(unittest.TestCase):
             }
         """
         )
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             check_ast_schema_is_valid(parse(schema_string))
 
     def test_illegal_reserved_name_scalar(self):
@@ -220,5 +220,5 @@ class TestCheckSchemaValid(unittest.TestCase):
             scalar __Type
         """
         )
-        with self.assertRaises(InvalidTypeNameError):
+        with self.assertRaises(InvalidNameError):
             check_ast_schema_is_valid(parse(schema_string))
