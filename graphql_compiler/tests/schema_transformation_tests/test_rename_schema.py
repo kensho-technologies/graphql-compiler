@@ -321,6 +321,354 @@ class TestRenameSchema(unittest.TestCase):
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
 
+    def test_field_rename(self) -> None:
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"new_id"}}})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              new_id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
+
+    def test_field_rename_includes_original_name(self) -> None:
+        renamed_schema = rename_schema(
+            parse(ISS.basic_schema), {}, {"Human": {"id": {"new_id", "id"}}}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              id: String
+              new_id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
+
+    def test_field_rename_only_affects_names_in_original_schema(self) -> None:
+        renamed_schema = rename_schema(
+            parse(ISS.many_fields_schema), {}, {"Human": {"id": {"age", "id"}, "age": {"new_age"}}}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              id: String
+              name: String
+              age: String
+              new_age: Int
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual(
+            {"Human": {"age": "id", "new_age": "age"}}, renamed_schema.reverse_field_name_map
+        )
+
+    def test_field_renaming_illegal_noop_unused_renaming(self) -> None:
+        # Note that the error here gets raised specifically when field_renamings["Human"] is
+        # iterable, i.e. field_renamings itself need not be iterable.
+        expected_error_message = (
+            "The field renamings for the following types in field_renamings are iterable, so they "
+            "cannot cannot have no-op renamings. However, some of these renamings would either "
+            "rename a field to itself or would rename a field that doesn't exist in the schema, "
+            "both of which are invalid. The following is a list of tuples that describes what "
+            "needs to be fixed for field renamings. Each tuple is of the form "
+            "(type_name, field_renamings) where type_name is the name of the type in the original "
+            "schema and field_renamings is a list of the fields that would be no-op renamed: "
+            "[('Human', ['pet'])]"
+        )
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"pet": {"new_pet"}}})
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings itself need not be iterable for this error.
+
+        class NonIterableFieldRenamings:
+            def get(
+                self,
+                type_name: str,
+                default_field_renamings: Optional[Dict[str, Set[str]]],
+            ) -> Optional[Dict[str, Set[str]]]:
+                if type_name == "Human":
+                    return {"pet": {"new_pet"}}
+                return None
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, NonIterableFieldRenamings())
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+
+    def test_field_renaming_legal_noop_unused_renaming(self) -> None:
+        # Unlike with test_field_renaming_illegal_noop_unused_renaming, here field_renamings is not
+        # iterable.
+        # As a result, this renaming is technically legal but it is inadvisable to write a
+        # renaming like this since the intended "pet" -> "new_pet" mapping is unused and will
+        # silently do nothing when applied to ISS.many_fields_schema.
+
+        # Unfortunately this can't be a nested class because mypy has a bug and it's safer to make
+        # the classes slightly less organized in exchange for being able to use mypy for here.
+        # https://github.com/python/mypy/issues/6393
+        class FieldNoOpRenamings:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "pet":
+                    return {"new_pet"}
+                return {field_name}
+
+        class FieldRenamingNoOpMapping:
+            def get(
+                self,
+                type_name: str,
+                default_field_renamings: Optional[FieldRenamingsForParticularType],
+            ) -> Optional[FieldRenamingsForParticularType]:
+                if type_name == "Human":
+                    return FieldNoOpRenamings()
+                return None
+
+        renamed_schema = rename_schema(
+            parse(ISS.many_fields_schema), {}, FieldRenamingNoOpMapping()
+        )
+        compare_schema_texts_order_independently(
+            self, ISS.many_fields_schema, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
+
+    def test_iterable_field_renamings_with_non_iterable_entries(self) -> None:
+        # Test for when field_renamings is iterable but its entries aren't.
+        class NonIterableEntry:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "id":
+                    return {"new_id"}
+                return {field_name}
+
+        renamed_schema = rename_schema(
+            parse(ISS.many_fields_schema), {}, {"Human": NonIterableEntry()}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              new_id: String
+              name: String
+              age: Int
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
+
+    def test_non_iterable_field_renamings_with_iterable_entries(self) -> None:
+        # Test for when field_renamings isn't iterable but its relevant entry is.
+        class NonIterableFieldRenamings:
+            def get(
+                self,
+                type_name: str,
+                default_field_renamings: Optional[Dict[str, Set[str]]],
+            ) -> Optional[Dict[str, Set[str]]]:
+                if type_name == "Human":
+                    return {"id": {"new_id"}}
+                return None
+
+        renamed_schema = rename_schema(
+            parse(ISS.many_fields_schema), {}, NonIterableFieldRenamings()
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              new_id: String
+              name: String
+              age: Int
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({"Human": {"new_id": "id"}}, renamed_schema.reverse_field_name_map)
+
+    def test_field_renaming_illegal_noop_renamed_to_self(self) -> None:
+        # This would be legal if the field named "id" were 1-many renamed to something else as well
+        # (e.g. renaming to "id" and "new_id" so that both fields in the renamed schema correspond
+        # to the field named "id" in the original schema). However, since this is a 1-1 renaming,
+        # this renaming would have no effect.
+        # Note that the error here gets raised specifically when field_renamings["Human"] is
+        # iterable, i.e. field_renamings itself need not be iterable.
+        expected_error_message = (
+            "The field renamings for the following types in field_renamings are iterable, so they "
+            "cannot cannot have no-op renamings. However, some of these renamings would either "
+            "rename a field to itself or would rename a field that doesn't exist in the schema, "
+            "both of which are invalid. The following is a list of tuples that describes what "
+            "needs to be fixed for field renamings. Each tuple is of the form "
+            "(type_name, field_renamings) where type_name is the name of the type in the original "
+            "schema and field_renamings is a list of the fields that would be no-op renamed: "
+            "[('Human', ['id'])]"
+        )
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, {"Human": {"id": {"id"}}})
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings itself need not be iterable for this error.
+
+        class NonIterableFieldRenamings:
+            def get(
+                self,
+                type_name: str,
+                default_field_renamings: Optional[Dict[str, Set[str]]],
+            ) -> Optional[Dict[str, Set[str]]]:
+                if type_name == "Human":
+                    return {"id": {"id"}}
+                return None
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.many_fields_schema), {}, NonIterableFieldRenamings())
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+
+    def test_field_renaming_illegal_noop_rename_fields_of_nonexistent_type(self) -> None:
+        # Note that the error here gets raised specifically when field_renamings is iterable, i.e.
+        # field_renamings[type_name] itself need not be iterable for any given string type_name.
+        expected_error_message = (
+            "field_renamings is iterable, so it cannot have no-op renamings. However, the "
+            "following entries exist in the field_renamings argument that correspond to names of "
+            "object types that either don't exist in the original schema or would get suppressed. "
+            "In other words, the field renamings for each of these types would be no-ops: "
+            "['Television']"
+        )
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {}, {"Television": {"id": {"new_id"}}})
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings's entries need not be iterable for this error.
+
+        class NonIterableEntry:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "id":
+                    return {"new_id"}
+                return {field_name}
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(parse(ISS.basic_schema), {}, {"Television": NonIterableEntry})
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+
+    def test_field_renaming_illegal_noop_rename_fields_of_suppressed_type(self) -> None:
+        # Like field renamings for a type that doesn't exist in the schema, this is illegal because
+        # the field renamings will have no effect because the type itself gets suppressed.
+        # Note that the error here gets raised specifically when field_renamings is iterable, i.e.
+        # field_renamings[type_name] itself need not be iterable for any given string type_name.
+        expected_error_message = (
+            "field_renamings is iterable, so it cannot have no-op renamings. However, the "
+            "following entries exist in the field_renamings argument that correspond to names of "
+            "object types that either don't exist in the original schema or would get suppressed. "
+            "In other words, the field renamings for each of these types would be no-ops: "
+            "['Human']"
+        )
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(
+                parse(ISS.multiple_objects_schema), {"Human": None}, {"Human": {"id": {"new_id"}}}
+            )
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+        # Now demonstrate that field_renamings's entries need not be iterable for this error.
+
+        class NonIterableEntry:
+            def get(self, field_name: str, default: Set[str]) -> Set[str]:
+                """Define field renaming to use."""
+                if field_name == "id":
+                    return {"new_id"}
+                return {field_name}
+
+        with self.assertRaises(NoOpRenamingError) as e:
+            rename_schema(
+                parse(ISS.multiple_objects_schema), {"Human": None}, {"Human": NonIterableEntry()}
+            )
+        self.assertEqual(
+            expected_error_message,
+            str(e.exception),
+        )
+
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
             parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}
@@ -862,27 +1210,37 @@ class TestRenameSchema(unittest.TestCase):
               query: SchemaQuery
             }
 
-            type Cat {
-              nickname: String
-            }
-
             type Dog {
               nickname: String
+              age: Int
+            }
+
+            type Cat {
+              nickname: String
+              age: Int
+            }
+
+            type Droid {
+              id: String
+              friends: [Droid]
             }
 
             type Human {
               id: String
+              name: String
+              age: Int
             }
 
             type SchemaQuery {
+              Dog: Dog
+              Cat: Cat
+              Droid: Droid
               Human: Human
             }
         """
         )
 
-        with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(parse(schema_string), {"Human": "String", "Dog": "Cat"})
-        self.assertEqual(
+        clashing_type_rename_error_message = (
             "Applying the renaming would produce a schema in which multiple types have the "
             "same name, which is an illegal schema state. To fix this, modify the type_renamings "
             "argument of rename_schema to ensure that no two types in the renamed schema have "
@@ -890,13 +1248,58 @@ class TestRenameSchema(unittest.TestCase):
             "fixed. Each tuple is of the form (new_type_name, original_schema_type_names) "
             "where new_type_name is the type name that would appear in the new schema and "
             "original_schema_type_names is a list of types in the original schema that get "
-            "mapped to new_type_name: [('Cat', ['Cat', 'Dog'])]\n"
+            "mapped to new_type_name: [('Droid', ['Dog', 'Droid', 'Human'])]"
+        )
+        type_rename_to_builtin_error_message = (
             "Applying the renaming would rename type(s) to a name already used by a built-in "
             "GraphQL scalar type. To fix this, ensure that no type name is mapped to a "
             "scalar's name. The following is a list of tuples that describes what needs to be "
             "fixed. Each tuple is of the form (type_name, scalar_name) where type_name is the "
             "original name of the type and scalar_name is the name of the scalar that the "
-            "type would be renamed to: [('Human', 'String')]",
+            "type would be renamed to: [('Cat', 'String')]"
+        )
+        clashing_field_rename_error_message = (
+            "Applying the renaming would produce a schema in which multiple fields belonging to "
+            "the same type have the same name, which is an illegal schema state. To fix this, "
+            "modify the field_renamings argument of rename_schema to ensure that within each type "
+            "in the renamed schema, no two fields have the same name. The following is a list of "
+            "tuples that describes what needs to be fixed. Each tuple is of the form "
+            "(type_name, field_conflicts) where type_name is the type name that would appear in "
+            "the original schema and field_conflicts is a list of tuples of the form "
+            "(desired_field_name, original_field_names) where desired_field_name is the name of "
+            "the field in the new schema and original_field_names is a list of the names of all "
+            "the fields in the original schema that would be renamed to desired_field_name: "
+            "[('Human', [('name', ['id', 'name'])])]"
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(parse(schema_string), {"Human": "Droid", "Dog": "Droid"}, {})
+        self.assertEqual(
+            clashing_type_rename_error_message,
+            str(e.exception),
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(
+                parse(schema_string), {"Cat": "String"}, {"Human": {"id": {"id", "name"}}}
+            )
+        self.assertEqual(
+            type_rename_to_builtin_error_message + "\n" + clashing_field_rename_error_message,
+            str(e.exception),
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(
+                parse(schema_string),
+                {"Cat": "String", "Human": "Droid", "Dog": "Droid"},
+                {"Human": {"id": {"id", "name"}}},
+            )
+        self.assertEqual(
+            clashing_type_rename_error_message
+            + "\n"
+            + type_rename_to_builtin_error_message
+            + "\n"
+            + clashing_field_rename_error_message,
             str(e.exception),
         )
 
@@ -905,35 +1308,63 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(
                 parse(ISS.multiple_objects_schema),
                 {"Human": "0Human", "Dog": "__Dog", "Droid": "NewDroid"},
+                {
+                    "Human": {"name": {"0name"}},
+                    "Droid": {"id": {"id!"}},
+                    "Dog": {"nickname": {"__nickname"}},
+                },
             )
         self.assertEqual(
-            "Applying the renaming would rename types with names that are not valid, non-reserved "
+            "Applying the renaming would involve names that are not valid, non-reserved "
             "GraphQL names. Valid, non-reserved GraphQL names must consist of only alphanumeric "
             "characters and underscores, must not start with a numeric character, and must not "
-            "start with double underscores. The following dictionary maps each type's original "
-            "name to what would be the new name: [('Dog', '__Dog'), ('Human', '0Human')]",
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Dog', '__Dog'), ('Human', '0Human')]\n"
+            "The following is a list of tuples that describes what needs to be fixed for "
+            "field renamings. Each tuple is of the form (type_name, field_renamings) "
+            "where type_name is the name of the type in the original schema and "
+            "field_renamings is a list of tuples mapping the original field name to the "
+            "invalid GraphQL name it would be renamed to: [('Dog', [('nickname', '__nickname')]), "
+            "('Droid', [('id', 'id!')]), ('Human', [('name', '0name')])]",
             str(e.exception),
         )
 
-    def test_illegal_rename_type_start_with_number(self) -> None:
+    def test_illegal_rename_start_with_number(self) -> None:
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "0Human"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "0Human"}, {})
+        with self.assertRaises(InvalidNameError):
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"0id"}}})
 
-    def test_illegal_rename_type_contains_illegal_char(self) -> None:
+    def test_illegal_rename_contains_illegal_char(self) -> None:
+        # Test types
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "Human!"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "Human!"}, {})
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"}, {})
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"}, {})
+        # Test fields
+        with self.assertRaises(InvalidNameError):
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"id!"}}})
+        with self.assertRaises(InvalidNameError):
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"i-d"}}})
+        with self.assertRaises(InvalidNameError):
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"i.d"}}})
 
-    def test_illegal_rename_type_to_double_underscore(self) -> None:
+    def test_illegal_rename_starts_with_double_underscore(self) -> None:
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "__Human"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "__Human"}, {})
+        with self.assertRaises(InvalidNameError):
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"__id"}}})
 
-    def test_illegal_rename_type_to_reserved_name_type(self) -> None:
+    def test_illegal_rename_to_reserved_name_type(self) -> None:
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "__Type"}, {})
+        with self.assertRaises(InvalidNameError):
+            rename_schema(parse(ISS.basic_schema), {}, {"Human": {"id": {"__Type"}}})
 
     def test_suppress_every_type(self) -> None:
         with self.assertRaises(SchemaTransformError):
