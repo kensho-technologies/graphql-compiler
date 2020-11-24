@@ -726,14 +726,12 @@ class RenameSchemaTypesVisitor(Visitor):
     # "foo".
     reverse_field_name_map: DefaultDict[str, Dict[str, str]]
 
-    # TODO(Leon): Would welcome suggestions for figuring out the clearest way to explain these data
-    #  structures that NoOpRenamingError depends on.
     # Collects no-op renamings for fields, mapping the type name that contains the field to the set
-    # of field names for which field_renamings contained no-op renamings. Applies only when
-    # field_renamings is iterable. If field_renamings would rename a field named "foo" to "foo" (in
-    # a type named "Bar"), or if it attempts to rename a field named "foo" (in a type named "Bar")
-    # when such a field does not exist, no_op_field_renamings will map "Bar" to a set containing
-    # "foo".
+    # of field names for which field_renamings contained no-op renamings. Applies only to types for
+    # which field_renamings[type_name] is iterable. If field_renamings would rename a field named
+    # "foo" to "foo" (in a type named "Bar"), or if it attempts to rename a field named "foo" (in a
+    # type named "Bar") when such a field does not exist, no_op_field_renamings will map "Bar" to a
+    # set containing "foo".
     no_op_field_renamings: DefaultDict[str, Set[str]]
 
     # Collects type names for each object type that has field renamings and had them applied. After
@@ -861,13 +859,13 @@ class RenameSchemaTypesVisitor(Visitor):
             # If one type in this conflict is a custom scalar, the two types causing conflict were
             # named type_name and desired_type_name (the latter being the custom scalar name) in the
             # original schema.
+            conflictingly_renamed_type_name = self.reverse_name_map.get(
+                desired_type_name, desired_type_name
+            )
 
             # Collect all types in the original schema that would be named desired_type_name in the
             # new schema
             if desired_type_name not in self.type_name_conflicts:
-                conflictingly_renamed_type_name = self.reverse_name_map.get(
-                    desired_type_name, desired_type_name
-                )
                 self.type_name_conflicts[desired_type_name] = {conflictingly_renamed_type_name}
             self.type_name_conflicts[desired_type_name].add(type_name)
 
