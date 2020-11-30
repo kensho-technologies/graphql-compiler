@@ -79,10 +79,8 @@ class SchemaRenameNameConflictError(SchemaTransformError):
         field_name_conflicts: Dict[str, Dict[str, Set[str]]],
     ) -> None:
         """Record all renaming conflicts."""
-        if (
-            not type_name_conflicts
-            and not renamed_to_builtin_scalar_conflicts
-            and not field_name_conflicts
+        if not any(
+            [type_name_conflicts, renamed_to_builtin_scalar_conflicts, field_name_conflicts]
         ):
             raise ValueError(
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
@@ -143,21 +141,18 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                     self.field_name_conflicts.items()
                 )
             ]
-            # TODO(Leon): Would like feedback on this error message because we're dealing with
-            # multiple levels of indirection which means lots of nested parentheses and brackets as
-            # it stands.
             field_name_conflicts_message = (
                 f"Applying the renaming would produce a schema in which multiple fields belonging "
                 f"to the same type have the same name, which is an illegal schema state. To fix "
                 f"this, modify the field_renamings argument of rename_schema to ensure that within "
                 f"each type in the renamed schema, no two fields have the same name. The following "
-                f"is a list of tuples that describes what needs to be fixed. Each tuple is of the "
-                f"form (type_name, field_conflicts) where type_name is the type name that would "
-                f"appear in the original schema and field_conflicts is a list of tuples of the "
-                f"form (desired_field_name, original_field_names) where desired_field_name is the "
-                f"name of the field in the new schema and original_field_names is a list of the "
-                f"names of all the fields in the original schema that would be renamed to "
-                f"desired_field_name: {sorted_field_name_conflicts}"
+                f"is a list of tuples that describes what needs to be fixed. "
+                f"Each tuple is of the "
+                f"form (type_name, [(desired_field_name, original_field_names),...]) where "
+                f"type_name is the type name that would appear in the original schema, "
+                f"desired_field_name is the name of a  field in the new schema, and "
+                f"original_field_names is a list of the names of all the fields in the original "
+                f"schema that would be renamed to desired_field_name: {sorted_field_name_conflicts}"
             )
         return "\n".join(
             filter(
@@ -205,7 +200,7 @@ class NoOpRenamingError(SchemaTransformError):
     * There exists an object type T named type_name in the schema such that
       field_renamings[type_name] is both iterable and contains a string field_name but there doesn't
       exist a field named field_name belonging to T in the schema.
-    * field_renamings is iterable and contains a string [type_name] but there doesn't exist an
+    * field_renamings is iterable and contains a string type_name but there doesn't exist an
       object type in the schema named type_name
     * There exists an object type T named type_name in the schema such that
       field_renamings[type_name] is both iterable and 1:1 maps a string field_name to itself within
@@ -229,11 +224,7 @@ class NoOpRenamingError(SchemaTransformError):
         # parameters change)? This also comes up when deciding whether or not to raise these errors
         # as well-- for instance, checking if any of a number of error-collecting data structures
         # are nonempty, and raising an error if any are.
-        if (
-            not no_op_type_renames
-            and not no_op_field_renames
-            and not no_op_nonexistent_type_field_renames
-        ):
+        if not any([no_op_type_renames, no_op_field_renames, no_op_nonexistent_type_field_renames]):
             raise ValueError(
                 "Cannot raise NoOpRenamingError without at least one invalid name, but "
                 "all arguments were empty."
