@@ -722,10 +722,11 @@ class RenameSchemaTypesVisitor(Visitor):
 
     # Collects no-op renamings for fields, mapping the type name that contains the field to the set
     # of field names for which field_renamings contained no-op renamings. Applies only to types for
-    # which field_renamings.get(type_name, set()) is iterable. If field_renamings would rename a
-    # field named "foo" to "foo" (in a type named "Bar"), or if it attempts to rename a field named
-    # "foo" (in a type named "Bar") when such a field does not exist, no_op_field_renamings will map
-    # "Bar" to a set containing "foo".
+    # which field_renamings.get(type_name, set()) is iterable. For a type named "Bar", if
+    # field_renaming
+    #    - renames a field named "foo" to "foo", or
+    #    - attempts to rename a field named "foo" when such a field does not exist
+    # no_op_field_renamings will map "Bar" to a set containing "foo".
     no_op_field_renamings: DefaultDict[str, Set[str]]
 
     # Collects type names for each object type that has field renamings that have been applied. After
