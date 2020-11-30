@@ -218,12 +218,6 @@ class NoOpRenamingError(SchemaTransformError):
         no_op_nonexistent_type_field_renames: Set[str],
     ) -> None:
         """Record all no-op renamings."""
-        # TODO(Leon): Would like feedback on this-- I notice a pattern where I create error message
-        # objects that must have at least one of these parameters as non-empty. Is there a better
-        # way to ensure this than manually writing this verification (which needs to change as the
-        # parameters change)? This also comes up when deciding whether or not to raise these errors
-        # as well-- for instance, checking if any of a number of error-collecting data structures
-        # are nonempty, and raising an error if any are.
         if not any([no_op_type_renames, no_op_field_renames, no_op_nonexistent_type_field_renames]):
             raise ValueError(
                 "Cannot raise NoOpRenamingError without at least one invalid name, but "
@@ -269,8 +263,6 @@ class NoOpRenamingError(SchemaTransformError):
                 f"suppressed. In other words, the field renamings for each of these types would be "
                 f"no-ops: {sorted(self.no_op_nonexistent_type_field_renames)}"
             )
-        # TODO(Leon): same question here regarding dealing with multiple arguments in error messages
-        # where at least one of them has to be nonempty.
         return "\n".join(
             filter(
                 None,

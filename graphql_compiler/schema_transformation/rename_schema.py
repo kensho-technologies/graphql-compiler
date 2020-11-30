@@ -189,10 +189,6 @@ class TypeRenamingMapping(Protocol):
 class FieldRenamingsForType(Protocol):
     def get(self, field_name: str, default: Set[str]) -> Set[str]:
         """Define mapping for renaming fields belonging to a particular type."""
-        # TODO(Leon): I'd like this to work with dicts, but that would require the default argument
-        #  and the return to be Optional[Set[str]]. However, it's natural to represent suppressions
-        #  as the empty set, so actually changing the type hint here to be Optional would be
-        #  misleading.
 
 
 class FieldRenamingMapping(Protocol):
@@ -755,10 +751,6 @@ class RenameSchemaTypesVisitor(Visitor):
     # schema that would be renamed to "foo".
     field_name_conflicts: Dict[str, Dict[str, Set[str]]]
 
-    # TODO(Leon): Would welcome suggestions on how to better organize the data structures in here,
-    #  since this visitor class has picked up quite a few fields just because of the various types
-    #  of errors that might arise during renaming and needing to keep track of it all.
-
     def __init__(
         self,
         type_renamings: TypeRenamingMapping,
@@ -898,12 +890,6 @@ class RenameSchemaTypesVisitor(Visitor):
         type_name = node.name.value
         current_type_field_renamings = self.field_renamings.get(type_name, None)
         if current_type_field_renamings is None:
-            # TODO(Leon): Since current_type_field_renamings need not be a dict, I allow for it to
-            #  be None if we don't want to do any field renamings for the current type. However,
-            #  that means it'd technically be valid for it to be an empty dict and I'm not sure how
-            #  to best check for this, especially since it's not the falsiness of
-            #  current_type_field_renamings that we're looking for but rather whether it contains
-            #  any field renamings.
             return node
         self.types_with_field_renamings_processed.add(type_name)
         # Need to create a set of field nodes that the type will have after the field renamings,
