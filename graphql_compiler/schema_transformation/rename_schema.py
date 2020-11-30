@@ -70,15 +70,15 @@ with a single type named "Baz" containing a field named "quux", the renamings co
 follows:
     type_renamings == {"Foo": "Baz"}
     field_renamings == {"Foo": {"bar": "quux"}}
-Note that if instead field_renamings == {"Baz": {"bar": "quux"}}, this would not produce the desired
-result.
+Note that field_renamings == {"Baz": {"bar": "quux"}} would not produce the desired
+result because "Baz" is not a type in the original schema.
 
 Operations that are already supported:
 - 1-1 renaming of object types, unions, enums, and interfaces.
 - Suppressing types that don't implement an interface.
 - Suppressing unions.
-- 1-1 and 1-many renamings for fields belonging to object types
-- Suppressions for fields belonging to object types
+- 1-1 and 1-many renamings for fields belonging to object types.
+- Suppressions for fields belonging to object types.
 
 Operations that are not yet supported but will be implemented:
 - Suppressions for enums, interfaces, and object types that implement interfaces.
@@ -580,7 +580,7 @@ def _rename_and_suppress_types_and_fields(
     nonexistent_types_with_field_renamings: Set[str] = set()
     if isinstance(field_renamings, Iterable):
         # nonexistent_types_with_field_renamings, if field_renamings is iterable, is the set of all
-        # object type names that aren't the original schema but appeared in field_renamings anyways.
+        # object type names that aren't in the original schema but appeared in field_renamings anyways.
         nonexistent_types_with_field_renamings = (
             set(field_renamings) - visitor.types_with_field_renamings_processed
         )
@@ -728,7 +728,7 @@ class RenameSchemaTypesVisitor(Visitor):
     # "Bar" to a set containing "foo".
     no_op_field_renamings: DefaultDict[str, Set[str]]
 
-    # Collects type names for each object type that has field renamings and had them applied. After
+    # Collects type names for each object type that has field renamings that have been applied. After
     # every renaming is done, this is used to ensure that field_renamings contains no unused field
     # renamings for a particular type if field_renamings is iterable.
     types_with_field_renamings_processed: Set[str]
