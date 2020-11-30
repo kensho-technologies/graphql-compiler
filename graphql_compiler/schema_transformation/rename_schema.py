@@ -276,28 +276,13 @@ def rename_schema(
     schema_ast, reverse_name_map, reverse_field_name_map = _rename_and_suppress_types_and_fields(
         schema_ast, type_renamings, field_renamings, query_type, custom_scalar_names
     )
-    reverse_name_map_changed_names_only = {
-        renamed_name: original_name
-        for renamed_name, original_name in six.iteritems(reverse_name_map)
-        if renamed_name != original_name
-    }
-    reverse_field_name_map_changed_names_only = {}
-    for type_name, reverse_field_name_mapping in reverse_field_name_map.items():
-        current_type_reverse_field_name_map_changed_names_only = {
-            renamed_field_name: original_field_name
-            for renamed_field_name, original_field_name in reverse_field_name_mapping.items()
-            if renamed_field_name != original_field_name
-        }
-        if current_type_reverse_field_name_map_changed_names_only:
-            reverse_field_name_map_changed_names_only[
-                type_name
-            ] = current_type_reverse_field_name_map_changed_names_only
+
     schema_ast = _rename_and_suppress_query_type_fields(schema_ast, type_renamings, query_type)
     return RenamedSchemaDescriptor(
         schema_ast=schema_ast,
         schema=build_ast_schema(schema_ast),
-        reverse_name_map=reverse_name_map_changed_names_only,
-        reverse_field_name_map=reverse_field_name_map_changed_names_only,
+        reverse_name_map=reverse_name_map,
+        reverse_field_name_map=reverse_field_name_map,
     )
 
 
@@ -502,7 +487,7 @@ def _rename_and_suppress_types_and_fields(
     Returns:
         Tuple containing the modified version of the schema AST, the renamed type name to original
         type name map, and the renamed field name to original field name map. The maps contain
-        entries for all non-suppressed types/ fields, including those that were not renamed.
+        entries for all non-suppressed types/ fields that were changed.
 
     Raises:
         - InvalidNameError if the user attempts to rename a type or field to an invalid name
@@ -580,7 +565,8 @@ def _rename_and_suppress_types_and_fields(
     nonexistent_types_with_field_renamings: Set[str] = set()
     if isinstance(field_renamings, Iterable):
         # nonexistent_types_with_field_renamings, if field_renamings is iterable, is the set of all
-        # object type names that aren't in the original schema but appeared in field_renamings anyways.
+        # object type names that aren't in the original schema but appeared in field_renamings
+        # anyways.
         nonexistent_types_with_field_renamings = (
             set(field_renamings) - visitor.types_with_field_renamings_processed
         )
@@ -594,7 +580,29 @@ def _rename_and_suppress_types_and_fields(
             visitor.no_op_field_renamings,
             nonexistent_types_with_field_renamings,
         )
-    return renamed_schema_ast, visitor.reverse_name_map, visitor.reverse_field_name_map
+
+    reverse_name_map_changed_names_only = {
+        renamed_name: original_name
+        for renamed_name, original_name in six.iteritems(visitor.reverse_name_map)
+        if renamed_name != original_name
+    }
+    reverse_field_name_map_changed_names_only = {}
+    for type_name, reverse_field_name_mapping in visitor.reverse_field_name_map.items():
+        current_type_reverse_field_name_map_changed_names_only = {
+            renamed_field_name: original_field_name
+            for renamed_field_name, original_field_name in reverse_field_name_mapping.items()
+            if renamed_field_name != original_field_name
+        }
+        if current_type_reverse_field_name_map_changed_names_only:
+            reverse_field_name_map_changed_names_only[
+                type_name
+            ] = current_type_reverse_field_name_map_changed_names_only
+
+    return (
+        renamed_schema_ast,
+        reverse_name_map_changed_names_only,
+        reverse_field_name_map_changed_names_only,
+    )
 
 
 def _rename_and_suppress_query_type_fields(
@@ -729,9 +737,9 @@ class RenameSchemaTypesVisitor(Visitor):
     # no_op_field_renamings will map "Bar" to a set containing "foo".
     no_op_field_renamings: DefaultDict[str, Set[str]]
 
-    # Collects type names for each object type that has field renamings that have been applied. After
-    # every renaming is done, this is used to ensure that field_renamings contains no unused field
-    # renamings for a particular type if field_renamings is iterable.
+    # Collects type names for each object type that has field renamings that have been applied.
+    # After every renaming is done, this is used to ensure that field_renamings contains no unused
+    # field renamings for a particular type if field_renamings is iterable.
     types_with_field_renamings_processed: Set[str]
 
     # Collects invalid field names in field_renamings. If field_renamings would rename a field named
