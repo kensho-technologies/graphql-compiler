@@ -121,10 +121,10 @@ Renaming constraints:
       field_renamings.get(type_name, set()).get(field_name, {field_name}) != field_name (since if
       they were the same, then applying the renaming would not change the field named field_name).
 """
-from collections import defaultdict, namedtuple
+from collections import namedtuple
 from collections.abc import Iterable
 from copy import copy
-from typing import AbstractSet, Any, DefaultDict, Dict, List, Optional, Set, Tuple, Union, cast
+from typing import AbstractSet, Any, Dict, List, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -722,7 +722,7 @@ class RenameSchemaTypesVisitor(Visitor):
     # names in the original schema and the new schema. If field_renamings would rename a field named
     # "foo" (in a type named "Baz") to "bar", then reverse_field_name_map["Baz"] will map "bar" to
     # "foo".
-    reverse_field_name_map: DefaultDict[str, Dict[str, str]]
+    reverse_field_name_map: Dict[str, Dict[str, str]]
 
     # Collects no-op renamings for fields, mapping the type name that contains the field to the set
     # of field names for which field_renamings contained no-op renamings. Applies only to types for
@@ -731,7 +731,7 @@ class RenameSchemaTypesVisitor(Visitor):
     #    - renames a field named "foo" to "foo", or
     #    - attempts to rename a field named "foo" when such a field does not exist
     # no_op_field_renamings will map "Bar" to a set containing "foo".
-    no_op_field_renamings: DefaultDict[str, Set[str]]
+    no_op_field_renamings: Dict[str, Set[str]]
 
     # Collects type names for each object type that has field renamings that have been applied.
     # After every renaming is done, this is used to ensure that field_renamings contains no unused
@@ -743,7 +743,7 @@ class RenameSchemaTypesVisitor(Visitor):
     # (valid, non-reserved names consist only of alphanumeric characters and underscores, do not
     # start with a number, and do not start with two underscores), invalid_field_names will map
     # "Bar" to a dict that maps "foo" to the invalid field name.
-    invalid_field_names: DefaultDict[str, Dict[str, str]]
+    invalid_field_names: Dict[str, Dict[str, str]]
 
     # Collects naming conflict errors involving fields. If field_renamings would rename multiple
     # fields (in a type named "Bar" in the original schema) to "foo", field_name_conflicts will map
@@ -780,11 +780,11 @@ class RenameSchemaTypesVisitor(Visitor):
         self.custom_scalar_names = frozenset(custom_scalar_names)
         self.suppressed_type_names = set()
         self.field_renamings = field_renamings
-        self.reverse_field_name_map = defaultdict(dict)
-        self.no_op_field_renamings = defaultdict(set)
+        self.reverse_field_name_map = {}
+        self.no_op_field_renamings = {}
         self.types_with_field_renamings_processed = set()
-        self.invalid_field_names = defaultdict(dict)
-        self.field_name_conflicts = defaultdict(dict)
+        self.invalid_field_names = {}
+        self.field_name_conflicts = {}
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -906,24 +906,28 @@ class RenameSchemaTypesVisitor(Visitor):
                 # field to itself. Note the default return is the empty set(), which covers the
                 # (legal) situation where current_type_field_renamings doesn't contain an entry for
                 # the current field_node.
-                self.no_op_field_renamings[type_name].add(original_field_name)
+                self.no_op_field_renamings.setdefault(type_name, set()).add(original_field_name)
             new_field_names = current_type_field_renamings.get(
                 original_field_name, {original_field_name}
             )
             for new_field_name in new_field_names:
                 # Validate the new field name before adding it to the schema.
-                if new_field_name in self.reverse_field_name_map[type_name]:
-                    if new_field_name not in self.field_name_conflicts[type_name]:
-                        conflictingly_renamed_field_name = self.reverse_field_name_map[
-                            type_name
-                        ].get(new_field_name, new_field_name)
+                if new_field_name in self.reverse_field_name_map.setdefault(type_name, {}):
+                    if new_field_name not in self.field_name_conflicts.setdefault(type_name, {}):
+                        conflictingly_renamed_field_name = self.reverse_field_name_map.setdefault(
+                            type_name, {}
+                        ).get(new_field_name, new_field_name)
                         self.field_name_conflicts[type_name][new_field_name] = {
                             conflictingly_renamed_field_name
                         }
                     self.field_name_conflicts[type_name][new_field_name].add(original_field_name)
                 if not is_valid_nonreserved_name(new_field_name):
-                    self.invalid_field_names[type_name][original_field_name] = new_field_name
-                self.reverse_field_name_map[type_name][new_field_name] = original_field_name
+                    self.invalid_field_names.setdefault(type_name, {})[
+                        original_field_name
+                    ] = new_field_name
+                self.reverse_field_name_map.setdefault(type_name, {})[
+                    new_field_name
+                ] = original_field_name
             new_field_nodes.update(
                 get_copy_of_node_with_new_name(field_node, new_field_name)
                 for new_field_name in new_field_names
@@ -938,7 +942,9 @@ class RenameSchemaTypesVisitor(Visitor):
                 # Need this condition because if all the renamings are used, calling update() will
                 # materialize an empty set, making it seem like there are no-op field renamings even
                 # when there aren't.
-                self.no_op_field_renamings[type_name].update(unused_field_renamings)
+                self.no_op_field_renamings.setdefault(type_name, set()).update(
+                    unused_field_renamings
+                )
         new_type_node = copy(node)
         new_type_node.fields = FrozenList(new_field_nodes)
         return new_type_node
