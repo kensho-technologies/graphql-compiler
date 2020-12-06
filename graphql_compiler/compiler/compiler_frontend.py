@@ -59,7 +59,8 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from typing import Dict, List, NamedTuple, Optional
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 from graphql import (
     DocumentNode,
@@ -132,7 +133,8 @@ from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo,
 from .validation import validate_schema_and_query_ast
 
 
-class OutputMetadata(NamedTuple):
+@dataclass(frozen=True)
+class OutputMetadata:
     """Metadata about a query's outputs."""
 
     # The type of the output value.
@@ -161,7 +163,8 @@ class OutputMetadata(NamedTuple):
         return not self.__eq__(other)
 
 
-class IrAndMetadata(NamedTuple):
+@dataclass(frozen=True)
+class IrAndMetadata:
     """Internal representation (IR) and metadata for a particular schema and query combination."""
 
     # List of basic block objects describing the query.
