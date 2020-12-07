@@ -899,7 +899,7 @@ class SuppressionNotImplementedVisitor(Visitor):
     ) -> None:
         """If type_renamings suppresses enums, record it for error message."""
         enum_name = node.name.value
-        if self.type_renamings.get(enum_name) is None:
+        if self.type_renamings.get(enum_name, enum_name) is None:
             self.unsupported_enum_suppressions.add(enum_name)
 
     def enter_interface_type_definition(
@@ -912,7 +912,7 @@ class SuppressionNotImplementedVisitor(Visitor):
     ) -> None:
         """If type_renamings suppresses interfaces, record it for error message."""
         interface_name = node.name.value
-        if self.type_renamings.get(interface_name) is None:
+        if self.type_renamings.get(interface_name, interface_name) is None:
             self.unsupported_interface_suppressions.add(interface_name)
 
     def enter_object_type_definition(
@@ -927,6 +927,6 @@ class SuppressionNotImplementedVisitor(Visitor):
         if not node.interfaces:
             return
         object_name = node.name.value
-        if self.type_renamings.get(object_name) is None:
+        if self.type_renamings.get(object_name, object_name) is None:
             # Suppressing interface implementations isn't supported yet.
             self.unsupported_interface_implementation_suppressions.add(object_name)
