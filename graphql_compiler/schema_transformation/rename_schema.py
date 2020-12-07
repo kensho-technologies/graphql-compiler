@@ -78,7 +78,7 @@ Renaming constraints:
   "Baz". You also may not rename anything to "Baz" if a type "Baz" already exists and is not also
   being renamed or suppressed. The same rules apply for fields that belong to the same type, since
   they share a namespace as well.
-- No-op renamings are not allowed.
+- No-op renamings are not allowed meaning that:
   - A string type_name may be in type_renamings only if there exists a type in the original schema
     named type_name (since otherwise that entry would not affect any type in the schema).
   - If string type_name is in type_renamings, then type_renamings[type_name] != type_name (since
