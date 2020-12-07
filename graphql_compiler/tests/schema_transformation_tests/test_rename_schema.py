@@ -1,9 +1,9 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from textwrap import dedent
-from typing import Optional, Set
+from typing import Set
 import unittest
 
-from graphql import GraphQLSchema, build_ast_schema, parse
+from graphql import parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
@@ -15,8 +15,6 @@ from ...schema_transformation.utils import (
     NoOpRenamingError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
-    builtin_scalar_type_names,
-    get_custom_scalar_names,
 )
 from ..test_helpers import compare_schema_texts_order_independently
 from .input_schema_strings import InputSchemaStrings as ISS
