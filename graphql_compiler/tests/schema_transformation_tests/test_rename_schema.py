@@ -1,26 +1,20 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from textwrap import dedent
-from typing import Optional, Set
+from typing import Set
 import unittest
 
-from graphql import GraphQLSchema, build_ast_schema, parse
+from graphql import parse
 from graphql.language.printer import print_ast
 from graphql.language.visitor import QUERY_DOCUMENT_KEYS
 from graphql.pyutils import snake_to_camel
 
-from ...schema_transformation.rename_schema import (
-    RenameSchemaTypesVisitor,
-    TypeRenamingMapping,
-    rename_schema,
-)
+from ...schema_transformation.rename_schema import RenameSchemaTypesVisitor, rename_schema
 from ...schema_transformation.utils import (
     CascadingSuppressionError,
     InvalidNameError,
     NoOpRenamingError,
     SchemaRenameNameConflictError,
     SchemaTransformError,
-    builtin_scalar_type_names,
-    get_custom_scalar_names,
 )
 from ..test_helpers import compare_schema_texts_order_independently
 from .input_schema_strings import InputSchemaStrings as ISS
@@ -114,24 +108,6 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(NoOpRenamingError):
             rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"})
 
-    def test_rename_legal_noop_unused_renaming(self) -> None:
-        # Unlike with test_rename_illegal_noop_unused_renaming, here type_renamings is not
-        # iterable. As a result, this renaming is technically legal but it is inadvisable to
-        # write a renaming like this since the intended "Dinosaur" -> "NewDinosaur" mapping is
-        # unused and will silently do nothing when applied to the given schema.
-        class RenameMapping:
-            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
-                """Define mapping for renaming object."""
-                if key == "Dinosaur":
-                    return "NewDinosaur"
-                return key
-
-        renamed_schema = rename_schema(parse(ISS.basic_schema), RenameMapping())
-        compare_schema_texts_order_independently(
-            self, ISS.basic_schema, print_ast(renamed_schema.schema_ast)
-        )
-        self.assertEqual({}, renamed_schema.reverse_name_map)
-
     def test_rename_illegal_noop_renamed_to_self(self) -> None:
         with self.assertRaises(NoOpRenamingError):
             rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
@@ -191,31 +167,13 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(NoOpRenamingError):
             rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
 
-    def test_suppress_legal_noop_unused_suppression(self) -> None:
-        # Unlike with test_suppress_illegal_noop_unused_suppression, here type_renamings is not
-        # iterable. As a result, this renaming is technically legal but it is inadvisable to
-        # write a renaming like this since the intended "Dinosaur" -> None mapping is unused and
-        # will silently do nothing when applied to the given schema.
-        class SuppressMapping:
-            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
-                """Define mapping for renaming object."""
-                if key == "Dinosaur":
-                    return None
-                return key
-
-        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), SuppressMapping())
-        compare_schema_texts_order_independently(
-            self, ISS.multiple_objects_schema, print_ast(renamed_schema.schema_ast)
-        )
-        self.assertEqual({}, renamed_schema.reverse_name_map)
-
     def test_various_illegal_noop_type_renamings_error_message(self) -> None:
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(
                 parse(ISS.basic_schema), {"Dinosaur": None, "Human": "Human", "Bird": "Birdie"}
             )
         self.assertEqual(
-            "type_renamings is iterable, so it cannot have no-op renamings. However, the following "
+            "type_renamings cannot have no-op renamings. However, the following "
             "entries exist in the type_renamings argument, which either rename a type to itself or "
             "would rename a type that doesn't exist in the schema, both of which are invalid: "
             "['Bird', 'Dinosaur', 'Human']",
@@ -654,8 +612,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_directive_renaming_illegal_noop(self) -> None:
         # This renaming is illegal because directives can't be renamed, so the
-        # "stitch" -> "NewStitch" mapping is a no-op which is not allowed for iterable
-        # type_renamings.
+        # "stitch" -> "NewStitch" mapping is a no-op
         with self.assertRaises(NoOpRenamingError):
             rename_schema(
                 parse(ISS.directive_schema),
@@ -664,28 +621,9 @@ class TestRenameSchema(unittest.TestCase):
                 },
             )
 
-    def test_directive_renaming_legal_noop(self) -> None:
-        # Unlike with test_directive_renaming_illegal_noop, here type_renamings is not iterable.
-        # As a result, this renaming is technically legal but it is inadvisable to write a
-        # renaming like this since directives cannot be renamed so the intended
-        # "stitch" -> "NewStitch" mapping is unused and will silently do nothing when applied to
-        #  ISS.directive_schema.
-        class DirectiveRenamingMapping:
-            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
-                """Define mapping for renaming object."""
-                if key == "stitch":
-                    return "NewStitch"
-                return key
-
-        renamed_schema = rename_schema(parse(ISS.directive_schema), DirectiveRenamingMapping())
-        compare_schema_texts_order_independently(
-            self, ISS.directive_schema, print_ast(renamed_schema.schema_ast)
-        )
-        self.assertEqual({}, renamed_schema.reverse_name_map)
-
     def test_query_type_field_argument_illegal_noop(self) -> None:
         # This renaming is illegal because query type field arguments can't be renamed, so the
-        # "id" -> "Id" mapping is a no-op which is not allowed for iterable type_renamings.
+        # "id" -> "Id" mapping is a no-op
         schema_string = dedent(
             """\
             schema {
@@ -703,40 +641,6 @@ class TestRenameSchema(unittest.TestCase):
         )
         with self.assertRaises(NoOpRenamingError):
             rename_schema(parse(schema_string), {"id": "Id"})
-
-    def test_query_type_field_argument_legal_noop(self) -> None:
-        # Unlike with test_query_type_field_argument_illegal_noop, here type_renamings is not
-        # iterable. As a result, this renaming is technically legal but it is inadvisable to
-        # write a renaming like this since the intended "id" -> "Id" mapping is unused and will
-        # silently do nothing when applied to the given schema.
-        schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type SchemaQuery {
-              Human(id: String!): Human
-            }
-
-            type Human {
-              name: String
-            }
-        """
-        )
-
-        class QueryTypeFieldArgumentMapping:
-            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
-                """Define mapping for renaming object."""
-                if key == "id":
-                    return "Id"
-                return key
-
-        renamed_schema = rename_schema(parse(schema_string), QueryTypeFieldArgumentMapping())
-        compare_schema_texts_order_independently(
-            self, schema_string, print_ast(renamed_schema.schema_ast)
-        )
-        self.assertEqual({}, renamed_schema.reverse_name_map)
 
     def test_clashing_type_rename(self) -> None:
         schema_string = dedent(
@@ -982,74 +886,3 @@ class TestRenameSchema(unittest.TestCase):
     def test_field_in_list_still_depends_on_suppressed_type(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
             rename_schema(parse(ISS.list_schema), {"Height": None})
-
-    def test_rename_using_dict_like_prefixer_class(self) -> None:
-        class PrefixNewDict(TypeRenamingMapping):
-            def __init__(self, schema: GraphQLSchema):
-                self.schema = schema
-                super().__init__()
-
-            def get(self, key: str, default: Optional[str] = None) -> Optional[str]:
-                """Define mapping for renaming object."""
-                if key in get_custom_scalar_names(self.schema) or key in builtin_scalar_type_names:
-                    # Making an exception for scalar types because renaming and suppressing them
-                    # hasn't been implemented yet
-                    return key
-                return "New" + key
-
-        schema = parse(ISS.various_types_schema)
-        renamed_schema = rename_schema(schema, PrefixNewDict(build_ast_schema(schema)))
-        renamed_schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            scalar Date
-
-            enum NewHeight {
-              TALL
-              SHORT
-            }
-
-            interface NewCharacter {
-              id: String
-            }
-
-            type NewHuman implements NewCharacter {
-              id: String
-              name: String
-              birthday: Date
-            }
-
-            type NewGiraffe implements NewCharacter {
-              id: String
-              height: NewHeight
-            }
-
-            type NewDog {
-              nickname: String
-            }
-
-            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-            type SchemaQuery {
-              NewHuman: NewHuman
-              NewGiraffe: NewGiraffe
-              NewDog: NewDog
-            }
-        """
-        )
-        compare_schema_texts_order_independently(
-            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
-        )
-        self.assertEqual(
-            {
-                "NewCharacter": "Character",
-                "NewGiraffe": "Giraffe",
-                "NewHeight": "Height",
-                "NewHuman": "Human",
-                "NewDog": "Dog",
-            },
-            renamed_schema.reverse_name_map,
-        )
