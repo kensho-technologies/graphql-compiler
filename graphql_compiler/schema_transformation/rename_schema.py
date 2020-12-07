@@ -85,7 +85,7 @@ Renaming constraints:
     if they were the same, then applying the renaming would not change the type named type_name).
 """
 from collections import namedtuple
-from typing import AbstractSet, Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -215,7 +215,7 @@ def _validate_renamings(
     schema_ast: DocumentNode,
     type_renamings: Mapping[str, Optional[str]],
     query_type: str,
-    custom_scalar_names: AbstractSet[str],
+    custom_scalar_names: Set[str],
 ) -> None:
     """Validate the type_renamings argument before attempting to rename the schema.
 
@@ -293,7 +293,7 @@ def _ensure_no_cascading_type_suppressions(
 def _ensure_no_unsupported_operations(
     schema_ast: DocumentNode,
     type_renamings: Mapping[str, Optional[str]],
-    custom_scalar_names: AbstractSet[str],
+    custom_scalar_names: Set[str],
 ) -> None:
     """Check for unsupported renaming or suppression operations."""
     _ensure_no_unsupported_scalar_operations(type_renamings, custom_scalar_names)
@@ -302,25 +302,14 @@ def _ensure_no_unsupported_operations(
 
 def _ensure_no_unsupported_scalar_operations(
     type_renamings: Mapping[str, Optional[str]],
-    custom_scalar_names: AbstractSet[str],
+    custom_scalar_names: Set[str],
 ) -> None:
     """Check for unsupported scalar operations."""
-    unsupported_scalar_operations = {}  # Map scalars to value to be renamed.
-    for scalar_name in custom_scalar_names:
-        possibly_renamed_scalar_name = type_renamings.get(scalar_name, scalar_name)
-        # type_renamings.get(scalar_name, scalar_name) returns something that is not scalar_name iff
-        # it attempts to do something with the scalar (i.e. renaming or suppressing it)
-        if possibly_renamed_scalar_name != scalar_name:
-            unsupported_scalar_operations[scalar_name] = possibly_renamed_scalar_name
-    for builtin_scalar_name in builtin_scalar_type_names:
-        possibly_renamed_builtin_scalar_name = type_renamings.get(
-            builtin_scalar_name, builtin_scalar_name
-        )
-        if possibly_renamed_builtin_scalar_name != builtin_scalar_name:
-            # Check that built-in scalar types remain unchanged during type renaming.
-            unsupported_scalar_operations[
-                builtin_scalar_name
-            ] = possibly_renamed_builtin_scalar_name
+    unsupported_scalar_operations = {
+        scalar_name: type_renamings[scalar_name]
+        for scalar_name in custom_scalar_names.union(builtin_scalar_type_names)
+        if scalar_name in type_renamings
+    }
     if unsupported_scalar_operations:
         raise NotImplementedError(
             f"Scalar renaming and suppression is not implemented yet, but type_renamings attempted "
@@ -375,7 +364,7 @@ def _rename_and_suppress_types(
     schema_ast: DocumentNode,
     type_renamings: Mapping[str, Optional[str]],
     query_type: str,
-    custom_scalar_names: AbstractSet[str],
+    custom_scalar_names: Set[str],
 ) -> Tuple[DocumentNode, Dict[str, str]]:
     """Rename and suppress types, enums, interfaces using renamings.
 
@@ -554,7 +543,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self,
         type_renamings: Mapping[str, Optional[str]],
         query_type: str,
-        custom_scalar_names: AbstractSet[str],
+        custom_scalar_names: Set[str],
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
