@@ -150,13 +150,12 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if renamings are iterable and contains no-op renames.
+    """Raised if renamings contain no-op renames.
 
     No-op renames can occur in these ways:
-    * type_renamings is iterable and contains a string type_name but there doesn't exist a type in
-      the schema named type_name
-    * type_renamings is iterable and maps a string type_name to itself, i.e.
-      type_renamings[type_name] == type_name
+    * type_renamings contains a string type_name but there doesn't exist a type in the schema named
+      type_name
+    * type_renamings maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
     """
 
     no_op_type_renames: Set[str]
@@ -174,10 +173,10 @@ class NoOpRenamingError(SchemaTransformError):
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
         return (
-            f"type_renamings is iterable, so it cannot have no-op renamings. However, the "
-            f"following entries exist in the type_renamings argument, which either rename a "
-            f"type to itself or would rename a type that doesn't exist in the schema, both of "
-            f"which are invalid: {sorted(self.no_op_type_renames)}"
+            f"type_renamings cannot have no-op renamings. However, the following entries exist in "
+            f"the type_renamings argument, which either rename a type to itself or would rename a "
+            f"type that doesn't exist in the schema, both of which are invalid: "
+            f"{sorted(self.no_op_type_renames)}"
         )
 
 
