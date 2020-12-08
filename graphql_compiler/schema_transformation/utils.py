@@ -147,12 +147,12 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                 f"this, modify the field_renamings argument of rename_schema to ensure that within "
                 f"each type in the renamed schema, no two fields have the same name. The following "
                 f"is a list of tuples that describes what needs to be fixed. "
-                f"Each tuple is of the "
-                f"form (type_name, [(desired_field_name, original_field_names),...]) where "
-                f"type_name is the type name that would appear in the original schema, "
-                f"desired_field_name is the name of a  field in the new schema, and "
-                f"original_field_names is a list of the names of all the fields in the original "
-                f"schema that would be renamed to desired_field_name: {sorted_field_name_conflicts}"
+                f"Each tuple is of the form "
+                f"(type_name, [(desired_field_name, original_field_names),...]) where type_name is "
+                f"the type name that would appear in the original schema, desired_field_name is "
+                f"the name of a field in the new schema, and original_field_names is a list of the "
+                f"names of all the fields in the original schema that would be renamed to "
+                f"desired_field_name: {sorted_field_name_conflicts}"
             )
         return "\n".join(
             filter(

@@ -200,9 +200,9 @@ def rename_schema(
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
                         anything, i.e. "Foo" not in type_renamings
-        field_renamings: maps type names to the renamings for its fields. The renamings map field
-                         names belonging to the type to a set of field names for the renamed
-                         schema
+        field_renamings: maps type names to the field renamings for that type. The renamings map
+                         field names belonging to the type to a set of field names for the
+                         renamed schema
 
     Returns:
         RenamedSchemaDescriptor containing the AST of the renamed schema, and the maps of renamed
@@ -278,9 +278,9 @@ def _validate_renamings(
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
                         anything, i.e. "Foo" not in type_renamings
-        field_renamings: maps type names to the renamings for its fields. The renamings map field
-                         names belonging to the type to a set of field names for the renamed
-                         schema
+        field_renamings: maps type names to the field renamings for that type. The renamings map
+                         field names belonging to the type to a set of field names for the
+                         renamed schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
@@ -435,9 +435,9 @@ def _rename_and_suppress_types_and_fields(
         type_renamings: maps original type name to renamed name or None (for type suppression). A
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
                         anything, i.e. "Foo" not in type_renamings
-        field_renamings: maps type names to the renamings for its fields. The renamings map field
-                         names belonging to the type to a set of field names for the renamed
-                         schema
+        field_renamings: maps type names to the field renamings for that type. The renamings map
+                         field names belonging to the type to a set of field names for the
+                         renamed schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
         custom_scalar_names: set of all user defined scalars used in the schema (excluding
                              builtin scalars)
@@ -501,7 +501,6 @@ def _rename_and_suppress_types_and_fields(
             visitor.type_renamed_to_builtin_scalar_conflicts,
             visitor.field_name_conflicts,
         )
-
     for type_name in visitor.suppressed_type_names:
         if type_name not in type_renamings:
             raise AssertionError(
@@ -716,7 +715,7 @@ class RenameSchemaTypesVisitor(Visitor):
             type_renamings: maps original type name to renamed name or None (for type suppression).
                             A type named "Foo" will be unchanged iff type_renamings does not map
                             "Foo" to anything, i.e. "Foo" not in type_renamings
-            field_renamings: maps type names to the renamings for its fields. The renamings map
+            field_renamings: maps type names to the field renamings for that type. The renamings map
                              field names belonging to the type to a set of field names for the
                              renamed schema
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
@@ -861,9 +860,9 @@ class RenameSchemaTypesVisitor(Visitor):
                 # Validate the new field name before adding it to the schema.
                 if new_field_name in self.reverse_field_name_map.setdefault(type_name, {}):
                     if new_field_name not in self.field_name_conflicts.setdefault(type_name, {}):
-                        conflictingly_renamed_field_name = self.reverse_field_name_map.setdefault(
-                            type_name, {}
-                        ).get(new_field_name, new_field_name)
+                        conflictingly_renamed_field_name = self.reverse_field_name_map[type_name][
+                            new_field_name
+                        ]
                         self.field_name_conflicts[type_name][new_field_name] = {
                             conflictingly_renamed_field_name
                         }
@@ -872,9 +871,7 @@ class RenameSchemaTypesVisitor(Visitor):
                     self.invalid_field_names.setdefault(type_name, {})[
                         original_field_name
                     ] = new_field_name
-                self.reverse_field_name_map.setdefault(type_name, {})[
-                    new_field_name
-                ] = original_field_name
+                self.reverse_field_name_map[type_name][new_field_name] = original_field_name
             new_field_nodes.update(
                 get_copy_of_node_with_new_name(field_node, new_field_name)
                 for new_field_name in new_field_names
@@ -1021,7 +1018,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
             type_renamings: maps original type name to renamed name or None (for type suppression).
                             A type named "Foo" will be unchanged iff type_renamings does not map
                             "Foo" to anything, i.e. "Foo" not in type_renamings
-            field_renamings: maps type names to the renamings for its fields. The renamings map
+            field_renamings: maps type names to the field renamings for that type. The renamings map
                              field names belonging to the type to a set of field names for the
                              renamed schema
             query_type: name of the query type (e.g. RootSchemaQuery)
