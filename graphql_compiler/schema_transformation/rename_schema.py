@@ -108,8 +108,8 @@ Renaming constraints:
   - A string type_name may be in field_renamings only if there exists a type in the original
     schema named type_name and that type wouldn't get suppressed by type_renamings (since
     otherwise that entry would not affect any type in the schema).
-  - If type_name is in field_renamings, a string field_name may be in field_renamings[type_name] only
-    if the type named type_name in the original schema contains a field named field_name in the
+  - If type_name is in field_renamings, a string field_name may be in field_renamings[type_name]
+    only if the type named type_name in the original schema contains a field named field_name in the
     original schema (since otherwise that entry would not affect any field in the schema).
   - If type_name is in field_renamings and field_name is in field_renamings[type_name], then
     field_renamings[type_name][field_name] != {field_name} (since if this were the case, then
@@ -172,7 +172,9 @@ VisitorReturnType = Union[Node, VisitorAction]
 
 
 def rename_schema(
-    schema_ast: DocumentNode, type_renamings: Mapping[str, Optional[str]], field_renamings: Mapping[str, Mapping[str, Set[str]]]
+    schema_ast: DocumentNode,
+    type_renamings: Mapping[str, Optional[str]],
+    field_renamings: Mapping[str, Mapping[str, Set[str]]],
 ) -> RenamedSchemaDescriptor:
     """Create a RenamedSchemaDescriptor; rename/suppress types and fields.
 
@@ -254,7 +256,9 @@ def rename_schema(
 
 
 def _validate_renamings(
-    schema_ast: DocumentNode,type_renamings: Mapping[str, Optional[str]], field_renamings: Mapping[str, Mapping[str, Set[str]]],
+    schema_ast: DocumentNode,
+    type_renamings: Mapping[str, Optional[str]],
+    field_renamings: Mapping[str, Mapping[str, Set[str]]],
     query_type: str,
     custom_scalar_names: Set[str],
 ) -> None:
@@ -845,9 +849,9 @@ class RenameSchemaTypesVisitor(Visitor):
         new_field_nodes: Set[FieldDefinitionNode] = set()
         for field_node in node.fields:
             original_field_name = field_node.name.value
-            if original_field_name in current_type_field_renamings and current_type_field_renamings[original_field_name] == {
+            if original_field_name in current_type_field_renamings and current_type_field_renamings[
                 original_field_name
-            }:
+            ] == {original_field_name}:
                 # Check for no-op 1-1 renamings when the renamings would rename a field to itself.
                 self.no_op_field_renamings.setdefault(type_name, set()).add(original_field_name)
             new_field_names = current_type_field_renamings.get(
@@ -884,9 +888,7 @@ class RenameSchemaTypesVisitor(Visitor):
             # Need this condition because if all the renamings are used, calling update() will
             # materialize an empty set, making it seem like there are no-op field renamings even
             # when there aren't.
-            self.no_op_field_renamings.setdefault(type_name, set()).update(
-                unused_field_renamings
-            )
+            self.no_op_field_renamings.setdefault(type_name, set()).update(unused_field_renamings)
         new_type_node = copy(node)
         new_type_node.fields = FrozenList(new_field_nodes)
         return new_type_node
@@ -1049,7 +1051,10 @@ class CascadingSuppressionCheckVisitor(Visitor):
         current_type_field_renamings = self.field_renamings[self.current_type]
         for field in node.fields:
             field_name = field.name.value
-            if field_name not in current_type_field_renamings or current_type_field_renamings[field_name]:
+            if (
+                field_name not in current_type_field_renamings
+                or current_type_field_renamings[field_name]
+            ):
                 # Do nothing if there's at least one field for the current type that hasn't been
                 # suppressed, either because field renamings didn't contain an entry for field_name
                 # or if it didn't suppress the field
