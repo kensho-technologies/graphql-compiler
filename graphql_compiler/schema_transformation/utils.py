@@ -190,21 +190,20 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if renamings are iterable and contains no-op renames.
+    """Raised if renamings contain no-op renames.
 
     No-op renames can occur in these ways:
-    * type_renamings is iterable and contains a string type_name but there doesn't exist a type in
-      the schema named type_name
-    * type_renamings is iterable and maps a string type_name to itself, i.e.
-      type_renamings[type_name] == type_name
+    * type_renamings contains a string type_name but there doesn't exist a type in the schema named
+      type_name
+    * type_renamings maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
     * There exists an object type T named type_name in the schema such that
-      field_renamings[type_name] is both iterable and contains a string field_name but there doesn't
-      exist a field named field_name belonging to T in the schema.
-    * field_renamings is iterable and contains a string type_name but there doesn't exist an
-      object type in the schema named type_name
+      field_renamings[type_name] contains a string field_name but there doesn't exist a field named
+      field_name belonging to T in the schema.
+    * field_renamings contains a string type_name but there doesn't exist an object type in the
+      schema named type_name
     * There exists an object type T named type_name in the schema such that
-      field_renamings[type_name] is both iterable and 1:1 maps a string field_name to itself within
-      a particular type, i.e. field_renamings[type_name][field_name] == [field_name]
+      field_renamings[type_name] 1:1 maps a string field_name to itself within a particular type,
+      i.e. field_renamings[type_name][field_name] == [field_name]
     """
 
     no_op_type_renames: Set[str]
@@ -233,10 +232,10 @@ class NoOpRenamingError(SchemaTransformError):
         no_op_type_renames_message = ""
         if self.no_op_type_renames:
             no_op_type_renames_message = (
-                f"type_renamings is iterable, so it cannot have no-op renamings. However, the "
-                f"following entries exist in the type_renamings argument, which either rename a "
-                f"type to itself or would rename a type that doesn't exist in the schema, both of "
-                f"which are invalid: {sorted(self.no_op_type_renames)}"
+                f"type_renamings cannot have no-op renamings. However, the following entries exist "
+                f"in the type_renamings argument, which either rename a type to itself or would "
+                f"rename a type that doesn't exist in the schema, both of which are invalid: "
+                f"{sorted(self.no_op_type_renames)}"
             )
         no_op_field_renames_message = ""
         if self.no_op_field_renames:
@@ -245,8 +244,7 @@ class NoOpRenamingError(SchemaTransformError):
                 for type_name, field_names in sorted(self.no_op_field_renames.items())
             ]
             no_op_field_renames_message = (
-                f"The field renamings for the following types in field_renamings are iterable, so "
-                f"they cannot cannot have no-op renamings. However, some of these renamings would "
+                f"The field renamings for the following types would "
                 f"either rename a field to itself or would rename a field that doesn't exist in "
                 f"the schema, both of which are invalid. The following is a list of tuples that "
                 f"describes what needs to be fixed for field renamings. Each tuple is of the form "
@@ -257,11 +255,10 @@ class NoOpRenamingError(SchemaTransformError):
         no_op_nonexistent_type_field_renames_message = ""
         if self.no_op_nonexistent_type_field_renames:
             no_op_nonexistent_type_field_renames_message = (
-                f"field_renamings is iterable, so it cannot have no-op renamings. However, the "
-                f"following entries exist in the field_renamings argument that correspond to names "
-                f"of object types that either don't exist in the original schema or would get "
-                f"suppressed. In other words, the field renamings for each of these types would be "
-                f"no-ops: {sorted(self.no_op_nonexistent_type_field_renames)}"
+                f"The following entries exist in the field_renamings argument that correspond to "
+                f"names of object types that either don't exist in the original schema or would "
+                f"get suppressed. In other words, the field renamings for each of these types "
+                f"would be no-ops: {sorted(self.no_op_nonexistent_type_field_renames)}"
             )
         return "\n".join(
             filter(
