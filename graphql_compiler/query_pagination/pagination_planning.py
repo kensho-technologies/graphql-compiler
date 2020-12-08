@@ -125,11 +125,16 @@ def get_pagination_plan(
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
 
+    # XXX Just specify multiple pagination keys (make it a list). Then to choose a field:
+    # 1. Find the set of fields with sufficient capacity on the root
+    # 2. First preference for fields with field value intervals on them
+    # 3. Second preference for fields that appear earlier in the list of pagination keys.
+    #
     # TODO(bojanserafimov): Remove pagination fields. The pagination planner is now smart enough
     #                       to pick the best field for pagination based on the query. This is not
     #                       trivial since the pagination_fields are used in tests to force int
     #                       pagination when uuid pagination is also available.
-    pagination_field = query_analysis.schema_info.pagination_keys.get(pagination_node)
+    pagination_field = query_analysis.schema_info.pagination_keys.get(pagination_node)[0]
     if pagination_field is None:
         return PaginationPlan(tuple()), (PaginationFieldNotSpecified(pagination_node),)
 
