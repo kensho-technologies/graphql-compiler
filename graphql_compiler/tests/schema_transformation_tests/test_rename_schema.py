@@ -35,15 +35,16 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(all_types, type_sets_union)
 
     def test_no_rename(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.basic_schema), {})
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {}, {})
 
         compare_schema_texts_order_independently(
             self, ISS.basic_schema, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_basic_rename(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": "NewHuman"})
+        renamed_schema = rename_schema(parse(ISS.basic_schema), {"Human": "NewHuman"}, {})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -65,12 +66,13 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({"NewHuman": "Human"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_type_directive_same_name(self) -> None:
         # Types, fields, and directives have different namespaces, so this schema and renaming are
         # both valid and the renaming only affects the object type.
         renamed_schema = rename_schema(
-            parse(ISS.type_field_directive_same_name_schema), {"stitch": "NewStitch"}
+            parse(ISS.type_field_directive_same_name_schema), {"stitch": "NewStitch"}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -93,27 +95,28 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({"NewStitch": "stitch"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_original_unmodified_rename(self) -> None:
         original_ast = parse(ISS.basic_schema)
-        rename_schema(original_ast, {"Human": "NewHuman"})
+        rename_schema(original_ast, {"Human": "NewHuman"}, {})
         self.assertEqual(original_ast, parse(ISS.basic_schema))
 
     def test_original_unmodified_suppress(self) -> None:
         original_ast = parse(ISS.multiple_objects_schema)
-        rename_schema(original_ast, {"Human": None})
+        rename_schema(original_ast, {"Human": None}, {})
         self.assertEqual(original_ast, parse(ISS.multiple_objects_schema))
 
     def test_rename_illegal_noop_unused_renaming(self) -> None:
         with self.assertRaises(NoOpRenamingError):
-            rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"})
+            rename_schema(parse(ISS.basic_schema), {"Dinosaur": "NewDinosaur"}, {})
 
     def test_rename_illegal_noop_renamed_to_self(self) -> None:
         with self.assertRaises(NoOpRenamingError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "Human"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "Human"}, {})
 
     def test_basic_suppress(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None})
+        renamed_schema = rename_schema(parse(ISS.multiple_objects_schema), {"Human": None}, {})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -138,10 +141,11 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_multiple_type_suppress(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": None}
+            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": None}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -162,15 +166,16 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_illegal_noop_unused_suppression(self) -> None:
         with self.assertRaises(NoOpRenamingError):
-            rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None})
+            rename_schema(parse(ISS.multiple_objects_schema), {"Dinosaur": None}, {})
 
     def test_various_illegal_noop_type_renamings_error_message(self) -> None:
         with self.assertRaises(NoOpRenamingError) as e:
             rename_schema(
-                parse(ISS.basic_schema), {"Dinosaur": None, "Human": "Human", "Bird": "Birdie"}
+                parse(ISS.basic_schema), {"Dinosaur": None, "Human": "Human", "Bird": "Birdie"}, {}
             )
         self.assertEqual(
             "type_renamings cannot have no-op renamings. However, the following "
@@ -182,7 +187,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_swap_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Human"}
+            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Human"}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -213,10 +218,11 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({"Human": "Droid", "Droid": "Human"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_rename_into_suppressed(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": "Human"}
+            parse(ISS.multiple_objects_schema), {"Human": None, "Droid": "Human"}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -242,10 +248,13 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({"Human": "Droid"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_cyclic_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.multiple_objects_schema), {"Human": "Droid", "Droid": "Dog", "Dog": "Human"}
+            parse(ISS.multiple_objects_schema),
+            {"Human": "Droid", "Droid": "Dog", "Dog": "Human"},
+            {},
         )
         renamed_schema_string = dedent(
             """\
@@ -278,10 +287,11 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(
             {"Dog": "Droid", "Human": "Dog", "Droid": "Human"}, renamed_schema.reverse_name_map
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}
+            parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -309,14 +319,15 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(
             {"NewDroid": "Droid", "NewHeight": "Height"}, renamed_schema.reverse_name_map
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_enum_suppression(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.multiple_enums_schema), {"Size": None})
+            rename_schema(parse(ISS.multiple_enums_schema), {"Size": None}, {})
 
     def test_interface_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.interface_schema), {"Kid": "NewKid", "Character": "NewCharacter"}
+            parse(ISS.interface_schema), {"Kid": "NewKid", "Character": "NewCharacter"}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -344,29 +355,33 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual(
             {"NewKid": "Kid", "NewCharacter": "Character"}, renamed_schema.reverse_name_map
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_interface_implementation(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None})
+            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None}, {})
 
     def test_suppress_all_implementations_but_not_interface(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None, "Human": None})
+            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}, {})
 
     def test_suppress_interface_but_not_implementations(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.various_types_schema), {"Character": None})
+            rename_schema(parse(ISS.various_types_schema), {"Character": None}, {})
 
     def test_suppress_interface_and_all_implementations(self) -> None:
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.various_types_schema), {"Giraffe": None, "Character": None, "Human": None}
+                parse(ISS.various_types_schema),
+                {"Giraffe": None, "Character": None, "Human": None},
+                {},
             )
 
     def test_multiple_interfaces_rename(self) -> None:
         renamed_schema = rename_schema(
             parse(ISS.multiple_interfaces_schema),
             {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "NewCreature"},
+            {},
         )
         renamed_schema_string = dedent(
             """\
@@ -401,24 +416,19 @@ class TestRenameSchema(unittest.TestCase):
             {"NewHuman": "Human", "NewCharacter": "Character", "NewCreature": "Creature"},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_scalar_rename(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.scalar_schema),
-                {"Date": "NewDate"},
-            )
+            rename_schema(parse(ISS.scalar_schema), {"Date": "NewDate"}, {})
 
     def test_builtin_rename(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.list_schema),
-                {"String": "NewString"},
-            )
+            rename_schema(parse(ISS.list_schema), {"String": "NewString"}, {})
 
     def test_union_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.union_schema), {"HumanOrDroid": "NewHumanOrDroid", "Droid": "NewDroid"}
+            parse(ISS.union_schema), {"HumanOrDroid": "NewHumanOrDroid", "Droid": "NewDroid"}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -449,10 +459,11 @@ class TestRenameSchema(unittest.TestCase):
             {"NewDroid": "Droid", "NewHumanOrDroid": "HumanOrDroid"},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_entire_union_suppress(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.union_schema), {"HumanOrDroid": None, "Droid": "NewDroid"}
+            parse(ISS.union_schema), {"HumanOrDroid": None, "Droid": "NewDroid"}, {}
         )
         renamed_schema_string = dedent(
             """\
@@ -481,9 +492,10 @@ class TestRenameSchema(unittest.TestCase):
             {"NewDroid": "Droid"},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_union_member_suppress(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.union_schema), {"Droid": None})
+        renamed_schema = rename_schema(parse(ISS.union_schema), {"Droid": None}, {})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -508,6 +520,7 @@ class TestRenameSchema(unittest.TestCase):
             {},
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_list_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -517,6 +530,7 @@ class TestRenameSchema(unittest.TestCase):
                 "Character": "NewCharacter",
                 "Height": "NewHeight",
             },
+            {},
         )
         renamed_schema_string = dedent(
             """\
@@ -559,9 +573,10 @@ class TestRenameSchema(unittest.TestCase):
             },
             renamed_schema.reverse_name_map,
         )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_non_null_rename(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "NewDog"})
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": "NewDog"}, {})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -587,9 +602,10 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({"NewDog": "Dog"}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_non_null_suppress(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": None})
+        renamed_schema = rename_schema(parse(ISS.non_null_schema), {"Dog": None}, {})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -609,6 +625,7 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_directive_renaming_illegal_noop(self) -> None:
         # This renaming is illegal because directives can't be renamed, so the
@@ -619,6 +636,7 @@ class TestRenameSchema(unittest.TestCase):
                 {
                     "stitch": "NewStitch",
                 },
+                {},
             )
 
     def test_query_type_field_argument_illegal_noop(self) -> None:
@@ -640,7 +658,7 @@ class TestRenameSchema(unittest.TestCase):
         """
         )
         with self.assertRaises(NoOpRenamingError):
-            rename_schema(parse(schema_string), {"id": "Id"})
+            rename_schema(parse(schema_string), {"id": "Id"}, {})
 
     def test_clashing_type_rename(self) -> None:
         schema_string = dedent(
@@ -665,7 +683,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaRenameNameConflictError):
-            rename_schema(parse(schema_string), {"Human1": "Human", "Human2": "Human"})
+            rename_schema(parse(schema_string), {"Human1": "Human", "Human2": "Human"}, {})
 
     def test_clashing_type_single_rename(self) -> None:
         schema_string = dedent(
@@ -690,32 +708,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaRenameNameConflictError):
-            rename_schema(parse(schema_string), {"Human2": "Human"})
-
-    def test_clashing_type_one_unchanged_rename(self) -> None:
-        schema_string = dedent(
-            """\
-            schema {
-              query: SchemaQuery
-            }
-
-            type Human {
-              id: String
-            }
-
-            type Human2 {
-              id: String
-            }
-
-            type SchemaQuery {
-              Human: Human
-              Human2: Human2
-            }
-        """
-        )
-
-        with self.assertRaises(SchemaRenameNameConflictError):
-            rename_schema(parse(schema_string), {"Human": "Human3", "Human2": "Human3"})
+            rename_schema(parse(schema_string), {"Human2": "Human"}, {})
 
     def test_clashing_scalar_type_rename(self) -> None:
         schema_string = dedent(
@@ -737,7 +730,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaRenameNameConflictError):
-            rename_schema(parse(schema_string), {"Human": "SCALAR"})
+            rename_schema(parse(schema_string), {"Human": "SCALAR"}, {})
 
     def test_builtin_type_conflict_rename(self) -> None:
         schema_string = dedent(
@@ -757,7 +750,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaRenameNameConflictError):
-            rename_schema(parse(schema_string), {"Human": "String"})
+            rename_schema(parse(schema_string), {"Human": "String"}, {})
 
     def test_multiple_naming_conflicts(self) -> None:
         schema_string = dedent(
@@ -785,7 +778,7 @@ class TestRenameSchema(unittest.TestCase):
         )
 
         with self.assertRaises(SchemaRenameNameConflictError) as e:
-            rename_schema(parse(schema_string), {"Human": "String", "Dog": "Cat"})
+            rename_schema(parse(schema_string), {"Human": "String", "Dog": "Cat"}, {})
         self.assertEqual(
             "Applying the renaming would produce a schema in which multiple types have the "
             "same name, which is an illegal schema state. To fix this, modify the type_renamings "
@@ -809,39 +802,43 @@ class TestRenameSchema(unittest.TestCase):
             rename_schema(
                 parse(ISS.multiple_objects_schema),
                 {"Human": "0Human", "Dog": "__Dog", "Droid": "NewDroid"},
+                {},
             )
         self.assertEqual(
-            "Applying the renaming would rename types with names that are not valid, non-reserved "
+            "Applying the renaming would involve names that are not valid, non-reserved "
             "GraphQL names. Valid, non-reserved GraphQL names must consist of only alphanumeric "
             "characters and underscores, must not start with a numeric character, and must not "
-            "start with double underscores. The following dictionary maps each type's original "
-            "name to what would be the new name: [('Dog', '__Dog'), ('Human', '0Human')]",
+            "start with double underscores.\n"
+            "The following is a list of tuples that describes what needs to be fixed for type "
+            "renamings. Each tuple is of the form (original_name, invalid_new_name) where "
+            "original_name is the name in the original schema and invalid_new_name is what "
+            "original_name would be renamed to: [('Dog', '__Dog'), ('Human', '0Human')]",
             str(e.exception),
         )
 
     def test_illegal_rename_type_start_with_number(self) -> None:
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "0Human"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "0Human"}, {})
 
     def test_illegal_rename_type_contains_illegal_char(self) -> None:
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "Human!"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "Human!"}, {})
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "H-uman"}, {})
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "H.uman"}, {})
 
     def test_illegal_rename_type_to_double_underscore(self) -> None:
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "__Human"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "__Human"}, {})
 
     def test_illegal_rename_type_to_reserved_name_type(self) -> None:
         with self.assertRaises(InvalidNameError):
-            rename_schema(parse(ISS.basic_schema), {"Human": "__Type"})
+            rename_schema(parse(ISS.basic_schema), {"Human": "__Type"}, {})
 
     def test_suppress_every_type(self) -> None:
         with self.assertRaises(SchemaTransformError):
-            rename_schema(parse(ISS.basic_schema), {"Human": None})
+            rename_schema(parse(ISS.basic_schema), {"Human": None}, {})
 
     def test_suppress_all_union_members(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
@@ -849,12 +846,12 @@ class TestRenameSchema(unittest.TestCase):
             # mean suppressing every type in general, which means we couldn't be sure that
             # suppressing every member of a union specifically was raising the
             # CascadingSuppressionError.
-            rename_schema(parse(ISS.extended_union_schema), {"Human": None, "Droid": None})
+            rename_schema(parse(ISS.extended_union_schema), {"Human": None, "Droid": None}, {})
 
     def test_field_still_depends_on_suppressed_type(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
             rename_schema(
-                parse(ISS.multiple_fields_schema), {"Dog": None}
+                parse(ISS.multiple_fields_schema), {"Dog": None}, {}
             )  # The type named Human contains a field of type Dog.
 
     def test_field_of_suppressed_type_in_suppressed_type(self) -> None:
@@ -862,7 +859,7 @@ class TestRenameSchema(unittest.TestCase):
         # suppressing the type named Human would cause a CascadingSuppressionError because the
         # resulting schema would still have fields of the type Human. Here, however, only the type
         # named Human contains such a field, so suppressing the type Human produces a legal schema.
-        renamed_schema = rename_schema(parse(ISS.recursive_field_schema), {"Human": None})
+        renamed_schema = rename_schema(parse(ISS.recursive_field_schema), {"Human": None}, {})
         renamed_schema_string = dedent(
             """\
             schema {
@@ -882,7 +879,8 @@ class TestRenameSchema(unittest.TestCase):
             self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
         )
         self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_field_in_list_still_depends_on_suppressed_type(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
-            rename_schema(parse(ISS.list_schema), {"Height": None})
+            rename_schema(parse(ISS.list_schema), {"Height": None}, {})
