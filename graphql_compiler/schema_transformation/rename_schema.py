@@ -182,7 +182,7 @@ def rename_schema(
     None, it will be suppressed in the renamed schema and queries will not be able to access it.
 
     Fields may also be renamed or suppressed if they belong to object types that don't implement an
-    interface. For an object type named type_name, field_renamings.get(type_name, set()) contains
+    interface. For an object type named type_name, field_renamings.get(type_name, {}) contains
     the renamings for the fields belonging to that type.
 
     If a type or field doesn't appear in the renamings arguments, it will be unchanged. Directives
@@ -674,8 +674,7 @@ class RenameSchemaTypesVisitor(Visitor):
     reverse_field_name_map: Dict[str, Dict[str, str]]
 
     # Collects no-op renamings for fields, mapping the type name that contains the field to the set
-    # of field names for which field_renamings contained no-op renamings. Applies only to types for
-    # which field_renamings.get(type_name, set()) is iterable. For a type named "Bar", if
+    # of field names for which field_renamings contained no-op renamings. For a type named "Bar", if
     # field_renaming
     #    - renames a field named "foo" to "foo", or
     #    - attempts to rename a field named "foo" when such a field does not exist
@@ -684,7 +683,7 @@ class RenameSchemaTypesVisitor(Visitor):
 
     # Collects type names for each object type that has field renamings that have been applied.
     # After every renaming is done, this is used to ensure that field_renamings contains no unused
-    # field renamings for a particular type if field_renamings is iterable.
+    # field renamings for a particular type.
     types_with_field_renamings_processed: Set[str]
 
     # Collects invalid field names in field_renamings. If field_renamings would rename a field named
@@ -837,22 +836,19 @@ class RenameSchemaTypesVisitor(Visitor):
     def _rename_fields(self, node: ObjectTypeDefinitionNode) -> ObjectTypeDefinitionNode:
         """Rename node's fields, if applicable and return new node with updated fields."""
         type_name = node.name.value
-        current_type_field_renamings = self.field_renamings.get(type_name, None)
-        if current_type_field_renamings is None:
+        if type_name not in self.field_renamings:
             return node
+        current_type_field_renamings = self.field_renamings[type_name]
         self.types_with_field_renamings_processed.add(type_name)
         # Need to create a set of field nodes that the type will have after the field renamings,
         # instead of just modifying them in place. This is to support 1-many renaming.
         new_field_nodes: Set[FieldDefinitionNode] = set()
         for field_node in node.fields:
             original_field_name = field_node.name.value
-            if current_type_field_renamings.get(original_field_name, set()) == {
+            if original_field_name in current_type_field_renamings and current_type_field_renamings[original_field_name] == {
                 original_field_name
             }:
-                # Check for no-op 1-1 renamings when the renamings are iterable and would rename a
-                # field to itself. Note the default return is the empty set(), which covers the
-                # (legal) situation where current_type_field_renamings doesn't contain an entry for
-                # the current field_node.
+                # Check for no-op 1-1 renamings when the renamings would rename a field to itself.
                 self.no_op_field_renamings.setdefault(type_name, set()).add(original_field_name)
             new_field_names = current_type_field_renamings.get(
                 original_field_name, {original_field_name}
@@ -1046,15 +1042,17 @@ class CascadingSuppressionCheckVisitor(Visitor):
     ) -> None:
         """Record the current type that the visitor is traversing."""
         self.current_type = node.name.value
-        current_type_field_renamings = self.field_renamings.get(self.current_type, None)
-        if not current_type_field_renamings:
+        if self.current_type not in self.field_renamings:
             # No field renamings for current type, so it's impossible for all its fields to have
             # been suppressed.
             return
+        current_type_field_renamings = self.field_renamings[self.current_type]
         for field in node.fields:
-            if current_type_field_renamings.get(field.name.value, {field.name.value}):
+            field_name = field.name.value
+            if field_name not in current_type_field_renamings or current_type_field_renamings[field_name]:
                 # Do nothing if there's at least one field for the current type that hasn't been
-                # suppressed.
+                # suppressed, either because field renamings didn't contain an entry for field_name
+                # or if it didn't suppress the field
                 return
         self.types_to_suppress.add(self.current_type)
 
