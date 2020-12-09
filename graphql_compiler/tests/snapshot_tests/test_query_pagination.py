@@ -42,7 +42,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_planning_basic(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -79,7 +81,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_planning_invalid_extra_args(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -113,7 +117,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_planning_invalid_missing_args(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -148,7 +154,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_planning_unique_filter(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -191,7 +199,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_planning_unique_filter_on_many_to_one(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -245,7 +255,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_planning_on_int(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -287,7 +299,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_planning_on_int_error(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -327,7 +341,9 @@ class QueryPaginationTests(unittest.TestCase):
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -444,7 +460,9 @@ class QueryPaginationTests(unittest.TestCase):
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst}
             for vertex_name in schema_graph.vertex_class_names
@@ -560,7 +578,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_datetime(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Event"] = ("event_date",)  # Force pagination on datetime field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -669,7 +689,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_datetime_existing_filter(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         # We allow pagination on uuid as well and leave it to the pagination planner to decide to
         # paginate on event_date to prevent empty pages if the two fields are correlated.
         pagination_keys["Event"] = ("uuid", "event_date")
@@ -746,7 +768,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_existing_datetime_filter(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Event"] = ("event_date",)  # Force pagination on datetime field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -821,7 +845,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_int(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -862,7 +888,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_int_few_quantiles(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -920,7 +948,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_int_existing_filters(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -962,7 +992,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_int_existing_filter_tiny_page(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1002,7 +1034,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_int_existing_filters_2(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1044,7 +1078,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_inline_fragment(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1089,7 +1125,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_with_existing_filters(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1129,7 +1167,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_datetime(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Event"] = ("event_date",)  # Force pagination on datetime field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1174,7 +1214,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_uuid(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -1213,7 +1255,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_mssql_uuid(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst}
             for vertex_name in schema_graph.vertex_class_names
@@ -1252,7 +1296,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_mssql_uuid_with_existing_filter(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LastSixBytesFirst}
             for vertex_name in schema_graph.vertex_class_names
@@ -1294,7 +1340,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_parameter_value_generation_consecutive(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1334,7 +1382,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_query_parameterizer(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1386,7 +1436,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_query_parameterizer_name_conflict(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1441,7 +1493,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_query_parameterizer_filter_deduplication(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1498,7 +1552,9 @@ class QueryPaginationTests(unittest.TestCase):
         """Ensure pagination is not done when not needed."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -1581,7 +1637,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_impossible_pagination_strong_filters_few_repeated_quantiles(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1629,7 +1687,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_impossible_pagination_strong_filters_few_quantiles(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
@@ -1678,7 +1738,9 @@ class QueryPaginationTests(unittest.TestCase):
         """Test that pagination doesn't crash on any of the queries from the compiler tests."""
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -1723,7 +1785,9 @@ class QueryPaginationTests(unittest.TestCase):
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -1757,7 +1821,9 @@ class QueryPaginationTests(unittest.TestCase):
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -1798,7 +1864,9 @@ class QueryPaginationTests(unittest.TestCase):
         """Ensure a basic pagination query is handled correctly."""
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -1839,7 +1907,9 @@ class QueryPaginationTests(unittest.TestCase):
     def test_pagination_with_inline_fragment(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
         pagination_keys["Species"] = ("limbs",)  # Force pagination on int field
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
