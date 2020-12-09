@@ -424,16 +424,25 @@ class InputSchemaStrings(object):
         type Human  {
           id: String
           name: String
+          age: Int
           pet: Dog
+          droid: Droid
         }
 
         type Dog {
+          id: String
           nickname: String
+        }
+
+        type Droid {
+          id: String
+          model: String
         }
 
         type SchemaQuery {
           Human: Human
           Dog: Dog
+          Droid: Droid
         }
     """
     )
