@@ -458,6 +458,28 @@ class TestRenameSchema(unittest.TestCase):
             str(e.exception),
         )
 
+    def test_field_renaming_in_interfaces(self) -> None:
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": {"new_id"}}}
+            )
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": {"id", "new_id"}}}
+            )
+        with self.assertRaises(NotImplementedError):
+            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": set()}})
+        with self.assertRaises(NotImplementedError):
+            # Cannot rename Human's fields because Human implements an interface and field_renamings
+            # for object types that implement interfaces isn't supported yet.
+            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"new_id"}}})
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"id", "new_id"}}}
+            )
+        with self.assertRaises(NotImplementedError):
+            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": set()}})
+
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
             parse(ISS.enum_schema), {"Droid": "NewDroid", "Height": "NewHeight"}, {}
@@ -1135,4 +1157,6 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_suppress_every_field_in_type(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
-            rename_schema(parse(ISS.multiple_fields_schema), {}, {"Droid": {"id": set(), "model": set()}})
+            rename_schema(
+                parse(ISS.multiple_fields_schema), {}, {"Droid": {"id": set(), "model": set()}}
+            )

@@ -501,6 +501,12 @@ def _rename_and_suppress_types_and_fields(
             visitor.type_renamed_to_builtin_scalar_conflicts,
             visitor.field_name_conflicts,
         )
+    if visitor.types_involving_interfaces_with_field_renamings:
+        raise NotImplementedError(
+            f"Field renaming for interfaces or types implementing interfaces is not supported, but "
+            f"they exist for the following types and should be removed: "
+            f"{visitor.types_involving_interfaces_with_field_renamings}"
+        )
     for type_name in visitor.suppressed_type_names:
         if type_name not in type_renamings:
             raise AssertionError(
@@ -702,6 +708,12 @@ class RenameSchemaTypesVisitor(Visitor):
     # schema that would be renamed to "foo".
     field_name_conflicts: Dict[str, Dict[str, Set[str]]]
 
+    # Collects names of types who have entries in field_renamings if the type is an interface
+    # or if the type is an object type implementing an interface because field renamings involving
+    # interfaces haven't been implemented yet. If field renamings has field renamings for such a
+    # type named "Foo", types_involving_interfaces_with_field_renamings will contain "Foo".
+    types_involving_interfaces_with_field_renamings: Set[str]
+
     def __init__(
         self,
         type_renamings: Mapping[str, Optional[str]],
@@ -736,6 +748,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.types_with_field_renamings_processed = set()
         self.invalid_field_names = {}
         self.field_name_conflicts = {}
+        self.types_involving_interfaces_with_field_renamings = set()
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -827,6 +840,11 @@ class RenameSchemaTypesVisitor(Visitor):
             # the code enters this block, so disabling it for this line.
             # https://github.com/python/mypy/issues/2885#issuecomment-287928126
             fields_renamed_node = self._rename_fields(fields_renamed_node)  # type: ignore
+        elif (
+            isinstance(fields_renamed_node, InterfaceTypeDefinitionNode)
+            and fields_renamed_node.name.value in self.field_renamings
+        ):
+            self.types_involving_interfaces_with_field_renamings.add(fields_renamed_node.name.value)
         self.reverse_name_map[desired_type_name] = type_name
         if desired_type_name == type_name:
             return fields_renamed_node
@@ -841,6 +859,8 @@ class RenameSchemaTypesVisitor(Visitor):
         type_name = node.name.value
         if type_name not in self.field_renamings:
             return node
+        if node.interfaces:
+            self.types_involving_interfaces_with_field_renamings.add(type_name)
         current_type_field_renamings = self.field_renamings[type_name]
         self.types_with_field_renamings_processed.add(type_name)
         # Need to create a set of field nodes that the type will have after the field renamings,
