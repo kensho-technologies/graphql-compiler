@@ -125,13 +125,6 @@ def get_pagination_plan(
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
 
-
-    # If we have more quantiles than desired pages, we can create the desired number of pages.
-    # However, if we don't have 5 times as much, those pages might differ in size by a factor
-    # of 2.
-    acceptable_quantile_resolution = number_of_pages + 1
-    ideal_quantile_resolution = 5 * number_of_pages + 1
-
     # If there is a range filter on a field on this vertex that might be correlated with other
     # fields, it's best to paginate on it to prevent empty pages. After applying this rule,
     # we use the order given by schema_info.pagination_keys to resolve ties.
@@ -157,6 +150,9 @@ def get_pagination_plan(
     capacity = query_analysis.pagination_capacities.get(property_path)
     # If the pagination capacity is None, then there must be no quantiles for this property.
     if capacity is None:
+        # If we have more quantiles than desired pages, we can create the desired number of pages.
+        # However, if we don't have 5 times as much, those pages might differ in size by a factor
+        # of 2.
         ideal_min_num_quantiles_per_page = 5
         ideal_quantile_resolution = ideal_min_num_quantiles_per_page * number_of_pages + 1
         return (
