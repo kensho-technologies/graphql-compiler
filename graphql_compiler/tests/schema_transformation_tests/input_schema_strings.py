@@ -21,26 +21,6 @@ class InputSchemaStrings(object):
     """
     )
 
-    many_fields_schema = dedent(
-        """\
-        schema {
-          query: SchemaQuery
-        }
-
-        directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
-
-        type Human {
-          id: String
-          name: String
-          age: Int
-        }
-
-        type SchemaQuery {
-          Human: Human
-        }
-    """
-    )
-
     type_field_directive_same_name_schema = dedent(
         """\
         schema {
@@ -444,16 +424,25 @@ class InputSchemaStrings(object):
         type Human  {
           id: String
           name: String
+          age: Int
           pet: Dog
+          droid: Droid
         }
 
         type Dog {
+          id: String
           nickname: String
+        }
+
+        type Droid {
+          id: String
+          model: String
         }
 
         type SchemaQuery {
           Human: Human
           Dog: Dog
+          Droid: Droid
         }
     """
     )
