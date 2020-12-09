@@ -24,7 +24,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_get_field_value_intervals(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -63,7 +63,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_get_distinct_result_set_estimates(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -105,7 +105,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_get_pagination_capacities(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -141,7 +141,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_get_pagination_capacities_unique_filter(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -177,7 +177,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_get_selectivities(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -221,7 +221,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_get_pagination_capacities_int_field(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -260,7 +260,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_get_pagination_capacities_int_field_existing_filter(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -302,7 +302,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_analysis_with_fold(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -354,7 +354,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_eligible_fields(self) -> None:
         schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names
@@ -398,7 +398,7 @@ class CostEstimationAnalysisTests(unittest.TestCase):
     def test_distinct_result_set_estimates_edge_constraint_propagation(self):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
-        pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
+        pagination_keys = {vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names}
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names

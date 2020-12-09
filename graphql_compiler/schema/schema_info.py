@@ -4,7 +4,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum, Flag, auto, unique
 from functools import partial
-from typing import Dict, Optional, List
+from typing import Dict, Optional, Tuple
 
 from graphql.type import GraphQLSchema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
@@ -388,14 +388,14 @@ class QueryPlanningSchemaInfo:
     # A Statistics object giving statistical information about all objects in the schema.
     statistics: Statistics
 
-    # Dict mapping vertex names in the graphql schema to the non-empty list of property names
+    # Dict mapping vertex names in the graphql schema to the non-empty tuple of property names
     # that are eligible pagination on that vertex in a general context. Some of the provided
     # properties might be ineligible for pagination in certain queries, for instance if the
     # query has a "=" filter on the field and it's uniquely indexed. The order of properties
     # within this list is used as a final (least significant) step in choosing which one
     # to use when multiple options are available. The pagination key list for a vertex can
     # be omitted, making the entire vertex ineligible for pagination.
-    pagination_keys: Dict[str, List[str]]
+    pagination_keys: Dict[str, Tuple[str, ...]]
 
     # Dict mapping vertex names in the graphql schema to a dict mapping property names that
     # are known to contain uniformly distributed uuid values to the ordering method used for
