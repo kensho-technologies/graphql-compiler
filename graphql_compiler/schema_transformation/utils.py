@@ -70,22 +70,26 @@ class SchemaRenameNameConflictError(SchemaTransformError):
 
     type_name_conflicts: Dict[str, Set[str]]
     renamed_to_builtin_scalar_conflicts: Dict[str, str]
+    field_name_conflicts: Dict[str, Dict[str, Set[str]]]
 
     def __init__(
         self,
         type_name_conflicts: Dict[str, Set[str]],
         renamed_to_builtin_scalar_conflicts: Dict[str, str],
+        field_name_conflicts: Dict[str, Dict[str, Set[str]]],
     ) -> None:
         """Record all renaming conflicts."""
-        if not type_name_conflicts and not renamed_to_builtin_scalar_conflicts:
+        if not any(
+            [type_name_conflicts, renamed_to_builtin_scalar_conflicts, field_name_conflicts]
+        ):
             raise ValueError(
                 "Cannot raise SchemaRenameNameConflictError without at least one conflict, but "
-                "type_name_conflicts and renamed_to_builtin_scalar_conflicts arguments were both "
-                "empty dictionaries."
+                "all arguments were empty dictionaries."
             )
         super().__init__()
         self.type_name_conflicts = type_name_conflicts
         self.renamed_to_builtin_scalar_conflicts = renamed_to_builtin_scalar_conflicts
+        self.field_name_conflicts = field_name_conflicts
 
     def __str__(self) -> str:
         """Explain renaming conflict and the fix."""
@@ -121,8 +125,44 @@ class SchemaRenameNameConflictError(SchemaTransformError):
                 f"original name of the type and scalar_name is the name of the scalar that the "
                 f"type would be renamed to: {sorted_renamed_to_builtin_scalar_conflicts}"
             )
+        field_name_conflicts_message = ""
+        if self.field_name_conflicts:
+            sorted_field_name_conflicts = [
+                (
+                    type_name,
+                    [
+                        (desired_field_name, sorted(original_field_names))
+                        for desired_field_name, original_field_names in sorted(
+                            field_renaming_conflicts_dict.items()
+                        )
+                    ],
+                )
+                for type_name, field_renaming_conflicts_dict in sorted(
+                    self.field_name_conflicts.items()
+                )
+            ]
+            field_name_conflicts_message = (
+                f"Applying the renaming would produce a schema in which multiple fields belonging "
+                f"to the same type have the same name, which is an illegal schema state. To fix "
+                f"this, modify the field_renamings argument of rename_schema to ensure that within "
+                f"each type in the renamed schema, no two fields have the same name. The following "
+                f"is a list of tuples that describes what needs to be fixed. "
+                f"Each tuple is of the form "
+                f"(type_name, [(desired_field_name, original_field_names),...]) where type_name is "
+                f"the type name that would appear in the original schema, desired_field_name is "
+                f"the name of a field in the new schema, and original_field_names is a list of the "
+                f"names of all the fields in the original schema that would be renamed to "
+                f"desired_field_name: {sorted_field_name_conflicts}"
+            )
         return "\n".join(
-            filter(None, [type_name_conflicts_message, renamed_to_builtin_scalar_conflicts_message])
+            filter(
+                None,
+                [
+                    type_name_conflicts_message,
+                    renamed_to_builtin_scalar_conflicts_message,
+                    field_name_conflicts_message,
+                ],
+            )
         )
 
 
@@ -150,34 +190,85 @@ class CascadingSuppressionError(SchemaTransformError):
 
 
 class NoOpRenamingError(SchemaTransformError):
-    """Raised if renamings are iterable and contains no-op renames.
+    """Raised if renamings contain no-op renames.
 
     No-op renames can occur in these ways:
-    * type_renamings is iterable and contains a string type_name but there doesn't exist a type in
-      the schema named type_name
-    * type_renamings is iterable and maps a string type_name to itself, i.e.
-      type_renamings[type_name] == type_name
+    * type_renamings contains a string type_name but there doesn't exist a type in the schema named
+      type_name
+    * type_renamings maps a string type_name to itself, i.e. type_renamings[type_name] == type_name
+    * There exists an object type T named type_name in the schema such that
+      field_renamings[type_name] contains a string field_name but there doesn't exist a field named
+      field_name belonging to T in the schema.
+    * field_renamings contains a string type_name but there doesn't exist an object type in the
+      schema named type_name
+    * There exists an object type T named type_name in the schema such that
+      field_renamings[type_name] 1:1 maps a string field_name to itself within a particular type,
+      i.e. field_renamings[type_name][field_name] == [field_name]
     """
 
     no_op_type_renames: Set[str]
+    no_op_nonexistent_type_field_renames: Set[str]
+    no_op_field_renames: Dict[str, Set[str]]
 
-    def __init__(self, no_op_type_renames: Set[str]) -> None:
+    def __init__(
+        self,
+        no_op_type_renames: Set[str],
+        no_op_field_renames: Dict[str, Set[str]],
+        no_op_nonexistent_type_field_renames: Set[str],
+    ) -> None:
         """Record all no-op renamings."""
-        if not no_op_type_renames:
+        if not any([no_op_type_renames, no_op_field_renames, no_op_nonexistent_type_field_renames]):
             raise ValueError(
                 "Cannot raise NoOpRenamingError without at least one invalid name, but "
                 "all arguments were empty."
             )
         super().__init__()
+        self.no_op_nonexistent_type_field_renames = no_op_nonexistent_type_field_renames
         self.no_op_type_renames = no_op_type_renames
+        self.no_op_field_renames = no_op_field_renames
 
     def __str__(self) -> str:
-        """Explain renaming conflict and the fix."""
-        return (
-            f"type_renamings is iterable, so it cannot have no-op renamings. However, the "
-            f"following entries exist in the type_renamings argument, which either rename a "
-            f"type to itself or would rename a type that doesn't exist in the schema, both of "
-            f"which are invalid: {sorted(self.no_op_type_renames)}"
+        """Explain no-op renamings and the fix."""
+        no_op_type_renames_message = ""
+        if self.no_op_type_renames:
+            no_op_type_renames_message = (
+                f"type_renamings cannot have no-op renamings. However, the following entries exist "
+                f"in the type_renamings argument, which either rename a type to itself or would "
+                f"rename a type that doesn't exist in the schema, both of which are invalid: "
+                f"{sorted(self.no_op_type_renames)}"
+            )
+        no_op_field_renames_message = ""
+        if self.no_op_field_renames:
+            sorted_no_op_field_renames = [
+                (type_name, sorted(field_names))
+                for type_name, field_names in sorted(self.no_op_field_renames.items())
+            ]
+            no_op_field_renames_message = (
+                f"The field renamings for the following types would "
+                f"either rename a field to itself or would rename a field that doesn't exist in "
+                f"the schema, both of which are invalid. The following is a list of tuples that "
+                f"describes what needs to be fixed for field renamings. Each tuple is of the form "
+                f"(type_name, field_renamings) where type_name is the name of the type in the "
+                f"original schema and field_renamings is a list of the fields that would be no-op "
+                f"renamed: {sorted_no_op_field_renames}"
+            )
+        no_op_nonexistent_type_field_renames_message = ""
+        if self.no_op_nonexistent_type_field_renames:
+            no_op_nonexistent_type_field_renames_message = (
+                f"The following entries exist in the field_renamings argument that correspond to "
+                f"names of object types that either don't exist in the original schema or would "
+                f"get suppressed. In other words, the field renamings for each of these types "
+                f"would be no-ops: {sorted(self.no_op_nonexistent_type_field_renames)}"
+            )
+        return "\n".join(
+            filter(
+                None,
+                [
+                    no_op_type_renames_message,
+                    no_op_field_renames_message,
+                    no_op_nonexistent_type_field_renames_message,
+                ],
+            )
         )
 
 
