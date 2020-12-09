@@ -393,8 +393,9 @@ class QueryPlanningSchemaInfo:
     # properties might be ineligible for pagination in certain queries, for instance if the
     # query has a "=" filter on the field and it's uniquely indexed. The order of properties
     # within this sequence is used as a final (least significant) step in choosing which one
-    # to use when multiple options are available. The pagination key sequence for a vertex can
-    # be omitted, making the entire vertex ineligible for pagination.
+    # to use when multiple options are available.
+    #
+    # If a vertex name is omitted from this dict, the entire vertex is ineligible for pagination.
     pagination_keys: Mapping[str, Sequence[str]]
 
     # Dict mapping vertex names in the graphql schema to a dict mapping property names that
