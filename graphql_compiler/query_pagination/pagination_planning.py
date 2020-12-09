@@ -129,9 +129,6 @@ def get_pagination_plan(
     # fields, it's best to paginate on it to prevent empty pages. After applying this rule,
     # we use the order given by schema_info.pagination_keys to resolve ties.
     pagination_keys = query_analysis.schema_info.pagination_keys.get(pagination_node, tuple())
-    if not isinstance(pagination_keys, tuple):
-        raise AssertionError(f"Invalid pagination keys specified for {root_node}: "
-                             f"{pagination_keys} of type {type(pagination_keys)}. Expected tuple.")
     range_filtered_pagination_keys = [
         key
         for key in pagination_keys
