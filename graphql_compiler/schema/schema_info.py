@@ -388,7 +388,7 @@ class QueryPlanningSchemaInfo:
     # A Statistics object giving statistical information about all objects in the schema.
     statistics: Statistics
 
-    # Dict mapping vertex names in the graphql schema to the non-empty sequence of property names
+    # Mapping vertex names in the graphql schema to the non-empty sequence of property names
     # that are eligible pagination on that vertex in a general context. Some of the provided
     # properties might be ineligible for pagination in certain queries, for instance if the
     # query has a "=" filter on the field and it's uniquely indexed. The order of properties
