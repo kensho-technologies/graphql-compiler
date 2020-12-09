@@ -670,7 +670,9 @@ class QueryPaginationTests(unittest.TestCase):
         schema_graph = generate_schema_graph(self.orientdb_client)
         graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
         pagination_keys = {vertex_name: "uuid" for vertex_name in schema_graph.vertex_class_names}
-        pagination_keys["Event"] = "event_date"  # Force pagination on datetime field
+        # We allow pagination on uuid as well and leave it to the pagination planner to decide to
+        # paginate on event_date to prevent empty pages in case the two fields are correlated.
+        pagination_keys["Event"] = ["uuid", "event_date"]
         uuid4_field_info = {
             vertex_name: {"uuid": UUIDOrdering.LeftToRight}
             for vertex_name in schema_graph.vertex_class_names

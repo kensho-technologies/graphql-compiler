@@ -125,17 +125,27 @@ def get_pagination_plan(
     root_node = get_only_selection_from_ast(definition_ast, GraphQLError).name.value
     pagination_node = root_node
 
-    # XXX Just specify multiple pagination keys (make it a list). Then to choose a field:
-    # 1. Find the set of fields with sufficient capacity on the root
-    # 2. First preference for fields with field value intervals on them
-    # 3. Second preference for fields that appear earlier in the list of pagination keys.
-    #
-    # TODO(bojanserafimov): Remove pagination fields. The pagination planner is now smart enough
-    #                       to pick the best field for pagination based on the query. This is not
-    #                       trivial since the pagination_fields are used in tests to force int
-    #                       pagination when uuid pagination is also available.
-    pagination_field = query_analysis.schema_info.pagination_keys.get(pagination_node)[0]
-    if pagination_field is None:
+
+    # If we have more quantiles than desired pages, we can create the desired number of pages.
+    # However, if we don't have 5 times as much, those pages might differ in size by a factor
+    # of 2.
+    acceptable_quantile_resolution = number_of_pages + 1
+    ideal_quantile_resolution = 5 * number_of_pages + 1
+
+    # If there is a range filter on a field on this vertex that might be correlated with other
+    # fields, it's best to paginate on it to prevent empty pages. After applying this rule,
+    # we use the order given by schema_info.pagination_keys to resolve ties.
+    pagination_keys = query_analysis.schema_info.pagination_keys.get(pagination_node)
+    range_filtered_pagination_keys = [
+        key
+        for key in pagination_keys
+        if PropertyPath((root_node,), key) in query_analysis.field_value_intervals
+    ]
+    if range_filtered_pagination_keys:
+        pagination_field = range_filtered_pagination_keys[0]
+    elif pagination_keys:
+        pagination_field = pagination_keys[0]
+    else:
         return PaginationPlan(tuple()), (PaginationFieldNotSpecified(pagination_node),)
 
     # Get the pagination capacity

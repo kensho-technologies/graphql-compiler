@@ -4,7 +4,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum, Flag, auto, unique
 from functools import partial
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from graphql.type import GraphQLSchema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
@@ -395,7 +395,7 @@ class QueryPlanningSchemaInfo:
     # within this list is used as a final (least significant) step in choosing which one
     # to use when multiple options are available. The pagination key list for a vertex can
     # be omitted, making the entire vertex ineligible for pagination.
-    pagination_keys: Dict[str, str]
+    pagination_keys: Dict[str, List[str]]
 
     # Dict mapping vertex names in the graphql schema to a dict mapping property names that
     # are known to contain uniformly distributed uuid values to the ordering method used for
