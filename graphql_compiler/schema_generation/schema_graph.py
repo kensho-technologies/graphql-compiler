@@ -2,6 +2,7 @@
 from abc import ABCMeta, abstractmethod
 from collections import OrderedDict, namedtuple
 from itertools import chain
+from typing import Set
 
 import six
 
@@ -208,7 +209,7 @@ class SchemaGraph(object):
         return set(six.iterkeys(self._elements))
 
     @property
-    def vertex_class_names(self):
+    def vertex_class_names(self) -> Set[str]:
         """Return the set of vertex class names in the SchemaGraph."""
         return self._vertex_class_names
 

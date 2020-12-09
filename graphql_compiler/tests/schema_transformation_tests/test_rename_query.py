@@ -22,7 +22,7 @@ class TestRenameQuery(unittest.TestCase):
             }
         """
         )
-        renamed_query = rename_query(parse(query_string), rename_schema(basic_schema, {}))
+        renamed_query = rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))
         self.assertEqual(query_string, print_ast(renamed_query))
 
     def test_original_unmodified(self):
@@ -236,7 +236,7 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         """
         )
         with self.assertRaises(GraphQLValidationError):
-            rename_query(parse(query_string), rename_schema(basic_schema, {}))
+            rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))
 
     def test_invalid_field_not_in_schema(self):
         query_string = dedent(
@@ -249,7 +249,7 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         """
         )
         with self.assertRaises(GraphQLValidationError):
-            rename_query(parse(query_string), rename_schema(basic_schema, {}))
+            rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))
 
     def test_invalid_ends_in_vertex_field(self):
         query_string = dedent(
@@ -262,7 +262,7 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         """
         )
         with self.assertRaises(GraphQLValidationError):
-            rename_query(parse(query_string), rename_schema(basic_schema, {}))
+            rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))
 
     def test_invalid_start_with_inline(self):
         query_string = dedent(
@@ -277,7 +277,7 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         """
         )
         with self.assertRaises(GraphQLValidationError):
-            rename_query(parse(query_string), rename_schema(basic_schema, {}))
+            rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))
 
     def test_invalid_fragment(self):
         query_string = dedent(
@@ -294,4 +294,4 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         """
         )
         with self.assertRaises(GraphQLValidationError):
-            rename_query(parse(query_string), rename_schema(basic_schema, {}))
+            rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))

@@ -363,11 +363,11 @@ def get_and_validate_macro_edge_info(
     )
 
     # Ensure that the macro successfully compiles to IR.
-    _, input_metadata, _, _ = ast_to_ir(
+    input_metadata = ast_to_ir(
         schema,
         _get_minimal_query_ast_from_macro_ast(ast),
         type_equivalence_hints=type_equivalence_hints,
-    )
+    ).input_metadata
     validate_arguments(input_metadata, macro_edge_args)
 
     _validate_that_macro_edge_definition_is_only_top_level_field_directive(

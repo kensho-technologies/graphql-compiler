@@ -4,7 +4,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum, Flag, auto, unique
 from functools import partial
-from typing import Dict, Optional
+from typing import Dict, Mapping, Optional, Sequence
 
 from graphql.type import GraphQLSchema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
@@ -388,16 +388,15 @@ class QueryPlanningSchemaInfo:
     # A Statistics object giving statistical information about all objects in the schema.
     statistics: Statistics
 
-    # Dict mapping vertex names in the graphql schema to the Int or ID type property name
-    # to be used for pagination on that vertex. This property should be non-null and
-    # unique for all rows.  An easy choice for pagination key in most situations is the
-    # primary key. The pagination key for a vertex can be omitted making the vertex
-    # ineligible for pagination.
+    # Mapping vertex names in the graphql schema to the non-empty sequence of property names
+    # that are eligible pagination on that vertex in a general context. Some of the provided
+    # properties might be ineligible for pagination in certain queries, for instance if the
+    # query has a "=" filter on the field and it's uniquely indexed. The order of properties
+    # within this sequence is used as a final (least significant) step in choosing which one
+    # to use when multiple options are available.
     #
-    # NOTE(bojanserafimov): The type of this property might be different in the
-    #                       schema graph, due to the process of type overrides that happens
-    #                       during schema generation.
-    pagination_keys: Dict[str, str]
+    # If a vertex name is omitted from this dict, the entire vertex is ineligible for pagination.
+    pagination_keys: Mapping[str, Sequence[str]]
 
     # Dict mapping vertex names in the graphql schema to a dict mapping property names that
     # are known to contain uniformly distributed uuid values to the ordering method used for

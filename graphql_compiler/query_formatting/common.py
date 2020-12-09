@@ -50,7 +50,7 @@ def _raise_invalid_type_error(
 ######
 
 
-def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, value: Any):
+def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, value: Any) -> None:
     """Ensure the value has the expected type and is usable in any of our backends, or raise errors.
 
     Backends are the database languages we have the ability to compile to, like OrientDB MATCH,
@@ -157,7 +157,10 @@ def validate_arguments(
         validate_argument_type(name, expected_types[name], arguments[name])
 
 
-def insert_arguments_into_query(compilation_result: CompilationResult, arguments: Dict[str, Any]):
+def insert_arguments_into_query(
+    compilation_result: CompilationResult,
+    arguments: Dict[str, Any],
+) -> Any:
     """Insert the arguments into the compiled GraphQL query to form a complete query.
 
     Args:
@@ -165,7 +168,8 @@ def insert_arguments_into_query(compilation_result: CompilationResult, arguments
         arguments: dict, mapping argument name to its value, for every parameter the query expects.
 
     Returns:
-        string, a query in the appropriate output language, with inserted argument data
+        string or SQLAlchemy query object, representing the query in the appropriate
+        output language, with inserted argument data
     """
     validate_arguments(compilation_result.input_metadata, arguments)
 

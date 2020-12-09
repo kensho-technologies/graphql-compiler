@@ -69,6 +69,7 @@ setup(
             "typing-extensions>=3.7.4.2,<4",
         ],
     },
+    package_data={"": ["py.typed"]},
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Topic :: Database :: Front-Ends",
