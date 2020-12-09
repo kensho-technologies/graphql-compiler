@@ -1031,6 +1031,17 @@ class TestRenameSchema(unittest.TestCase):
         with self.assertRaises(SchemaRenameNameConflictError) as e:
             rename_schema(
                 parse(schema_string),
+                {},
+                {"Human": {"id": {"id", "name"}, "name": {"name", "new_name"}}},
+            )
+        self.assertEqual(
+            clashing_field_rename_error_message,
+            str(e.exception),
+        )
+
+        with self.assertRaises(SchemaRenameNameConflictError) as e:
+            rename_schema(
+                parse(schema_string),
                 {"Cat": "String", "Human": "Droid", "Dog": "Droid"},
                 {"Human": {"id": {"id", "name"}}},
             )
