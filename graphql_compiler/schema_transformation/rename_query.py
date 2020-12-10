@@ -31,14 +31,15 @@ def rename_query(
     any occurrences of type Y in the input query ast will be renamed to X.
 
     All type names (including ones in type coercions), as well as root vertex fields (fields
-    of the query type) will be renamed. No other field names will be renamed.
+    of the query type) will be renamed.
 
     Args:
         ast: represents a query
         renamed_schema_descriptor: namedtuple including the attribute reverse_name_map, which maps
-                                   the new, renamed names of types to their original names. This
-                                   function will revert these renamed types in the query ast back to
-                                   their original names
+                                   the new, renamed names of types to their original names, and
+                                   reverse_field_name_map which has a similar role for fields. This
+                                   function will revert these renamed types/ fields in the query ast
+                                   back to their original names
 
     Returns:
         New AST representing the renamed query
@@ -91,7 +92,7 @@ class RenameQueryVisitor(Visitor):
         type_renamings: Dict[str, str],
         field_renamings: Dict[str, Dict[str, str]],
     ) -> None:
-        """Create a visitor for renaming types and root vertex fields in a query AST.
+        """Create a visitor for renaming types and fields in a query AST.
 
         Args:
             schema: The renamed schema that the original query is written against
