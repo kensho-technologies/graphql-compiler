@@ -298,6 +298,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                            property data needs to be loaded
             current_type_name: name of the vertex type whose property needs to be loaded. Guaranteed
                                to be the name of a type defined in the schema being queried.
+                               (current_type_name names the concrete type of DataToken contained in
+                               the DataContext containers yielded by the data_context iterator.)
             field_name: name of the property whose data needs to be loaded. Guaranteed to refer
                         either to a property that is defined in the supplied current_type_name
                         in the schema, or to the "__typename" meta field that is valid for all
@@ -361,12 +363,12 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         Having obtained an iterable of DataTokens and converted it to an iterable of DataContexts,
         the interpreter needs to find the neighbors along the outbound Foo_Bar edge for each of
-        those DataTokens. To do so, the intepreter calls project_neighbors() with the iterable
-        of DataContexts, setting current_type_name = "Foo" and edge_info = ("out", "Foo_Bar"),
-        requesting an iterable of DataTokens representing the neighboring vertices for each
-        DataContext with its corresponding current_token. If the DataContext's current_token
-        attribute is set to None (which may happen when @optional edges are used), an empty iterable
-        of neighboring DataTokens should be returned.
+        those DataTokens. To do so, the interpreter calls project_neighbors() with the iterable of
+        DataContexts, setting current_type_name = "Foo" and edge_info = ("out", "Foo_Bar").  This
+        function call requests an iterable of DataTokens representing the neighboring vertices for
+        each current_token contained in a DataContext.  If the DataContext's current_token
+        attribute is set to None (which may happen when @optional edges are used), an empty
+        iterable of neighboring DataTokens should be returned.
 
         A simple example implementation is as follows:
             def project_neighbors(
@@ -474,10 +476,10 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         ## Hints supplied to this function refer to neighboring vertices
 
-        Hint kwargs such as used_property_hints, filter_hints, and neighbor_hints in this function
-        describe the desired structure of the *neighboring* vertices that this function produces,
-        instead of to the vertices supplied via the data_contexts input. For example, consider
-        the following query:
+        Hint kwargs in this function, such as used_property_hints, filter_hints, and
+        neighbor_hints, describe the desired structure of the *neighboring* vertices that this
+        function produces (as opposed to the vertices supplied via the data_contexts argument).
+        For example, consider the following query:
             {
                 Foo {
                     out_Foo_Bar {
@@ -485,10 +487,11 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                     }
                 }
             }
-        The project_neighbors() call corresponding to the out_Foo_Bar edge traversal would contain
-        used_property_hints=frozenset({"name"}). This is because project_neighbors() here would
-        be called DataContexts whose current_token would point to Foo vertices, and the neighboring
-        vertices (ones along the outbound Foo_Bar edge) have their "name" property queried.
+        To traverse the out_Foo_Bar edge, project_neighbors() is called with
+        used_property_hints=frozenset({"name"}) and data_contexts=<Iterable of DataContexts
+        pointing to Foo vertices>. This is because used_property_hints correspond to
+        neighboring vertices, and the neighboring Bar vertices (along the outbound Foo_Bar edge)
+        are being queried for their "name" property.
 
         Args:
             data_contexts: iterable of DataContext objects which specify the DataTokens whose
@@ -500,7 +503,7 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                        to ("out", "Foo_Bar").
             runtime_arg_hints: names and values of any runtime arguments provided to the query
                                for use in filtering operations (e.g. "$arg_name").
-            used_property_hints: the property names of the neighboring vertices being loaded that
+            used_property_hints: property names of the neighboring vertices being loaded that
                                  are going to be used in a subsequent filtering or output step.
             filter_hints: information about any filters applied to the neighboring vertices being
                           loaded, such as "which filtering operations are being performed?"
