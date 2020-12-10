@@ -9,6 +9,7 @@ from ...exceptions import GraphQLValidationError
 from ...schema_transformation.rename_query import rename_query
 from ...schema_transformation.rename_schema import rename_schema
 from .example_schema import basic_renamed_schema, basic_schema
+from .input_schema_strings import InputSchemaStrings as ISS
 
 
 class TestRenameQuery(unittest.TestCase):
@@ -295,3 +296,19 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         )
         with self.assertRaises(GraphQLValidationError):
             rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))
+
+    def test_query_for_suppressed_type(self):
+        query_string = dedent(
+            """\
+            {
+              Human {
+                id @output(out_name: "id")
+              }
+            }
+        """
+        )
+        with self.assertRaises(GraphQLValidationError):
+            rename_query(
+                parse(query_string),
+                rename_schema(parse(ISS.multiple_fields_schema), {"Human": None}, {}),
+            )
