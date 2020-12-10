@@ -354,6 +354,11 @@ class TestRenameSchema(unittest.TestCase):
               query: SchemaQuery
             }
 
+            directive @output(
+                \"\"\"What to designate the output field generated from this property field.\"\"\"
+                out_name: String!
+            ) on FIELD
+
             type Human  {
               id: String
               name: String
