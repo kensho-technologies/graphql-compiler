@@ -234,7 +234,10 @@ class TestRenameQuery(unittest.TestCase):
             }
         """
         )
-        renamed_query = rename_query(parse(query_string), rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"name": {"new_name"}}}))
+        renamed_query = rename_query(
+            parse(query_string),
+            rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"name": {"new_name"}}}),
+        )
         renamed_query_string = dedent(
             """\
             {
@@ -265,7 +268,9 @@ class TestRenameQuery(unittest.TestCase):
             }
         """
         )
-        renamed_schema = rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"name": {"name", "new_name"}}})
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_fields_schema), {}, {"Human": {"name": {"name", "new_name"}}}
+        )
         renamed_query = rename_query(parse(query_string), renamed_schema)
         renamed_alternative_query = rename_query(parse(alternative_query_string), renamed_schema)
         renamed_query_string = dedent(
@@ -290,7 +295,11 @@ class TestRenameQuery(unittest.TestCase):
             }
         """
         )
-        renamed_schema = rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"name": {"name", "id"}, "id": {"new_id", "unique_id"}}})
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_fields_schema),
+            {},
+            {"Human": {"name": {"name", "id"}, "id": {"new_id", "unique_id"}}},
+        )
         renamed_query = rename_query(parse(query_string), renamed_schema)
         renamed_query_string = dedent(
             """\
@@ -313,7 +322,9 @@ class TestRenameQuery(unittest.TestCase):
             }
         """
         )
-        renamed_schema = rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"name": {"name", "id"}, "id": {}}})
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_fields_schema), {}, {"Human": {"name": {"name", "id"}, "id": set()}}
+        )
         renamed_query = rename_query(parse(query_string), renamed_schema)
         renamed_query_string = dedent(
             """\
@@ -340,7 +351,9 @@ class TestRenameQuery(unittest.TestCase):
 
         """
         )
-        renamed_schema = rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"id": {"new_id"}}})
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_fields_schema), {}, {"Human": {"id": {"new_id"}}}
+        )
         renamed_query = rename_query(parse(query_string), renamed_schema)
         renamed_query_string = dedent(
             """\
@@ -366,7 +379,14 @@ class TestRenameQuery(unittest.TestCase):
             }
         """
         )
-        renamed_query = rename_query(parse(query_string), rename_schema(parse(ISS.multiple_fields_schema), {"Human": "NewHuman"}, {"Human": {"name": {"new_name"}}}))
+        renamed_query = rename_query(
+            parse(query_string),
+            rename_schema(
+                parse(ISS.multiple_fields_schema),
+                {"Human": "NewHuman"},
+                {"Human": {"name": {"new_name"}}},
+            ),
+        )
         renamed_query_string = dedent(
             """\
             {
@@ -393,7 +413,17 @@ class TestRenameQuery(unittest.TestCase):
             }
         """
         )
-        renamed_query = rename_query(parse(query_string), rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"pet": {"new_pet"}, "droid": {"new_droid"}}, "Droid": {"id": {"new_droid_id"}}}))
+        renamed_query = rename_query(
+            parse(query_string),
+            rename_schema(
+                parse(ISS.multiple_fields_schema),
+                {},
+                {
+                    "Human": {"pet": {"new_pet"}, "droid": {"new_droid"}},
+                    "Droid": {"id": {"new_droid_id"}},
+                },
+            ),
+        )
         renamed_query_string = dedent(
             """\
             {
@@ -494,7 +524,10 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         """
         )
         with self.assertRaises(GraphQLValidationError):
-            rename_query(parse(query_string), rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"id": set()}}))
+            rename_query(
+                parse(query_string),
+                rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"id": set()}}),
+            )
 
     def test_query_for_field_in_original_schema_after_rename(self):
         query_string = dedent(
@@ -507,4 +540,7 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         """
         )
         with self.assertRaises(GraphQLValidationError):
-            rename_query(parse(query_string), rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"id": {"new_id"}}}))
+            rename_query(
+                parse(query_string),
+                rename_schema(parse(ISS.multiple_fields_schema), {}, {"Human": {"id": {"new_id"}}}),
+            )

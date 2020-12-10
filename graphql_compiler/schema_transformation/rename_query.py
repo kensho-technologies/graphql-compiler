@@ -5,11 +5,12 @@ from graphql import GraphQLSchema
 from graphql.language.ast import (
     DocumentNode,
     FieldNode,
+    InterfaceTypeDefinitionNode,
     NamedTypeNode,
+    ObjectTypeDefinitionNode,
     OperationDefinitionNode,
     OperationType,
-    SelectionSetNode, ObjectTypeDefinitionNode, UnionTypeDefinitionNode,
-    InterfaceTypeDefinitionNode,
+    SelectionSetNode,
 )
 from graphql.language.visitor import Visitor, VisitorAction, visit
 from graphql.validation import validate
@@ -73,14 +74,23 @@ def rename_query(
                 'selection "{}"'.format(type(selection).__name__, selection)
             )
 
-    visitor = RenameQueryVisitor(renamed_schema_descriptor.schema, renamed_schema_descriptor.reverse_name_map, renamed_schema_descriptor.reverse_field_name_map)
+    visitor = RenameQueryVisitor(
+        renamed_schema_descriptor.schema,
+        renamed_schema_descriptor.reverse_name_map,
+        renamed_schema_descriptor.reverse_field_name_map,
+    )
     renamed_ast = visit(ast, visitor)
 
     return renamed_ast
 
 
 class RenameQueryVisitor(Visitor):
-    def __init__(self, schema: GraphQLSchema, renamings: Dict[str, str], field_renamings: Dict[str, Dict[str, str]]) -> None:
+    def __init__(
+        self,
+        schema: GraphQLSchema,
+        renamings: Dict[str, str],
+        field_renamings: Dict[str, Dict[str, str]],
+    ) -> None:
         """Create a visitor for renaming types and root vertex fields in a query AST.
 
         Args:
@@ -94,7 +104,10 @@ class RenameQueryVisitor(Visitor):
         self.renamings = renamings
         self.field_renamings = field_renamings
         self.selection_set_level = 0
-        self.current_type_name = []  # Acts like a stack that records the types of the current scopes. The last item is the top of the stack. Each entry is the name of a type in the new schema, i.e. not the name of the type in the original schema if it was renamed.
+        # Acts like a stack that records the types of the current scopes. The last item is the top
+        # of the stack. Each entry is the name of a type in the new schema, i.e. not the name of
+        # the type in the original schema if it was renamed.
+        self.current_type_name: List[str] = []
 
     def _rename_name(self, node: RenameQueryNodeTypesT) -> RenameQueryNodeTypesT:
         """Change the name of the input node if necessary, according to renamings.
@@ -109,9 +122,15 @@ class RenameQueryVisitor(Visitor):
         name_string = node.name.value
         if isinstance(node, FieldNode) and self.selection_set_level > 1:
             field_name = node.name.value
-            current_type_name = self.current_type_name[-2]  # The top item in the stack is the type of the field, and the one immediately after that is the type that contains this field in the schema
-            current_type_name_in_original_schema = self.renamings.get(current_type_name, current_type_name)
-            new_name_string = self.field_renamings.get(current_type_name_in_original_schema, {}).get(field_name, field_name)
+            current_type_name = self.current_type_name[
+                -2
+            ]  # The top item in the stack is the type of the field, and the one immediately after that is the type that contains this field in the schema
+            current_type_name_in_original_schema = self.renamings.get(
+                current_type_name, current_type_name
+            )
+            new_name_string = self.field_renamings.get(
+                current_type_name_in_original_schema, {}
+            ).get(field_name, field_name)
         else:
             new_name_string = self.renamings.get(name_string, name_string)  # Default use original
         if new_name_string == name_string:
@@ -171,7 +190,9 @@ class RenameQueryVisitor(Visitor):
                     f"contains information such as the current type's fields. However, ast_node "
                     f"was None. This is a bug."
                 )
-            if not isinstance(current_type.ast_node, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
+            if not isinstance(
+                current_type.ast_node, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)
+            ):
                 raise AssertionError(
                     f"Current type {current_type_name}'s ast_node field should be an "
                     f"ObjectTypeDefinitionNode. However, the actual type was "
@@ -182,7 +203,9 @@ class RenameQueryVisitor(Visitor):
                 # Unfortunately, fields is a list instead of some other datastructure so we actually
                 # have to loop through them all.
                 if field_node.name.value == node.name.value:
-                    field_type_name = get_ast_with_non_null_and_list_stripped(field_node.type).name.value
+                    field_type_name = get_ast_with_non_null_and_list_stripped(
+                        field_node.type
+                    ).name.value
                     self.current_type_name.append(field_type_name)
                     break
         renamed_node = self._rename_name(node)
