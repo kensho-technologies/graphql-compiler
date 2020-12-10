@@ -77,18 +77,18 @@ def rename_query(
 
 
 class RenameQueryVisitor(Visitor):
-    def __init__(self, renamings: Dict[str, str]) -> None:
+    def __init__(self, type_renamings: Dict[str, str]) -> None:
         """Create a visitor for renaming types and root vertex fields in a query AST.
 
         Args:
-            renamings: Maps type or root field names to the new value in the dict.
-                       Any name not in the dict will be unchanged
+            type_renamings: Maps type or root field names to the new value in the dict.
+                            Any name not in the dict will be unchanged
         """
-        self.renamings = renamings
+        self.type_renamings = type_renamings
         self.selection_set_level = 0
 
     def _rename_name(self, node: RenameQueryNodeTypesT) -> RenameQueryNodeTypesT:
-        """Change the name of the input node if necessary, according to renamings.
+        """Change the name of the input node if necessary, according to type_renamings.
 
         Args:
             node: represents a field in an AST, containing a .name attribute. It is not modified
@@ -98,7 +98,7 @@ class RenameQueryVisitor(Visitor):
             the name was not changed, the returned object is the exact same object as the input
         """
         name_string = node.name.value
-        new_name_string = self.renamings.get(name_string, name_string)  # Default use original
+        new_name_string = self.type_renamings.get(name_string, name_string)  # Default use original
         if new_name_string == name_string:
             return node
         else:
