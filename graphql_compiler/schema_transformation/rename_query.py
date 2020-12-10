@@ -132,7 +132,9 @@ class RenameQueryVisitor(Visitor):
                 current_type_name_in_original_schema, {}
             ).get(field_name, field_name)
         else:
-            new_name_string = self.type_renamings.get(name_string, name_string)  # Default use original
+            new_name_string = self.type_renamings.get(
+                name_string, name_string
+            )  # Default use original
         if new_name_string == name_string:
             return node
         else:
