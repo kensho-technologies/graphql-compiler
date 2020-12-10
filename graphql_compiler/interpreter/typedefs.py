@@ -398,35 +398,79 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
 
         ## Common bug to avoid in your implementation
 
-        Importantly, when making the "neighbors" generator in the code example above, we called
-        a function that returns a generator instead of using a generator expression such as:
-            # BUGGY CODE FOLLOWS
-            neighbors = (
-                _your_function_that_makes_a_data_token(neighbor_id)
-                for neighbor_id in _your_function_that_gets_neighbor_ids(
-                    current_type_name, edge_info, current_token
-                )
-            )
-            # END OF BUGGY CODE
-        The above code is the victim of an unfortunate and difficult-to-find bug similar to
-        a race condition in multithreaded code:
-        - The current_token value is set to a new value in each iteration of the function's
-          outer "for data_context in data_contexts" loop.
-        - The generator in the buggy snippet refers to current_token -- but instead of referring
-          to "whatever is the value of current_token at the time the generator is defined,"
-          it instead refers to "whatever value current_token points to at each generator iteration".
-        - Since the outer loop's iterations and the buggy generator's iterations may occur in
-          an arbitrarily-iterleaved order, the buggy generator's current_token value changes
-          unpredictably during its execution therefore causing the bug.
-        - Since Python generators are not started until their first result is requested, the above
-          buggy snippet can't even guarantee that the first use of current_token has the intended
-          value -- the outer loop might have iterated before the generator was first invoked.
+        In the previous code example, note that we called a module-scoped function,
+        `_your_function_that_gets_neighbors_for_a_given_token`, instead of one defined in the scope
+        of `project_neighbors`.  Because Python evaluates references to variables in outer scopes
+        at the time a function or generator is invoked--not at the time it's defined--, it's very
+        easy to introduce subtle race conditions when defining generator factories in a nested
+        scope.
 
-        This bug is avoided (as in the working example code) by calling a function and supplying
-        the value of current_token to it. This creates a new Python scope (a so-called "closure")
-        that remembers the value current_token had when the closure was created. A succinct,
-        internet-search-friendly way to describe the cause of this bug is to say that in Python,
-        generators are not closures.
+        Because generators may be evaluated in arbitrary order, these bugs can appear only
+        intermittently and can be very difficult to troubleshoot.  Always defining generator
+        factories in the module scope is one reliable way to avoid this problem.
+
+        In this example code, we use a for-loop to yield several generators from a generator
+        factory.  Notice that we don't pass any arguments to the generator factory--the value its
+        generators yield come from its enclosing scope.
+
+        >>> def yield_generators():
+        ...     for target in range(1, 4):
+        ...         def _generator_factory():
+        ...             while True:
+        ...                 # refers to `target` in the enclosing scope
+        ...                 yield target
+        ...         yield _generator_factory()
+        ...
+        >>> gens = yield_generators()
+        >>> one = next(gens)
+        >>> next(one)
+        1
+        >>> two = next(gens)
+        >>> next(two)
+        2
+        >>> next(one)  # We expect 1, but get 2
+        2
+        >>> three = next(gens)
+        >>> next(three)
+        3
+        >>> next(two)  # We expect 2, but get 3
+        3
+        >>> next(one)  # We expect 1, got 2, and now get 3
+        3
+
+        Although we have three distinct generators, they're all yielding the same `target` from
+        `yield_generator`'s scope, which is also the same `target` that the for-loop advances with
+        each iteration.
+
+        If we define `_generator_factory` in the scope of the module, then we can't refer
+        inadvertently to shared state in an enclosing scope, which saves us from this bug.
+
+        >>> def _generator_factory(target):
+        ...     while True:
+        ...         # refers to the argument `target`, which exists
+        ...         # only in the local scope
+        ...         yield target
+        ...
+        >>> def yield_generators():
+        ...     for target in range(1, 4):
+        ...         yield _generator_factory(target)
+        ...
+        >>> gens = yield_generators()
+        >>> one = next(gens)
+        >>> next(one)
+        1
+        >>> two = next(gens)
+        >>> next(two)
+        2
+        >>> next(one)
+        1
+        >>> three = next(gens)
+        >>> next(three)
+        3
+        >>> next(two)
+        2
+        >>> next(one)
+        1
 
         ## Hints supplied to this function refer to neighboring vertices
 
