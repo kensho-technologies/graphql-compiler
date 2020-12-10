@@ -513,6 +513,22 @@ class TestRenameQueryInvalidQuery(unittest.TestCase):
         with self.assertRaises(GraphQLValidationError):
             rename_query(parse(query_string), rename_schema(basic_schema, {}, {}))
 
+    def test_query_for_suppressed_type(self):
+        query_string = dedent(
+            """\
+            {
+              Human {
+                id @output(out_name: "id")
+              }
+            }
+        """
+        )
+        with self.assertRaises(GraphQLValidationError):
+            rename_query(
+                parse(query_string),
+                rename_schema(parse(ISS.multiple_fields_schema), {"Human": None}, {}),
+            )
+
     def test_query_for_suppressed_field(self):
         query_string = dedent(
             """\

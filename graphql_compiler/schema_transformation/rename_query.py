@@ -88,20 +88,20 @@ class RenameQueryVisitor(Visitor):
     def __init__(
         self,
         schema: GraphQLSchema,
-        renamings: Dict[str, str],
+        type_renamings: Dict[str, str],
         field_renamings: Dict[str, Dict[str, str]],
     ) -> None:
         """Create a visitor for renaming types and root vertex fields in a query AST.
 
         Args:
             schema: The renamed schema that the original query is written against
-            renamings: Maps type or root field names to the new value in the dict.
-                       Any name not in the dict will be unchanged
+            type_renamings: Maps type or root field names to the new value in the dict.
+                            Any name not in the dict will be unchanged
             field_renamings: Maps type names to a dict mapping the field names to the new value.
                              Any names not in the dicts will be unchanged
         """
         self.schema = schema
-        self.renamings = renamings
+        self.type_renamings = type_renamings
         self.field_renamings = field_renamings
         self.selection_set_level = 0
         # Acts like a stack that records the types of the current scopes. The last item is the top
@@ -110,7 +110,7 @@ class RenameQueryVisitor(Visitor):
         self.current_type_name: List[str] = []
 
     def _rename_name(self, node: RenameQueryNodeTypesT) -> RenameQueryNodeTypesT:
-        """Change the name of the input node if necessary, according to renamings.
+        """Change the name of the input node if necessary, according to type_renamings.
 
         Args:
             node: represents a field in an AST, containing a .name attribute. It is not modified
@@ -122,17 +122,17 @@ class RenameQueryVisitor(Visitor):
         name_string = node.name.value
         if isinstance(node, FieldNode) and self.selection_set_level > 1:
             field_name = node.name.value
-            current_type_name = self.current_type_name[
-                -2
-            ]  # The top item in the stack is the type of the field, and the one immediately after that is the type that contains this field in the schema
-            current_type_name_in_original_schema = self.renamings.get(
+            # The top item in the stack is the type of the field, and the one immediately after that
+            # is the type that contains this field in the schema
+            current_type_name = self.current_type_name[-2]
+            current_type_name_in_original_schema = self.type_renamings.get(
                 current_type_name, current_type_name
             )
             new_name_string = self.field_renamings.get(
                 current_type_name_in_original_schema, {}
             ).get(field_name, field_name)
         else:
-            new_name_string = self.renamings.get(name_string, name_string)  # Default use original
+            new_name_string = self.type_renamings.get(name_string, name_string)  # Default use original
         if new_name_string == name_string:
             return node
         else:
