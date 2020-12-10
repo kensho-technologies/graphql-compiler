@@ -348,7 +348,6 @@ class TestRenameQuery(unittest.TestCase):
                 }
               }
             }
-
         """
         )
         renamed_schema = rename_schema(
