@@ -181,12 +181,12 @@ class RenameQueryVisitor(Visitor):
             # Entered a regular field and we want to find its type
             current_type_name = self.current_type_name[-1]
             current_type = self.schema.get_type(current_type_name)
-            if not current_type:
+            if current_type is None:
                 raise AssertionError(
                     f"Current type is {current_type_name} which doesn't exist in the schema. This "
                     f"is a bug."
                 )
-            if not current_type.ast_node:
+            if current_type.ast_node is None:
                 raise AssertionError(
                     f"Current type {current_type_name} should have non-null field ast_node, which "
                     f"contains information such as the current type's fields. However, ast_node "
