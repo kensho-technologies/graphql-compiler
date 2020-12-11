@@ -24,14 +24,13 @@ from .utils import RenameQueryNodeTypesT, get_copy_of_node_with_new_name
 def rename_query(
     ast: DocumentNode, renamed_schema_descriptor: RenamedSchemaDescriptor
 ) -> DocumentNode:
-    """Translate names of types using reverse_name_map of the input RenamedSchemaDescriptor.
+    """Translate names of types/ fields using reverse_name_map of the input RenamedSchemaDescriptor.
 
-    The direction in which types and fields are renamed is opposite of the process that
-    produced the renamed schema descriptor. If a type X was renamed to Y in the schema, then
-    any occurrences of type Y in the input query AST will be renamed to X.
+    The direction in which types/ fields are renamed is opposite of the process that
+    produced the renamed schema descriptor. If a type/ field X was renamed to Y in the schema, then
+    any occurrences of Y in the input query AST will be renamed to X.
 
-    All type names (including ones in type coercions), as well as root vertex fields (fields
-    of the query type) will be renamed.
+    All type names (including ones in type coercions) and field names will be renamed.
 
     Args:
         ast: represents a query
@@ -111,7 +110,7 @@ class RenameQueryVisitor(Visitor):
         self.current_type_name: List[str] = []
 
     def _rename_name(self, node: RenameQueryNodeTypesT) -> RenameQueryNodeTypesT:
-        """Change the name of the input node if necessary, according to type_renamings.
+        """Change the name of the input node if necessary, according to the renamings.
 
         Args:
             node: represents a field in an AST, containing a .name attribute. It is not modified
