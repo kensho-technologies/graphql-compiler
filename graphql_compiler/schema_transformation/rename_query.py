@@ -28,7 +28,7 @@ def rename_query(
 
     The direction in which types and fields are renamed is opposite of the process that
     produced the renamed schema descriptor. If a type X was renamed to Y in the schema, then
-    any occurrences of type Y in the input query ast will be renamed to X.
+    any occurrences of type Y in the input query AST will be renamed to X.
 
     All type names (including ones in type coercions), as well as root vertex fields (fields
     of the query type) will be renamed.
@@ -38,7 +38,7 @@ def rename_query(
         renamed_schema_descriptor: namedtuple including the attribute reverse_name_map, which maps
                                    the new, renamed names of types to their original names, and
                                    reverse_field_name_map which has a similar role for fields. This
-                                   function will revert these renamed types/ fields in the query ast
+                                   function will revert these renamed types/ fields in the query AST
                                    back to their original names
 
     Returns:
