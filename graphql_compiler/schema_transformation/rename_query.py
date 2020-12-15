@@ -24,10 +24,10 @@ from .utils import RenameQueryNodeTypesT, get_copy_of_node_with_new_name
 def rename_query(
     ast: DocumentNode, renamed_schema_descriptor: RenamedSchemaDescriptor
 ) -> DocumentNode:
-    """Translate names of types/ fields using reverse_name_map of the input RenamedSchemaDescriptor.
+    """Translate names of types/fields using reverse_name_map of the input RenamedSchemaDescriptor.
 
-    The direction in which types/ fields are renamed is opposite of the process that
-    produced the renamed schema descriptor. If a type/ field X was renamed to Y in the schema, then
+    The direction in which types/fields are renamed is opposite of the process that
+    produced the renamed schema descriptor. If a type/field X was renamed to Y in the schema, then
     any occurrences of Y in the input query AST will be renamed to X.
 
     All type names (including ones in type coercions) and field names will be renamed.
@@ -37,7 +37,7 @@ def rename_query(
         renamed_schema_descriptor: namedtuple including the attribute reverse_name_map, which maps
                                    the new, renamed names of types to their original names, and
                                    reverse_field_name_map which has a similar role for fields. This
-                                   function will revert these renamed types/ fields in the query AST
+                                   function will revert these renamed types/fields in the query AST
                                    back to their original names
 
     Returns:
