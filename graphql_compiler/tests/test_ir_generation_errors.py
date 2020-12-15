@@ -857,7 +857,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                 graphql_to_ir(self.schema, graphql)
 
     def test_duplicate_directive_on_same_field(self) -> None:
-        # validate: the non-duplicate version of the query compiles fine
+        # self-consistency check: the non-duplicate version of the query compiles fine
         graphql_to_ir(
             self.schema,
             """{
@@ -883,7 +883,7 @@ class IrGenerationErrorTests(unittest.TestCase):
             )
 
     def test_property_field_after_vertex_field(self) -> None:
-        # validate: the correctly-ordered version of the query compiles fine
+        # self-consistency check: the correctly-ordered version of the query compiles fine
         graphql_to_ir(
             self.schema,
             """{

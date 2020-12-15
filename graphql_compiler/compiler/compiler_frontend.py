@@ -543,8 +543,9 @@ def _compile_vertex_ast(
             # Invariant: There must always be a marked location corresponding to the query position
             # immediately before any optional Traverse.
             #
-            # This invariant is verified in the IR validation module (ir_validation.py),
-            # in the function named _validate_mark_location_preceding_optional_traverse().
+            # This invariant is verified in the IR self-consistency check module
+            # (ir_self_consistency_checks.py), in the function named _self_consistency_check_mark
+            # location_preceding_optional_traverse().
             #
             # This marked location is the one that the @optional directive's corresponding
             # optional Backtrack will jump back to. If such a marked location isn't present,
@@ -779,13 +780,13 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
         )
 
     if location.field is not None:  # we're at a property field
-        # validate: cannot have an inline fragment at a property field
+        # self-consistency check: cannot have an inline fragment at a property field
         if fragment_exists:
             raise AssertionError(
                 "Found inline fragment at a property field: {} {}".format(location, fragment)
             )
 
-        # validate: locations at properties don't have their own property locations
+        # self-consistency check: locations at properties don't have their own property locations
         if len(property_fields) > 0:
             raise AssertionError(
                 "Found property fields on a property field: "

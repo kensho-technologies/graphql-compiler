@@ -246,9 +246,9 @@ class QueryFormattingTests(unittest.TestCase):
 
     def test_non_null_types_pass_validation(self) -> None:
         type_and_value: List[Tuple[QueryArgumentGraphQLType, Any]] = [
-            (GraphQLString, "abc"),  # validation check
+            (GraphQLString, "abc"),  # self-consistency check
             (GraphQLNonNull(GraphQLString), "abc"),
-            (GraphQLList(GraphQLString), ["a", "b", "c"]),  # validation check
+            (GraphQLList(GraphQLString), ["a", "b", "c"]),  # self-consistency check
             (GraphQLList(GraphQLNonNull(GraphQLString)), ["a", "b", "c"]),
             (GraphQLNonNull(GraphQLList(GraphQLString)), ["a", "b", "c"]),
             (GraphQLNonNull(GraphQLList(GraphQLNonNull(GraphQLString))), ["a", "b", "c"]),

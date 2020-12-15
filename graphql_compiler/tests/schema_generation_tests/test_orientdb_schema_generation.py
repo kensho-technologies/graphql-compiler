@@ -358,7 +358,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         ]
         schema, type_equivalence_dicts = get_graphql_schema_from_orientdb_schema_data(schema_data)
 
-        # Validation check
+        # Self-consistency check
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_subclass_set = schema_graph.get_subclass_set("Person")
         self.assertIsNotNone(schema.get_type(_get_union_type_name(person_subclass_set)))
@@ -397,7 +397,7 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
         # Since there is not ingoing edge to Person, we filter the Person_Baby union
         # from the type equivalence dict since it is not discoverable by the GraphQL Schema.
         self.assertEqual(0, len(type_equivalence_dicts))
-        # Validation check
+        # Self-consistency check
         schema_graph = get_orientdb_schema_graph(schema_data, [])
         person_subclass_set = schema_graph.get_subclass_set("Person")
         self.assertIsNone(schema.get_type(_get_union_type_name(person_subclass_set)))

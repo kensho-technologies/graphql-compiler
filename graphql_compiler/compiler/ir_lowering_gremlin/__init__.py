@@ -4,7 +4,7 @@ from ..ir_lowering_common.common import (
     merge_consecutive_filter_clauses,
     optimize_boolean_expression_comparisons,
 )
-from ..ir_validation import validate_ir_blocks_from_frontend
+from ..ir_self_consistency_checks import self_consistency_check_ir_blocks_from_frontend
 from .ir_lowering import (
     lower_coerce_type_block_type_data,
     lower_coerce_type_blocks,
@@ -28,7 +28,7 @@ def lower_ir(schema_info, ir):
     Returns:
         list of IR blocks suitable for outputting as Gremlin
     """
-    validate_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
+    self_consistency_check_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
 
     ir_blocks = lower_context_field_existence(ir.ir_blocks, ir.query_metadata_table)
     ir_blocks = optimize_boolean_expression_comparisons(ir_blocks)
