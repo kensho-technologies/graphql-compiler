@@ -207,7 +207,9 @@ def _self_consistency_check_block_pairwise_constraints(ir_blocks: List[BasicBloc
                 )
 
 
-def _self_consistency_check_mark_location_preceding_optional_traverse(ir_blocks: List[BasicBlock]) -> None:
+def _self_consistency_check_mark_location_preceding_optional_traverse(
+    ir_blocks: List[BasicBlock],
+) -> None:
     """Assert that optional Traverse blocks are preceded by a MarkLocation."""
     # Once all fold blocks are removed, each optional Traverse must have
     # a MarkLocation block immediately before it.
