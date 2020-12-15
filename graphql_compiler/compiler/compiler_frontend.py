@@ -544,8 +544,8 @@ def _compile_vertex_ast(
             # immediately before any optional Traverse.
             #
             # This invariant is verified in the IR self-consistency check module
-            # (ir_self_consistency_checks.py), in the function named _self_consistency_check_mark
-            # location_preceding_optional_traverse().
+            # (ir_self_consistency_checks.py), in the function named
+            # _self_consistency_check_mark_location_preceding_optional_traverse().
             #
             # This marked location is the one that the @optional directive's corresponding
             # optional Backtrack will jump back to. If such a marked location isn't present,
