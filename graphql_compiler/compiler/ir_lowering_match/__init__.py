@@ -12,7 +12,7 @@ from ..ir_lowering_common.common import (
     optimize_boolean_expression_comparisons,
     remove_end_optionals,
 )
-from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
+from ..ir_validation import validate_ir_blocks_from_frontend
 from ..match_query import MatchQuery, convert_to_match_query
 from ..workarounds import (
     orientdb_class_with_while,
@@ -53,7 +53,7 @@ def lower_ir(schema_info: CommonSchemaInfo, ir: IrAndMetadata) -> MatchQuery:
     Returns:
         MatchQuery object containing the IR blocks organized in a MATCH-like structure
     """
-    sanity_check_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
+    validate_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
 
     # Construct the mapping of each location to its corresponding GraphQL type.
     location_types = {

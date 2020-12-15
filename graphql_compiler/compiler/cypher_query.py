@@ -154,7 +154,7 @@ def _generate_cypher_step_list_from_ir_blocks(fold_scope_location, ir_blocks, qu
         linked_location = block.location
         current_step_ir_blocks = []
     for block in current_step_ir_blocks:
-        # Sanity check any leftover blocks.
+        # Validate any leftover blocks.
         # The complete list of IR blocks need not end with a MarkLocation block, e.g. if you
         # have a Backtrack block at the end. That's fine; Backtrack is unused here anyways.
         # What we want to avoid is having any leftover blocks here that we should've used.

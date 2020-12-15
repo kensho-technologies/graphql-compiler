@@ -174,7 +174,7 @@ class LocalStatistics(Statistics):
         TODO(bojanserafimov): Enforce a canonical representation for quantile values and
                               sampling summaries. Datetimes should be in utc, decimals should
                               have type float, etc.
-        TODO(bojanserafimov): Sanity-check class_counts against sample_ratio * num_samples
+        TODO(bojanserafimov): Validate class_counts against sample_ratio * num_samples
         """
         if vertex_edge_vertex_counts is None:
             vertex_edge_vertex_counts = dict()

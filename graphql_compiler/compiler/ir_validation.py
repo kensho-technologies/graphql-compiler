@@ -23,13 +23,13 @@ from .ir_lowering_common.common import extract_folds_from_ir_blocks
 from .metadata import QueryMetadataTable
 
 
-def sanity_check_ir_blocks_from_frontend(
+def validate_ir_blocks_from_frontend(
     ir_blocks: List[BasicBlock], query_metadata_table: QueryMetadataTable
 ) -> None:
     """Assert that IR blocks originating from the frontend do not have nonsensical structure.
 
     Args:
-        ir_blocks: list of BasicBlocks representing the IR to sanity-check
+        ir_blocks: list of BasicBlocks representing the IR to validate
         query_metadata_table: QueryMetadataTable object that captures information about the query
 
     Raises:
@@ -40,19 +40,19 @@ def sanity_check_ir_blocks_from_frontend(
     if not ir_blocks:
         raise AssertionError("Received no ir_blocks: {}".format(ir_blocks))
 
-    _sanity_check_fold_scope_locations_are_unique(ir_blocks)
-    _sanity_check_no_nested_folds(ir_blocks)
-    _sanity_check_query_root_block(ir_blocks)
-    _sanity_check_output_source_follower_blocks(ir_blocks)
-    _sanity_check_block_pairwise_constraints(ir_blocks)
-    _sanity_check_mark_location_preceding_optional_traverse(ir_blocks)
-    _sanity_check_every_location_is_marked(ir_blocks)
-    _sanity_check_coerce_type_outside_of_fold(ir_blocks)
-    _sanity_check_all_marked_locations_are_registered(ir_blocks, query_metadata_table)
-    _sanity_check_registered_locations_parent_locations(query_metadata_table)
+    _validate_fold_scope_locations_are_unique(ir_blocks)
+    _validate_no_nested_folds(ir_blocks)
+    _validate_query_root_block(ir_blocks)
+    _validate_output_source_follower_blocks(ir_blocks)
+    _validate_block_pairwise_constraints(ir_blocks)
+    _validate_mark_location_preceding_optional_traverse(ir_blocks)
+    _validate_every_location_is_marked(ir_blocks)
+    _validate_coerce_type_outside_of_fold(ir_blocks)
+    _validate_all_marked_locations_are_registered(ir_blocks, query_metadata_table)
+    _validate_registered_locations_parent_locations(query_metadata_table)
 
 
-def _sanity_check_registered_locations_parent_locations(
+def _validate_registered_locations_parent_locations(
     query_metadata_table: QueryMetadataTable,
 ) -> None:
     """Assert that all registered locations' parent locations are also registered."""
@@ -76,7 +76,7 @@ def _sanity_check_registered_locations_parent_locations(
             query_metadata_table.get_location_info(location_info.parent_location)
 
 
-def _sanity_check_all_marked_locations_are_registered(
+def _validate_all_marked_locations_are_registered(
     ir_blocks: List[BasicBlock], query_metadata_table: QueryMetadataTable
 ) -> None:
     """Assert that all locations in MarkLocation blocks have registered and valid metadata."""
@@ -103,7 +103,7 @@ def _sanity_check_all_marked_locations_are_registered(
         )
 
 
-def _sanity_check_fold_scope_locations_are_unique(ir_blocks: List[BasicBlock]) -> None:
+def _validate_fold_scope_locations_are_unique(ir_blocks: List[BasicBlock]) -> None:
     """Assert that every FoldScopeLocation that exists on a Fold block is unique."""
     observed_locations: Dict[FoldScopeLocation, Fold] = dict()
     for block in ir_blocks:
@@ -117,7 +117,7 @@ def _sanity_check_fold_scope_locations_are_unique(ir_blocks: List[BasicBlock]) -
             observed_locations[block.fold_scope_location] = block
 
 
-def _sanity_check_no_nested_folds(ir_blocks: List[BasicBlock]) -> None:
+def _validate_no_nested_folds(ir_blocks: List[BasicBlock]) -> None:
     """Assert that there are no nested Fold contexts, and that every Fold has a matching Unfold."""
     fold_seen = False
     for block in ir_blocks:
@@ -135,7 +135,7 @@ def _sanity_check_no_nested_folds(ir_blocks: List[BasicBlock]) -> None:
                 fold_seen = False
 
 
-def _sanity_check_query_root_block(ir_blocks: List[BasicBlock]) -> None:
+def _validate_query_root_block(ir_blocks: List[BasicBlock]) -> None:
     """Assert that QueryRoot is always the first block, and only the first block."""
     if not isinstance(ir_blocks[0], QueryRoot):
         raise AssertionError("The first block was not QueryRoot: {}".format(ir_blocks))
@@ -144,7 +144,7 @@ def _sanity_check_query_root_block(ir_blocks: List[BasicBlock]) -> None:
             raise AssertionError("Found QueryRoot after the first block: {}".format(ir_blocks))
 
 
-def _sanity_check_construct_result_block(ir_blocks: List[BasicBlock]) -> None:
+def _validate_construct_result_block(ir_blocks: List[BasicBlock]) -> None:
     """Assert that ConstructResult is always the last block, and only the last block."""
     if not isinstance(ir_blocks[-1], ConstructResult):
         raise AssertionError("The last block was not ConstructResult: {}".format(ir_blocks))
@@ -155,7 +155,7 @@ def _sanity_check_construct_result_block(ir_blocks: List[BasicBlock]) -> None:
             )
 
 
-def _sanity_check_output_source_follower_blocks(ir_blocks: List[BasicBlock]) -> None:
+def _validate_output_source_follower_blocks(ir_blocks: List[BasicBlock]) -> None:
     """Ensure there are no Traverse / Backtrack / Recurse blocks after an OutputSource block."""
     seen_output_source = False
     for block in ir_blocks:
@@ -170,7 +170,7 @@ def _sanity_check_output_source_follower_blocks(ir_blocks: List[BasicBlock]) -> 
                 )
 
 
-def _sanity_check_block_pairwise_constraints(ir_blocks: List[BasicBlock]) -> None:
+def _validate_block_pairwise_constraints(ir_blocks: List[BasicBlock]) -> None:
     """Assert that adjacent blocks obey all invariants."""
     for first_block, second_block in pairwise(ir_blocks):
         # Always Filter before MarkLocation, never after.
@@ -207,7 +207,7 @@ def _sanity_check_block_pairwise_constraints(ir_blocks: List[BasicBlock]) -> Non
                 )
 
 
-def _sanity_check_mark_location_preceding_optional_traverse(ir_blocks: List[BasicBlock]) -> None:
+def _validate_mark_location_preceding_optional_traverse(ir_blocks: List[BasicBlock]) -> None:
     """Assert that optional Traverse blocks are preceded by a MarkLocation."""
     # Once all fold blocks are removed, each optional Traverse must have
     # a MarkLocation block immediately before it.
@@ -222,7 +222,7 @@ def _sanity_check_mark_location_preceding_optional_traverse(ir_blocks: List[Basi
                 )
 
 
-def _sanity_check_every_location_is_marked(ir_blocks: List[BasicBlock]) -> None:
+def _validate_every_location_is_marked(ir_blocks: List[BasicBlock]) -> None:
     """Ensure that every new location is marked with a MarkLocation block."""
     # Exactly one MarkLocation block is found between any block that starts an interval of blocks
     # that all affect the same query position, and the first subsequent block that affects a
@@ -255,7 +255,7 @@ def _sanity_check_every_location_is_marked(ir_blocks: List[BasicBlock]) -> None:
             mark_location_blocks_count = 0
 
 
-def _sanity_check_coerce_type_outside_of_fold(ir_blocks: List[BasicBlock]):
+def _validate_coerce_type_outside_of_fold(ir_blocks: List[BasicBlock]):
     """Ensure that CoerceType not in a @fold are followed by a MarkLocation or Filter block."""
     is_in_fold = False
     for first_block, second_block in pairwise(ir_blocks):

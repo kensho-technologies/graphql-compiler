@@ -4,7 +4,7 @@ import unittest
 
 from graphql import GraphQLID, GraphQLString
 
-from ..compiler import ir_lowering_gremlin, ir_lowering_match, ir_sanity_checks
+from ..compiler import ir_lowering_gremlin, ir_lowering_match, ir_validation
 from ..compiler.blocks import (
     Backtrack,
     CoerceType,
@@ -144,7 +144,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks just have a rewritten ConstructResult block,
         # where the ContextFieldExistence expression is replaced with a null check.
@@ -215,7 +215,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks have a rewritten ContextFieldExistence expression
         # inside the TernaryConditional expression of the Filter block.
@@ -280,7 +280,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         match_query = convert_to_match_query(ir_blocks)
 
@@ -339,7 +339,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         match_query = convert_to_match_query(ir_blocks)
 
@@ -397,7 +397,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         match_query = convert_to_match_query(ir_blocks)
 
@@ -469,7 +469,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         match_query = convert_to_match_query(ir_blocks)
 
@@ -577,7 +577,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         match_query = convert_to_match_query(ir_blocks)
 
@@ -654,7 +654,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks have one Filter block with the predicates joined by an AND.
         expected_final_blocks = [
@@ -906,7 +906,7 @@ class MatchIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         expected_final_blocks_without_optional_traverse = [
             QueryRoot({"Animal"}),
@@ -1008,7 +1008,7 @@ class GremlinIrLoweringTests(unittest.TestCase):
                 }
             ),
         ]
-        ir_sanity_checks.sanity_check_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
+        ir_validation.validate_ir_blocks_from_frontend(ir_blocks, query_metadata_table)
 
         # The expected final blocks just have a rewritten ConstructResult block,
         # where the ContextFieldExistence expression is replaced with a marked vertex null check.
