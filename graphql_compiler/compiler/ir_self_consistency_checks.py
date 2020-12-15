@@ -255,7 +255,7 @@ def _self_consistency_check_every_location_is_marked(ir_blocks: List[BasicBlock]
             mark_location_blocks_count = 0
 
 
-def _self_consistency_check_coerce_type_outside_of_fold(ir_blocks: List[BasicBlock]):
+def _self_consistency_check_coerce_type_outside_of_fold(ir_blocks: List[BasicBlock]) -> None:
     """Ensure that CoerceType not in a @fold are followed by a MarkLocation or Filter block."""
     is_in_fold = False
     for first_block, second_block in pairwise(ir_blocks):
