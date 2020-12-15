@@ -58,7 +58,7 @@ from .helpers import (
 
 # Since MATCH uses $-prefixed keywords to indicate special values,
 # we must restrict those keywords from being used as variables.
-# For consistency, we blacklist these keywords in both Gremlin and MATCH.
+# For consistency, we reserve these keywords in both Gremlin and MATCH.
 RESERVED_MATCH_KEYWORDS = frozenset(
     {
         "$matches",
