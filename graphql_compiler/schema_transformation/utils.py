@@ -653,13 +653,13 @@ def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode
     vertex fields.
 
     Args:
-        schema: schema the query is written against
-        query_ast: query to split
+        schema: schema the query is written against.
+        query_ast: query to split.
 
     Raises:
         GraphQLValidationError if the query doesn't validate against the schema, contains
         unsupported directives, or some property field occurs after a vertex field in some
-        selection
+        selection.
     """
     # Check builtin errors
     built_in_validation_errors = validate(schema, query_ast)

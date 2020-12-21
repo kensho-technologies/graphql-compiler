@@ -7,6 +7,7 @@ from typing import Dict, FrozenSet, List, Optional, Tuple, Union
 from graphql import TypeInfo, TypeInfoVisitor, Visitor, validate, visit
 from graphql.language.ast import (
     ArgumentNode,
+    BooleanValueNode,
     DirectiveNode,
     DocumentNode,
     FieldNode,
@@ -40,7 +41,8 @@ from .utils import (
 
 @dataclass(frozen=True)
 class QueryConnection:
-    """TODO: description"""
+    """Describes what fields queries are connected on."""
+
     # SubQueryNode
     sink_query_node: "SubQueryNode"
 
@@ -49,8 +51,8 @@ class QueryConnection:
 
     # The unique out name on the @output of the sink property field in the stitch.
     sink_field_out_name: str
-    
-    
+
+
 class SubQueryNode(object):
     def __init__(self, query_ast):
         """Build a SubQueryNode object representing a piece of a larger query, targeting one schema.
@@ -89,10 +91,7 @@ class IntermediateOutNameAssigner(object):
 
 class SchemaIdSetterVisitor(Visitor):
     def __init__(
-        self,
-        type_info: TypeInfo,
-        query_node: SubQueryNode,
-        type_name_to_schema_id: Dict[str, str]
+        self, type_info: TypeInfo, query_node: SubQueryNode, type_name_to_schema_id: Dict[str, str]
     ):
         """Create a visitor for setting the schema_id of the input query node.
 
@@ -211,8 +210,8 @@ def _get_edge_to_stitch_fields(
     removed as directives on a schema field can be directly accessed.
 
     Args:
-        merged_schema_descriptor: MergedSchemaDescriptor namedtuple, containing a schema AST
-                                  and a map from names of types to their schema ids
+        merged_schema_descriptor: containing a schema AST and a map from names of types to
+                                  their schema ids.
 
     Returns:
         Dictionary mapping (type name, vertex field name) to (source field name, sink field name)
@@ -234,13 +233,17 @@ def _get_edge_to_stitch_fields(
                     fields_by_name = get_uniquely_named_objects_by_name(stitch_directive.arguments)
                     source_field_value = fields_by_name["source_field"].value
                     sink_field_value = fields_by_name["sink_field"].value
-                    if not isinstance(source_field_value, ScalarConstantValueNodes):
+                    if not isinstance(source_field_value, ScalarConstantValueNodes) or isinstance(
+                        source_field_value, BooleanValueNode
+                    ):
                         raise AssertionError(
                             f"Source field value must be one of type {ScalarConstantValueNodes}, "
                             f"but was of type {type(source_field_value)}."
                         )
                     source_field_name = source_field_value.value
-                    if not isinstance(sink_field_value, ScalarConstantValueNodes):
+                    if not isinstance(sink_field_value, ScalarConstantValueNodes) or isinstance(
+                        sink_field_value, BooleanValueNode
+                    ):
                         raise AssertionError(
                             f"Sink field value must be one of type {ScalarConstantValueNodes}, "
                             f"but was of type {type(sink_field_value)}."
@@ -354,7 +357,7 @@ def _split_query_ast_one_level_recursive(
     if ast.selection_set is None:
         raise AssertionError("AST's selection_set cannot be None.")
     type_info.enter(ast.selection_set)
-    selections = ast.selection_set.selections
+    selections = list(ast.selection_set.selections)
 
     type_coercion = try_get_inline_fragment(selections)
     if type_coercion is not None:
@@ -410,27 +413,24 @@ def _split_query_ast_one_level_recursive_normal_fields(
     field.
 
     Args:
-        query_node: SubQueryNode, whose list of child query connections may be modified to
+        query_node: Containing list of child query connections may be modified to
                     include new children.
         selections: Containing a number of property fields and vertex fields.
-        type_info: TypeInfo, used to get information about the types of fields while traversing
-                   the query AST.
+        type_info: Used to get information about the types of fields while traversing the query AST.
         edge_to_stitch_fields: Mapping (type name, vertex field name) to
                                (source field name, sink field name) used in the @stitch directive
                                for each cross schema edge.
-        name_assigner: Object used to generate and keep track of names of newly created
-                       @output directives.
+        name_assigner: Used to generate and keep track of names of newly created @output directives.
 
     Returns:
-        # TODO
-        List[Field], with which to replace the list of selections in the SelectionSet one level
+        List of SelectionNodes to replace the list of selections in the SelectionSet one level
         above. All cross schema edges in the input list will be removed, and in their place,
         property fields added or modified. If no changes were made, the exact input list object
-        will be returned
+        will be returned.
     """
     parent_type = type_info.get_parent_type()
     if parent_type is None:
-        raise AssertionError()  # TODO error message
+        raise AssertionError("parent_type cannot be None.")
     parent_type_name = parent_type.name
 
     made_changes = False
@@ -549,7 +549,8 @@ def _split_selections_property_and_vertex(
     """Split input selections into property fields and vertex fields/type coercions.
 
     Args:
-        selections: # TODO: better description here not modified by this function
+        selections: Selections to be split into property fields and vertex fields/type coercions.
+                    Not modified by this function.
 
     Returns:
         Tuple containing:
@@ -586,7 +587,8 @@ def _split_vertex_fields_intra_and_cross_schema(
     """Split input list of vertex fields into intra-schema and cross-schema fields.
 
     Args:
-        vertex_fields: # TODO better explanation here not modified by this function
+        vertex_fields: Vertex fields to split into intra- and cross-schema fields.
+                       Not modified by this function.
         parent_type_name: Name of the type that has the input list of vertex fields as fields.
         edge_to_stitch_fields: Mapping (type name, vertex field name) to
                                (source field name, sink field name) used in the @stitch directive
@@ -620,8 +622,8 @@ def _get_selections_from_property_and_vertex_fields(
 
     Args:
         property_fields_map: Mapping name of field to their representation.
-                             It is not modified by this function.
-        vertex_fields: # TODO better explanation. It is not modified by this function
+                             Not modified by this function.
+        vertex_fields: Vertex fields to be combined. Not modified by this function
 
     Returns:
         All property fields then all vertex fields, in order.
@@ -675,16 +677,35 @@ def _get_child_query_node_and_out_name(
     """
     # Get type and selections of child AST, taking into account type coercions
     child_selection_set = ast.selection_set
+    if child_selection_set is None:
+        raise AssertionError("Invalid AST. child_selection_set cannot be None.")
     type_coercion = try_get_inline_fragment(child_selection_set.selections)
     if type_coercion is not None:
         child_type_name = type_coercion.type_condition.name.value
         child_selection_set = type_coercion.selection_set
-    child_selections = child_selection_set.selections
+    child_selections: List[FieldNode] = []
+    for child_selection in child_selection_set.selections:
+        if not isinstance(child_selection, FieldNode):
+            raise AssertionError(
+                "Expected child_selection to be of type FieldNode, but was of "
+                f"type {type(child_selection)}."
+            )
+        child_selections.append(child_selection)
 
     # Get existing field with name in child
     existing_child_property_field = try_get_ast_by_name_and_type(
         child_selections, child_field_name, FieldNode
     )
+    # Validate that existing_child_property_field is None or FieldNode.
+    # It should be impossible for this to *not* be the case, but check so that mypy is happy.
+    if not (
+        existing_child_property_field is None
+        or isinstance(existing_child_property_field, FieldNode)
+    ):
+        raise AssertionError(
+            "Unreachable code reached! existing_child_property_field should be None or of type "
+            f"FieldNode, but was type {type(existing_child_property_field)}."
+        )
     child_property_field = _get_property_field(
         existing_child_property_field, child_field_name, None
     )
@@ -702,7 +723,7 @@ def _get_child_query_node_and_out_name(
     )
     # Wrap around
     # NOTE: if child_type_name does not actually exist as a root field (not all types are
-    # required to have a corresponding root vertex field), then this query will be invalid
+    # required to have a corresponding root vertex field), then this query will be invalid.
     child_query_ast = _get_query_document(child_type_name, child_selections)
     child_query_node = SubQueryNode(child_query_ast)
 
@@ -710,7 +731,9 @@ def _get_child_query_node_and_out_name(
 
 
 def _get_property_field(
-    existing_field: Optional[FieldNode], field_name: str, directives_from_edge: List[DirectiveNode]
+    existing_field: Optional[FieldNode],
+    field_name: str,
+    directives_from_edge: Optional[List[DirectiveNode]],
 ) -> FieldNode:
     """Return a FieldNode with field_name, sharing directives with any such existing FieldNode.
 
@@ -721,8 +744,8 @@ def _get_property_field(
     Args:
         existing_field: None or a FieldNode with field_name. The directives of this field will
                         carry output to the output field.
-        field_name: str, the name of the output field
-        directives_from_edge: List of the directives of a vertex field. The output
+        field_name: str, the name of the output field.
+        directives_from_edge: None or list of the directives of a vertex field. The output
                               field will contain all @filter and any @optional directives
                               from this list.
 
@@ -748,6 +771,10 @@ def _get_property_field(
                 )
             elif directive.name.value == OptionalDirective.name:
                 if (
+                    # TODO: fix mypy error: Argument 1 to "try_get_ast_by_name_and_type" has
+                    # incompatible type "List[DirectiveNode]"; expected "Optional[List[Node]]"
+                    #
+                    # DirectiveNode inherits from Node so this should be okay?
                     try_get_ast_by_name_and_type(
                         new_field_directives, OptionalDirective.name, DirectiveNode
                     )
@@ -815,8 +842,13 @@ def _get_out_name_optionally_add_output(
                 f"{type(output_directive)}. This should be impossible and is a bug."
             )
         argument_value = output_directive.arguments[0].value
-        if not isinstance(argument_value, ScalarConstantValueNodes):
-            raise AssertionError()  # TODO
+        if not isinstance(argument_value, ScalarConstantValueNodes) or isinstance(
+            argument_value, BooleanValueNode
+        ):
+            raise AssertionError(
+                "argument_value must be of type ScalarConstantValueNodes, but "
+                f"was of type {type(argument_value)}."
+            )
         return field, argument_value.value  # Location of value of out_name
 
 
@@ -833,8 +865,10 @@ def _get_output_directive(out_name: str) -> DirectiveNode:
     )
 
 
-def _get_query_document(root_vertex_field_name: str, root_selections) -> DocumentNode:  # TODO
-    """Return a Document representing a query with the specified name and selections."""
+def _get_query_document(
+    root_vertex_field_name: str, root_selections: List[SelectionNode]
+) -> DocumentNode:
+    """Return a DocumentNode representing a query with the specified name and selections."""
     return DocumentNode(
         definitions=[
             OperationDefinitionNode(
