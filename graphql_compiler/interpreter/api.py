@@ -21,6 +21,7 @@ from ..compiler.compiler_entities import BasicBlock
 from ..compiler.compiler_frontend import IrAndMetadata, graphql_to_ir
 from ..compiler.helpers import BaseLocation, get_only_element_from_collection
 from ..compiler.metadata import QueryMetadataTable
+from ..query_formatting.common import validate_arguments
 from .block_ops import generate_block_outputs, generate_construct_result_outputs
 from .debugging import print_tap
 from .hinting import get_hints_for_location_via_readthrough_cache
@@ -118,6 +119,8 @@ def interpret_ir(
     ir_and_metadata: IrAndMetadata,
     query_arguments: Dict[str, Any],
 ) -> Iterator[Dict[str, Any]]:
+    validate_arguments(ir_and_metadata.input_metadata, query_arguments)
+
     ir_blocks = ir_and_metadata.ir_blocks
     query_metadata_table = ir_and_metadata.query_metadata_table
     per_query_hint_cache: Dict[BaseLocation, InterpreterHints] = {}

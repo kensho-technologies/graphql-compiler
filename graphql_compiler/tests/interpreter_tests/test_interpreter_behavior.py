@@ -1,11 +1,12 @@
 from dataclasses import fields
-from typing import Any, ClassVar, Dict, List, Optional
+from typing import Any, ClassVar, Dict, List, Optional, Tuple
 from unittest import TestCase
 
 from graphql import GraphQLSchema
 
 from ...compiler.helpers import Location
 from ...compiler.metadata import FilterInfo
+from ...exceptions import GraphQLInvalidArgumentError
 from ...interpreter import DataContext, interpret_query
 from ...interpreter.debugging import AdapterOperation, InterpreterAdapterTap, RecordedTrace
 from ...interpreter.immutable_stack import ImmutableStack, make_empty_stack
@@ -134,6 +135,38 @@ class InterpreterBehaviorTests(TestCase):
     @classmethod
     def setUpClass(cls) -> None:
         cls.schema = get_schema()
+
+    def test_eager_exception_on_bad_query_arguments(self) -> None:
+        adapter = InterpreterAdapterTap(InMemoryTestAdapter())
+
+        query_with_no_args = """{
+            Animal {
+                name @output(out_name: "name")
+            }
+        }"""
+        query_with_args = """{
+            Animal {
+                name @output(out_name: "name") @filter(op_name: "=", value: ["$animal_name"])
+            }
+        }"""
+        string_args = {"animal_name": "Beethoven"}
+        int_args = {"animal_name": 123}
+
+        invalid_calls: Tuple[Tuple[str, Dict[str, Any]], ...] = (
+            (query_with_no_args, string_args),
+            (query_with_args, {}),
+            (query_with_args, int_args),
+        )
+
+        for invalid_query, invalid_args in invalid_calls:
+            # Invalid calls must be caught before the generator is returned, i.e. eagerly.
+            with self.assertRaises(GraphQLInvalidArgumentError):
+                interpret_query(adapter, self.schema, invalid_query, invalid_args)
+
+        # We expect the trace to contain no operations, since nothing should have been called.
+        trace = adapter.recorder.get_trace()
+        expected_trace = RecordedTrace[dict](tuple())
+        self.assertEqual(expected_trace, trace)
 
     def test_no_adapter_calls_if_output_generator_is_not_advanced(self) -> None:
         adapter = InterpreterAdapterTap(InMemoryTestAdapter())
