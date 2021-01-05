@@ -18,6 +18,7 @@ from graphql.language.ast import (
     Node,
     ObjectTypeDefinitionNode,
     ScalarTypeDefinitionNode,
+    SelectionNode,
     SelectionSetNode,
     UnionTypeDefinitionNode,
 )
@@ -321,7 +322,7 @@ def try_get_ast_by_name_and_type(
 
 
 def try_get_inline_fragment(
-    selections: Optional[List[Union[FieldNode, InlineFragmentNode]]]
+    selections: Optional[List[SelectionNode]],
 ) -> Optional[InlineFragmentNode]:
     """Return the unique inline fragment contained in selections, or None.
 
@@ -332,11 +333,18 @@ def try_get_inline_fragment(
         inline fragment if one is found in selections, None otherwise
 
     Raises:
-        GraphQLValidationError if selections contains a InlineFragment along with a nonzero
-        number of fields, or contains multiple InlineFragments
+        GraphQLValidationError if selections contains an InlineFragmentNode along with a nonzero
+        number of FieldNodes, contains multiple InlineFragmentNodes, or unexpectedly contains a
+        SelectionNode that is neither an InlineFragmentNode nor a FieldNode.
     """
     if selections is None:
         return None
+    for selection in selections:
+        if not isinstance(selection, InlineFragmentNode) and not isinstance(selection, FieldNode):
+            raise GraphQLValidationError(
+                f"Unexpectedly received a selection of type {type(selection)}. "
+                f"Only expected to receive FieldNode or InlineFragmentNode."
+            )
     inline_fragments_in_selection = [
         selection for selection in selections if isinstance(selection, InlineFragmentNode)
     ]
@@ -347,13 +355,13 @@ def try_get_inline_fragment(
             return inline_fragments_in_selection[0]
         else:
             raise GraphQLValidationError(
-                'Input selections "{}" contains both InlineFragments and Fields, which may not '
-                "coexist in one selection.".format(selections)
+                f'Input selections "{selections}" contains both InlineFragments and Fields, '
+                f"which may not coexist in one selection."
             )
     else:
         raise GraphQLValidationError(
-            'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
-            "".format(selections)
+            f'Input selections "{selections}" contains multiple InlineFragments, which is '
+            f"not allowed."
         )
 
 

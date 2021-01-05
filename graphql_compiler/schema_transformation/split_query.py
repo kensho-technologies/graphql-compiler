@@ -2,7 +2,7 @@
 from collections import OrderedDict
 from copy import copy
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, Optional, Tuple, Union
+from typing import Dict, FrozenSet, List, Optional, Tuple, TypeVar, Union
 
 from graphql import TypeInfo, TypeInfoVisitor, Visitor, validate, visit
 from graphql.language.ast import (
@@ -37,6 +37,9 @@ from .utils import (
     try_get_ast_by_name_and_type,
     try_get_inline_fragment,
 )
+
+
+AstType = TypeVar("AstType", FieldNode, InlineFragmentNode, OperationDefinitionNode)
 
 
 @dataclass(frozen=True)
@@ -289,6 +292,11 @@ def _split_query_one_level(
     type_info = TypeInfo(merged_schema_descriptor.schema)
 
     operation_definition = get_only_query_definition(query_node.query_ast, GraphQLValidationError)
+    if not isinstance(operation_definition, OperationDefinitionNode):
+        raise AssertionError(
+            f"Expected operation_definition to be an OperationDefinitionNode, but it was of"
+            f"type {type(operation_definition)}. This should be impossible."
+        )
 
     type_info.enter(operation_definition)
     new_operation_definition = _split_query_ast_one_level_recursive(
@@ -297,9 +305,7 @@ def _split_query_one_level(
     type_info.leave(operation_definition)
 
     if new_operation_definition is not operation_definition:
-        new_query_ast = copy(query_node.query_ast)
-        new_query_ast.definitions = [new_operation_definition]
-        query_node.query_ast = new_query_ast
+        query_node.query_ast = DocumentNode(definitions=[new_operation_definition])
 
     # Check resulting AST is valid
     validation_errors = validate(merged_schema_descriptor.schema, query_node.query_ast)
@@ -327,11 +333,11 @@ def _split_query_one_level(
 
 def _split_query_ast_one_level_recursive(
     query_node: SubQueryNode,
-    ast: Union[FieldNode, InlineFragmentNode, OperationDefinitionNode],
+    ast: AstType,
     type_info: TypeInfo,
     edge_to_stitch_fields: Dict[Tuple[str, str], Tuple[str, str]],
     name_assigner: IntermediateOutNameAssigner,
-) -> Union[FieldNode, InlineFragmentNode, OperationDefinitionNode]:
+) -> AstType:
     """Return an AST node with which to replace the input AST in the selections that contain it.
 
     This function examines the selections of the input AST, and recursively calls either
@@ -482,8 +488,10 @@ def _split_query_ast_one_level_recursive_normal_fields(
 
     # Return input, or make copy
     if made_changes:
-        new_selections = _get_selections_from_property_and_vertex_fields(
-            property_fields_map, new_intra_schema_fields
+        new_selections: List[SelectionNode] = list(
+            _get_selections_from_property_and_vertex_fields(
+                property_fields_map, new_intra_schema_fields
+            )
         )
         return new_selections
     else:
@@ -543,7 +551,7 @@ def _process_cross_schema_field(
 
 
 def _split_selections_property_and_vertex(
-    selections: List[Union[FieldNode]],
+    selections: List[Union[SelectionNode]],
     # OrderedDict is unsubscriptable (pylint E1136)
 ) -> Tuple["OrderedDict[str, FieldNode]", List[FieldNode]]:
     """Split input selections into property fields and vertex fields/type coercions.
@@ -565,6 +573,11 @@ def _split_selections_property_and_vertex(
     property_fields_map = OrderedDict()
     vertex_fields = []
     for selection in selections:
+        if not isinstance(selection, FieldNode):
+            raise AssertionError(
+                f"selection is of type {type(selection)}, but was expected to be of type "
+                "FieldNode."
+            )
         if is_property_field_ast(selection):
             name = selection.name.value
             if name in property_fields_map:
@@ -694,7 +707,7 @@ def _get_child_query_node_and_out_name(
 
     # Get existing field with name in child
     existing_child_property_field = try_get_ast_by_name_and_type(
-        child_selections, child_field_name, FieldNode
+        list(child_selections), child_field_name, FieldNode
     )
     # Validate that existing_child_property_field is None or FieldNode.
     # It should be impossible for this to *not* be the case, but check so that mypy is happy.
@@ -715,7 +728,7 @@ def _get_child_query_node_and_out_name(
     )
     # Get new child_selections by replacing or adding in new property field
     child_property_fields_map, child_vertex_fields = _split_selections_property_and_vertex(
-        child_selections
+        list(child_selections)
     )
     child_property_fields_map[child_field_name] = child_property_field
     child_selections = _get_selections_from_property_and_vertex_fields(
@@ -724,7 +737,7 @@ def _get_child_query_node_and_out_name(
     # Wrap around
     # NOTE: if child_type_name does not actually exist as a root field (not all types are
     # required to have a corresponding root vertex field), then this query will be invalid.
-    child_query_ast = _get_query_document(child_type_name, child_selections)
+    child_query_ast = _get_query_document(child_type_name, list(child_selections))
     child_query_node = SubQueryNode(child_query_ast)
 
     return child_query_node, child_output_name
@@ -771,12 +784,8 @@ def _get_property_field(
                 )
             elif directive.name.value == OptionalDirective.name:
                 if (
-                    # TODO: fix mypy error: Argument 1 to "try_get_ast_by_name_and_type" has
-                    # incompatible type "List[DirectiveNode]"; expected "Optional[List[Node]]"
-                    #
-                    # DirectiveNode inherits from Node so this should be okay?
                     try_get_ast_by_name_and_type(
-                        new_field_directives, OptionalDirective.name, DirectiveNode
+                        list(new_field_directives), OptionalDirective.name, DirectiveNode
                     )
                     is None
                 ):
