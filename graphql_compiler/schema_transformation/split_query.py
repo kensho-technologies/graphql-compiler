@@ -2,7 +2,7 @@
 from collections import OrderedDict
 from copy import copy
 from dataclasses import dataclass
-from typing import Any, Dict, FrozenSet, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Sequence, Tuple, TypeVar, Union
 
 from graphql import TypeInfo, TypeInfoVisitor, Visitor, validate, visit
 from graphql.language.ast import (
@@ -236,7 +236,7 @@ def _get_edge_to_stitch_fields(
         if isinstance(type_definition, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)):
             for field_definition in type_definition.fields:
                 stitch_directive = try_get_ast_by_name_and_type(
-                    list(field_definition.directives), "stitch", DirectiveNode
+                    field_definition.directives, "stitch", DirectiveNode
                 )
                 if stitch_directive is not None:
                     if not isinstance(stitch_directive, DirectiveNode):
@@ -562,7 +562,7 @@ def _process_cross_schema_field(
 
 
 def _split_selections_property_and_vertex(
-    selections: List[Union[SelectionNode]],
+    selections: Sequence[Union[SelectionNode]],
     # OrderedDict is unsubscriptable (pylint E1136)
 ) -> Tuple["OrderedDict[str, FieldNode]", List[FieldNode]]:
     """Split input selections into property fields and vertex fields/type coercions.
@@ -718,7 +718,7 @@ def _get_child_query_node_and_out_name(
 
     # Get existing field with name in child
     existing_child_property_field = try_get_ast_by_name_and_type(
-        list(child_selections), child_field_name, FieldNode
+        child_selections, child_field_name, FieldNode
     )
     # Validate that existing_child_property_field is None or FieldNode.
     # It should be impossible for this to *not* be the case, but check so that mypy is happy.
@@ -739,7 +739,7 @@ def _get_child_query_node_and_out_name(
     )
     # Get new child_selections by replacing or adding in new property field
     child_property_fields_map, child_vertex_fields = _split_selections_property_and_vertex(
-        list(child_selections)
+        child_selections
     )
     child_property_fields_map[child_field_name] = child_property_field
     child_selections = _get_selections_from_property_and_vertex_fields(
@@ -748,7 +748,7 @@ def _get_child_query_node_and_out_name(
     # Wrap around
     # NOTE: if child_type_name does not actually exist as a root field (not all types are
     # required to have a corresponding root vertex field), then this query will be invalid.
-    child_query_ast = _get_query_document(child_type_name, list(child_selections))
+    child_query_ast = _get_query_document(child_type_name, child_selections)
     child_query_node = SubQueryNode(child_query_ast)
 
     return child_query_node, child_output_name
@@ -796,7 +796,7 @@ def _get_property_field(
             elif directive.name.value == OptionalDirective.name:
                 if (
                     try_get_ast_by_name_and_type(
-                        list(new_field_directives), OptionalDirective.name, DirectiveNode
+                        new_field_directives, OptionalDirective.name, DirectiveNode
                     )
                     is None
                 ):
@@ -835,7 +835,7 @@ def _get_out_name_optionally_add_output(
     """
     # Check for existing directive
     output_directive = try_get_ast_by_name_and_type(
-        list(field.directives), OutputDirective.name, DirectiveNode
+        field.directives, OutputDirective.name, DirectiveNode
     )
     if output_directive is None:
         # Create and add new directive to field
@@ -886,7 +886,7 @@ def _get_output_directive(out_name: str) -> DirectiveNode:
 
 
 def _get_query_document(
-    root_vertex_field_name: str, root_selections: List[SelectionNode]
+    root_vertex_field_name: str, root_selections: Sequence[SelectionNode]
 ) -> DocumentNode:
     """Return a DocumentNode representing a query with the specified name and selections."""
     return DocumentNode(

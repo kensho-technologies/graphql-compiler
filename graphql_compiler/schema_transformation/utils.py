@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
-from typing import Any, Dict, FrozenSet, List, Optional, Set, Type, TypeVar, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Sequence, Set, Type, TypeVar, Union
 
 from graphql import GraphQLSchema, build_ast_schema, specified_scalar_types
 from graphql.language.ast import (
@@ -289,7 +289,7 @@ def get_custom_scalar_names(schema: GraphQLSchema) -> Set[str]:
 
 
 def try_get_ast_by_name_and_type(
-    asts: Optional[List[Node]], target_name: str, target_type: Type[Node]
+    asts: Optional[Sequence[Node]], target_name: str, target_type: Type[Node]
 ) -> Optional[Node]:
     """Return the ast in the list with the desired name and type, if found.
 
