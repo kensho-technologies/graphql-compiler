@@ -3,6 +3,13 @@ import sys
 from typing import Union
 
 from graphql import GraphQLList, GraphQLNonNull, GraphQLScalarType
+from graphql.language.ast import (
+    BooleanValueNode,
+    EnumValueNode,
+    FloatValueNode,
+    IntValueNode,
+    StringValueNode,
+)
 
 
 # The below code is an import shim for libraries added in Python 3.8: we don't want to conditionally
@@ -36,3 +43,11 @@ QueryArgumentGraphQLType = Union[
     GraphQLNonNull[GraphQLList[GraphQLScalarType]],
     GraphQLNonNull[GraphQLList[GraphQLNonNull[GraphQLScalarType]]],
 ]
+
+ScalarConstantValueNodes = (
+    BooleanValueNode,
+    EnumValueNode,
+    FloatValueNode,
+    IntValueNode,
+    StringValueNode,
+)
