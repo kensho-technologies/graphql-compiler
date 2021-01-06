@@ -39,7 +39,7 @@ def fast_sql_server_reflect(engine, metadata, schema, primary_key_selector=None)
     database_name, schema_name = schema.split(".")
 
     name_pattern = re.compile(r"^[a-zA-Z][_\-a-zA-Z0-9]*")
-    # Sanity check to prevent against SQL injection.
+    # Check to prevent against SQL injection.
     if not name_pattern.match(database_name):
         raise AssertionError("Invalid database name {}".format(database_name))
     if not name_pattern.match(schema_name):
