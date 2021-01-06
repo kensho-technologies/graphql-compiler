@@ -4,10 +4,9 @@ from unittest import TestCase
 
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 
-from graphql_compiler import GraphQLDate, GraphQLDateTime, GraphQLDecimal
-
 from ..compiler.compiler_frontend import OutputMetadata
 from ..post_processing.sql_post_processing import post_process_mssql_folds
+from ..schema import GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .test_helpers import get_sqlalchemy_schema_info
 
 

@@ -13,10 +13,8 @@ from graphql import (
     GraphQLString,
 )
 
-from graphql_compiler.compiler.helpers import strip_non_null_from_type
-from graphql_compiler.global_utils import is_same_type
-
-from .global_utils import assert_set_equality
+from .compiler.helpers import strip_non_null_from_type
+from .global_utils import assert_set_equality, is_same_type
 from .schema import SUPPORTED_SCALAR_TYPES, GraphQLDate, GraphQLDateTime, GraphQLDecimal
 from .typedefs import QueryArgumentGraphQLType
 
