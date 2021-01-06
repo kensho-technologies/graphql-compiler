@@ -2,7 +2,7 @@
 from collections import OrderedDict
 from copy import copy
 from dataclasses import dataclass
-from typing import Dict, FrozenSet, List, Optional, Tuple, TypeVar, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Tuple, TypeVar, Union
 
 from graphql import TypeInfo, TypeInfoVisitor, Visitor, validate, visit
 from graphql.language.ast import (
@@ -21,6 +21,7 @@ from graphql.language.ast import (
     SelectionSetNode,
     StringValueNode,
 )
+from graphql.type.definition import GraphQLOutputType
 import six
 
 from graphql_compiler.typedefs import ScalarConstantValueNodes
@@ -57,7 +58,7 @@ class QueryConnection:
 
 
 class SubQueryNode(object):
-    def __init__(self, query_ast):
+    def __init__(self, query_ast: DocumentNode) -> None:
         """Build a SubQueryNode object representing a piece of a larger query, targeting one schema.
 
         Args:
@@ -95,7 +96,7 @@ class IntermediateOutNameAssigner(object):
 class SchemaIdSetterVisitor(Visitor):
     def __init__(
         self, type_info: TypeInfo, query_node: SubQueryNode, type_name_to_schema_id: Dict[str, str]
-    ):
+    ) -> None:
         """Create a visitor for setting the schema_id of the input query node.
 
         Args:
@@ -108,16 +109,26 @@ class SchemaIdSetterVisitor(Visitor):
         self.query_node = query_node
         self.type_name_to_schema_id = type_name_to_schema_id
 
-    def enter_field(self, *args):
+    def enter_field(
+        self, node: Any, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Check the schema of the type that the field leads to."""
-        child_type_name = strip_non_null_and_list_from_type(self.type_info.get_type()).name
+        type_to_check = self.type_info.get_type()
+        if type_to_check is None:
+            raise AssertionError(
+                "type_to_check is unexpectedly None, but was expected to be one of "
+                f"{GraphQLOutputType}."
+            )
+        child_type_name = strip_non_null_and_list_from_type(type_to_check).name
         self._check_or_set_schema_id(child_type_name)
 
-    def enter_inline_fragment(self, node, *args):
+    def enter_inline_fragment(
+        self, node: InlineFragmentNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
         """Check the schema of the coerced type."""
         self._check_or_set_schema_id(node.type_condition.name.value)
 
-    def _check_or_set_schema_id(self, type_name: str):
+    def _check_or_set_schema_id(self, type_name: str) -> None:
         """Set the schema id of the root node if not yet set, otherwise check schema ids agree.
 
         Args:
