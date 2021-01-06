@@ -374,7 +374,7 @@ def _split_query_ast_one_level_recursive(
     if ast.selection_set is None:
         raise AssertionError("AST's selection_set cannot be None.")
     type_info.enter(ast.selection_set)
-    selections = list(ast.selection_set.selections)
+    selections = ast.selection_set.selections
 
     type_coercion = try_get_inline_fragment(selections)
     if type_coercion is not None:
@@ -386,7 +386,7 @@ def _split_query_ast_one_level_recursive(
         type_info.leave(type_coercion)
 
         if new_type_coercion is type_coercion:
-            new_selections = selections
+            new_selections: Sequence[SelectionNode] = selections
         else:
             new_selections = [new_type_coercion]
     else:
@@ -411,7 +411,7 @@ def _split_query_ast_one_level_recursive_normal_fields(
     type_info: TypeInfo,
     edge_to_stitch_fields: Dict[Tuple[str, str], Tuple[str, str]],
     name_assigner: IntermediateOutNameAssigner,
-) -> List[SelectionNode]:
+) -> Sequence[SelectionNode]:
     """One case of splitting query, selections contains a number of fields, no inline fragments.
 
     The input selections will be divided into three sets: property fields, intra-schema vertex
@@ -486,7 +486,7 @@ def _split_query_ast_one_level_recursive_normal_fields(
         type_info.leave(cross_schema_field)
 
     # Third, process intra schema edges by recursing on them
-    new_intra_schema_fields: List[FieldNode] = []
+    new_intra_schema_fields: List[SelectionNode] = []
     for intra_schema_field in intra_schema_fields:
         type_info.enter(intra_schema_field)
         new_intra_schema_field = _split_query_ast_one_level_recursive(
@@ -499,10 +499,8 @@ def _split_query_ast_one_level_recursive_normal_fields(
 
     # Return input, or make copy
     if made_changes:
-        new_selections: List[SelectionNode] = list(
-            _get_selections_from_property_and_vertex_fields(
-                property_fields_map, new_intra_schema_fields
-            )
+        new_selections: Sequence[SelectionNode] = _get_selections_from_property_and_vertex_fields(
+            property_fields_map, new_intra_schema_fields
         )
         return new_selections
     else:
@@ -513,7 +511,7 @@ def _process_cross_schema_field(
     query_node: SubQueryNode,
     cross_schema_field: FieldNode,
     # OrderedDict is unsubscriptable (pylint E1136)
-    property_fields_map: "OrderedDict[str, FieldNode]",
+    property_fields_map: "OrderedDict[str, SelectionNode]",
     child_type_name: str,
     parent_field_name: str,
     child_field_name: str,
@@ -564,7 +562,7 @@ def _process_cross_schema_field(
 def _split_selections_property_and_vertex(
     selections: Sequence[Union[SelectionNode]],
     # OrderedDict is unsubscriptable (pylint E1136)
-) -> Tuple["OrderedDict[str, FieldNode]", List[FieldNode]]:
+) -> Tuple["OrderedDict[str, SelectionNode]", List[SelectionNode]]:
     """Split input selections into property fields and vertex fields/type coercions.
 
     Args:
@@ -581,8 +579,8 @@ def _split_selections_property_and_vertex(
     """
     if selections is None:
         raise AssertionError("Input selections is None, rather than a list.")
-    property_fields_map = OrderedDict()
-    vertex_fields = []
+    property_fields_map: "OrderedDict[str, SelectionNode]" = OrderedDict()
+    vertex_fields: List[SelectionNode] = []
     for selection in selections:
         if not isinstance(selection, FieldNode):
             raise AssertionError(
@@ -604,7 +602,7 @@ def _split_selections_property_and_vertex(
 
 
 def _split_vertex_fields_intra_and_cross_schema(
-    vertex_fields: List[FieldNode],
+    vertex_fields: List[SelectionNode],
     parent_type_name: str,
     edge_to_stitch_fields: Dict[Tuple[str, str], Tuple[str, str]],
 ) -> Tuple[List[FieldNode], List[FieldNode]]:
@@ -639,9 +637,9 @@ def _split_vertex_fields_intra_and_cross_schema(
 
 def _get_selections_from_property_and_vertex_fields(
     # OrderedDict is unsubscriptable (pylint E1136)
-    property_fields_map: "OrderedDict[str, FieldNode]",
-    vertex_fields: List[FieldNode],
-) -> List[FieldNode]:
+    property_fields_map: "OrderedDict[str, SelectionNode]",
+    vertex_fields: List[SelectionNode],
+) -> List[SelectionNode]:
     """Combine property fields and vertex fields into a list of selections.
 
     Args:
@@ -707,7 +705,7 @@ def _get_child_query_node_and_out_name(
     if type_coercion is not None:
         child_type_name = type_coercion.type_condition.name.value
         child_selection_set = type_coercion.selection_set
-    child_selections: List[FieldNode] = []
+    child_selections: List[SelectionNode] = []
     for child_selection in child_selection_set.selections:
         if not isinstance(child_selection, FieldNode):
             raise AssertionError(
@@ -755,7 +753,7 @@ def _get_child_query_node_and_out_name(
 
 
 def _get_property_field(
-    existing_field: Optional[FieldNode],
+    existing_field: Optional[SelectionNode],
     field_name: str,
     directives_from_edge: Optional[List[DirectiveNode]],
 ) -> FieldNode:
@@ -781,6 +779,10 @@ def _get_property_field(
 
     # Transfer directives from existing field of the same name
     if existing_field is not None:
+        if not isinstance(existing_field, FieldNode):
+            raise AssertionError(
+                f"Expected existing_field to be a FieldNode, but was a {type(existing_field)}."
+            )
         # Existing field, add all its directives
         directives_from_existing_field = existing_field.directives
         if directives_from_existing_field is not None:
@@ -823,7 +825,7 @@ def _get_out_name_optionally_add_output(
     """Return out_name of @output on field, creating new @output if needed.
 
     Args:
-        field: Field that may need an added an @output directive.
+        field: FieldNode that may need an added an @output directive.
         name_assigner: Object used to generate and keep track of names of newly created
                        @output directives.
 
