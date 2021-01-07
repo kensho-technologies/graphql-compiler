@@ -1,5 +1,6 @@
 # Copyright 2020-present Kensho Technologies, LLC.
 """Convert values to their underlying GraphQLType."""
+from datetime import date, datetime
 from types import MappingProxyType
 from typing import Any, Callable, Mapping, Tuple, Type
 
@@ -21,8 +22,8 @@ from .typedefs import QueryArgumentGraphQLType
 
 _ALLOWED_SCALAR_TYPES: Mapping[str, Tuple[Type, ...]] = MappingProxyType(
     {
-        GraphQLDate.name: (str,),
-        GraphQLDateTime.name: (str,),
+        GraphQLDate.name: (str, date),
+        GraphQLDateTime.name: (str, datetime),
         GraphQLFloat.name: (str, float, int),
         GraphQLDecimal.name: (str, float, int),
         GraphQLInt.name: (int, str),
@@ -122,6 +123,18 @@ def deserialize_scalar_value(expected_type: GraphQLScalarType, value: Any) -> An
     if isinstance(value, bool) and not is_same_type(GraphQLBoolean, expected_type):
         raise ValueError(
             f"Cannot deserialize boolean value {value} to non-GraphQLBoolean type {expected_type}."
+        )
+
+    # Explicitly disallow passing datetime objects as date objects.
+    # In Python, datetime subclasses date and therefore datetimes are treated as dates implicitly
+    # by truncating the time and timezone components. However, this is a loss of precision,
+    # and implicitly losing precision like this is undesirable for our purposes.
+    if isinstance(value, datetime) and is_same_type(GraphQLDate, expected_type):
+        raise ValueError(
+            f"Cannot use the datetime object {value} as a GraphQL Date value. While Python "
+            f"datetimes are subclasses of date, the default behavior of simply truncating the time "
+            f"and time zone data is undesirable as an implicit default. Please instead use "
+            f"a date object or a string representing a date in ISO-8601 format."
         )
 
     # Ensure value has an appropriate type and deserialize the value.

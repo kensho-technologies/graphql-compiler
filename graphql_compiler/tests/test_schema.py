@@ -73,9 +73,14 @@ class SchemaTests(unittest.TestCase):
             "1991-12-31": date(1991, 12, 31),
         }
 
-        for iso_date, date_obj in six.iteritems(test_data):
+        # Ensure that all the string representations parse as expected.
+        for iso_date, date_obj in test_data.items():
             self.assertEqual(iso_date, schema.GraphQLDate.serialize(date_obj))
             self.assertEqual(date_obj, schema.GraphQLDate.parse_value(iso_date))
+
+        # Ensure that parsing is the identity function for valid date objects.
+        for date_obj in test_data.values():
+            self.assertEqual(date_obj, schema.GraphQLDate.parse_value(date_obj))
 
     def test_datetime_serialization_and_parsing(self) -> None:
         test_data = {
@@ -85,15 +90,25 @@ class SchemaTests(unittest.TestCase):
             "2008-02-29T22:34:56": datetime(2008, 2, 29, 22, 34, 56),
             # High numbers in all positions, except year and timezone.
             "1991-12-31T23:59:59": datetime(1991, 12, 31, 23, 59, 59),
+            # Fractional seconds.
+            "2021-01-06T12:55:32.123456": datetime(2021, 1, 6, 12, 55, 32, 123456),
         }
 
-        for iso_datetime, datetime_obj in six.iteritems(test_data):
+        # Ensure that all the string representations parse as expected.
+        for iso_datetime, datetime_obj in test_data.items():
             self.assertEqual(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
             self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(iso_datetime))
 
+        # Ensure that parsing is the identity function for valid datetime objects.
+        for datetime_obj in test_data.values():
+            self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(datetime_obj))
+
+        central_eu_tz = pytz.timezone("Europe/Amsterdam")
         invalid_parsing_inputs = {
-            # Non-string.
-            datetime(2017, 1, 1, 0, 0, 0),
+            # Non-string, non-datetime.
+            12345,
+            # Timezone-aware datetime object.
+            datetime(2017, 1, 1, 0, 0, 0, tzinfo=central_eu_tz),
             # Including utc offset.
             "2017-01-01T00:00:00+01:00",
             # Zero utc offset.
@@ -106,7 +121,6 @@ class SchemaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 schema.GraphQLDateTime.parse_value(parsing_input)
 
-        central_eu_tz = pytz.timezone("Europe/Amsterdam")
         invalid_serialization_inputs = {
             # With UTC timezone.
             datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),

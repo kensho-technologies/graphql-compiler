@@ -340,36 +340,47 @@ def _serialize_date(value: Any) -> str:
 
 def _parse_date_value(value: Any) -> date:
     """Deserialize a Date object from its proper ISO-8601 representation."""
-    return arrow.get(value, "YYYY-MM-DD").date()
+    if type(value) == date:
+        # We prefer exact type equality instead of isinstance() because datetime objects
+        # are subclasses of date but are not interchangeable for dates for our purposes.
+        return value
+    elif isinstance(value, str):
+        return arrow.get(value, "YYYY-MM-DD").date()
+    else:
+        raise ValueError(
+            f"Expected a date object or its ISO-8601 string representation. "
+            f"Got {value} of type {type(value)} instead."
+        )
 
 
 def _serialize_datetime(value: Any) -> str:
     """Serialize a DateTime object to its proper ISO-8601 representation."""
-    # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
-    # interchangeable. Rather than using isinstance, we will therefore check for exact type
-    # equality.
-    #
     # We don't allow Arrow objects as input since it seems that Arrow objects are always tz aware.
     # This is supported by the fact that the `.naive` Arrow method returns a datetime object instead
     # of an Arrow object.
-    if type(value) == datetime and value.tzinfo is None:
+    if isinstance(value, datetime) and value.tzinfo is None:
         return value.isoformat()
     else:
         raise ValueError(
-            f"Expected a timezone naive datetime object. Got {value} of type {type(value)} instead."
+            f"Expected a timezone-naive datetime object. Got {value} of type {type(value)} instead."
         )
 
 
 def _parse_datetime_value(value: Any) -> datetime:
     """Deserialize a DateTime object from its proper ISO-8601 representation."""
-    # attempt to parse with microsecond information
-    try:
-        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss")
-    except arrow.parser.ParserMatchError:
-        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss.S")
+    if isinstance(value, datetime) and value.tzinfo is None:
+        return value
+    elif isinstance(value, str):
+        # Attempt to parse with microsecond information if possible.
+        arrow_result = arrow.get(value, ["YYYY-MM-DDTHH:mm:ss.S", "YYYY-MM-DDTHH:mm:ss"])
 
-    # arrow parses datetime naive strings into Arrow objects with a UTC timezone.
-    return arrow_result.naive
+        # Arrow parses datetime naive strings into Arrow objects with a UTC timezone.
+        return arrow_result.naive
+    else:
+        raise ValueError(
+            f"Expected a timezone-naive datetime or its ISO-8601 string representation. "
+            f"Got {value} of type {type(value)} instead."
+        )
 
 
 GraphQLDate = GraphQLScalarType(
@@ -389,10 +400,11 @@ GraphQLDate = GraphQLScalarType(
 GraphQLDateTime = GraphQLScalarType(
     name="DateTime",
     description=(
-        "The `DateTime` scalar type represents timezone-naive second-accuracy timestamps."
+        "The `DateTime` scalar type represents timezone-naive timestamps with microsecond accuracy."
         "Values are serialized following the ISO-8601 datetime format specification, "
-        'for example "2017-03-21T12:34:56". All of these fields must be included, '
-        "including the seconds, and the format followed exactly, or the behavior is undefined."
+        'for example "2017-03-21T12:34:56.012345" or "2017-03-21T12:34:56". All fields down to '
+        "and including seconds must be included, while fractional seconds are optional."
+        "If this format is not followed, the behavior is undefined."
     ),
     serialize=_serialize_datetime,
     parse_value=_parse_datetime_value,
