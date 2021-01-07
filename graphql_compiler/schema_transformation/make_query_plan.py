@@ -54,7 +54,7 @@ class OutputJoinDescriptor:
 
 @dataclass(frozen=True)
 class QueryPlanDescriptor:
-    """"""
+    """Describes a query plan including output join information and intermidate output names."""
 
     # The root of the query plan.
     root_sub_query_plan: SubQueryPlan
