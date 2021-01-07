@@ -1,6 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from collections import namedtuple
 from copy import copy
+from dataclasses import dataclass
+from typing import FrozenSet, List, Optional, Tuple, cast
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -15,45 +16,59 @@ from graphql.language.ast import (
     SelectionSetNode,
     StringValueNode,
 )
+from graphql.pyutils import FrozenList
 
 from ..ast_manipulation import get_only_query_definition
 from ..exceptions import GraphQLValidationError
 from ..schema import FilterDirective, OutputDirective
+from .split_query import AstType, SubQueryNode
 
 
-SubQueryPlan = namedtuple(
-    "SubQueryPlan",
-    (
-        "query_ast",  # Document, representing a piece of the overall query with directives added
-        "schema_id",  # str, identifying the schema that this query piece targets
-        "parent_query_plan",  # SubQueryPlan, the query that the current query depends on
-        "child_query_plans",  # List[SubQueryPlan], the queries that depend on the current query
-    ),
-)
+@dataclass
+class SubQueryPlan:
+    """Query plan for a part of a larger query over a single schema."""
+
+    # Representing a piece of the overall query with directives added.
+    query_ast: DocumentNode
+
+    # Identifier for the schema that this query piece targets.
+    schema_id: Optional[str]
+
+    # The query that the current query depends on, or None if the current query does not
+    # depend on another.
+    parent_query_plan: Optional["SubQueryPlan"]
+
+    # The queries that depend on the current query.
+    child_query_plans: List["SubQueryPlan"]
 
 
-OutputJoinDescriptor = namedtuple(
-    "OutputJoinDescriptor",
-    (
-        "output_names",  # Tuple[str, str], (parent output name, child output name)
-        # May be expanded to have more attributes, e.g. is_optional, describing how the join
-        # should be made
-    ),
-)
+@dataclass(frozen=True)
+class OutputJoinDescriptor:
+    """Description of what outputs should be join and how."""
+
+    # (parent output name, child output name)
+    # May be expanded to have more attributes, e.g. is_optional, describing how the join
+    # should be made.
+    output_names: Tuple[str, str]
 
 
-QueryPlanDescriptor = namedtuple(
-    "QueryPlanDescriptor",
-    (
-        "root_sub_query_plan",  # SubQueryPlan
-        "intermediate_output_names",  # frozenset[str], names of outputs to be removed at the end
-        "output_join_descriptors",
-        # List[OutputJoinDescriptor], describing which outputs should be joined and how
-    ),
-)
+@dataclass(frozen=True)
+class QueryPlanDescriptor:
+    """"""
+
+    # The root of the query plan.
+    root_sub_query_plan: SubQueryPlan
+
+    # Names of outputs to be removed at the end.
+    intermediate_output_names: FrozenSet[str]
+
+    # Describing which outputs should be joined and how.
+    output_join_descriptors: List[OutputJoinDescriptor]
 
 
-def make_query_plan(root_sub_query_node, intermediate_output_names):
+def make_query_plan(
+    root_sub_query_node: SubQueryNode, intermediate_output_names: FrozenSet[str]
+) -> QueryPlanDescriptor:
     """Return a QueryPlanDescriptor, whose query ASTs have @filters added.
 
     For each parent of parent and child SubQueryNodes, a new @filter directive will be added
@@ -65,17 +80,16 @@ def make_query_plan(root_sub_query_node, intermediate_output_names):
     ASTs contained in the input node and its children nodes will not be modified.
 
     Args:
-        root_sub_query_node: SubQueryNode, representing the base of a query split into pieces
-                             that we want to turn into a query plan
-        intermediate_output_names: frozenset[str], names of outputs to be removed at the end
+        root_sub_query_node: representing the base of a query split into pieces
+                             that we want to turn into a query plan.
+        intermediate_output_names: names of outputs to be removed at the end.
 
     Returns:
-        QueryPlanDescriptor namedtuple, containing a tree of SubQueryPlans that wrap
-        around each individual query AST, the set of intermediate output names that are
-        to be removed at the end, and information on which outputs are to be connect to which
-        in what manner
+        QueryPlanDescriptor containing a tree of SubQueryPlans that wrap around each individual
+        query AST, the set of intermediate output names that are to be removed at the end, and
+        information on which outputs are to be connect to which in what manner.
     """
-    output_join_descriptors = []
+    output_join_descriptors: List[OutputJoinDescriptor] = []
 
     root_sub_query_plan = SubQueryPlan(
         query_ast=root_sub_query_node.query_ast,
@@ -93,7 +107,11 @@ def make_query_plan(root_sub_query_node, intermediate_output_names):
     )
 
 
-def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descriptors):
+def _make_query_plan_recursive(
+    sub_query_node: SubQueryNode,
+    sub_query_plan: SubQueryPlan,
+    output_join_descriptors: List[OutputJoinDescriptor],
+) -> None:
     """Recursively copy the structure of sub_query_node onto sub_query_plan.
 
     For each child connection contained in sub_query_node, create a new SubQueryPlan for
@@ -101,12 +119,11 @@ def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descr
     and attach the new SubQueryPlan to the list of children of the input sub-query plan.
 
     Args:
-        sub_query_node: SubQueryNode, whose descendents are copied over onto sub_query_plan.
-                        It is not modified by this function
+        sub_query_node: SubQueryNode, whose child_query_connections are copied over onto
+                        sub_query_plan. It is not modified by this function.
         sub_query_plan: SubQueryPlan, whose list of child query plans and query AST are
-                        modified
-        output_join_descriptors: List[OutputJoinDescriptor], describing which outputs should be
-                                 joined and how
+                        modified.
+        output_join_descriptors: describing which outputs should be joined and how.
 
     """
     # Iterate through child connections of query node
@@ -155,22 +172,22 @@ def _make_query_plan_recursive(sub_query_node, sub_query_plan, output_join_descr
         )
 
 
-def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
+def _add_filter_at_field_with_output(
+    ast: AstType, field_out_name: str, input_filter_name: str
+) -> AstType:
     """Return an AST with @filter added at the field with the specified @output, if found.
 
     Args:
-        ast: Field, InlineFragment, or OperationDefinition, an AST Node type that occurs in
-             the selections of a SelectionSet. It is not modified by this function
-        field_out_name: str, the out_name of an @output directive. This function will create
+        ast: an AST Node type that occurs in the selections of a SelectionSet.
+             It is not modified by this function.
+        field_out_name: the out_name of an @output directive. This function will create
                         a new @filter directive on the field that has an @output directive
-                        with this out_name
-        input_filter_name: str, the name of the local variable in the new @filter directive
-                           created
+                        with this out_name.
+        input_filter_name: the name of the local variable in the new @filter directive created.
 
     Returns:
-        Field, InlineFragment, or OperationDefinition, identical to the input ast except
-        with an @filter added at the specified field if such a field is found. If no changes
-        were made, this is the same object as the input
+        AST node identical to the input AST except with a @filter added at the specified field if
+        such a field is found. If no changes were made, this is the same object as the input.
     """
     if not isinstance(ast, (FieldNode, InlineFragmentNode, OperationDefinitionNode)):
         raise AssertionError(
@@ -187,7 +204,7 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
             new_directives = list(ast.directives)
             new_directives.append(_get_in_collection_filter_directive(input_filter_name))
             new_ast = copy(ast)
-            new_ast.directives = new_directives
+            new_ast.directives = cast(FrozenList, new_directives)
             return new_ast
 
     if ast.selection_set is None:  # Nothing to recurse on
@@ -197,10 +214,18 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
     made_changes = False
     new_selections = []
     for selection in ast.selection_set.selections:
+        # Make sure selection is a FieldNode of InlineFragment and cast to AST type
+        # to make mypy happy.
+        if not isinstance(selection, FieldNode) and not isinstance(selection, InlineFragmentNode):
+            raise AssertionError(
+                f"Unexpected selection type {type(selection)}. Only FieldNodes and "
+                "InlineFragmentNodes are expected."
+            )
+        ast_type_selection = cast(AstType, selection)
         new_selection = _add_filter_at_field_with_output(
-            selection, field_out_name, input_filter_name
+            ast_type_selection, field_out_name, input_filter_name
         )
-        if new_selection is not selection:  # Changes made somewhere down the line
+        if new_selection is not ast_type_selection:  # Changes made somewhere down the line
             if not made_changes:
                 made_changes = True
             else:
@@ -221,18 +246,23 @@ def _add_filter_at_field_with_output(ast, field_out_name, input_filter_name):
         return ast
 
 
-def _is_output_directive_with_name(directive, out_name):
+def _is_output_directive_with_name(directive: DirectiveNode, out_name: str) -> bool:
     """Return whether or not the input is an @output directive with the desired out_name."""
     if not isinstance(directive, DirectiveNode):
         raise AssertionError('Input "{}" is not a directive.'.format(directive))
+    # The directive argument must be a string since output directives must have a
+    # non-null string `out_name`.
+    directive_out_name_value_node = directive.arguments[0].value
+    if not isinstance(directive_out_name_value_node, StringValueNode):
+        return False
     return (
         directive.name.value == OutputDirective.name
-        and directive.arguments[0].value.value == out_name
+        and directive_out_name_value_node.value == out_name
     )
 
 
-def _get_in_collection_filter_directive(input_filter_name):
-    """Create a @filter directive with in_collecion operation and the desired variable name."""
+def _get_in_collection_filter_directive(input_filter_name: str) -> DirectiveNode:
+    """Create a @filter directive with in_collection operation and the desired variable name."""
     return DirectiveNode(
         name=NameNode(value=FilterDirective.name),
         arguments=[
@@ -252,7 +282,7 @@ def _get_in_collection_filter_directive(input_filter_name):
     )
 
 
-def print_query_plan(query_plan_descriptor, indentation_depth=4):
+def print_query_plan(query_plan_descriptor: QueryPlanDescriptor, indentation_depth: int = 4) -> str:
     """Return a string describing query plan."""
     query_plan_strings = [""]
     plan_and_depth = _get_plan_and_depth_in_dfs_order(query_plan_descriptor.root_sub_query_plan)
@@ -274,7 +304,7 @@ def print_query_plan(query_plan_descriptor, indentation_depth=4):
     return "".join(query_plan_strings)
 
 
-def _get_plan_and_depth_in_dfs_order(query_plan):
+def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[SubQueryPlan, int]]:
     """Return a list of topologically sorted (query plan, depth) tuples."""
 
     def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
