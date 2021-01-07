@@ -130,19 +130,19 @@ vertex and its immediate neighbors along the given edge.
     }
 
     \"\"\"
-    The `Date` scalar type represents day-accuracy date objects.Values are
-    serialized following the ISO-8601 datetime format specification, for example
-    "2017-03-21". The year, month and day fields must be included, and the format
-    followed exactly, or the behavior is undefined.
+    The `Date` scalar type represents day-accuracy date objects.
+    Values are serialized following the ISO-8601 datetime format specification,
+    for example "2017-03-21". The year, month and day fields must be included,
+    and the format followed exactly, or the behavior is undefined.
     \"\"\"
     scalar Date
 
     \"\"\"
-    The `DateTime` scalar type represents timezone-naive second-accuracy
-    timestamps.Values are serialized following the ISO-8601 datetime format
-    specification, for example "2017-03-21T12:34:56". All of these fields must
-    be included, including the seconds, and the format followed
-    exactly, or the behavior is undefined.
+    The `DateTime` scalar type represents timezone-naive timestamps with microsecond accuracy.
+    Values are serialized following the ISO-8601 datetime format specification,
+    for example "2017-03-21T12:34:56.012345" or "2017-03-21T12:34:56". All fields down to
+    and including seconds must be included, while fractional seconds are optional.
+    If this format is not followed, the behavior is undefined.
     \"\"\"
     scalar DateTime
 
