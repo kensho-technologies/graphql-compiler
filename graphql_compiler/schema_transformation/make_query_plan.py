@@ -44,7 +44,7 @@ class SubQueryPlan:
 
 @dataclass(frozen=True)
 class OutputJoinDescriptor:
-    """Description of what outputs should be join and how."""
+    """Description of what outputs should be joined and how."""
 
     # (parent output name, child output name)
     # May be expanded to have more attributes, e.g. is_optional, describing how the join
@@ -54,7 +54,7 @@ class OutputJoinDescriptor:
 
 @dataclass(frozen=True)
 class QueryPlanDescriptor:
-    """Describes a query plan including output join information and intermidate output names."""
+    """Describes a query plan including output join information and intermediate output names."""
 
     # The root of the query plan.
     root_sub_query_plan: SubQueryPlan
@@ -178,7 +178,7 @@ def _add_filter_at_field_with_output(
     """Return an AST with @filter added at the field with the specified @output, if found.
 
     Args:
-        ast: an AST Node type that occurs in the selections of a SelectionSet.
+        ast: AST Node type that occurs in the selections of a SelectionSet.
              It is not modified by this function.
         field_out_name: the out_name of an @output directive. This function will create
                         a new @filter directive on the field that has an @output directive
