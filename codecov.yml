@@ -5,10 +5,5 @@ coverage:
         target: auto
         threshold: 0.03%
         base: auto
-  flags:
-    tests:
-      paths:
-        - graphql_compiler/tests/
   comment:
-    tests:
-      after_n_builds: 8 # Prevent early, spurious Codecov reports before all tests finish: https://github.com/kensho-technologies/graphql-compiler/pull/806#issuecomment-730622647. 8 is calculated from the number of jobs to run, which is specified in the .github/workflows/tests.yml file (1 job per combination of python-version and markers)
+    after_n_builds: 8 # Prevent early, spurious Codecov reports before all tests finish: https://github.com/kensho-technologies/graphql-compiler/pull/806#issuecomment-730622647. 8 is calculated from the number of jobs to run, which is specified in the .github/workflows/tests_and_lint.yml file (1 job per combination of python-version and markers)
