@@ -299,7 +299,7 @@ def _get_class_fields(class_definition):
     class_fields = class_definition.get("customFields")
     if class_fields is None:
         # OrientDB likes to make empty collections be None instead.
-        # We convert this field back to an empty dict, for our general sanity.
+        # We convert this field back to an empty dict, for our general happiness.
         class_fields = dict()
     return class_fields
 

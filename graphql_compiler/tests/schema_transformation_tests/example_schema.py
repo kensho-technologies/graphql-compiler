@@ -18,7 +18,7 @@ basic_schema = parse(SCHEMA_TEXT)
 
 
 basic_renamed_schema = rename_schema(
-    basic_schema, {"Animal": "NewAnimal", "Entity": "NewEntity", "BirthEvent": "NewBirthEvent"}
+    basic_schema, {"Animal": "NewAnimal", "Entity": "NewEntity", "BirthEvent": "NewBirthEvent"}, {}
 )
 
 

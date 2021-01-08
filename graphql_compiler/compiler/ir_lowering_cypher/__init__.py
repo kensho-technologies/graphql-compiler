@@ -5,7 +5,7 @@ from ..ir_lowering_common.common import (
     merge_consecutive_filter_clauses,
     optimize_boolean_expression_comparisons,
 )
-from ..ir_sanity_checks import sanity_check_ir_blocks_from_frontend
+from ..ir_self_consistency_checks import self_consistency_check_ir_blocks_from_frontend
 from .ir_lowering import (
     insert_explicit_type_bounds,
     move_filters_in_optional_locations_to_global_operations,
@@ -30,7 +30,7 @@ def lower_ir(schema_info, ir):
     Returns:
         CypherQuery object
     """
-    sanity_check_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
+    self_consistency_check_ir_blocks_from_frontend(ir.ir_blocks, ir.query_metadata_table)
 
     ir_blocks = insert_explicit_type_bounds(
         ir.ir_blocks,

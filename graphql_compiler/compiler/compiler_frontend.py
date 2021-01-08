@@ -59,7 +59,8 @@ To get from GraphQL AST to IR, we follow the following pattern:
     step F-2. Emit a type coercion block if appropriate, then recurse into the fragment's selection.
     ***************
 """
-from typing import Dict, List, NamedTuple, Optional
+from dataclasses import dataclass
+from typing import Dict, List, Optional
 
 from graphql import (
     DocumentNode,
@@ -132,7 +133,8 @@ from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo,
 from .validation import validate_schema_and_query_ast
 
 
-class OutputMetadata(NamedTuple):
+@dataclass(frozen=True)
+class OutputMetadata:
     """Metadata about a query's outputs."""
 
     # The type of the output value.
@@ -161,7 +163,8 @@ class OutputMetadata(NamedTuple):
         return not self.__eq__(other)
 
 
-class IrAndMetadata(NamedTuple):
+@dataclass(frozen=True)
+class IrAndMetadata:
     """Internal representation (IR) and metadata for a particular schema and query combination."""
 
     # List of basic block objects describing the query.
@@ -540,8 +543,9 @@ def _compile_vertex_ast(
             # Invariant: There must always be a marked location corresponding to the query position
             # immediately before any optional Traverse.
             #
-            # This invariant is verified in the IR sanity checks module (ir_sanity_checks.py),
-            # in the function named _sanity_check_mark_location_preceding_optional_traverse().
+            # This invariant is verified in the IR self-consistency check module
+            # (ir_self_consistency_checks.py), in the function named
+            # _assert_mark_location_preceding_optional_traverse().
             #
             # This marked location is the one that the @optional directive's corresponding
             # optional Backtrack will jump back to. If such a marked location isn't present,
@@ -776,13 +780,13 @@ def _compile_ast_node_to_ir(schema, current_schema_type, ast, location, context)
         )
 
     if location.field is not None:  # we're at a property field
-        # sanity-check: cannot have an inline fragment at a property field
+        # self-consistency check: cannot have an inline fragment at a property field
         if fragment_exists:
             raise AssertionError(
                 "Found inline fragment at a property field: {} {}".format(location, fragment)
             )
 
-        # sanity-check: locations at properties don't have their own property locations
+        # self-consistency check: locations at properties don't have their own property locations
         if len(property_fields) > 0:
             raise AssertionError(
                 "Found property fields on a property field: "

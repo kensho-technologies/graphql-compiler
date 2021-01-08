@@ -1,4 +1,5 @@
 [run]
+dynamic_context = test_function
 omit =
     # No coverage for tests
     graphql_compiler/tests/*

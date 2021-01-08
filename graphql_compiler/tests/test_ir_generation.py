@@ -1805,6 +1805,45 @@ class IrGenerationTests(unittest.TestCase):
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
 
+    def test_inwards_recurse_after_traverse(self):
+        test_data = test_input_data.inwards_recurse_after_traverse()
+
+        base_location = helpers.Location(("Species",))
+        child_location = base_location.navigate_to_subpath("in_Animal_OfSpecies")
+        recurse_location = child_location.navigate_to_subpath("in_Animal_ParentOf")
+
+        expected_blocks = [
+            blocks.QueryRoot({"Species"}),
+            blocks.MarkLocation(base_location),
+            blocks.Traverse("in", "Animal_OfSpecies"),
+            blocks.MarkLocation(child_location),
+            blocks.Recurse("in", "Animal_ParentOf", 1),
+            blocks.MarkLocation(recurse_location),
+            blocks.Backtrack(child_location),
+            blocks.Backtrack(base_location),
+            blocks.GlobalOperationsStart(),
+            blocks.ConstructResult(
+                {
+                    "species_name": expressions.OutputContextField(
+                        base_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "animal_name": expressions.OutputContextField(
+                        child_location.navigate_to_field("name"), GraphQLString
+                    ),
+                    "ancestor_name": expressions.OutputContextField(
+                        recurse_location.navigate_to_field("name"), GraphQLString
+                    ),
+                }
+            ),
+        ]
+        expected_location_types = {
+            base_location: "Species",
+            child_location: "Animal",
+            recurse_location: "Animal",
+        }
+
+        check_test_data(self, test_data, expected_blocks, expected_location_types)
+
     def test_recurse_with_new_output_inside_recursion_and_filter_at_root(self):
         test_data = test_input_data.recurse_with_new_output_inside_recursion_and_filter_at_root()
 
