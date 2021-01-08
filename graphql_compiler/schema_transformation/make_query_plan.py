@@ -250,15 +250,24 @@ def _is_output_directive_with_name(directive: DirectiveNode, out_name: str) -> b
     """Return whether or not the input is an @output directive with the desired out_name."""
     if not isinstance(directive, DirectiveNode):
         raise AssertionError('Input "{}" is not a directive.'.format(directive))
-    # The directive argument must be a string since output directives must have a
+    # Check whether or not this directive is an output directive.
+    if directive.name.value != OutputDirective.name:
+        return False
+    # Ensure the output directive has arguments since @output takes an `out_name`.
+    if not directive.arguments:
+        raise AssertionError(
+            "directive is an OutputDirective, but has no arguments. This should be impossible! "
+            f"directive: {directive}"
+        )
+    # Ensure he output directive argument is a string since output directives must have a
     # non-null string `out_name`.
     directive_out_name_value_node = directive.arguments[0].value
     if not isinstance(directive_out_name_value_node, StringValueNode):
-        return False
-    return (
-        directive.name.value == OutputDirective.name
-        and directive_out_name_value_node.value == out_name
-    )
+        raise AssertionError(
+            "directive is an OutputDirective, but has a non-string argument. "
+            f"This should be impossible! directive: {directive}"
+        )
+    return directive_out_name_value_node.value == out_name
 
 
 def _get_in_collection_filter_directive(input_filter_name: str) -> DirectiveNode:
