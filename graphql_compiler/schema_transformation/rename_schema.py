@@ -1116,6 +1116,9 @@ class CascadingSuppressionCheckVisitor(Visitor):
             # Therefore, we don't need to explicitly suppress the field as well and this should not
             # raise errors.
             return IDLE
+        if self.field_renamings.get(self.current_type, {}).get(field_name, {field_name}) == set():
+            # Field was also suppressed so this should not raise errors.
+            return IDLE
         if self.current_type not in self.fields_to_suppress:
             self.fields_to_suppress[self.current_type] = {}
         self.fields_to_suppress[self.current_type][field_name] = field_type
