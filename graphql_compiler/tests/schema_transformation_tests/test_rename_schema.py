@@ -1140,6 +1140,45 @@ class TestRenameSchema(unittest.TestCase):
                 parse(ISS.multiple_fields_schema), {"Dog": None}, {}
             )  # The type named Human contains a field of type Dog.
 
+    def test_suppress_field_prevent_cascading_suppression_error(self) -> None:
+        renamed_schema = rename_schema(
+            parse(ISS.multiple_fields_schema), {"Dog": None}, {"Human": {"pet": set()}}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @output(
+                \"\"\"What to designate the output field generated from this property field.\"\"\"
+                out_name: String!
+            ) on FIELD
+
+            type Human  {
+              id: String
+              name: String
+              age: Int
+              droid: Droid
+            }
+
+            type Droid {
+              id: String
+              model: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+              Droid: Droid
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
+
     def test_field_of_suppressed_type_in_suppressed_type(self) -> None:
         # The schema contains an object type that contains a field of the type Human. Normally,
         # suppressing the type named Human would cause a CascadingSuppressionError because the
