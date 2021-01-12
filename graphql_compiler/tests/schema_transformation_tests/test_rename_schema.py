@@ -615,8 +615,65 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_scalar_rename(self) -> None:
-        with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.scalar_schema), {"Date": "NewDate"}, {})
+        renamed_schema = rename_schema(parse(ISS.scalar_schema), {"Date": "NewDate"}, {})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              id: String
+              birthday: NewDate
+            }
+
+            scalar NewDate
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual(
+            {"NewDate": "Date"},
+            renamed_schema.reverse_name_map,
+        )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
+
+    def test_scalar_suppress(self) -> None:
+        renamed_schema = rename_schema(
+            parse(ISS.scalar_schema), {"Date": None}, {"Human": {"birthday": set()}}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type Human {
+              id: String
+            }
+
+            type SchemaQuery {
+              Human: Human
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual(
+            {},
+            renamed_schema.reverse_name_map,
+        )
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_builtin_rename(self) -> None:
         with self.assertRaises(NotImplementedError):

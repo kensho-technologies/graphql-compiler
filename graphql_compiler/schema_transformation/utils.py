@@ -23,7 +23,6 @@ from graphql.language.ast import (
     UnionTypeDefinitionNode,
 )
 from graphql.language.visitor import Visitor, visit
-from graphql.type.definition import GraphQLScalarType
 from graphql.utilities.assert_valid_name import re_name
 from graphql.validation import validate
 import six
@@ -299,6 +298,7 @@ RenameTypes = Union[
     InterfaceTypeDefinitionNode,
     NamedTypeNode,
     ObjectTypeDefinitionNode,
+    ScalarTypeDefinitionNode,
     UnionTypeDefinitionNode,
 ]
 RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
@@ -369,27 +369,6 @@ def get_query_type_name(schema: GraphQLSchema) -> str:
             "Schema's query_type field is None, even though the compiler is read-only."
         )
     return schema.query_type.name
-
-
-def get_custom_scalar_names(schema: GraphQLSchema) -> Set[str]:
-    """Get names of all custom scalars used in the input schema.
-
-    Includes all user defined scalars; excludes builtin scalars.
-
-    Note: If the user defined a scalar that shares its name with a builtin introspection type
-    (such as __Schema, __Directive, etc), it will not be listed in type_map and thus will not
-    be included in the output.
-
-    Returns:
-        set of names of scalars used in the schema
-    """
-    type_map = schema.type_map
-    custom_scalar_names = {
-        type_name
-        for type_name, type_object in six.iteritems(type_map)
-        if isinstance(type_object, GraphQLScalarType) and type_name not in builtin_scalar_type_names
-    }
-    return custom_scalar_names
 
 
 def try_get_ast_by_name_and_type(
@@ -488,6 +467,7 @@ def get_copy_of_node_with_new_name(node: RenameNodesT, new_name: str) -> RenameN
             "InterfaceTypeDefinitionNode",
             "NamedTypeNode",
             "ObjectTypeDefinitionNode",
+            "ScalarTypeDefinitionNode",
             "UnionTypeDefinitionNode",
         )
     )
