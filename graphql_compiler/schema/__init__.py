@@ -6,7 +6,8 @@ from hashlib import sha256
 from itertools import chain
 from typing import Any, FrozenSet, Iterable
 
-from ciso8601 import parse_datetime
+# C-based module confuses pylint, which is why we disable the check below.
+from ciso8601 import parse_datetime  # pylint: disable=no-name-in-module
 from graphql import (
     DirectiveLocation,
     GraphQLArgument,

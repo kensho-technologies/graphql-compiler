@@ -14,7 +14,7 @@ redis = ">=3.2.1,<4"
 redisgraph = ">=1.7,<1.9"
 
 # Linters and other development tools
-bandit = ">=1.5.1,<2"
+bandit = ">=1.5.1,<1.7"  # 1.7 has a blocking regression: https://github.com/PyCQA/bandit/issues/658
 black = "==20.8b1"  # This is still marked as a beta release, pin it explicitly: https://github.com/pypa/pipenv/issues/1760
 codecov = ">=2.0.15,<3"
 flake8 = ">=3.6.0,<4"
