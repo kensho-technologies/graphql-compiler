@@ -378,7 +378,7 @@ def _serialize_datetime(value: Any) -> str:
 
 
 def _parse_datetime_value(value: Any) -> datetime:
-    """Deserialize a DateTime object from its proper ISO-8601 representation."""
+    """Deserialize a DateTime object from a date/datetime or a ISO-8601 string representation."""
     if isinstance(value, datetime) and value.tzinfo is None:
         return value
     elif isinstance(value, str):
@@ -392,6 +392,15 @@ def _parse_datetime_value(value: Any) -> datetime:
             )
 
         return dt
+    elif type(value) == date:
+        # The date type is a supertype of datetime. We check for exact type equality
+        # rather than using isinstance(), to avoid having this branch get hit
+        # by timezone-aware datetimes (i.e. ones that fail the value.tzinfo is None check above).
+        #
+        # This is a widening conversion (there's no loss of precision) so we allow it to be implicit
+        # since use ciso8601 parsing logic for parsing datetimes, and ciso8601 successfully parses
+        # datetimes that only have data down to day precision.
+        return datetime(value.year, value.month, value.day)
     else:
         raise ValueError(
             f"Expected a timezone-naive datetime or its ISO-8601 string representation. "

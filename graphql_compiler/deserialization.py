@@ -23,7 +23,7 @@ from .typedefs import QueryArgumentGraphQLType
 _ALLOWED_SCALAR_TYPES: Mapping[str, Tuple[Type, ...]] = MappingProxyType(
     {
         GraphQLDate.name: (str, date),
-        GraphQLDateTime.name: (str, datetime),
+        GraphQLDateTime.name: (str, date, datetime),
         GraphQLFloat.name: (str, float, int),
         GraphQLDecimal.name: (str, float, int),
         GraphQLInt.name: (int, str),

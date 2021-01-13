@@ -103,6 +103,11 @@ class SchemaTests(unittest.TestCase):
         for datetime_obj in test_data.values():
             self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(datetime_obj))
 
+        # Special case:
+        # Date inputs support an implicit widening conversion, so we allow it
+        # since there is no loss of precision.
+        self.assertEqual(datetime(2017, 1, 12), schema.GraphQLDateTime.parse_value(date(2017, 1, 12)))
+
         central_eu_tz = pytz.timezone("Europe/Amsterdam")
         invalid_parsing_inputs = {
             # Non-string, non-datetime.
@@ -128,8 +133,6 @@ class SchemaTests(unittest.TestCase):
             # N.B.: See the link below to understand why we use localize() to set the time zone.
             # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
             central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
-            # Date instead of datetime.
-            date(2017, 1, 1),
         }
 
         for serialization_input in invalid_serialization_inputs:

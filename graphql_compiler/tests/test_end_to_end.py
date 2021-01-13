@@ -281,6 +281,11 @@ class QueryFormattingTests(unittest.TestCase):
         value = deserialize_argument("birth_time", GraphQLDateTime, "2000-02-29T13:02:27.0018349")
         self.assertEqual(datetime.datetime(2000, 2, 29, 13, 2, 27, 1834), value)
 
+        # Allow dates to be implicitly converted into datetimes, since this is a lossless,
+        # widening conversion.
+        value = deserialize_argument("birth_time", GraphQLDateTime, datetime.date(2000, 2, 29))
+        self.assertEqual(datetime.datetime(2000, 2, 29), value)
+
         # With timezone
         with self.assertRaises(GraphQLInvalidArgumentError):
             deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05T03:20:55+00:00")
