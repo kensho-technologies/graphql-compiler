@@ -351,7 +351,13 @@ def _parse_date_value(value: Any) -> date:
         # We don't want our parsing to implicitly lose precision, so before we convert the parsed
         # datetime into a date value, we just assert that these fields are set as expected.
         dt = parse_datetime(value)  # This will raise ValueError in case of bad ISO 8601 formatting.
-        if dt.hour != 0 or dt.minute != 0 or dt.second != 0 or dt.microsecond != 0 or dt.tzinfo is not None:
+        if (
+            dt.hour != 0
+            or dt.minute != 0
+            or dt.second != 0
+            or dt.microsecond != 0
+            or dt.tzinfo is not None
+        ):
             raise ValueError(
                 f"Expected an ISO-8601 date string, but got a datetime string with a non-empty "
                 f"time component. This is not supported, since converting it to a date would "

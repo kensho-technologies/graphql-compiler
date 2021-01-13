@@ -106,7 +106,9 @@ class SchemaTests(unittest.TestCase):
         # Special case:
         # Date inputs support an implicit widening conversion, so we allow it
         # since there is no loss of precision.
-        self.assertEqual(datetime(2017, 1, 12), schema.GraphQLDateTime.parse_value(date(2017, 1, 12)))
+        self.assertEqual(
+            datetime(2017, 1, 12), schema.GraphQLDateTime.parse_value(date(2017, 1, 12))
+        )
 
         central_eu_tz = pytz.timezone("Europe/Amsterdam")
         invalid_parsing_inputs = {
