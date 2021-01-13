@@ -4,7 +4,6 @@ import datetime
 import decimal
 from typing import Any, Collection, Dict, Mapping, NoReturn, Type
 
-import arrow
 from graphql import (
     GraphQLBoolean,
     GraphQLFloat,
@@ -102,8 +101,8 @@ def validate_argument_type(name: str, expected_type: QueryArgumentGraphQLType, v
         except ValueError as e:
             raise GraphQLInvalidArgumentError(e)
     elif is_same_type(GraphQLDateTime, stripped_type):
-        if not isinstance(value, (datetime.date, arrow.Arrow)):
-            _raise_invalid_type_error(name, (datetime.date, arrow.Arrow), value)
+        if not isinstance(value, datetime.datetime):
+            _raise_invalid_type_error(name, (datetime.datetime,), value)
         try:
             GraphQLDateTime.serialize(value)
         except ValueError as e:

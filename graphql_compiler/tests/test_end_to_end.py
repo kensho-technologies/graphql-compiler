@@ -272,9 +272,14 @@ class QueryFormattingTests(unittest.TestCase):
         self.assertEqual(datetime.date(2014, 2, 5), value)
 
     def test_datetime_deserialization(self) -> None:
-        # No time provided
-        with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05")
+        # No time provided, but still acceptable with zero time components.
+        value = deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05")
+        self.assertEqual(datetime.datetime(2014, 2, 5), value)
+
+        # Time component with excess precision is truncated (not rounded!) down to microseconds.
+        # This example has 7 decimal places, whereas Python supports a maximum of 6.
+        value = deserialize_argument("birth_time", GraphQLDateTime, "2000-02-29T13:02:27.0018349")
+        self.assertEqual(datetime.datetime(2000, 2, 29, 13, 2, 27, 1834), value)
 
         # With timezone
         with self.assertRaises(GraphQLInvalidArgumentError):

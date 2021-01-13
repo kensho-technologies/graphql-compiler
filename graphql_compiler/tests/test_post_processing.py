@@ -320,7 +320,7 @@ class MssqlXmlPathTests(TestCase):
             {
                 "child_datetime_fields": [
                     datetime.datetime(2020, 1, 1, 5, 45),
-                    datetime.datetime(2000, 2, 29, 13, 2, 27, 1835),
+                    datetime.datetime(2000, 2, 29, 13, 2, 27, 1834),  # truncated, not rounded
                     None,
                 ],
             }
