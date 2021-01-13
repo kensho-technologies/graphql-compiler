@@ -14,7 +14,6 @@ from graphql import (
     GraphQLScalarType,
     GraphQLString,
 )
-import pytz
 import six
 
 from .. import graphql_to_gremlin, graphql_to_match
@@ -227,9 +226,16 @@ class QueryFormattingTests(unittest.TestCase):
                 (
                     "2007-12-06T16:29:43",
                     datetime.date(2007, 12, 6),
-                    datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.utc),
+                    datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=datetime.timezone.utc),
                     datetime.datetime(
-                        2009, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.timezone("US/Eastern")
+                        2009,
+                        12,
+                        6,
+                        16,
+                        29,
+                        43,
+                        79043,
+                        tzinfo=datetime.timezone(datetime.timedelta(hours=-4), name="US/Eastern"),
                     ),
                 ),
             ),

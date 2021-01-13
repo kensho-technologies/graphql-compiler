@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Tests that vet the test schema against the schema data in the package."""
 from collections import OrderedDict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import re
 import unittest
@@ -9,7 +9,6 @@ import unittest
 from graphql import build_ast_schema, parse
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
 from graphql.utilities import print_schema
-import pytz
 import six
 
 from .. import schema
@@ -110,7 +109,7 @@ class SchemaTests(unittest.TestCase):
             datetime(2017, 1, 12), schema.GraphQLDateTime.parse_value(date(2017, 1, 12))
         )
 
-        central_eu_tz = pytz.timezone("Europe/Amsterdam")
+        central_eu_tz = timezone(timedelta(hours=1), name="Europe/Amsterdam")
         invalid_parsing_inputs = {
             # Non-string, non-datetime.
             12345,
@@ -130,11 +129,9 @@ class SchemaTests(unittest.TestCase):
 
         invalid_serialization_inputs = {
             # With UTC timezone.
-            datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
+            datetime(2017, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             # With non-UTC timezone.
-            # N.B.: See the link below to understand why we use localize() to set the time zone.
-            # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
-            central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
+            datetime(2017, 1, 1, 1, 0, 0, tzinfo=central_eu_tz),
         }
 
         for serialization_input in invalid_serialization_inputs:
