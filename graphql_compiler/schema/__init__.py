@@ -360,16 +360,16 @@ def _parse_date_value(value: Any) -> date:
             or dt.tzinfo is not None
         ):
             raise ValueError(
-                f"Expected an ISO-8601 date string, but got a datetime string with a non-empty "
-                f"time component. This is not supported, since converting it to a date would "
-                f"result in an implicit loss of precision. Received value {repr(value)}, "
-                f"parsed as {dt}."
+                f"Expected an ISO-8601 date string in 'YYYY-MM-DD' format, but got a datetime "
+                f"string with a non-empty time component. This is not supported, since converting "
+                f"it to a date would result in an implicit loss of precision. Received value "
+                f"{repr(value)}, parsed as {dt}."
             )
 
         return dt.date()
     else:
         raise ValueError(
-            f"Expected a date object or its ISO-8601 string representation. "
+            f"Expected a date object or its ISO-8601 'YYYY-MM-DD' string representation. "
             f"Got {value} of type {type(value)} instead."
         )
 
@@ -410,8 +410,8 @@ def _parse_datetime_value(value: Any) -> datetime:
         return datetime(value.year, value.month, value.day)
     else:
         raise ValueError(
-            f"Expected a timezone-naive datetime or its ISO-8601 string representation. "
-            f"Got {value} of type {type(value)} instead."
+            f"Expected a timezone-naive datetime or an ISO-8601 string representation parseable "
+            f"by the ciso8601 library. Got {value} of type {type(value)} instead."
         )
 
 

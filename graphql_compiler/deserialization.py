@@ -134,7 +134,7 @@ def deserialize_scalar_value(expected_type: GraphQLScalarType, value: Any) -> An
             f"Cannot use the datetime object {value} as a GraphQL Date value. While Python "
             f"datetimes are subclasses of date, the default behavior of simply truncating the time "
             f"and time zone data is undesirable as an implicit default. Please instead use "
-            f"a date object or a string representing a date in ISO-8601 format."
+            f"a date object or a string representing a date in ISO-8601 'YYYY-MM-DD' format."
         )
 
     # Ensure value has an appropriate type and deserialize the value.
