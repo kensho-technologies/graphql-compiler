@@ -6,7 +6,8 @@ from hashlib import sha256
 from itertools import chain
 from typing import Any, FrozenSet, Iterable
 
-import arrow
+# C-based module confuses pylint, which is why we disable the check below.
+from ciso8601 import parse_datetime  # pylint: disable=no-name-in-module
 from graphql import (
     DirectiveLocation,
     GraphQLArgument,
@@ -340,36 +341,78 @@ def _serialize_date(value: Any) -> str:
 
 def _parse_date_value(value: Any) -> date:
     """Deserialize a Date object from its proper ISO-8601 representation."""
-    return arrow.get(value, "YYYY-MM-DD").date()
+    if type(value) == date:
+        # We prefer exact type equality instead of isinstance() because datetime objects
+        # are subclasses of date but are not interchangeable for dates for our purposes.
+        return value
+    elif isinstance(value, str):
+        # ciso8601 only supports parsing into datetime objects, not date objects.
+        # This is not a problem in itself: "YYYY-MM-DD" strings will get parsed into datetimes
+        # with hour/minute/second/microsecond set to 0, and tzinfo=None.
+        # We don't want our parsing to implicitly lose precision, so before we convert the parsed
+        # datetime into a date value, we just assert that these fields are set as expected.
+        dt = parse_datetime(value)  # This will raise ValueError in case of bad ISO 8601 formatting.
+        if (
+            dt.hour != 0
+            or dt.minute != 0
+            or dt.second != 0
+            or dt.microsecond != 0
+            or dt.tzinfo is not None
+        ):
+            raise ValueError(
+                f"Expected an ISO-8601 date string in 'YYYY-MM-DD' format, but got a datetime "
+                f"string with a non-empty time component. This is not supported, since converting "
+                f"it to a date would result in an implicit loss of precision. Received value "
+                f"{repr(value)}, parsed as {dt}."
+            )
+
+        return dt.date()
+    else:
+        raise ValueError(
+            f"Expected a date object or its ISO-8601 'YYYY-MM-DD' string representation. "
+            f"Got {value} of type {type(value)} instead."
+        )
 
 
 def _serialize_datetime(value: Any) -> str:
     """Serialize a DateTime object to its proper ISO-8601 representation."""
-    # Python datetime.datetime is a subclass of datetime.date, but in this case, the two are not
-    # interchangeable. Rather than using isinstance, we will therefore check for exact type
-    # equality.
-    #
-    # We don't allow Arrow objects as input since it seems that Arrow objects are always tz aware.
-    # This is supported by the fact that the `.naive` Arrow method returns a datetime object instead
-    # of an Arrow object.
-    if type(value) == datetime and value.tzinfo is None:
+    if isinstance(value, datetime) and value.tzinfo is None:
         return value.isoformat()
     else:
         raise ValueError(
-            f"Expected a timezone naive datetime object. Got {value} of type {type(value)} instead."
+            f"Expected a timezone-naive datetime object. Got {value} of type {type(value)} instead."
         )
 
 
 def _parse_datetime_value(value: Any) -> datetime:
-    """Deserialize a DateTime object from its proper ISO-8601 representation."""
-    # attempt to parse with microsecond information
-    try:
-        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss")
-    except arrow.parser.ParserMatchError:
-        arrow_result = arrow.get(value, "YYYY-MM-DDTHH:mm:ss.S")
+    """Deserialize a DateTime object from a date/datetime or a ISO-8601 string representation."""
+    if isinstance(value, datetime) and value.tzinfo is None:
+        return value
+    elif isinstance(value, str):
+        dt = parse_datetime(value)  # This will raise ValueError in case of bad ISO 8601 formatting.
+        if dt.tzinfo is not None:
+            raise ValueError(
+                f"Expected a timezone-naive datetime value, but got a timezone-aware datetime "
+                f"string. This is not supported, since discarding the timezone component would "
+                f"result in an implicit loss of precision. Received value {repr(value)}, "
+                f"parsed as {dt}."
+            )
 
-    # arrow parses datetime naive strings into Arrow objects with a UTC timezone.
-    return arrow_result.naive
+        return dt
+    elif type(value) == date:
+        # The date type is a supertype of datetime. We check for exact type equality
+        # rather than using isinstance(), to avoid having this branch get hit
+        # by timezone-aware datetimes (i.e. ones that fail the value.tzinfo is None check above).
+        #
+        # This is a widening conversion (there's no loss of precision) so we allow it to be implicit
+        # since use ciso8601 parsing logic for parsing datetimes, and ciso8601 successfully parses
+        # datetimes that only have data down to day precision.
+        return datetime(value.year, value.month, value.day)
+    else:
+        raise ValueError(
+            f"Expected a timezone-naive datetime or an ISO-8601 string representation parseable "
+            f"by the ciso8601 library. Got {value} of type {type(value)} instead."
+        )
 
 
 GraphQLDate = GraphQLScalarType(
@@ -377,8 +420,13 @@ GraphQLDate = GraphQLScalarType(
     description=(
         "The `Date` scalar type represents day-accuracy date objects."
         "Values are serialized following the ISO-8601 datetime format specification, "
-        'for example "2017-03-21". The year, month and day fields must be included, '
-        "and the format followed exactly, or the behavior is undefined."
+        'for example "2017-03-21". Serialization and parsing support is guaranteed for the format '
+        "described here, with the year, month and day fields included and separated by dashes as "
+        "in the example. Implementations are allowed to support additional serialization formats, "
+        "if they so choose."
+        # GraphQL compiler's implementation of GraphQL-based querying uses the ciso8601 library
+        # for date and datetime parsing, so it additionally supports the subset of the ISO-8601
+        # standard supported by that library.
     ),
     serialize=_serialize_date,
     parse_value=_parse_date_value,
@@ -389,10 +437,16 @@ GraphQLDate = GraphQLScalarType(
 GraphQLDateTime = GraphQLScalarType(
     name="DateTime",
     description=(
-        "The `DateTime` scalar type represents timezone-naive second-accuracy timestamps."
-        "Values are serialized following the ISO-8601 datetime format specification, "
-        'for example "2017-03-21T12:34:56". All of these fields must be included, '
-        "including the seconds, and the format followed exactly, or the behavior is undefined."
+        "The `DateTime` scalar type represents timezone-naive timestamps with up to microsecond "
+        "accuracy. Values are serialized following the ISO-8601 datetime format specification, "
+        'for example "2017-03-21T12:34:56.012345" or "2017-03-21T12:34:56". Serialization and '
+        "parsing support is guaranteed for the format described here, with all fields down to "
+        "and including seconds required to be included, and fractional seconds optional, as in "
+        "the example. Implementations are allowed to support additional serialization formats, "
+        "if they so choose."
+        # GraphQL compiler's implementation of GraphQL-based querying uses the ciso8601 library
+        # for date and datetime parsing, so it additionally supports the subset of the ISO-8601
+        # standard supported by that library.
     ),
     serialize=_serialize_datetime,
     parse_value=_parse_datetime_value,

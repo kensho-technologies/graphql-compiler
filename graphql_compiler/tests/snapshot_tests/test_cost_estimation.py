@@ -1,11 +1,10 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 import math
 from typing import Any, Dict, List
 import unittest
 
 import pytest
-import pytz
 
 from .. import test_input_data
 from ...compiler.metadata import FilterInfo
@@ -1849,11 +1848,22 @@ class IntegerIntervalTests(unittest.TestCase):
         datetime_values = [
             datetime(2000, 1, 1),
             datetime(3000, 1, 1, tzinfo=None),
-            datetime(1000, 1, 1, tzinfo=pytz.utc),
-            datetime(1, 1, 1, tzinfo=pytz.utc),
-            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.utc),
-            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("GMT")),
-            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=pytz.timezone("America/New_York")),
+            datetime(1000, 1, 1, tzinfo=timezone.utc),
+            datetime(1, 1, 1, tzinfo=timezone.utc),
+            datetime(2000, 1, 1, 20, 55, 40, 877633, tzinfo=timezone.utc),
+            datetime(
+                2000, 1, 1, 20, 55, 40, 877633, tzinfo=timezone(timedelta(hours=0), name="GMT")
+            ),
+            datetime(
+                2000,
+                1,
+                1,
+                20,
+                55,
+                40,
+                877633,
+                tzinfo=timezone(timedelta(hours=-4), name="America/New_York"),
+            ),
         ]
         for datetime_value in datetime_values:
             int_value = convert_field_value_to_int(

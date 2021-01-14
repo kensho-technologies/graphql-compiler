@@ -55,10 +55,9 @@ setup(
     license="Apache 2.0",
     packages=find_packages(exclude=["tests*"]),
     install_requires=[  # Make sure to keep in sync with Pipfile requirements.
-        "arrow>=0.15.0,<1",
+        "ciso8601>=2.1.3,<3",
         "funcy>=1.7.3,<2",
         "graphql-core>=3.1.2,<3.2",
-        "pytz>=2017.2",
         "six>=1.10.0",
         "sqlalchemy>=1.3.0,<2",
     ],

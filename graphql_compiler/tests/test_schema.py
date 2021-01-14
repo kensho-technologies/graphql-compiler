@@ -1,7 +1,7 @@
 # Copyright 2017-present Kensho Technologies, LLC.
 """Tests that vet the test schema against the schema data in the package."""
 from collections import OrderedDict
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 from decimal import Decimal
 import re
 import unittest
@@ -9,7 +9,6 @@ import unittest
 from graphql import build_ast_schema, parse
 from graphql.type import GraphQLField, GraphQLInt, GraphQLObjectType, GraphQLSchema, GraphQLString
 from graphql.utilities import print_schema
-import pytz
 import six
 
 from .. import schema
@@ -73,9 +72,14 @@ class SchemaTests(unittest.TestCase):
             "1991-12-31": date(1991, 12, 31),
         }
 
-        for iso_date, date_obj in six.iteritems(test_data):
+        # Ensure that all the string representations parse as expected.
+        for iso_date, date_obj in test_data.items():
             self.assertEqual(iso_date, schema.GraphQLDate.serialize(date_obj))
             self.assertEqual(date_obj, schema.GraphQLDate.parse_value(iso_date))
+
+        # Ensure that parsing is the identity function for valid date objects.
+        for date_obj in test_data.values():
+            self.assertEqual(date_obj, schema.GraphQLDate.parse_value(date_obj))
 
     def test_datetime_serialization_and_parsing(self) -> None:
         test_data = {
@@ -85,15 +89,32 @@ class SchemaTests(unittest.TestCase):
             "2008-02-29T22:34:56": datetime(2008, 2, 29, 22, 34, 56),
             # High numbers in all positions, except year and timezone.
             "1991-12-31T23:59:59": datetime(1991, 12, 31, 23, 59, 59),
+            # Fractional seconds.
+            "2021-01-06T12:55:32.123456": datetime(2021, 1, 6, 12, 55, 32, 123456),
         }
 
-        for iso_datetime, datetime_obj in six.iteritems(test_data):
+        # Ensure that all the string representations parse as expected.
+        for iso_datetime, datetime_obj in test_data.items():
             self.assertEqual(iso_datetime, schema.GraphQLDateTime.serialize(datetime_obj))
             self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(iso_datetime))
 
+        # Ensure that parsing is the identity function for valid datetime objects.
+        for datetime_obj in test_data.values():
+            self.assertEqual(datetime_obj, schema.GraphQLDateTime.parse_value(datetime_obj))
+
+        # Special case:
+        # Date inputs support an implicit widening conversion, so we allow it
+        # since there is no loss of precision.
+        self.assertEqual(
+            datetime(2017, 1, 12), schema.GraphQLDateTime.parse_value(date(2017, 1, 12))
+        )
+
+        central_eu_tz = timezone(timedelta(hours=1), name="Europe/Amsterdam")
         invalid_parsing_inputs = {
-            # Non-string.
-            datetime(2017, 1, 1, 0, 0, 0),
+            # Non-string, non-datetime.
+            12345,
+            # Timezone-aware datetime object.
+            datetime(2017, 1, 1, 0, 0, 0, tzinfo=central_eu_tz),
             # Including utc offset.
             "2017-01-01T00:00:00+01:00",
             # Zero utc offset.
@@ -106,16 +127,11 @@ class SchemaTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 schema.GraphQLDateTime.parse_value(parsing_input)
 
-        central_eu_tz = pytz.timezone("Europe/Amsterdam")
         invalid_serialization_inputs = {
             # With UTC timezone.
-            datetime(2017, 1, 1, 0, 0, 0, tzinfo=pytz.utc),
+            datetime(2017, 1, 1, 0, 0, 0, tzinfo=timezone.utc),
             # With non-UTC timezone.
-            # N.B.: See the link below to understand why we use localize() to set the time zone.
-            # http://stackoverflow.com/questions/26264897/time-zone-field-in-isoformat
-            central_eu_tz.localize(datetime(2017, 1, 1, 0, 0, 0)),
-            # Date instead of datetime.
-            date(2017, 1, 1),
+            datetime(2017, 1, 1, 1, 0, 0, tzinfo=central_eu_tz),
         }
 
         for serialization_input in invalid_serialization_inputs:

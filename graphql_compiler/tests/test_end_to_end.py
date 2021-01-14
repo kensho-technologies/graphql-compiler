@@ -14,7 +14,6 @@ from graphql import (
     GraphQLScalarType,
     GraphQLString,
 )
-import pytz
 import six
 
 from .. import graphql_to_gremlin, graphql_to_match
@@ -227,9 +226,16 @@ class QueryFormattingTests(unittest.TestCase):
                 (
                     "2007-12-06T16:29:43",
                     datetime.date(2007, 12, 6),
-                    datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.utc),
+                    datetime.datetime(2008, 12, 6, 16, 29, 43, 79043, tzinfo=datetime.timezone.utc),
                     datetime.datetime(
-                        2009, 12, 6, 16, 29, 43, 79043, tzinfo=pytz.timezone("US/Eastern")
+                        2009,
+                        12,
+                        6,
+                        16,
+                        29,
+                        43,
+                        79043,
+                        tzinfo=datetime.timezone(datetime.timedelta(hours=-4), name="US/Eastern"),
                     ),
                 ),
             ),
@@ -272,9 +278,19 @@ class QueryFormattingTests(unittest.TestCase):
         self.assertEqual(datetime.date(2014, 2, 5), value)
 
     def test_datetime_deserialization(self) -> None:
-        # No time provided
-        with self.assertRaises(GraphQLInvalidArgumentError):
-            deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05")
+        # No time provided, but still acceptable with zero time components.
+        value = deserialize_argument("birth_time", GraphQLDateTime, "2014-02-05")
+        self.assertEqual(datetime.datetime(2014, 2, 5), value)
+
+        # Time component with excess precision is truncated (not rounded!) down to microseconds.
+        # This example has 7 decimal places, whereas Python supports a maximum of 6.
+        value = deserialize_argument("birth_time", GraphQLDateTime, "2000-02-29T13:02:27.0018349")
+        self.assertEqual(datetime.datetime(2000, 2, 29, 13, 2, 27, 1834), value)
+
+        # Allow dates to be implicitly converted into datetimes, since this is a lossless,
+        # widening conversion.
+        value = deserialize_argument("birth_time", GraphQLDateTime, datetime.date(2000, 2, 29))
+        self.assertEqual(datetime.datetime(2000, 2, 29), value)
 
         # With timezone
         with self.assertRaises(GraphQLInvalidArgumentError):
