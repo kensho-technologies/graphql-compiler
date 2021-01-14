@@ -3,7 +3,6 @@ import datetime
 import json
 from string import Template
 
-import arrow
 from graphql import GraphQLBoolean, GraphQLFloat, GraphQLID, GraphQLInt, GraphQLList, GraphQLString
 import six
 
@@ -100,9 +99,7 @@ def _safe_cypher_argument(expected_type, argument_value):
     elif is_same_type(GraphQLDate, expected_type):
         return _safe_cypher_date_and_datetime(expected_type, (datetime.date,), argument_value)
     elif is_same_type(GraphQLDateTime, expected_type):
-        return _safe_cypher_date_and_datetime(
-            expected_type, (datetime.datetime, arrow.Arrow), argument_value
-        )
+        return _safe_cypher_date_and_datetime(expected_type, (datetime.datetime,), argument_value)
     elif isinstance(expected_type, GraphQLList):
         return _safe_cypher_list(expected_type.of_type, argument_value)
     else:

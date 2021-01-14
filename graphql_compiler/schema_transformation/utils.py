@@ -1,7 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 import string
-from typing import Any, Dict, FrozenSet, List, Optional, Set, Type, TypeVar, Union
+from typing import Any, Dict, FrozenSet, List, Optional, Sequence, Set, Type, TypeVar, Union
 
 from graphql import GraphQLSchema, build_ast_schema, specified_scalar_types
 from graphql.language.ast import (
@@ -18,11 +18,11 @@ from graphql.language.ast import (
     Node,
     ObjectTypeDefinitionNode,
     ScalarTypeDefinitionNode,
+    SelectionNode,
     SelectionSetNode,
     UnionTypeDefinitionNode,
 )
 from graphql.language.visitor import Visitor, visit
-from graphql.type.definition import GraphQLScalarType
 from graphql.utilities.assert_valid_name import re_name
 from graphql.validation import validate
 import six
@@ -298,6 +298,7 @@ RenameTypes = Union[
     InterfaceTypeDefinitionNode,
     NamedTypeNode,
     ObjectTypeDefinitionNode,
+    ScalarTypeDefinitionNode,
     UnionTypeDefinitionNode,
 ]
 RenameTypesT = TypeVar("RenameTypesT", bound=RenameTypes)
@@ -370,29 +371,8 @@ def get_query_type_name(schema: GraphQLSchema) -> str:
     return schema.query_type.name
 
 
-def get_custom_scalar_names(schema: GraphQLSchema) -> Set[str]:
-    """Get names of all custom scalars used in the input schema.
-
-    Includes all user defined scalars; excludes builtin scalars.
-
-    Note: If the user defined a scalar that shares its name with a builtin introspection type
-    (such as __Schema, __Directive, etc), it will not be listed in type_map and thus will not
-    be included in the output.
-
-    Returns:
-        set of names of scalars used in the schema
-    """
-    type_map = schema.type_map
-    custom_scalar_names = {
-        type_name
-        for type_name, type_object in six.iteritems(type_map)
-        if isinstance(type_object, GraphQLScalarType) and type_name not in builtin_scalar_type_names
-    }
-    return custom_scalar_names
-
-
 def try_get_ast_by_name_and_type(
-    asts: Optional[List[Node]], target_name: str, target_type: Type[Node]
+    asts: Optional[Sequence[Node]], target_name: str, target_type: Type[Node]
 ) -> Optional[Node]:
     """Return the ast in the list with the desired name and type, if found.
 
@@ -425,7 +405,7 @@ def try_get_ast_by_name_and_type(
 
 
 def try_get_inline_fragment(
-    selections: Optional[List[Union[FieldNode, InlineFragmentNode]]]
+    selections: Optional[List[SelectionNode]],
 ) -> Optional[InlineFragmentNode]:
     """Return the unique inline fragment contained in selections, or None.
 
@@ -436,11 +416,18 @@ def try_get_inline_fragment(
         inline fragment if one is found in selections, None otherwise
 
     Raises:
-        GraphQLValidationError if selections contains a InlineFragment along with a nonzero
-        number of fields, or contains multiple InlineFragments
+        GraphQLValidationError if selections contains an InlineFragmentNode along with a nonzero
+        number of FieldNodes, contains multiple InlineFragmentNodes, or unexpectedly contains a
+        SelectionNode that is neither an InlineFragmentNode nor a FieldNode.
     """
     if selections is None:
         return None
+    for selection in selections:
+        if not isinstance(selection, InlineFragmentNode) and not isinstance(selection, FieldNode):
+            raise GraphQLValidationError(
+                f"Unexpectedly received a selection of type {type(selection)}. "
+                f"Only expected to receive FieldNode or InlineFragmentNode."
+            )
     inline_fragments_in_selection = [
         selection for selection in selections if isinstance(selection, InlineFragmentNode)
     ]
@@ -451,13 +438,13 @@ def try_get_inline_fragment(
             return inline_fragments_in_selection[0]
         else:
             raise GraphQLValidationError(
-                'Input selections "{}" contains both InlineFragments and Fields, which may not '
-                "coexist in one selection.".format(selections)
+                f'Input selections "{selections}" contains both InlineFragments and Fields, '
+                f"which may not coexist in one selection."
             )
     else:
         raise GraphQLValidationError(
-            'Input selections "{}" contains multiple InlineFragments, which is not allowed.'
-            "".format(selections)
+            f'Input selections "{selections}" contains multiple InlineFragments, which is '
+            f"not allowed."
         )
 
 
@@ -480,6 +467,7 @@ def get_copy_of_node_with_new_name(node: RenameNodesT, new_name: str) -> RenameN
             "InterfaceTypeDefinitionNode",
             "NamedTypeNode",
             "ObjectTypeDefinitionNode",
+            "ScalarTypeDefinitionNode",
             "UnionTypeDefinitionNode",
         )
     )
@@ -757,13 +745,13 @@ def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode
     vertex fields.
 
     Args:
-        schema: schema the query is written against
-        query_ast: query to split
+        schema: schema the query is written against.
+        query_ast: query to split.
 
     Raises:
         GraphQLValidationError if the query doesn't validate against the schema, contains
         unsupported directives, or some property field occurs after a vertex field in some
-        selection
+        selection.
     """
     # Check builtin errors
     built_in_validation_errors = validate(schema, query_ast)

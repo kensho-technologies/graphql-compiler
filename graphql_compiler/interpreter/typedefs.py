@@ -292,6 +292,8 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
                            property data needs to be loaded
             current_type_name: name of the vertex type whose property needs to be loaded. Guaranteed
                                to be the name of a type defined in the schema being queried.
+                               (current_type_name names the concrete type of DataToken contained in
+                               the DataContext containers yielded by the data_context iterator.)
             field_name: name of the property whose data needs to be loaded. Guaranteed to refer
                         either to a property that is defined in the supplied current_type_name
                         in the schema, or to the "__typename" meta field that is valid for all
@@ -332,12 +334,185 @@ class InterpreterAdapter(Generic[DataToken], metaclass=ABCMeta):
         neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
         **hints: Any,
     ) -> Iterable[Tuple[DataContext[DataToken], Iterable[DataToken]]]:
-        """Produce the neighbors along a given edge for each of an iterable of input DataTokens."""
-        # TODO(predrag): Add more docs in an upcoming PR.
-        #
-        # If using a generator or a mutable data type for the Iterable[DataToken] part,
-        # be careful! Make sure any state it depends upon
-        # does not change, or that bug will be hard to find.
+        """Produce the neighbors along a given edge for each of an iterable of input DataTokens.
+
+        To support traversing edges, as well as directives such as @optional and @recurse,
+        the interpreter needs to get the neighboring vertices along a particular edge for
+        a series of DataTokens.
+
+        For example, consider the following query:
+            {
+                Foo {
+                    out_Foo_Bar {
+                        < ... some fields here ... >
+                    }
+                }
+            }
+
+        Once the interpreter has used the get_tokens_of_type() function to obtain
+        an iterable of DataTokens for the Foo type, it will automatically wrap each of them in
+        a "bookkeeping" object called DataContext. These DataContext objects allow
+        the interpreter to keep track of "which data came from where"; only the DataToken value
+        bound to each current_token attribute is relevant to the InterpreterAdapter API.
+
+        Having obtained an iterable of DataTokens and converted it to an iterable of DataContexts,
+        the interpreter needs to find the neighbors along the outbound Foo_Bar edge for each of
+        those DataTokens. To do so, the interpreter calls project_neighbors() with the iterable of
+        DataContexts, setting current_type_name = "Foo" and edge_info = ("out", "Foo_Bar").  This
+        function call requests an iterable of DataTokens representing the neighboring vertices for
+        each current_token contained in a DataContext.  If the DataContext's current_token
+        attribute is set to None (which may happen when @optional edges are used), an empty
+        iterable of neighboring DataTokens should be returned.
+
+        A simple example implementation is as follows:
+            def project_neighbors(
+                self,
+                data_contexts: Iterable[DataContext[DataToken]],
+                current_type_name: str,
+                edge_info: EdgeInfo,
+                *,
+                runtime_arg_hints: Optional[Mapping[str, Any]] = None,
+                used_property_hints: Optional[AbstractSet[str]] = None,
+                filter_hints: Optional[Collection[FilterInfo]] = None,
+                neighbor_hints: Optional[Collection[Tuple[EdgeInfo, NeighborHint]]] = None,
+                **hints: Any,
+            ) -> Iterable[Tuple[DataContext[DataToken], Iterable[DataToken]]]:
+                for data_context in data_contexts:
+                    current_token = data_context.current_token
+                    neighbors: Iterable[DataToken]
+                    if current_token is None:
+                        # Evaluating an @optional scope where the optional edge didn't exist.
+                        # There are no neighbors here.
+                        neighbors = []
+                    else:
+                        neighbors = _your_function_that_gets_neighbors_for_a_given_token(
+                            current_type_name, edge_info, current_token
+                        )
+
+                    # Remember to always yield the DataContext alongside the produced value
+                    yield data_context, neighbors
+
+        ## Common bug to avoid in your implementation
+
+        In the previous code example, note that we called a module-scoped function,
+        `_your_function_that_gets_neighbors_for_a_given_token`, instead of one defined in the scope
+        of `project_neighbors`.  Because Python evaluates references to variables in outer scopes
+        at the time a function or generator is invoked--not at the time it's defined--, it's very
+        easy to introduce subtle race conditions when defining generator factories in a nested
+        scope.
+
+        Because generators may be evaluated in arbitrary order, these bugs can appear only
+        intermittently and can be very difficult to troubleshoot.  Always defining generator
+        factories in the module scope is one reliable way to avoid this problem.
+
+        In this example code, we use a for-loop to yield several generators from a generator
+        factory.  Notice that we don't pass any arguments to the generator factory--the value its
+        generators yield come from its enclosing scope.
+
+        >>> def yield_generators():
+        ...     for target in range(1, 4):
+        ...         def _generator_factory():
+        ...             while True:
+        ...                 # refers to `target` in the enclosing scope
+        ...                 yield target
+        ...         yield _generator_factory()
+        ...
+        >>> gens = yield_generators()
+        >>> one = next(gens)
+        >>> next(one)
+        1
+        >>> two = next(gens)
+        >>> next(two)
+        2
+        >>> next(one)  # We expect 1, but get 2
+        2
+        >>> three = next(gens)
+        >>> next(three)
+        3
+        >>> next(two)  # We expect 2, but get 3
+        3
+        >>> next(one)  # We expect 1, got 2, and now get 3
+        3
+
+        Although we have three distinct generators, they're all yielding the same `target` from
+        `yield_generator`'s scope, which is also the same `target` that the for-loop advances with
+        each iteration.
+
+        If we define `_generator_factory` in the scope of the module, then we can't refer
+        inadvertently to shared state in an enclosing scope, which saves us from this bug.
+
+        >>> def _generator_factory(target):
+        ...     while True:
+        ...         # refers to the argument `target`, which exists
+        ...         # only in the local scope
+        ...         yield target
+        ...
+        >>> def yield_generators():
+        ...     for target in range(1, 4):
+        ...         yield _generator_factory(target)
+        ...
+        >>> gens = yield_generators()
+        >>> one = next(gens)
+        >>> next(one)
+        1
+        >>> two = next(gens)
+        >>> next(two)
+        2
+        >>> next(one)
+        1
+        >>> three = next(gens)
+        >>> next(three)
+        3
+        >>> next(two)
+        2
+        >>> next(one)
+        1
+
+        ## Hints supplied to this function refer to neighboring vertices
+
+        Hint kwargs in this function, such as used_property_hints, filter_hints, and
+        neighbor_hints, describe the desired structure of the *neighboring* vertices that this
+        function produces (as opposed to the vertices supplied via the data_contexts argument).
+        For example, consider the following query:
+            {
+                Foo {
+                    out_Foo_Bar {
+                        name @output(out_name: "name")
+                    }
+                }
+            }
+        To traverse the out_Foo_Bar edge, project_neighbors() is called with
+        used_property_hints=frozenset({"name"}) and data_contexts=<Iterable of DataContexts
+        pointing to Foo vertices>. This is because used_property_hints correspond to
+        neighboring vertices, and the neighboring Bar vertices (along the outbound Foo_Bar edge)
+        are being queried for their "name" property.
+
+        Args:
+            data_contexts: iterable of DataContext objects which specify the DataTokens whose
+                           neighboring DataTokens need to be loaded.
+            current_type_name: name of the vertex type whose neighbors need to be loaded. Guaranteed
+                               to be the name of a type defined in the schema being queried.
+            edge_info: direction and name of the edge along which neighboring vertices need to be
+                       loaded. For example, in the query example above, this argument would be set
+                       to ("out", "Foo_Bar").
+            runtime_arg_hints: names and values of any runtime arguments provided to the query
+                               for use in filtering operations (e.g. "$arg_name").
+            used_property_hints: property names of the neighboring vertices being loaded that
+                                 are going to be used in a subsequent filtering or output step.
+            filter_hints: information about any filters applied to the neighboring vertices being
+                          loaded, such as "which filtering operations are being performed?"
+                          and "with which arguments?"
+            neighbor_hints: information about the edges of the neighboring vertices being loaded
+                            that the query will eventually need to expand.
+            **hints: catch-all kwarg field making the function's signature forward-compatible with
+                     future revisions of this library that add more hints.
+
+        Yields:
+            tuples (data_context, iterable_of_neighbor_tokens), providing the tokens of
+            the neighboring vertices together with the DataContext corresponding to those neighbors.
+            The yielded DataContext values must be yielded in the same order as they were received
+            via the function's data_contexts argument.
+        """
 
     @abstractmethod
     def can_coerce_to_type(

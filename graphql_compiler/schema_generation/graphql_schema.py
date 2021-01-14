@@ -331,8 +331,8 @@ def get_graphql_schema_from_schema_graph(
             )
 
             # N.B.: Ignore the "is_type_of" argument below, it is simply a circumvention of
-            #       a sanity check inside the GraphQL library. The library assumes that we'll use
-            #       its execution system, so it complains that we don't provide a means to
+            #       a validation check inside the GraphQL library. The library assumes that we'll
+            #       use its execution system, so it complains that we don't provide a means to
             #       differentiate between different implementations of the same interface.
             #       We don't care, because we compile the GraphQL query to a database query.
             current_graphql_type = GraphQLObjectType(

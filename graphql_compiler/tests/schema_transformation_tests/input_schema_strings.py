@@ -421,19 +421,33 @@ class InputSchemaStrings(object):
           query: SchemaQuery
         }
 
+        directive @output(
+            \"\"\"What to designate the output field generated from this property field.\"\"\"
+            out_name: String!
+        ) on FIELD
+
         type Human  {
           id: String
           name: String
+          age: Int
           pet: Dog
+          droid: Droid
         }
 
         type Dog {
+          id: String
           nickname: String
+        }
+
+        type Droid {
+          id: String
+          model: String
         }
 
         type SchemaQuery {
           Human: Human
           Dog: Dog
+          Droid: Droid
         }
     """
     )

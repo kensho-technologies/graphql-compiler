@@ -79,10 +79,10 @@ Operations that are already supported:
 - Suppressing unions.
 - 1-1 and 1-many renamings for fields belonging to object types.
 - Suppressions for fields belonging to object types.
+- Renamings and suppressions for scalar types.
 
 Operations that are not yet supported but will be implemented:
 - Suppressions for enums, interfaces, and object types that implement interfaces.
-- Renamings and suppressions for scalar types.
 - Renamings and suppressions for fields that belong to either interface types or object types that
   implement interfaces.
 - Renamings and suppressions for enum values.
@@ -146,7 +146,6 @@ from .utils import (
     builtin_scalar_type_names,
     check_ast_schema_is_valid,
     get_copy_of_node_with_new_name,
-    get_custom_scalar_names,
     get_query_type_name,
     is_valid_nonreserved_name,
 )
@@ -235,15 +234,12 @@ def rename_schema(
 
     schema = build_ast_schema(schema_ast)
     query_type = get_query_type_name(schema)
-    custom_scalar_names = get_custom_scalar_names(schema)
 
-    _validate_renamings(
-        schema_ast, type_renamings, field_renamings, query_type, custom_scalar_names
-    )
+    _validate_renamings(schema_ast, type_renamings, field_renamings, query_type)
 
     # Rename types, interfaces, enums, unions and suppress types, unions
     schema_ast, reverse_name_map, reverse_field_name_map = _rename_and_suppress_types_and_fields(
-        schema_ast, type_renamings, field_renamings, query_type, custom_scalar_names
+        schema_ast, type_renamings, field_renamings, query_type
     )
 
     schema_ast = _rename_and_suppress_query_type_fields(schema_ast, type_renamings, query_type)
@@ -260,14 +256,12 @@ def _validate_renamings(
     type_renamings: Mapping[str, Optional[str]],
     field_renamings: Mapping[str, Mapping[str, Set[str]]],
     query_type: str,
-    custom_scalar_names: Set[str],
 ) -> None:
     """Validate the type_renamings argument before attempting to rename the schema.
 
     Check for fields with suppressed types or unions whose members were all suppressed. Also,
     confirm type_renamings contains no enums, interfaces, or interface implementation suppressions
-    because that hasn't been implemented yet. Confirm that no scalars would be suppressed or
-    renamed.
+    because that hasn't been implemented yet.
 
     The input AST will not be modified.
 
@@ -282,8 +276,6 @@ def _validate_renamings(
                          field names belonging to the type to a set of field names for the
                          renamed schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        custom_scalar_names: set of all user defined scalars used in the schema (excluding
-                             builtin scalars)
 
     Raises:
         - CascadingSuppressionError if a type/field suppression would require further suppressions
@@ -291,7 +283,7 @@ def _validate_renamings(
           type implementing an interface
     """
     _ensure_no_cascading_type_suppressions(schema_ast, type_renamings, field_renamings, query_type)
-    _ensure_no_unsupported_operations(schema_ast, type_renamings, custom_scalar_names)
+    _ensure_no_unsupported_operations(schema_ast, type_renamings)
 
 
 def _ensure_no_cascading_type_suppressions(
@@ -350,28 +342,23 @@ def _ensure_no_cascading_type_suppressions(
 def _ensure_no_unsupported_operations(
     schema_ast: DocumentNode,
     type_renamings: Mapping[str, Optional[str]],
-    custom_scalar_names: Set[str],
 ) -> None:
     """Check for unsupported type renaming or suppression operations."""
-    _ensure_no_unsupported_scalar_operations(type_renamings, custom_scalar_names)
+    _ensure_no_unsupported_scalar_operations(type_renamings)
     _ensure_no_unsupported_suppressions(schema_ast, type_renamings)
 
 
 def _ensure_no_unsupported_scalar_operations(
     type_renamings: Mapping[str, Optional[str]],
-    custom_scalar_names: Set[str],
 ) -> None:
     """Check for unsupported scalar operations."""
     unsupported_scalar_operations = {
-        scalar_name: type_renamings[scalar_name]
-        for scalar_name in custom_scalar_names.union(builtin_scalar_type_names)
-        if scalar_name in type_renamings
+        scalar_name for scalar_name in builtin_scalar_type_names if scalar_name in type_renamings
     }
     if unsupported_scalar_operations:
         raise NotImplementedError(
-            f"Scalar renaming and suppression is not implemented yet, but type_renamings attempted "
-            f"to modify the following scalars: {unsupported_scalar_operations}. To fix this, "
-            f"remove them from type_renamings."
+            f"Type_renamings contained renamings for the following built-in scalar types: "
+            f"{unsupported_scalar_operations}. To fix this, remove them from type_renamings."
         )
 
 
@@ -422,7 +409,6 @@ def _rename_and_suppress_types_and_fields(
     type_renamings: Mapping[str, Optional[str]],
     field_renamings: Mapping[str, Mapping[str, Set[str]]],
     query_type: str,
-    custom_scalar_names: Set[str],
 ) -> Tuple[DocumentNode, Dict[str, str], Dict[str, Dict[str, str]]]:
     """Rename and suppress types, enums, interfaces, fields using renamings.
 
@@ -439,8 +425,6 @@ def _rename_and_suppress_types_and_fields(
                          field names belonging to the type to a set of field names for the
                          renamed schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        custom_scalar_names: set of all user defined scalars used in the schema (excluding
-                             builtin scalars)
 
     Returns:
         Tuple containing the modified version of the schema AST, the renamed type name to original
@@ -452,9 +436,7 @@ def _rename_and_suppress_types_and_fields(
         - SchemaRenameNameConflictError if the rename causes name conflicts
         - NoOpRenamingError if renamings contains no-op renamings
     """
-    visitor = RenameSchemaTypesVisitor(
-        type_renamings, field_renamings, query_type, custom_scalar_names
-    )
+    visitor = RenameSchemaTypesVisitor(type_renamings, field_renamings, query_type)
     renamed_schema_ast = visit(schema_ast, visitor)
     if visitor.invalid_type_names or visitor.invalid_field_names:
         explanation = (
@@ -500,6 +482,12 @@ def _rename_and_suppress_types_and_fields(
             visitor.type_name_conflicts,
             visitor.type_renamed_to_builtin_scalar_conflicts,
             visitor.field_name_conflicts,
+        )
+    if visitor.types_involving_interfaces_with_field_renamings:
+        raise NotImplementedError(
+            f"Field renaming for interfaces or types implementing interfaces is not supported, but "
+            f"they exist for the following types and should be removed: "
+            f"{visitor.types_involving_interfaces_with_field_renamings}"
         )
     for type_name in visitor.suppressed_type_names:
         if type_name not in type_renamings:
@@ -608,7 +596,6 @@ class RenameSchemaTypesVisitor(Visitor):
             "ObjectValueNode",
             "OperationDefinitionNode",
             "OperationTypeDefinitionNode",
-            "ScalarTypeDefinitionNode",
             "SchemaDefinitionNode",
             "SelectionSetNode",
             "StringValueNode",
@@ -640,6 +627,7 @@ class RenameSchemaTypesVisitor(Visitor):
             "InterfaceTypeDefinitionNode",
             "NamedTypeNode",
             "ObjectTypeDefinitionNode",
+            "ScalarTypeDefinitionNode",
             "UnionTypeDefinitionNode",
         }
     )
@@ -655,8 +643,8 @@ class RenameSchemaTypesVisitor(Visitor):
     type_renamed_to_builtin_scalar_conflicts: Dict[str, str]
 
     # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
-    # non-scalar types, including those that were unchanged. Must contain unchanged names to prevent
-    # type renaming conflicts and raise SchemaRenameNameConflictError when they arise
+    # types, including those that were unchanged. Must contain unchanged names to prevent type
+    # renaming conflicts and raise SchemaRenameNameConflictError when they arise
     reverse_name_map: Dict[str, str]
 
     # Collects invalid type names in type_renamings. If type_renamings["Foo"] is a string that is
@@ -702,12 +690,17 @@ class RenameSchemaTypesVisitor(Visitor):
     # schema that would be renamed to "foo".
     field_name_conflicts: Dict[str, Dict[str, Set[str]]]
 
+    # Collects names of types who have entries in field_renamings if the type is an interface
+    # or if the type is an object type implementing an interface because field renamings involving
+    # interfaces haven't been implemented yet. If field renamings has field renamings for such a
+    # type named "Foo", types_involving_interfaces_with_field_renamings will contain "Foo".
+    types_involving_interfaces_with_field_renamings: Set[str]
+
     def __init__(
         self,
         type_renamings: Mapping[str, Optional[str]],
         field_renamings: Mapping[str, Mapping[str, Set[str]]],
         query_type: str,
-        custom_scalar_names: Set[str],
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
@@ -719,8 +712,6 @@ class RenameSchemaTypesVisitor(Visitor):
                              field names belonging to the type to a set of field names for the
                              renamed schema
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
-            custom_scalar_names: set of all user defined scalars used in the schema (excluding
-                                 builtin scalars)
         """
         self.type_renamings = type_renamings
         self.reverse_name_map = {}
@@ -728,7 +719,6 @@ class RenameSchemaTypesVisitor(Visitor):
         self.type_renamed_to_builtin_scalar_conflicts = {}
         self.invalid_type_names = {}
         self.query_type = query_type
-        self.custom_scalar_names = frozenset(custom_scalar_names)
         self.suppressed_type_names = set()
         self.field_renamings = field_renamings
         self.reverse_field_name_map = {}
@@ -736,6 +726,7 @@ class RenameSchemaTypesVisitor(Visitor):
         self.types_with_field_renamings_processed = set()
         self.invalid_field_names = {}
         self.field_name_conflicts = {}
+        self.types_involving_interfaces_with_field_renamings = set()
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -759,11 +750,7 @@ class RenameSchemaTypesVisitor(Visitor):
         """
         type_name = node.name.value
 
-        if (
-            type_name == self.query_type
-            or type_name in self.custom_scalar_names
-            or type_name in builtin_scalar_type_names
-        ):
+        if type_name == self.query_type or type_name in builtin_scalar_type_names:
             return IDLE
 
         desired_type_name = self.type_renamings.get(type_name, type_name)  # Default use original
@@ -775,39 +762,9 @@ class RenameSchemaTypesVisitor(Visitor):
             self.invalid_type_names[type_name] = desired_type_name
 
         # Renaming conflict arises when two types with different names in the original schema have
-        # the same name in the new schema. There are two ways to produce this conflict:
-        # 1. when neither type is a custom scalar
-        # 2. when one type is a custom scalar and the other is not
-        #
-        # If neither type is a custom scalar, then desired_type_name will be in
-        # self.reverse_name_map (because self.reverse_name_map records all non-scalar types in
-        # the schema). The types named self.reverse_name_map[desired_type_name] and type_name in
-        # the old schema would both get mapped to desired_type_name in the new schema, even though
-        # self.reverse_name_map[desired_type_name] != type_name.
-        #
-        # If one type in the conflict is a custom scalar, then the conflict arises from
-        # attempting to rename a non-scalar type (from type_name to desired_type_name) when
-        # there already exists a custom scalar type named desired_type_name. Custom scalar
-        # renaming has not been implemented yet so we know for sure that the scalar's name (in
-        # both the original and new schema) is desired_type_name.
-        #
-        # It's also possible to produce a similar conflict where one type is not a custom scalar but
-        # rather a built-in scalar, e.g. String. That case is handled separately because renaming a
-        # type to a built-in scalar will never be allowed in any schema, whereas the conflicts here
-        # arise from conflicting with the existence of other types in the schema.
-        if (
-            self.reverse_name_map.get(desired_type_name, type_name) != type_name
-            or desired_type_name in self.custom_scalar_names
-        ):
-            # If neither type in this conflict is a custom scalar, the two types causing conflict
-            # were named type_name and self.reverse_name_map[desired_type_name] in the original
-            # schema.
-            # If one type in this conflict is a custom scalar, the two types causing conflict were
-            # named type_name and desired_type_name (the latter being the custom scalar name) in the
-            # original schema.
-            conflictingly_renamed_type_name = self.reverse_name_map.get(
-                desired_type_name, desired_type_name
-            )
+        # the same name in the new schema.
+        if self.reverse_name_map.get(desired_type_name, type_name) != type_name:
+            conflictingly_renamed_type_name = self.reverse_name_map[desired_type_name]
 
             # Collect all types in the original schema that would be named desired_type_name in the
             # new schema
@@ -827,6 +784,11 @@ class RenameSchemaTypesVisitor(Visitor):
             # the code enters this block, so disabling it for this line.
             # https://github.com/python/mypy/issues/2885#issuecomment-287928126
             fields_renamed_node = self._rename_fields(fields_renamed_node)  # type: ignore
+        elif (
+            isinstance(fields_renamed_node, InterfaceTypeDefinitionNode)
+            and fields_renamed_node.name.value in self.field_renamings
+        ):
+            self.types_involving_interfaces_with_field_renamings.add(fields_renamed_node.name.value)
         self.reverse_name_map[desired_type_name] = type_name
         if desired_type_name == type_name:
             return fields_renamed_node
@@ -841,6 +803,8 @@ class RenameSchemaTypesVisitor(Visitor):
         type_name = node.name.value
         if type_name not in self.field_renamings:
             return node
+        if node.interfaces:
+            self.types_involving_interfaces_with_field_renamings.add(type_name)
         current_type_field_renamings = self.field_renamings[type_name]
         self.types_with_field_renamings_processed.add(type_name)
         # Need to create a set of field nodes that the type will have after the field renamings,
@@ -1095,6 +1059,9 @@ class CascadingSuppressionCheckVisitor(Visitor):
             # Then node corresponds to a field belonging to type T that is also of type T.
             # Therefore, we don't need to explicitly suppress the field as well and this should not
             # raise errors.
+            return IDLE
+        if self.field_renamings.get(self.current_type, {}).get(field_name, {field_name}) == set():
+            # Field was also suppressed so this should not raise errors.
             return IDLE
         if self.current_type not in self.fields_to_suppress:
             self.fields_to_suppress[self.current_type] = {}
