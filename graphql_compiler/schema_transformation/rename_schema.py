@@ -626,8 +626,8 @@ class RenameSchemaTypesVisitor(Visitor):
     type_renamed_to_builtin_scalar_conflicts: Dict[str, str]
 
     # Collects naming errors that arise from attempting to rename a builtin scalar. If
-    # type_renamings["String"] == "Foo" when there is a String field in the schema,
-    # illegal_builtin_scalar_renamings will map "String" to "Foo"
+    # type_renamings["String"] == "Foo" schema, illegal_builtin_scalar_renamings will contain
+    # "String"
     illegal_builtin_scalar_renamings: Set[str]
 
     # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
@@ -705,7 +705,11 @@ class RenameSchemaTypesVisitor(Visitor):
         self.reverse_name_map = {}
         self.type_name_conflicts = {}
         self.type_renamed_to_builtin_scalar_conflicts = {}
-        self.illegal_builtin_scalar_renamings = set()
+        self.illegal_builtin_scalar_renamings = {
+            scalar_name
+            for scalar_name in builtin_scalar_type_names
+            if scalar_name in type_renamings
+        }
         self.invalid_type_names = {}
         self.query_type = query_type
         self.suppressed_type_names = set()
@@ -739,15 +743,10 @@ class RenameSchemaTypesVisitor(Visitor):
         """
         type_name = node.name.value
 
-        if type_name == self.query_type:
+        if type_name == self.query_type or type_name in builtin_scalar_type_names:
             return IDLE
 
         desired_type_name = self.type_renamings.get(type_name, type_name)  # Default use original
-
-        if type_name in builtin_scalar_type_names:
-            if desired_type_name != type_name:
-                self.illegal_builtin_scalar_renamings.add(type_name)
-            return IDLE
 
         if desired_type_name is None:
             # Suppress the type
