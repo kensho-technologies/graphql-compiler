@@ -1,7 +1,18 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 from dataclasses import dataclass
-from typing import FrozenSet, List, Optional, Tuple, cast
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    FrozenSet,
+    List,
+    Mapping,
+    Optional,
+    Set,
+    Tuple,
+    cast,
+)
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -21,20 +32,22 @@ from graphql.pyutils import FrozenList
 from ..ast_manipulation import get_only_query_definition
 from ..exceptions import GraphQLValidationError
 from ..schema import FilterDirective, OutputDirective
-from .utils import get_query_runtime_arguments
-
 from .split_query import AstType, SubQueryNode
+from .utils import get_query_runtime_arguments
 
 
 @dataclass
 class SubQueryPlan:
     """Query plan for a part of a larger query over a single schema."""
 
+    # Unique identifier for this sub-plan.
+    plan_id: int
+
     # Representing a piece of the overall query with directives added.
     query_ast: DocumentNode
 
     # Identifier for the schema that this query piece targets.
-    schema_id: Optional[str]
+    schema_id: str
 
     # The query that the current query depends on, or None if the current query does not
     # depend on another.
@@ -52,6 +65,9 @@ class OutputJoinDescriptor:
     # May be expanded to have more attributes, e.g. is_optional, describing how the join
     # should be made.
     output_names: Tuple[str, str]
+
+    # SubQueryPlan, the sub-plan node for which the join happens between it and its parent sub-plan.
+    child_query_plan: SubQueryPlan
 
 
 @dataclass(frozen=True)
@@ -93,6 +109,11 @@ def make_query_plan(
     """
     output_join_descriptors: List[OutputJoinDescriptor] = []
 
+    if root_sub_query_node.schema_id is None:
+        raise AssertionError(
+            "Unreachable code reached. The schema id of root_sub_query_node "
+            f'"{root_sub_query_node.query_ast}" has not been determined.'
+        )
     root_sub_query_plan = SubQueryPlan(
         plan_id=0,
         query_ast=root_sub_query_node.query_ast,
@@ -114,7 +135,7 @@ def _make_query_plan_recursive(
     sub_query_node: SubQueryNode,
     sub_query_plan: SubQueryPlan,
     output_join_descriptors: List[OutputJoinDescriptor],
-    next_plan_id: int
+    next_plan_id: int,
 ) -> None:
     """Recursively copy the structure of sub_query_node onto sub_query_plan.
 
@@ -128,7 +149,7 @@ def _make_query_plan_recursive(
         sub_query_plan: SubQueryPlan, whose list of child query plans and query AST are
                         modified.
         output_join_descriptors: describing which outputs should be joined and how.
-        next_plan_id: int, the next available plan ID to use. IDs at and above this number are free.
+        next_plan_id: the next available plan ID to use. IDs at and above this number are free.
     """
     # Iterate through child connections of query node
     for child_query_connection in sub_query_node.child_query_connections:
@@ -153,6 +174,11 @@ def _make_query_plan_recursive(
         else:
             new_child_query_ast = DocumentNode(definitions=[child_query_type_with_filter])
 
+        if child_sub_query_node.schema_id is None:
+            raise AssertionError(
+                "Unreachable code reached. The schema id of the child_sub_query_node "
+                f'"{child_sub_query_node.query_ast}" has not been determined.'
+            )
         # Create new SubQueryPlan for child
         child_sub_query_plan = SubQueryPlan(
             plan_id=next_plan_id,
@@ -308,22 +334,37 @@ def print_query_plan(query_plan_descriptor: QueryPlanDescriptor, indentation_dep
         query_plan_strings.append(line_separation)
 
         query_str = 'Execute subplan ID {} in schema named "{}":\n'.format(
-            query_plan.plan_id, query_plan.schema_id)
+            query_plan.plan_id, query_plan.schema_id
+        )
         query_str += print_ast(query_plan.query_ast)
         query_str = query_str.replace("\n", line_separation)
         query_plan_strings.append(query_str)
 
     query_plan_strings.append("\n\nJoin together outputs as follows:\n")
-    query_plan_strings.append('\n'.join([
-        " ".join([
-            str(descriptor.output_names),
-            "between subplan IDs",
-            str([
-                descriptor.child_query_plan.parent_query_plan.plan_id,
-                descriptor.child_query_plan.plan_id
-            ])])
-        for descriptor in query_plan_descriptor.output_join_descriptors
-    ]))
+    for descriptor in query_plan_descriptor.output_join_descriptors:
+        if descriptor.child_query_plan.parent_query_plan is None:
+            raise AssertionError(
+                f"Invalid join descriptor. The parent plan was not set for child_query_plan "
+                f"{descriptor.child_query_plan}."
+            )
+        query_plan_strings.append(
+            "\n".join(
+                [
+                    " ".join(
+                        [
+                            str(descriptor.output_names),
+                            "between subplan IDs",
+                            str(
+                                [
+                                    descriptor.child_query_plan.parent_query_plan.plan_id,
+                                    descriptor.child_query_plan.plan_id,
+                                ]
+                            ),
+                        ]
+                    )
+                ]
+            )
+        )
     query_plan_strings.append("\n\nRemove the following outputs at the end: ")
     query_plan_strings.append(str(query_plan_descriptor.intermediate_output_names) + "\n")
 
@@ -333,7 +374,9 @@ def print_query_plan(query_plan_descriptor: QueryPlanDescriptor, indentation_dep
 def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[SubQueryPlan, int]]:
     """Return a list of topologically sorted (query plan, depth) tuples."""
 
-    def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
+    def _get_plan_and_depth_in_dfs_order_helper(
+        query_plan: SubQueryPlan, depth: int
+    ) -> List[Tuple[SubQueryPlan, int]]:
         plan_and_depth_in_dfs_order = [(query_plan, depth)]
         for child_query_plan in query_plan.child_query_plans:
             plan_and_depth_in_dfs_order.extend(
@@ -344,15 +387,27 @@ def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[Sub
     return _get_plan_and_depth_in_dfs_order_helper(query_plan, 0)
 
 
-def execute_query_plan(schema_id_to_execution_func, query_plan_descriptor, query_args):
+def execute_query_plan(
+    schema_id_to_execution_func: Dict[
+        str, Callable[[str, Mapping[str, Any]], List[Dict[str, Any]]]
+    ],
+    query_plan_descriptor: QueryPlanDescriptor,
+    query_args: Dict[str, Any],
+) -> List[Dict[str, Any]]:
     """Execute the given query plan and return the produced results."""
     result_components_by_plan_id = {}
 
-    stitching_output_names_by_parent_plan_id = dict()
+    stitching_output_names_by_parent_plan_id: Dict[int, List[Tuple[str, str]]] = dict()
     for join_descriptor in query_plan_descriptor.output_join_descriptors:
+        if join_descriptor.child_query_plan.parent_query_plan is None:
+            raise AssertionError(
+                f"Invalid join descriptor. The parent plan was not set for child_query_plan "
+                f"{join_descriptor.child_query_plan}."
+            )
         parent_plan_id = join_descriptor.child_query_plan.parent_query_plan.plan_id
         stitching_output_names_by_parent_plan_id.setdefault(parent_plan_id, []).append(
-            join_descriptor.output_names)
+            join_descriptor.output_names
+        )
 
     full_query_args = dict(query_args)
 
@@ -361,6 +416,11 @@ def execute_query_plan(schema_id_to_execution_func, query_plan_descriptor, query
     for query_plan, _ in plan_and_depth:
         plan_id = query_plan.plan_id
         schema_id = query_plan.schema_id
+        if schema_id is None:
+            raise AssertionError(
+                f'Unreachable code reached. The schema id of query piece "{query_plan.query_ast}" '
+                f"has not been determined."
+            )
 
         subquery_graphql = print_ast(query_plan.query_ast)
 
@@ -384,7 +444,7 @@ def execute_query_plan(schema_id_to_execution_func, query_plan_descriptor, query
             output_name
             for output_name, _ in stitching_output_names_by_parent_plan_id.get(plan_id, [])
         }
-        child_extra_output_values = {
+        child_extra_output_values: Dict[str, Set[Any]] = {
             # Make sure we deduplicate the values -- there's no point in running subqueries
             # with duplicated runtime argument values.
             output_name: set()
@@ -407,39 +467,53 @@ def execute_query_plan(schema_id_to_execution_func, query_plan_descriptor, query
         full_query_args.update(new_query_args)
 
     join_indexes_by_plan_id = _make_join_indexes(
-        query_plan_descriptor, result_components_by_plan_id)
+        query_plan_descriptor, result_components_by_plan_id
+    )
 
     joined_results = _join_results(
-        result_components_by_plan_id, join_indexes_by_plan_id,
+        result_components_by_plan_id,
+        join_indexes_by_plan_id,
         result_components_by_plan_id[query_plan_descriptor.root_sub_query_plan.plan_id],
-        query_plan_descriptor.output_join_descriptors)
+        query_plan_descriptor.output_join_descriptors,
+    )
 
     return _drop_intermediate_outputs(
-        query_plan_descriptor.intermediate_output_names, joined_results)
+        query_plan_descriptor.intermediate_output_names, joined_results
+    )
 
 
-def _make_join_indexes(query_plan_descriptor, result_components_by_plan_id):
+def _make_join_indexes(
+    query_plan_descriptor: QueryPlanDescriptor,
+    result_components_by_plan_id: Dict[int, List[Dict[str, Any]]],
+) -> Dict[int, Dict[str, List[int]]]:
     """Return a dict from child plan id to a join index between its and its parents' rows."""
-    join_indexes_by_plan_id = dict()
+    join_indexes_by_plan_id: Dict[int, Dict[str, List[int]]] = dict()
 
     for join_descriptor in query_plan_descriptor.output_join_descriptors:
         child_plan_id = join_descriptor.child_query_plan.plan_id
         _, child_output_name = join_descriptor.output_names
 
         if child_plan_id in join_indexes_by_plan_id:
-            raise AssertionError('Unreachable code reached: {} {} {}'
-                                 .format(child_plan_id, join_indexes_by_plan_id,
-                                         query_plan_descriptor.output_join_descriptors))
+            raise AssertionError(
+                "Unreachable code reached: {} {} {}".format(
+                    child_plan_id,
+                    join_indexes_by_plan_id,
+                    query_plan_descriptor.output_join_descriptors,
+                )
+            )
 
         join_indexes_by_plan_id[child_plan_id] = _make_join_index_for_output(
-            result_components_by_plan_id[child_plan_id], child_output_name)
+            result_components_by_plan_id[child_plan_id], child_output_name
+        )
 
     return join_indexes_by_plan_id
 
 
-def _make_join_index_for_output(results, join_output_name):
+def _make_join_index_for_output(
+    results: List[Dict[str, Any]], join_output_name: str
+) -> Dict[str, List[int]]:
     """Return a dict of each value of the join column to a list of row indexes where it appears."""
-    join_index = {}
+    join_index: Dict[str, List[int]] = {}
     for row_index, row in enumerate(results):
         join_value = row[join_output_name]
         join_index.setdefault(join_value, []).append(row_index)
@@ -447,8 +521,12 @@ def _make_join_index_for_output(results, join_output_name):
     return join_index
 
 
-def _join_results(result_components_by_plan_id, join_indexes_by_plan_id,
-                  current_results, join_descriptors):
+def _join_results(
+    result_components_by_plan_id: Dict[int, List[Dict[str, Any]]],
+    join_indexes_by_plan_id: Dict[int, Dict[str, List[int]]],
+    current_results: List[Dict[str, Any]],
+    join_descriptors: List[OutputJoinDescriptor],
+) -> List[Dict[str, Any]]:
     """Return the merged results across all subplans using the calculated join indexes."""
     if len(join_descriptors) == 0:
         # No further joining to be done!
@@ -474,19 +552,23 @@ def _join_results(result_components_by_plan_id, join_indexes_by_plan_id,
             joining_row = joining_results[join_matched_index]
             next_results.append(dict(current_row, **joining_row))
 
-    return _join_results(result_components_by_plan_id, join_indexes_by_plan_id,
-                         next_results, remaining_join_descriptors)
+    return _join_results(
+        result_components_by_plan_id,
+        join_indexes_by_plan_id,
+        next_results,
+        remaining_join_descriptors,
+    )
 
 
-def _drop_intermediate_outputs(columns_to_drop, results):
+def _drop_intermediate_outputs(
+    columns_to_drop: FrozenSet[str], results: List[Dict[str, Any]]
+) -> List[Dict[str, Any]]:
     """Return the provided results with the specified column names dropped."""
     processed_results = []
 
     for row in results:
-        processed_results.append({
-            key: value
-            for key, value in row.items()
-            if key not in columns_to_drop
-        })
+        processed_results.append(
+            {key: value for key, value in row.items() if key not in columns_to_drop}
+        )
 
     return processed_results
