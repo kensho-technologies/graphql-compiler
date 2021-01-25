@@ -1,18 +1,7 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 from dataclasses import dataclass
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    FrozenSet,
-    List,
-    Mapping,
-    Optional,
-    Set,
-    Tuple,
-    cast,
-)
+from typing import Any, Callable, Dict, FrozenSet, List, Mapping, Optional, Set, Tuple, cast
 
 from graphql import print_ast
 from graphql.language.ast import (
