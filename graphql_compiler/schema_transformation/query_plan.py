@@ -529,7 +529,7 @@ def _join_results(
     join_plan_id = next_join_descriptor.child_query_plan.plan_id
     join_index = join_indexes_by_plan_id[join_plan_id]
     joining_results = result_components_by_plan_id[join_plan_id]
-    join_from_key, join_to_key = next_join_descriptor.output_names
+    join_from_key, _ = next_join_descriptor.output_names
 
     for current_row in current_results:
         join_value = current_row[join_from_key]
