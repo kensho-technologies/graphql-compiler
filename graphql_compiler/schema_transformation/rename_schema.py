@@ -295,7 +295,7 @@ def _ensure_no_cascading_type_suppressions(
     """Check for situations that would require further suppressions to produce a valid schema."""
     visitor = CascadingSuppressionCheckVisitor(type_renamings, field_renamings, query_type)
     visit(schema_ast, visitor)
-    if visitor.fields_to_suppress or visitor.union_types_to_suppress:
+    if visitor.fields_to_suppress:
         error_message_components = [
             "Renamings would require further suppressions to produce a valid renamed schema."
         ]
@@ -313,18 +313,6 @@ def _ensure_no_cascading_type_suppressions(
                 "A schema containing a field that is of a nonexistent type is invalid. To fix "
                 "this, suppress the previously-mentioned fields using the field_renamings argument "
                 "of rename_schema."
-            )
-        if visitor.union_types_to_suppress:
-            for union_type in visitor.union_types_to_suppress:
-                error_message_components.append(
-                    f"Union type {union_type} has no non-suppressed members: "
-                )
-                error_message_components.extend(
-                    (union_member.name.value for union_member in union_type.types)
-                )
-            error_message_components.append(
-                "A schema containing a union with no members is invalid. To fix this, suppress the "
-                "previously-mentioned unions using the type_renamings argument of rename_schema."
             )
         error_message_components.append(
             "Note that adding suppressions may lead to other types, fields, etc. requiring "
@@ -409,15 +397,22 @@ def _rename_and_suppress_types_and_fields(
     """
     visitor = RenameSchemaTypesVisitor(type_renamings, field_renamings, query_type)
     renamed_schema_ast = visit(schema_ast, visitor)
-    if visitor.types_to_suppress:
+    if visitor.object_types_to_suppress or visitor.union_types_to_suppress:
         error_message_components = [
             "Renamings would require further suppressions to produce a valid renamed schema."
         ]
-        error_message_components.append(
-            f"The following types have no non-suppressed fields, which is invalid: "
-            f"{sorted(visitor.types_to_suppress)}. To fix this, suppress the "
-            f"previously-mentioned types using the type_renamings argument of rename_schema."
-        )
+        if visitor.object_types_to_suppress:
+            error_message_components.append(
+                f"The following object types have no non-suppressed fields, which is invalid: "
+                f"{sorted(visitor.object_types_to_suppress)}. To fix this, suppress the "
+                f"previously-mentioned types using the type_renamings argument of rename_schema."
+            )
+        if visitor.union_types_to_suppress:
+            error_message_components.append(
+                f"The following union types have no non-suppressed types, which is invalid: "
+                f"{sorted(visitor.union_types_to_suppress)}. To fix this, suppress the "
+                "previously-mentioned unions using the type_renamings argument of rename_schema."
+            )
         error_message_components.append(
             "Note that adding suppressions may lead to other types, fields, etc. requiring "
             "suppression so you may need to iterate on this before getting a legal schema."
@@ -693,9 +688,14 @@ class RenameSchemaTypesVisitor(Visitor):
     types_involving_interfaces_with_field_renamings: Set[str]
 
     # Collects cascading suppression errors involving types. If every field in a type gets
-    # suppressed but the type itself is not explicitly supppressed, types_to_suppress will
+    # suppressed but the type itself is not explicitly supppressed, object_types_to_suppress will
     # contain that type's name.
-    types_to_suppress: Set[str]
+    object_types_to_suppress: Set[str]
+
+    # Collects cascading suppression errors involving unions. If every type in a union gets
+    # suppressed but the union itself is not explicitly supppressed, union_types_to_suppress will
+    # contain that union's name.
+    union_types_to_suppress: Set[str]
 
     def __init__(
         self,
@@ -733,7 +733,8 @@ class RenameSchemaTypesVisitor(Visitor):
         self.invalid_field_names = {}
         self.field_name_conflicts = {}
         self.types_involving_interfaces_with_field_renamings = set()
-        self.types_to_suppress = set()
+        self.object_types_to_suppress = set()
+        self.union_types_to_suppress = set()
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -860,10 +861,21 @@ class RenameSchemaTypesVisitor(Visitor):
             self.no_op_field_renamings.setdefault(type_name, set()).update(unused_field_renamings)
         if len(new_field_nodes) == 0:
             # TODO: note that it's not obvious here that this type is guaranteed to not be suppressed but this is true so we dont need to check if the type is suppressed; if we get here it's guaranteed to be a type to suppress cascading issue
-            self.types_to_suppress.add(type_name)
+            self.object_types_to_suppress.add(type_name)
         new_type_node = copy(node)
         new_type_node.fields = FrozenList(new_field_nodes)
         return new_type_node
+
+    def leave_union_type_definition(
+        self,
+        node: UnionTypeDefinitionNode,
+        key: Any,
+        parent: Any,
+        path: List[Any],
+        ancestors: List[Any],
+    ) -> None:
+        if len(node.types) == 0:
+            self.union_types_to_suppress.add(node.name.value)
 
     def enter(
         self,
@@ -966,7 +978,6 @@ class CascadingSuppressionCheckVisitor(Visitor):
     """Traverse the schema to check for cascading suppression issues.
 
     The fields_to_suppress attribute records non-suppressed fields that depend on suppressed types.
-    The union_types_to_suppress attribute records unions that had all its members suppressed.
 
     After calling visit() on the schema using this visitor, if any of these attributes are non-empty
     then there are further suppressions required to produce a legal schema so the code should then
@@ -977,7 +988,6 @@ class CascadingSuppressionCheckVisitor(Visitor):
     # For a type named T, and its field named F whose type has name V, this dict would be
     # {"T": {"F": "V"}}
     fields_to_suppress: Dict[str, Dict[str, str]]
-    union_types_to_suppress: List[UnionTypeDefinitionNode]
 
     def __init__(
         self,
@@ -1001,7 +1011,6 @@ class CascadingSuppressionCheckVisitor(Visitor):
         self.query_type = query_type
         self.current_type: Optional[str] = None
         self.fields_to_suppress = {}
-        self.union_types_to_suppress = []
 
     def enter_object_type_definition(
         self,
@@ -1058,30 +1067,6 @@ class CascadingSuppressionCheckVisitor(Visitor):
         if self.current_type not in self.fields_to_suppress:
             self.fields_to_suppress[self.current_type] = {}
         self.fields_to_suppress[self.current_type][field_name] = field_type
-        return IDLE
-
-    def enter_union_type_definition(
-        self,
-        node: UnionTypeDefinitionNode,
-        key: Any,
-        parent: Any,
-        path: List[Any],
-        ancestors: List[Any],
-    ) -> None:
-        """Check that each union still has at least one non-suppressed member."""
-        union_name = node.name.value
-        # Check if all the union members are suppressed.
-        for union_member in node.types:
-            union_member_type = get_ast_with_non_null_and_list_stripped(union_member).name.value
-            if self.type_renamings.get(union_member_type, union_member_type):
-                # Then at least one member of the union is not suppressed, so there is no cascading
-                # suppression error concern.
-                return IDLE
-        if self.type_renamings.get(union_name, union_name) is None:
-            # If the union is also suppressed, then nothing needs to happen here
-            return IDLE
-        self.union_types_to_suppress.append(node)
-
         return IDLE
 
 
