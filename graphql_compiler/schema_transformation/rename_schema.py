@@ -327,7 +327,11 @@ def _rename_and_suppress_types_and_fields(
     """
     visitor = RenameSchemaTypesVisitor(type_renamings, field_renamings, query_type)
     renamed_schema_ast = visit(schema_ast, visitor)
-    if visitor.object_types_to_suppress or visitor.union_types_to_suppress or visitor.fields_to_suppress:
+    if (
+        visitor.object_types_to_suppress
+        or visitor.union_types_to_suppress
+        or visitor.fields_to_suppress
+    ):
         error_message_components = [
             "Renamings would require further suppressions to produce a valid renamed schema."
         ]
@@ -780,13 +784,22 @@ class RenameSchemaTypesVisitor(Visitor):
         for field_node in node.fields:
             field_name = field_node.name.value
             field_type_name = get_ast_with_non_null_and_list_stripped(field_node.type).name.value
-            if self.type_renamings.get(field_type_name, field_type_name) is None and not(type_name in self.field_renamings and self.field_renamings[type_name].get(field_name, {field_name}) == set()):
+            if self.type_renamings.get(field_type_name, field_type_name) is None and not (
+                type_name in self.field_renamings
+                and self.field_renamings[type_name].get(field_name, {field_name}) == set()
+            ):
                 # If the type of the field is suppressed but the field itself is not, it's invalid.
                 current_type_fields_to_suppress[field_name] = field_type_name
         if current_type_fields_to_suppress != {}:
             self.fields_to_suppress[type_name] = current_type_fields_to_suppress
             new_type_node = copy(node)
-            new_type_node.fields = FrozenList([field_node for field_node in new_type_node.fields if field_node.name.value not in current_type_fields_to_suppress])
+            new_type_node.fields = FrozenList(
+                [
+                    field_node
+                    for field_node in new_type_node.fields
+                    if field_node.name.value not in current_type_fields_to_suppress
+                ]
+            )
             return new_type_node
         if type_name not in self.field_renamings:
             return node
@@ -851,6 +864,7 @@ class RenameSchemaTypesVisitor(Visitor):
         path: List[Any],
         ancestors: List[Any],
     ) -> None:
+        """Check that each union still has at least one non-suppressed member."""
         if len(node.types) == 0:
             self.union_types_to_suppress.add(node.name.value)
 
