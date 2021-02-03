@@ -422,7 +422,7 @@ def _rename_and_suppress_types_and_fields(
             "characters and underscores, must not start with a numeric character, and must not "
             "start with double underscores."
         )
-        invalid_type_names_message = None
+        invalid_type_names_message = ""
         if visitor.invalid_type_names:
             sorted_invalid_type_names = sorted(visitor.invalid_type_names.items())
             invalid_type_names_message = (
@@ -431,7 +431,7 @@ def _rename_and_suppress_types_and_fields(
                 f"original_name is the name in the original schema and invalid_new_name is what "
                 f"original_name would be renamed to: {sorted_invalid_type_names}"
             )
-        invalid_field_names_message = None
+        invalid_field_names_message = ""
         if visitor.invalid_field_names:
             sorted_invalid_field_names = [
                 (type_name, sorted(field_renamings.items()))
@@ -449,7 +449,7 @@ def _rename_and_suppress_types_and_fields(
             invalid_type_names_message,
             invalid_field_names_message,
         ]
-        raise InvalidNameError("\n".join([i for i in error_message_components if i is not None]))
+        raise InvalidNameError("\n".join([i for i in error_message_components if i != ""]))
     if (
         visitor.type_name_conflicts
         or visitor.type_renamed_to_builtin_scalar_conflicts
