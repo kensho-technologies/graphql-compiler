@@ -11,7 +11,7 @@ on:
       - "*"
 jobs:
   lint:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         # Use a matrix for the python version here to make the rest of the lint job setup
@@ -57,7 +57,7 @@ jobs:
         run: |
           pipenv run typing_copilot tighten --error-if-can-tighten
   tests:
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-latest
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8, 3.9]
