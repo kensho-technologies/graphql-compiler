@@ -18,7 +18,7 @@ set -e
 bash -c "wget -qO- https://packages.microsoft.com/keys/microsoft.asc | sudo apt-key add -"
 sudo add-apt-repository "$(wget -qO- https://packages.microsoft.com/config/ubuntu/"$(lsb_release -r -s)"/prod.list)"
 sudo apt-get update
-sudo apt-get install unixodbc-dev python-mysqldb libmysqlclient-dev
+sudo apt-get install unixodbc-dev python3-mysqldb libmysqlclient-dev
 ACCEPT_EULA=Y sudo apt-get install msodbcsql17
 
 # Ensure pip, setuptools, and pipenv are latest available versions.
