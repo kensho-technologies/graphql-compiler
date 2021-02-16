@@ -142,6 +142,7 @@ def _find_used_columns(
                 get_vertex_path(child_location)[-1]
             )
             vertex_field_name = f"{edge_direction}_{edge_name}"
+            # TODO(bojanserafimov): match on the kind of join descriptor
             edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
             used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
             used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.to_column)
@@ -840,7 +841,7 @@ class CompilationState(object):
                     self._current_alias, self._current_location, output_fields
                 )
 
-    # TODO merge from_column and to_column into a joindescriptor
+    # TODO(bojanserafimov): merge from_column and to_column into a joindescriptor
     def _join_to_parent_location(
         self, parent_alias: Alias, from_column: str, to_column: str, optional: bool
     ):
@@ -932,8 +933,10 @@ class CompilationState(object):
                     "Attempting to traverse inside a fold while the _current_location was not a "
                     f"FoldScopeLocation. _current_location was set to {self._current_location}."
                 )
+            # TODO(bojanserafimov): error if edge is composite traversal
             self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
         else:
+            # TODO(bojanserafimov): properly plumb composite join descriptors
             self._join_to_parent_location(
                 previous_alias, edge.from_column, edge.to_column, optional
             )
@@ -1016,6 +1019,7 @@ class CompilationState(object):
                 f"was set to {self._current_location}."
             )
 
+        # TODO(bojanserafimov): error if composite
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         primary_key = self._get_current_primary_key_name("@recurse")
 
@@ -1128,6 +1132,7 @@ class CompilationState(object):
         edge_direction, edge_name = fold_scope_location.fold_path[0]
         full_edge_name = f"{edge_direction}_{edge_name}"
         # only works if fold scope location is the immediate child of self._current_classname
+        # TODO(bojanserafimov): Error if composite
         join_descriptor = self._sql_schema_info.join_descriptors[self._current_classname][
             full_edge_name
         ]
