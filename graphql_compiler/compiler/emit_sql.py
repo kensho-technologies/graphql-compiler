@@ -950,7 +950,8 @@ class CompilationState(object):
                     "Attempting to traverse inside a fold while the _current_location was not a "
                     f"FoldScopeLocation. _current_location was set to {self._current_location}."
                 )
-            # TODO(bojanserafimov): error if edge is composite traversal
+            if not isinstance(edge, DirectJoinDescriptor):
+                raise AssertionError("TODO")
             self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
         else:
             self._join_to_parent_location(previous_alias, edge, optional)
@@ -1033,8 +1034,10 @@ class CompilationState(object):
                 f"was set to {self._current_location}."
             )
 
-        # TODO(bojanserafimov): error if composite
+
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
+        if not isinstance(edge, DirectJoinDescriptor):
+            raise AssertionError("TODO")
         primary_key = self._get_current_primary_key_name("@recurse")
 
         # Wrap the query so far into a CTE if it would speed up the recursive query.
@@ -1146,10 +1149,11 @@ class CompilationState(object):
         edge_direction, edge_name = fold_scope_location.fold_path[0]
         full_edge_name = f"{edge_direction}_{edge_name}"
         # only works if fold scope location is the immediate child of self._current_classname
-        # TODO(bojanserafimov): Error if composite
         join_descriptor = self._sql_schema_info.join_descriptors[self._current_classname][
             full_edge_name
         ]
+        if not isinstance(join_descriptor, DirectJoinDescriptor):
+            raise AssertionError("TODO")
 
         # 3. Initialize fold object.
         self._current_fold = FoldSubqueryBuilder(
