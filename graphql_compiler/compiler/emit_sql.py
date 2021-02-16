@@ -880,10 +880,20 @@ class CompilationState(object):
                 )
             )
 
+        # construct on clause for join
+        # TODO(bojanserafimov) match on the type of join descriptor
+        matching_column_pairs = {
+            (from_column, to_column),
+        }
+        on_clause = sqlalchemy.and_(*(
+            parent_alias.c[from_column] == self._current_alias.c[to_column]
+            for from_column, to_column in matching_column_pairs
+        ))
+
         # Join to where we came from.
         self._from_clause = self._from_clause.join(
             self._current_alias,
-            onclause=(parent_alias.c[from_column] == self._current_alias.c[to_column]),
+            onclause=on_clause,
             isouter=self._is_in_optional_scope(),
         )
 
