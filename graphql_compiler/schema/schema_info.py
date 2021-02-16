@@ -4,7 +4,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum, Flag, auto, unique
 from functools import partial
-from typing import Dict, Mapping, Optional, Sequence
+from typing import Dict, Mapping, Optional, Sequence, Set, Tuple, Union
 
 from graphql.type import GraphQLSchema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
@@ -20,20 +20,39 @@ from ..cost_estimation.statistics import Statistics
 from ..schema_generation.schema_graph import SchemaGraph
 
 
-# Describes the intent to join two tables using the specified columns.
-#
-# The resulting join expression could be something like:
-# JOIN origin_table.from_column = destination_table.to_column
-#
-# The type of join (inner vs left, etc.) is not specified.
-# The tables are not specified.
-DirectJoinDescriptor = namedtuple(
-    "DirectJoinDescriptor",
-    (
-        "from_column",  # The column in the source table we intend to join on.
-        "to_column",  # The column in the destination table we intend to join on.
-    ),
-)
+@dataclass
+class DirectJoinDescriptor:
+    """Describes the ability to join two tables using the specified columns.
+
+    The resulting join expression could be something like:
+    JOIN origin_table.from_column = destination_table.to_column
+
+    The type of join (inner vs left, etc.) is not specified.
+    The tables are not specified."""
+
+    from_column: str  # The column in the source table we intend to join on.
+    to_column: str  # The column in the destination table we intend to join on.
+
+
+@dataclass
+class CompositeJoinDescriptor:
+    """Describes the ability to join two tables with a composite relationship.
+
+    The resulting join expression could be something like:
+    JOIN
+        origin_table.from_column_1 == destination_table.to_column_1 AND
+        origin_table.from_column_2 == destination_table.to_column_2 AND
+        origin_table.from_column_3 == destination_table.to_column_3
+
+    The type of join (inner vs left, etc.) is not specified.
+    The tables are not specified."""
+
+    # (from_column, to_column) pairs, where from_column is on the origin table
+    # and to_column is on the destination table of the join.
+    column_pairs: Set[Tuple[str, str]]
+
+
+JoinDescriptor = Union[DirectJoinDescriptor, CompositeJoinDescriptor]
 
 
 @dataclass
@@ -143,17 +162,17 @@ class SQLSchemaInfo(BackendSpecificSchemaInfo):
 
     vertex_name_to_table: Dict[str, sqlalchemy.Table]
     # dict mapping every GraphQL object type or interface type name in the schema to
-    # dict mapping every vertex field name at that type to a DirectJoinDescriptor.
+    # dict mapping every vertex field name at that type to a JoinDescriptor.
     # The tables the join is to be performed on are not specified.
     # They are inferred from the schema and the tables dictionary.
-    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]]
+    join_descriptors: Dict[str, Dict[str, JoinDescriptor]]
 
 
 def _create_sql_schema_info(
     dialect: Dialect,
     schema: GraphQLSchema,
     vertex_name_to_table: Dict[str, sqlalchemy.Table],
-    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]],
+    join_descriptors: Dict[str, Dict[str, JoinDescriptor]],
     type_equivalence_hints: Optional[Dict[str, str]] = None,
 ) -> SQLSchemaInfo:
     """Create a SQLSchemaInfo object for a database using a flavor of SQL."""
@@ -239,7 +258,7 @@ SQLAlchemySchemaInfo = namedtuple(
         # All tables are expected to have primary keys.
         "vertex_name_to_table",
         # dict mapping every graphql object type or interface type name in the schema to:
-        #    dict mapping every vertex field name at that type to a DirectJoinDescriptor. The
+        #    dict mapping every vertex field name at that type to a JoinDescriptor. The
         #    tables the join is to be performed on are not specified. They are inferred from
         #    the schema and the tables dictionary.
         "join_descriptors",
@@ -252,7 +271,7 @@ def make_sqlalchemy_schema_info(
     type_equivalence_hints: TypeEquivalenceHintsType,
     dialect: Dialect,
     vertex_name_to_table: Dict[str, sqlalchemy.Table],
-    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]],
+    join_descriptors: Dict[str, Dict[str, JoinDescriptor]],
     validate: bool = True,
 ) -> SQLAlchemySchemaInfo:
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
@@ -282,7 +301,7 @@ def make_sqlalchemy_schema_info(
                               schema to a SQLAlchemy table
         join_descriptors: dict mapping GraphQL object and interface type names in the schema to:
                           dict mapping every vertex field name at that type to a
-                          DirectJoinDescriptor. The tables on which the join is to be performed
+                          JoinDescriptor. The tables on which the join is to be performed
                           are not specified. They are inferred from the schema and the tables
                           dictionary.
         validate: whether to validate that the given inputs are valid for creation of
