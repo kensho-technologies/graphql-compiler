@@ -798,7 +798,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             "column_pairs": {
                 ("birth_uuid", "uuid"),
                 ("birth_date", "event_date"),
-            }
+            },
         },
         {
             "name": "Animal_LivesIn",
@@ -852,10 +852,9 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             ] = CompositeJoinDescriptor(edge["column_pairs"])
             join_descriptors.setdefault(edge["to_table"], {})[
                 "in_{}".format(edge["name"])
-            ] = CompositeJoinDescriptor({
-                (to_column, from_column)
-                for from_column, to_column in edge["column_pairs"]
-            })
+            ] = CompositeJoinDescriptor(
+                {(to_column, from_column) for from_column, to_column in edge["column_pairs"]}
+            )
         else:
             join_descriptors.setdefault(edge["from_table"], {})[
                 "out_{}".format(edge["name"])

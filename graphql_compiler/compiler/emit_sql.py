@@ -21,7 +21,12 @@ from sqlalchemy.sql.selectable import FromClause, Join, Select
 from . import blocks
 from ..global_utils import VertexPath
 from ..schema import COUNT_META_FIELD_NAME
-from ..schema.schema_info import DirectJoinDescriptor, SQLAlchemySchemaInfo, CompositeJoinDescriptor, JoinDescriptor
+from ..schema.schema_info import (
+    CompositeJoinDescriptor,
+    DirectJoinDescriptor,
+    JoinDescriptor,
+    SQLAlchemySchemaInfo,
+)
 from .compiler_entities import BasicBlock
 from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
@@ -147,14 +152,8 @@ def _find_used_columns(
                 columns_at_location = {edge.from_column}
                 columns_at_child = {edge.to_column}
             elif isinstance(edge, CompositeJoinDescriptor):
-                columns_at_location = {
-                    column_pair[0]
-                    for column_pair in edge.column_pairs
-                }
-                columns_at_child = {
-                    column_pair[1]
-                    for column_pair in edge.column_pairs
-                }
+                columns_at_location = {column_pair[0] for column_pair in edge.column_pairs}
+                columns_at_child = {column_pair[1] for column_pair in edge.column_pairs}
 
             used_columns.setdefault(get_vertex_path(location), set()).update(columns_at_location)
             used_columns.setdefault(get_vertex_path(child_location), set()).update(columns_at_child)
@@ -873,7 +872,7 @@ class CompilationState(object):
         elif isinstance(join_descriptor, CompositeJoinDescriptor):
             matching_column_pairs = join_descriptor.column_pairs
         else:
-            raise AssertionError(u"TODO")
+            raise AssertionError("TODO")
 
         non_null_column = sorted(matching_column_pairs)[0][1]
         self._came_from[self._current_alias] = self._current_alias.c[non_null_column]
@@ -904,10 +903,12 @@ class CompilationState(object):
                 )
             )
 
-        on_clause = sqlalchemy.and_(*(
-            parent_alias.c[from_column] == self._current_alias.c[to_column]
-            for from_column, to_column in sorted(matching_column_pairs)
-        ))
+        on_clause = sqlalchemy.and_(
+            *(
+                parent_alias.c[from_column] == self._current_alias.c[to_column]
+                for from_column, to_column in sorted(matching_column_pairs)
+            )
+        )
 
         # Join to where we came from.
         self._from_clause = self._from_clause.join(
@@ -1045,7 +1046,6 @@ class CompilationState(object):
                 f"Cannot recurse when _current_location is not a Location. _current_location "
                 f"was set to {self._current_location}."
             )
-
 
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         if not isinstance(edge, DirectJoinDescriptor):

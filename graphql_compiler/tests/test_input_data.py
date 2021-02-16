@@ -3550,7 +3550,7 @@ def recursive_field_type_is_subtype_of_parent_field() -> CommonTestData:  # noqa
     )
 
 
-def animal_born_at_traversal() -> CommonTestData:  #noqa: D103
+def animal_born_at_traversal() -> CommonTestData:  # noqa: D103
     """Ensure that sql composite key traversals work."""
     graphql_input = """{
         Animal {

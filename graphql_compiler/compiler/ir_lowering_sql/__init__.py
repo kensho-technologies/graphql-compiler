@@ -3,7 +3,7 @@ import six
 
 from .. import blocks, expressions
 from ...compiler.compiler_frontend import IrAndMetadata
-from ...schema.schema_info import DirectJoinDescriptor, CompositeJoinDescriptor
+from ...schema.schema_info import CompositeJoinDescriptor, DirectJoinDescriptor
 from ..helpers import FoldScopeLocation, get_edge_direction_and_name
 from ..ir_lowering_common import common
 
