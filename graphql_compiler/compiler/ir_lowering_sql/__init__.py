@@ -3,6 +3,7 @@ import six
 
 from .. import blocks, expressions
 from ...compiler.compiler_frontend import IrAndMetadata
+from ...schema.schema_info import DirectJoinDescriptor, CompositeJoinDescriptor
 from ..helpers import FoldScopeLocation, get_edge_direction_and_name
 from ..ir_lowering_common import common
 
@@ -40,9 +41,14 @@ def _find_non_null_columns(schema_info, query_metadata_table):
             vertex_field_name = "{}_{}".format(edge_direction, edge_name)
             edge = schema_info.join_descriptors[location_info.type.name][vertex_field_name]
 
-            # The value of the column used to join to this table is an indicator of whether
+            # The value of any column used to join to this table is an indicator of whether
             # the left join was a hit or a miss.
-            non_null_column[child_location.query_path] = edge.to_column
+            if isinstance(edge, DirectJoinDescriptor):
+                non_null_column[child_location.query_path] = edge.to_column
+            elif isinstance(edge, CompositeJoinDescriptor):
+                non_null_column[child_location.query_path] = sorted(edge.column_pairs)[0][1]
+            else:
+                raise AssertionError(u"TODO")
 
     return non_null_column
 

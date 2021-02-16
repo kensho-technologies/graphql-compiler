@@ -29,6 +29,7 @@ from ..schema import (
 )
 from ..schema.schema_info import (
     CommonSchemaInfo,
+    CompositeJoinDescriptor,
     DirectJoinDescriptor,
     SQLAlchemySchemaInfo,
     make_sqlalchemy_schema_info,
@@ -668,7 +669,8 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
             sqlalchemy.Column("net_worth", sqlalchemy.Integer, nullable=True),
             sqlalchemy.Column("fed_at", uuid_type, nullable=True),
-            sqlalchemy.Column("born_at", uuid_type, nullable=True),
+            sqlalchemy.Column("birth_date", sqlalchemy.DateTime, nullable=True),
+            sqlalchemy.Column("birth_uuid", uuid_type, nullable=True),
             sqlalchemy.Column("lives_in", uuid_type, nullable=True),
             sqlalchemy.Column("important_event", sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column("species", sqlalchemy.String(40), nullable=True),
@@ -681,7 +683,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             sqlalchemy.Column("description", sqlalchemy.String(40), nullable=True),
             sqlalchemy.Column("uuid", uuid_type, primary_key=True),
             sqlalchemy.Column("name", sqlalchemy.String(40), nullable=False),
-            sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False),
+            sqlalchemy.Column("event_date", sqlalchemy.DateTime, nullable=False, primary_key=True),
             sqlalchemy.Column("related_event", uuid_type, primary_key=False),
             schema=("db_1." if dialect == "mssql" else "") + "schema_1",
         ),
@@ -793,8 +795,10 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             "name": "Animal_BornAt",
             "from_table": "Animal",
             "to_table": "BirthEvent",
-            "from_column": "born_at",
-            "to_column": "uuid",
+            "column_pairs": {
+                ("birth_uuid", "uuid"),
+                ("birth_date", "event_date"),
+            }
         },
         {
             "name": "Animal_LivesIn",
@@ -842,12 +846,23 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
 
     join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]] = {}
     for edge in edges:
-        join_descriptors.setdefault(edge["from_table"], {})[
-            "out_{}".format(edge["name"])
-        ] = DirectJoinDescriptor(edge["from_column"], edge["to_column"])
-        join_descriptors.setdefault(edge["to_table"], {})[
-            "in_{}".format(edge["name"])
-        ] = DirectJoinDescriptor(edge["to_column"], edge["from_column"])
+        if "column_pairs" in edge:
+            join_descriptors.setdefault(edge["from_table"], {})[
+                "out_{}".format(edge["name"])
+            ] = CompositeJoinDescriptor(edge["column_pairs"])
+            join_descriptors.setdefault(edge["to_table"], {})[
+                "in_{}".format(edge["name"])
+            ] = CompositeJoinDescriptor({
+                (to_column, from_column)
+                for from_column, to_column in edge["column_pairs"]
+            })
+        else:
+            join_descriptors.setdefault(edge["from_table"], {})[
+                "out_{}".format(edge["name"])
+            ] = DirectJoinDescriptor(edge["from_column"], edge["to_column"])
+            join_descriptors.setdefault(edge["to_table"], {})[
+                "in_{}".format(edge["name"])
+            ] = DirectJoinDescriptor(edge["to_column"], edge["from_column"])
 
     # Inherit join_descriptors from superclasses
     # TODO(bojanserafimov): Properties can be inferred too, instead of being explicitly inherited.

@@ -3548,3 +3548,31 @@ def recursive_field_type_is_subtype_of_parent_field() -> CommonTestData:  # noqa
         expected_input_metadata=expected_input_metadata,
         type_equivalence_hints=type_equivalence_hints,
     )
+
+
+def animal_born_at_traversal() -> CommonTestData:  #noqa: D103
+    """Ensure that sql composite key traversals work."""
+    graphql_input = """{
+        Animal {
+            name @output(out_name: "animal_name")
+            out_Animal_BornAt {
+                name @output(out_name: "birth_event_name")
+            }
+        }
+    }"""
+    expected_output_metadata = {
+        "animal_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+        "birth_event_name": OutputMetadata(type=GraphQLString, optional=False, folded=False),
+    }
+    expected_input_metadata: Dict[str, GraphQLSchemaFieldType] = {}
+
+    type_equivalence_hints = {
+        "Event": "Union__BirthEvent__Event__FeedingEvent",
+    }
+
+    return CommonTestData(
+        graphql_input=graphql_input,
+        expected_output_metadata=expected_output_metadata,
+        expected_input_metadata=expected_input_metadata,
+        type_equivalence_hints=type_equivalence_hints,
+    )

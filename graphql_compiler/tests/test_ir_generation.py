@@ -6259,3 +6259,7 @@ class IrGenerationTests(unittest.TestCase):
         }
 
         check_test_data(self, test_data, expected_blocks, expected_location_types)
+
+    def test_animal_born_at_traversal(self):
+        """Ensure that sql composite key traversals work."""
+        # skipping ir generation testing since this is a sql-specific test

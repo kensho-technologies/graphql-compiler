@@ -906,7 +906,7 @@ class CompilationState(object):
 
         on_clause = sqlalchemy.and_(*(
             parent_alias.c[from_column] == self._current_alias.c[to_column]
-            for from_column, to_column in matching_column_pairs
+            for from_column, to_column in sorted(matching_column_pairs)
         ))
 
         # Join to where we came from.
