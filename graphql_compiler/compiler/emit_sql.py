@@ -142,10 +142,22 @@ def _find_used_columns(
                 get_vertex_path(child_location)[-1]
             )
             vertex_field_name = f"{edge_direction}_{edge_name}"
-            # TODO(bojanserafimov): match on the kind of join descriptor
             edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
-            used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
-            used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.to_column)
+            if isinstance(edge, DirectJoinDescriptor):
+                columns_at_location = {edge.from_column}
+                columns_at_child = {edge.to_column}
+            elif isinstance(edge, CompositeJoinDescriptor):
+                columns_at_location = {
+                    column_pair[0]
+                    for column_pair in edge.column_pairs
+                }
+                columns_at_child = {
+                    column_pair[1]
+                    for column_pair in edge.column_pairs
+                }
+
+            used_columns.setdefault(get_vertex_path(location), set()).update(columns_at_location)
+            used_columns.setdefault(get_vertex_path(child_location), set()).update(columns_at_child)
 
             # Check if the edge is recursive
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
@@ -153,12 +165,12 @@ def _find_used_columns(
                 # The primary key may be used if the recursive cte base semijoins to
                 # the pre-recurse cte by primary key.
                 alias = sql_schema_info.vertex_name_to_table[location_info.type.name].alias()
-                primary_key_name = _get_primary_key_name(alias, location_info.type.name, "@recurse")
-                used_columns.setdefault(get_vertex_path(location), set()).add(primary_key_name)
+                primary_keys = {column.name for column in alias.primary_key}
+                used_columns.setdefault(get_vertex_path(location), set()).update(primary_keys)
 
                 # The from_column is used at the destination as well, inside the recursive step
-                used_columns.setdefault(get_vertex_path(child_location), set()).add(
-                    edge.from_column
+                used_columns.setdefault(get_vertex_path(child_location), set()).update(
+                    columns_at_location
                 )
 
     # Find outputs used
