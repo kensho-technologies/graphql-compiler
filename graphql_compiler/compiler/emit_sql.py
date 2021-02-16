@@ -21,7 +21,7 @@ from sqlalchemy.sql.selectable import FromClause, Join, Select
 from . import blocks
 from ..global_utils import VertexPath
 from ..schema import COUNT_META_FIELD_NAME
-from ..schema.schema_info import DirectJoinDescriptor, SQLAlchemySchemaInfo
+from ..schema.schema_info import DirectJoinDescriptor, SQLAlchemySchemaInfo, CompositeJoinDescriptor, JoinDescriptor
 from .compiler_entities import BasicBlock
 from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
@@ -781,7 +781,9 @@ class CompilationState(object):
         # Move to the beginning location of the query.
         self._relocate(ir.query_metadata_table.root_location)
 
-        # Mapping aliases to the column used to join into them.
+        # Mapping aliases to one of the column used to join into them. We use this column
+        # to check for LEFT JOIN misses, since it helps us distinguish actuall NULL values
+        # from values that are NULL because of a LEFT JOIN miss.
         self._came_from: Dict[Union[Alias, ColumnRouter], Column] = {}
 
         self._recurse_needs_cte: bool = False
@@ -841,9 +843,8 @@ class CompilationState(object):
                     self._current_alias, self._current_location, output_fields
                 )
 
-    # TODO(bojanserafimov): merge from_column and to_column into a joindescriptor
     def _join_to_parent_location(
-        self, parent_alias: Alias, from_column: str, to_column: str, optional: bool
+        self, parent_alias: Alias, join_descriptor: JoinDescriptor, optional: bool
     ):
         """Join the current location to the parent location using the column names specified."""
         if self._current_alias is None:
@@ -852,7 +853,18 @@ class CompilationState(object):
                 f"during fold {self}."
             )
 
-        self._came_from[self._current_alias] = self._current_alias.c[to_column]
+        # construct on clause for join
+        if isinstance(join_descriptor, DirectJoinDescriptor):
+            matching_column_pairs = {
+                (join_descriptor.from_column, join_descriptor.to_column),
+            }
+        elif isinstance(join_descriptor, CompositeJoinDescriptor):
+            matching_column_pairs = join_descriptor.column_pairs
+        else:
+            raise AssertionError(u"TODO")
+
+        non_null_column = sorted(matching_column_pairs)[0][1]
+        self._came_from[self._current_alias] = self._current_alias.c[non_null_column]
 
         if self._is_in_optional_scope() and not optional:
             # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce the
@@ -880,11 +892,6 @@ class CompilationState(object):
                 )
             )
 
-        # construct on clause for join
-        # TODO(bojanserafimov) match on the type of join descriptor
-        matching_column_pairs = {
-            (from_column, to_column),
-        }
         on_clause = sqlalchemy.and_(*(
             parent_alias.c[from_column] == self._current_alias.c[to_column]
             for from_column, to_column in matching_column_pairs
@@ -946,10 +953,7 @@ class CompilationState(object):
             # TODO(bojanserafimov): error if edge is composite traversal
             self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
         else:
-            # TODO(bojanserafimov): properly plumb composite join descriptors
-            self._join_to_parent_location(
-                previous_alias, edge.from_column, edge.to_column, optional
-            )
+            self._join_to_parent_location(previous_alias, edge, optional)
 
     def _wrap_into_cte(self) -> None:
         """Wrap the current query into a cte."""
@@ -1088,8 +1092,8 @@ class CompilationState(object):
             .where(base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
-        # TODO(bojanserafimov): This creates an unused alias if there's no tags or outputs so far
-        self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
+        join_descriptor = DirectJoinDescriptor(primary_key, CTE_KEY_NAME)
+        self._join_to_parent_location(previous_alias, join_descriptor, False)
 
     def start_global_operations(self) -> None:
         """Execute a GlobalOperationsStart block."""
