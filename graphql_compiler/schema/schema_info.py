@@ -4,7 +4,7 @@ from collections import namedtuple
 from dataclasses import dataclass, field
 from enum import Enum, Flag, auto, unique
 from functools import partial
-from typing import Dict, Mapping, Optional, Sequence, Set, Tuple, Union
+from typing import Dict, Mapping, Optional, Sequence, AbstractSet, Tuple, Union
 
 from graphql.type import GraphQLSchema
 from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
@@ -51,7 +51,7 @@ class CompositeJoinDescriptor:
 
     # (from_column, to_column) pairs, where from_column is on the origin table
     # and to_column is on the destination table of the join.
-    column_pairs: Set[Tuple[str, str]]
+    column_pairs: AbstractSet[Tuple[str, str]]
 
     def __post_init__(self) -> None:
         """Validate fields."""

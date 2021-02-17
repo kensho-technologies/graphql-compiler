@@ -1181,8 +1181,8 @@ class CompilationState(object):
         ]
         if not isinstance(join_descriptor, DirectJoinDescriptor):
             raise NotImplementedError(
-                f"Edge {full_edge_name} is backed by a CompositeJoinDescriptor, "
-                "so it can't be used with @fold."
+                f"Edge {full_edge_name} requires a JOIN across a composite key, which is currently "
+                "not supported for use with @fold."
             )
 
         # 3. Initialize fold object.
