@@ -283,7 +283,7 @@ def _validate_renamings(
           type implementing an interface
     """
     _ensure_no_cascading_type_suppressions(schema_ast, type_renamings, field_renamings, query_type)
-    _ensure_no_unsupported_operations(schema_ast, type_renamings)
+    _ensure_no_unsupported_suppressions(schema_ast, type_renamings)
 
 
 def _ensure_no_cascading_type_suppressions(
@@ -337,29 +337,6 @@ def _ensure_no_cascading_type_suppressions(
             "suppression so you may need to iterate on this before getting a legal schema."
         )
         raise CascadingSuppressionError("\n".join(error_message_components))
-
-
-def _ensure_no_unsupported_operations(
-    schema_ast: DocumentNode,
-    type_renamings: Mapping[str, Optional[str]],
-) -> None:
-    """Check for unsupported type renaming or suppression operations."""
-    _ensure_no_unsupported_scalar_operations(type_renamings)
-    _ensure_no_unsupported_suppressions(schema_ast, type_renamings)
-
-
-def _ensure_no_unsupported_scalar_operations(
-    type_renamings: Mapping[str, Optional[str]],
-) -> None:
-    """Check for unsupported scalar operations."""
-    unsupported_scalar_operations = {
-        scalar_name for scalar_name in builtin_scalar_type_names if scalar_name in type_renamings
-    }
-    if unsupported_scalar_operations:
-        raise NotImplementedError(
-            f"Type_renamings contained renamings for the following built-in scalar types: "
-            f"{unsupported_scalar_operations}. To fix this, remove them from type_renamings."
-        )
 
 
 def _ensure_no_unsupported_suppressions(
@@ -488,6 +465,12 @@ def _rename_and_suppress_types_and_fields(
             f"Field renaming for interfaces or types implementing interfaces is not supported, but "
             f"they exist for the following types and should be removed: "
             f"{visitor.types_involving_interfaces_with_field_renamings}"
+        )
+    if visitor.illegal_builtin_scalar_renamings:
+        raise NotImplementedError(
+            f"Type_renamings contained renamings for the following built-in scalar types: "
+            f"{visitor.illegal_builtin_scalar_renamings}. To fix this, remove them from "
+            f"type_renamings."
         )
     for type_name in visitor.suppressed_type_names:
         if type_name not in type_renamings:
@@ -642,6 +625,11 @@ class RenameSchemaTypesVisitor(Visitor):
     # "Foo" to "String"
     type_renamed_to_builtin_scalar_conflicts: Dict[str, str]
 
+    # Collects naming errors that arise from attempting to rename a builtin scalar. If
+    # type_renamings["String"] == "Foo" schema, illegal_builtin_scalar_renamings will contain
+    # "String"
+    illegal_builtin_scalar_renamings: Set[str]
+
     # reverse_name_map maps renamed type name to original type name, containing all non-suppressed
     # types, including those that were unchanged. Must contain unchanged names to prevent type
     # renaming conflicts and raise SchemaRenameNameConflictError when they arise
@@ -717,6 +705,11 @@ class RenameSchemaTypesVisitor(Visitor):
         self.reverse_name_map = {}
         self.type_name_conflicts = {}
         self.type_renamed_to_builtin_scalar_conflicts = {}
+        self.illegal_builtin_scalar_renamings = {
+            scalar_name
+            for scalar_name in builtin_scalar_type_names
+            if scalar_name in type_renamings
+        }
         self.invalid_type_names = {}
         self.query_type = query_type
         self.suppressed_type_names = set()
@@ -754,6 +747,7 @@ class RenameSchemaTypesVisitor(Visitor):
             return IDLE
 
         desired_type_name = self.type_renamings.get(type_name, type_name)  # Default use original
+
         if desired_type_name is None:
             # Suppress the type
             self.suppressed_type_names.add(type_name)

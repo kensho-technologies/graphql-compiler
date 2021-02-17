@@ -11154,3 +11154,41 @@ class CompilerTests(unittest.TestCase):
             expected_cypher,
             expected_sql,
         )
+
+    def test_animal_born_at_traversal(self) -> None:
+        """Ensure that sql composite key traversals work."""
+        test_data = test_input_data.animal_born_at_traversal()
+
+        expected_match = SKIP_TEST
+        expected_gremlin = SKIP_TEST
+        expected_mssql = """
+            SELECT
+                [Animal_1].name AS animal_name,
+                [BirthEvent_1].name AS birth_event_name
+            FROM
+                db_1.schema_1.[Animal] AS [Animal_1]
+                JOIN db_1.schema_1.[BirthEvent] AS [BirthEvent_1]
+                    ON [Animal_1].birth_date = [BirthEvent_1].event_date
+                    AND [Animal_1].birth_uuid = [BirthEvent_1].uuid
+        """
+        expected_postgresql = """
+            SELECT
+                "Animal_1".name AS animal_name,
+                "BirthEvent_1".name AS birth_event_name
+            FROM
+                schema_1."Animal" AS "Animal_1"
+                JOIN schema_1."BirthEvent" AS "BirthEvent_1"
+                    ON "Animal_1".birth_date = "BirthEvent_1".event_date
+                    AND "Animal_1".birth_uuid = "BirthEvent_1".uuid
+        """
+        expected_cypher = SKIP_TEST
+
+        check_test_data(
+            self,
+            test_data,
+            expected_match,
+            expected_gremlin,
+            expected_mssql,
+            expected_cypher,
+            expected_postgresql,
+        )
