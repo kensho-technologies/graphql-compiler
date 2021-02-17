@@ -28,7 +28,8 @@ class DirectJoinDescriptor:
     JOIN origin_table.from_column = destination_table.to_column
 
     The type of join (inner vs left, etc.) is not specified.
-    The tables are not specified."""
+    The tables are not specified.
+    """
 
     from_column: str  # The column in the source table we intend to join on.
     to_column: str  # The column in the destination table we intend to join on.
@@ -45,7 +46,8 @@ class CompositeJoinDescriptor:
         origin_table.from_column_3 == destination_table.to_column_3
 
     The type of join (inner vs left, etc.) is not specified.
-    The tables are not specified."""
+    The tables are not specified.
+    """
 
     # (from_column, to_column) pairs, where from_column is on the origin table
     # and to_column is on the destination table of the join.

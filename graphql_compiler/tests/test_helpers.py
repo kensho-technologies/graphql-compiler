@@ -31,6 +31,7 @@ from ..schema.schema_info import (
     CommonSchemaInfo,
     CompositeJoinDescriptor,
     DirectJoinDescriptor,
+    JoinDescriptor,
     SQLAlchemySchemaInfo,
     make_sqlalchemy_schema_info,
 )
@@ -774,22 +775,19 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             "name": "Animal_ParentOf",
             "from_table": "Animal",
             "to_table": "Animal",
-            "from_column": "uuid",
-            "to_column": "parent",
+            "column_pairs": {("uuid", "parent")},
         },
         {
             "name": "Animal_OfSpecies",
             "from_table": "Animal",
             "to_table": "Species",
-            "from_column": "species",
-            "to_column": "uuid",
+            "column_pairs": {("uuid", "parent")},
         },
         {
             "name": "Animal_FedAt",
             "from_table": "Animal",
             "to_table": "FeedingEvent",
-            "from_column": "fed_at",
-            "to_column": "uuid",
+            "column_pairs": {("fed_at", "uuid")},
         },
         {
             "name": "Animal_BornAt",
@@ -804,64 +802,64 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             "name": "Animal_LivesIn",
             "from_table": "Animal",
             "to_table": "Location",
-            "from_column": "lives_in",
-            "to_column": "uuid",
+            "column_pairs": {("lives_in", "uuid")},
         },
         {
             "name": "Animal_ImportantEvent",
             "from_table": "Animal",
             "to_table": "Union__BirthEvent__Event__FeedingEvent",
-            "from_column": "important_event",
-            "to_column": "uuid",
+            "column_pairs": {("important_event", "uuid")},
         },
         {
             "name": "Species_Eats",
             "from_table": "Species",
             "to_table": "Union__Food__FoodOrSpecies__Species",
-            "from_column": "eats",
-            "to_column": "uuid",
+            "column_pairs": {("eats", "uuid")},
         },
         {
             "name": "Entity_Related",
             "from_table": "Entity",
             "to_table": "Entity",
-            "from_column": "related_entity",
-            "to_column": "uuid",
+            "column_pairs": {("related_entity", "uuid")},
         },
         {
             "name": "Event_RelatedEvent",
             "from_table": "Union__BirthEvent__Event__FeedingEvent",
             "to_table": "Union__BirthEvent__Event__FeedingEvent",
-            "from_column": "related_event",
-            "to_column": "uuid",
+            "column_pairs": {("related_event", "uuid")},
         },
         {
             "name": "Entity_Alias",
             "from_table": "Entity",
             "to_table": "Alias",
-            "from_column": "uuid",
-            "to_column": "alias_for",
+            "column_pairs": {("uuid", "alias_for")},
         },
     ]
 
-    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]] = {}
+    # Create the appropriate JoinDescriptor for each specified edge, in both the
+    # in and out directions.
+    join_descriptors: Dict[str, Dict[str, JoinDescriptor]] = {}
     for edge in edges:
-        if "column_pairs" in edge:
-            join_descriptors.setdefault(edge["from_table"], {})[
+        column_pairs = cast(Set[Tuple[str, str]], edge["column_pairs"])
+        from_table = cast(str, edge["from_table"])
+        to_table = cast(str, edge["to_table"])
+        if len(column_pairs) > 1:
+            join_descriptors.setdefault(from_table, {})[
                 "out_{}".format(edge["name"])
-            ] = CompositeJoinDescriptor(edge["column_pairs"])
-            join_descriptors.setdefault(edge["to_table"], {})[
+            ] = CompositeJoinDescriptor(column_pairs)
+            join_descriptors.setdefault(to_table, {})[
                 "in_{}".format(edge["name"])
             ] = CompositeJoinDescriptor(
-                {(to_column, from_column) for from_column, to_column in edge["column_pairs"]}
+                {(to_column, from_column) for from_column, to_column in column_pairs}
             )
-        else:
-            join_descriptors.setdefault(edge["from_table"], {})[
+        elif len(column_pairs) == 1:
+            from_column, to_column = next(iter(column_pairs))
+            join_descriptors.setdefault(from_table, {})[
                 "out_{}".format(edge["name"])
-            ] = DirectJoinDescriptor(edge["from_column"], edge["to_column"])
-            join_descriptors.setdefault(edge["to_table"], {})[
+            ] = DirectJoinDescriptor(from_column, to_column)
+            join_descriptors.setdefault(to_table, {})[
                 "in_{}".format(edge["name"])
-            ] = DirectJoinDescriptor(edge["to_column"], edge["from_column"])
+            ] = DirectJoinDescriptor(to_column, from_column)
 
     # Inherit join_descriptors from superclasses
     # TODO(bojanserafimov): Properties can be inferred too, instead of being explicitly inherited.
