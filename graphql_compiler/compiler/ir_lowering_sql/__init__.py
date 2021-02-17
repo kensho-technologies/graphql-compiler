@@ -48,7 +48,7 @@ def _find_non_null_columns(schema_info, query_metadata_table):
             elif isinstance(edge, CompositeJoinDescriptor):
                 non_null_column[child_location.query_path] = sorted(edge.column_pairs)[0][1]
             else:
-                raise AssertionError(u"TODO")
+                raise AssertionError(f"Unknown join descriptor type {edge}: {type(edge)}")
 
     return non_null_column
 
