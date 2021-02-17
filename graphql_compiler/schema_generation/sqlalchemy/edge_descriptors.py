@@ -115,6 +115,7 @@ def generate_direct_edge_descriptors_from_foreign_keys(
             else:
                 number_of_composite_foreign_keys += 1
 
+    # TODO(bojanserafimov): Infer CompositeJoinDescriptor objects
     if number_of_composite_foreign_keys:
         warnings.warn(
             "Ignored {} edges implied by composite foreign keys. We currently do not "

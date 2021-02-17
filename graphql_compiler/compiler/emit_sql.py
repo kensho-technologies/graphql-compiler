@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from dataclasses import dataclass
-from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import AbstractSet, Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 
 import six
 import sqlalchemy
@@ -21,7 +21,12 @@ from sqlalchemy.sql.selectable import FromClause, Join, Select
 from . import blocks
 from ..global_utils import VertexPath
 from ..schema import COUNT_META_FIELD_NAME
-from ..schema.schema_info import DirectJoinDescriptor, SQLAlchemySchemaInfo
+from ..schema.schema_info import (
+    CompositeJoinDescriptor,
+    DirectJoinDescriptor,
+    JoinDescriptor,
+    SQLAlchemySchemaInfo,
+)
 from .compiler_entities import BasicBlock
 from .compiler_frontend import IrAndMetadata
 from .expressions import ContextField, Expression
@@ -143,8 +148,17 @@ def _find_used_columns(
             )
             vertex_field_name = f"{edge_direction}_{edge_name}"
             edge = sql_schema_info.join_descriptors[location_info.type.name][vertex_field_name]
-            used_columns.setdefault(get_vertex_path(location), set()).add(edge.from_column)
-            used_columns.setdefault(get_vertex_path(child_location), set()).add(edge.to_column)
+            if isinstance(edge, DirectJoinDescriptor):
+                columns_at_location = {edge.from_column}
+                columns_at_child = {edge.to_column}
+            elif isinstance(edge, CompositeJoinDescriptor):
+                columns_at_location = {column_pair[0] for column_pair in edge.column_pairs}
+                columns_at_child = {column_pair[1] for column_pair in edge.column_pairs}
+            else:
+                raise AssertionError(f"Unknown join descriptor type {edge}: {type(edge)}")
+
+            used_columns.setdefault(get_vertex_path(location), set()).update(columns_at_location)
+            used_columns.setdefault(get_vertex_path(child_location), set()).update(columns_at_child)
 
             # Check if the edge is recursive
             child_location_info = ir.query_metadata_table.get_location_info(child_location)
@@ -152,12 +166,12 @@ def _find_used_columns(
                 # The primary key may be used if the recursive cte base semijoins to
                 # the pre-recurse cte by primary key.
                 alias = sql_schema_info.vertex_name_to_table[location_info.type.name].alias()
-                primary_key_name = _get_primary_key_name(alias, location_info.type.name, "@recurse")
-                used_columns.setdefault(get_vertex_path(location), set()).add(primary_key_name)
+                primary_keys = {column.name for column in alias.primary_key}
+                used_columns.setdefault(get_vertex_path(location), set()).update(primary_keys)
 
                 # The from_column is used at the destination as well, inside the recursive step
-                used_columns.setdefault(get_vertex_path(child_location), set()).add(
-                    edge.from_column
+                used_columns.setdefault(get_vertex_path(child_location), set()).update(
+                    columns_at_location
                 )
 
     # Find outputs used
@@ -780,7 +794,9 @@ class CompilationState(object):
         # Move to the beginning location of the query.
         self._relocate(ir.query_metadata_table.root_location)
 
-        # Mapping aliases to the column used to join into them.
+        # Mapping aliases to one of the column used to join into them. We use this column
+        # to check for LEFT JOIN misses, since it helps us distinguish actuall NULL values
+        # from values that are NULL because of a LEFT JOIN miss.
         self._came_from: Dict[Union[Alias, ColumnRouter], Column] = {}
 
         self._recurse_needs_cte: bool = False
@@ -840,9 +856,8 @@ class CompilationState(object):
                     self._current_alias, self._current_location, output_fields
                 )
 
-    # TODO merge from_column and to_column into a joindescriptor
     def _join_to_parent_location(
-        self, parent_alias: Alias, from_column: str, to_column: str, optional: bool
+        self, parent_alias: Alias, join_descriptor: JoinDescriptor, optional: bool
     ):
         """Join the current location to the parent location using the column names specified."""
         if self._current_alias is None:
@@ -851,7 +866,25 @@ class CompilationState(object):
                 f"during fold {self}."
             )
 
-        self._came_from[self._current_alias] = self._current_alias.c[to_column]
+        # construct on clause for join
+        if isinstance(join_descriptor, DirectJoinDescriptor):
+            matching_column_pairs: AbstractSet[Tuple[str, str]] = {
+                (join_descriptor.from_column, join_descriptor.to_column),
+            }
+        elif isinstance(join_descriptor, CompositeJoinDescriptor):
+            matching_column_pairs = join_descriptor.column_pairs
+        else:
+            raise AssertionError(
+                f"Unknown join descriptor type {join_descriptor}: {type(join_descriptor)}"
+            )
+
+        if not matching_column_pairs:
+            raise AssertionError(
+                f"Invalid join descriptor {join_descriptor}, produced no matching column pairs."
+            )
+
+        _, non_null_column = sorted(matching_column_pairs)[0]
+        self._came_from[self._current_alias] = self._current_alias.c[non_null_column]
 
         if self._is_in_optional_scope() and not optional:
             # For mandatory edges in optional scope, we emit LEFT OUTER JOIN and enforce the
@@ -879,10 +912,17 @@ class CompilationState(object):
                 )
             )
 
+        on_clause = sqlalchemy.and_(
+            *(
+                parent_alias.c[from_column] == self._current_alias.c[to_column]
+                for from_column, to_column in sorted(matching_column_pairs)
+            )
+        )
+
         # Join to where we came from.
         self._from_clause = self._from_clause.join(
             self._current_alias,
-            onclause=(parent_alias.c[from_column] == self._current_alias.c[to_column]),
+            onclause=on_clause,
             isouter=self._is_in_optional_scope(),
         )
 
@@ -932,11 +972,14 @@ class CompilationState(object):
                     "Attempting to traverse inside a fold while the _current_location was not a "
                     f"FoldScopeLocation. _current_location was set to {self._current_location}."
                 )
+            if not isinstance(edge, DirectJoinDescriptor):
+                raise NotImplementedError(
+                    f"Edge {vertex_field} is backed by a CompositeJoinDescriptor, "
+                    "so it can't be used inside a @fold scope."
+                )
             self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
         else:
-            self._join_to_parent_location(
-                previous_alias, edge.from_column, edge.to_column, optional
-            )
+            self._join_to_parent_location(previous_alias, edge, optional)
 
     def _wrap_into_cte(self) -> None:
         """Wrap the current query into a cte."""
@@ -1017,6 +1060,11 @@ class CompilationState(object):
             )
 
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
+        if not isinstance(edge, DirectJoinDescriptor):
+            raise NotImplementedError(
+                f"Edge {vertex_field} requires a JOIN across a composite key, which is currently "
+                f"not supported for use with @recurse."
+            )
         primary_key = self._get_current_primary_key_name("@recurse")
 
         # Wrap the query so far into a CTE if it would speed up the recursive query.
@@ -1074,8 +1122,8 @@ class CompilationState(object):
             .where(base.c[CTE_DEPTH_NAME] < literal_depth)
         )
 
-        # TODO(bojanserafimov): This creates an unused alias if there's no tags or outputs so far
-        self._join_to_parent_location(previous_alias, primary_key, CTE_KEY_NAME, False)
+        join_descriptor = DirectJoinDescriptor(primary_key, CTE_KEY_NAME)
+        self._join_to_parent_location(previous_alias, join_descriptor, False)
 
     def start_global_operations(self) -> None:
         """Execute a GlobalOperationsStart block."""
@@ -1131,6 +1179,11 @@ class CompilationState(object):
         join_descriptor = self._sql_schema_info.join_descriptors[self._current_classname][
             full_edge_name
         ]
+        if not isinstance(join_descriptor, DirectJoinDescriptor):
+            raise NotImplementedError(
+                f"Edge {full_edge_name} requires a JOIN across a composite key, which is currently "
+                "not supported for use with @fold."
+            )
 
         # 3. Initialize fold object.
         self._current_fold = FoldSubqueryBuilder(
