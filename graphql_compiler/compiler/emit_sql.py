@@ -883,7 +883,7 @@ class CompilationState(object):
                 f"Invalid join descriptor {join_descriptor}, produced no matching column pairs."
             )
 
-        non_null_column = sorted(matching_column_pairs)[0][1]
+        _, non_null_column = sorted(matching_column_pairs)[0]
         self._came_from[self._current_alias] = self._current_alias.c[non_null_column]
 
         if self._is_in_optional_scope() and not optional:
