@@ -1,7 +1,7 @@
 # Copyright 2018-present Kensho Technologies, LLC.
 """Transform a SqlNode tree into an executable SQLAlchemy query."""
 from dataclasses import dataclass
-from typing import Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
+from typing import AbstractSet, Dict, Iterator, List, NamedTuple, Optional, Set, Tuple, Union
 
 import six
 import sqlalchemy
@@ -868,7 +868,7 @@ class CompilationState(object):
 
         # construct on clause for join
         if isinstance(join_descriptor, DirectJoinDescriptor):
-            matching_column_pairs = {
+            matching_column_pairs: AbstractSet[Tuple[str, str]] = {
                 (join_descriptor.from_column, join_descriptor.to_column),
             }
         elif isinstance(join_descriptor, CompositeJoinDescriptor):
