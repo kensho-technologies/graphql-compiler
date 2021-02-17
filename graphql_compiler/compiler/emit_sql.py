@@ -1062,8 +1062,8 @@ class CompilationState(object):
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         if not isinstance(edge, DirectJoinDescriptor):
             raise NotImplementedError(
-                f"Edge {vertex_field} is backed by a CompositeJoinDescriptor, "
-                "so it can't be used with @recurse."
+                f"Edge {vertex_field} requires a JOIN across a composite key, which is currently "
+                f"not supported for use with @recurse."
             )
         primary_key = self._get_current_primary_key_name("@recurse")
 
