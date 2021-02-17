@@ -56,7 +56,7 @@ class CompositeJoinDescriptor:
     def __post_init__(self) -> None:
         """Validate fields."""
         if not self.column_pairs:
-            raise AssertionError("TODO")
+            raise AssertionError("The column_pairs field is expected to be non-empty.")
 
 
 JoinDescriptor = Union[DirectJoinDescriptor, CompositeJoinDescriptor]

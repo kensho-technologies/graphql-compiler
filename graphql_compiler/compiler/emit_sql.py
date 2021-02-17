@@ -155,7 +155,7 @@ def _find_used_columns(
                 columns_at_location = {column_pair[0] for column_pair in edge.column_pairs}
                 columns_at_child = {column_pair[1] for column_pair in edge.column_pairs}
             else:
-                raise AssertionError("TODO")
+                raise AssertionError(f"Unknown join descriptor type {edge}: {type(edge)}")
 
             used_columns.setdefault(get_vertex_path(location), set()).update(columns_at_location)
             used_columns.setdefault(get_vertex_path(child_location), set()).update(columns_at_child)
@@ -874,10 +874,14 @@ class CompilationState(object):
         elif isinstance(join_descriptor, CompositeJoinDescriptor):
             matching_column_pairs = join_descriptor.column_pairs
         else:
-            raise AssertionError("TODO")
+            raise AssertionError(
+                f"Unknown join descriptor type {join_descriptor}: {type(join_descriptor)}"
+            )
 
         if not matching_column_pairs:
-            raise AssertionError("TODO")
+            raise AssertionError(
+                f"Invalid join descriptor {join_descriptor}, produced no matching column pairs."
+            )
 
         non_null_column = sorted(matching_column_pairs)[0][1]
         self._came_from[self._current_alias] = self._current_alias.c[non_null_column]
@@ -969,7 +973,10 @@ class CompilationState(object):
                     f"FoldScopeLocation. _current_location was set to {self._current_location}."
                 )
             if not isinstance(edge, DirectJoinDescriptor):
-                raise AssertionError("TODO")
+                raise NotImplementedError(
+                    f"Edge {vertex_field} is backed by a CompositeJoinDescriptor, "
+                    "so it can't be used inside a @fold scope."
+                )
             self._current_fold.add_traversal(edge, previous_alias, self._current_alias)
         else:
             self._join_to_parent_location(previous_alias, edge, optional)
@@ -1054,7 +1061,10 @@ class CompilationState(object):
 
         edge = self._sql_schema_info.join_descriptors[self._current_classname][vertex_field]
         if not isinstance(edge, DirectJoinDescriptor):
-            raise AssertionError("TODO")
+            raise NotImplementedError(
+                f"Edge {vertex_field} is backed by a CompositeJoinDescriptor, "
+                "so it can't be used with @recurse."
+            )
         primary_key = self._get_current_primary_key_name("@recurse")
 
         # Wrap the query so far into a CTE if it would speed up the recursive query.
@@ -1170,7 +1180,10 @@ class CompilationState(object):
             full_edge_name
         ]
         if not isinstance(join_descriptor, DirectJoinDescriptor):
-            raise AssertionError("TODO")
+            raise NotImplementedError(
+                f"Edge {full_edge_name} is backed by a CompositeJoinDescriptor, "
+                "so it can't be used with @fold."
+            )
 
         # 3. Initialize fold object.
         self._current_fold = FoldSubqueryBuilder(
