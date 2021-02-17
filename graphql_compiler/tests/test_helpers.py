@@ -781,7 +781,7 @@ def get_sqlalchemy_schema_info(dialect: str = "mssql") -> SQLAlchemySchemaInfo:
             "name": "Animal_OfSpecies",
             "from_table": "Animal",
             "to_table": "Species",
-            "column_pairs": {("uuid", "parent")},
+            "column_pairs": {("species", "uuid")},
         },
         {
             "name": "Animal_FedAt",

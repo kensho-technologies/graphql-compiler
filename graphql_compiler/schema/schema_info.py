@@ -53,6 +53,10 @@ class CompositeJoinDescriptor:
     # and to_column is on the destination table of the join.
     column_pairs: Set[Tuple[str, str]]
 
+    def __post_init__(self):
+        if not self.column_pairs:
+            raise AssertionError("TODO")
+
 
 JoinDescriptor = Union[DirectJoinDescriptor, CompositeJoinDescriptor]
 

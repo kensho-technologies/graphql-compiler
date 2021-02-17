@@ -154,6 +154,8 @@ def _find_used_columns(
             elif isinstance(edge, CompositeJoinDescriptor):
                 columns_at_location = {column_pair[0] for column_pair in edge.column_pairs}
                 columns_at_child = {column_pair[1] for column_pair in edge.column_pairs}
+            else:
+                raise AssertionError("TODO")
 
             used_columns.setdefault(get_vertex_path(location), set()).update(columns_at_location)
             used_columns.setdefault(get_vertex_path(child_location), set()).update(columns_at_child)
@@ -872,6 +874,9 @@ class CompilationState(object):
         elif isinstance(join_descriptor, CompositeJoinDescriptor):
             matching_column_pairs = join_descriptor.column_pairs
         else:
+            raise AssertionError("TODO")
+
+        if not matching_column_pairs:
             raise AssertionError("TODO")
 
         non_null_column = sorted(matching_column_pairs)[0][1]
