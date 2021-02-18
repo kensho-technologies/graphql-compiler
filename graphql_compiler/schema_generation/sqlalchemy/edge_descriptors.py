@@ -71,7 +71,10 @@ def get_join_descriptors_from_edge_descriptors(
                 }
             )
         else:
-            raise AssertionError("TODO")
+            raise AssertionError(
+                f"Unknown edge descriptor type {edge_descriptor}: "
+                f"{type(edge_descriptor)} for edge {edge_name}."
+            )
     return join_descriptors
 
 
@@ -97,7 +100,10 @@ def validate_edge_descriptors(
                 for _, to_column in edge_descriptor.column_pairs
             ]
         else:
-            raise AssertionError("TODO")
+            raise AssertionError(
+                f"Unknown edge descriptor type {edge_descriptor}: "
+                f"{type(edge_descriptor)} for edge {edge_name}."
+            )
 
         for vertex_name, column_name in vertex_column_pairs:
             if vertex_name not in vertex_name_to_table:
