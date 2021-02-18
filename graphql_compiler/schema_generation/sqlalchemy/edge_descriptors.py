@@ -57,21 +57,36 @@ def get_join_descriptors_from_edge_descriptors(
                     for from_column, to_column in edge_descriptor.matching_columns
                 }
             )
+        else:
+            raise AssertionError("TODO")
     return join_descriptors
 
 
 def validate_edge_descriptors(
-    vertex_name_to_table: Dict[str, Table], direct_edges: Dict[str, DirectEdgeDescriptor]
+    vertex_name_to_table: Dict[str, Table], edges: Dict[str, EdgeDescriptor]
 ) -> None:
     """Validate that the edge descriptors do not reference non-existent vertices or columns."""
     # TODO(pmantica1): Validate that columns in a direct SQL edge have comparable types.
     # TODO(pmantica1): Validate that columns don't have types that probably shouldn't be used for
     #                  joins, (e.g. array types).
-    for edge_name, direct_edge_descriptor in six.iteritems(direct_edges):
-        for vertex_name, column_name in (
-            (direct_edge_descriptor.from_vertex, direct_edge_descriptor.from_column),
-            (direct_edge_descriptor.to_vertex, direct_edge_descriptor.to_column),
-        ):
+    for edge_name, edge_descriptor in six.iteritems(direct_edges):
+        if isinstance(edge_descriptor, DirectEdgeDescriptor):
+            vertex_column_pairs = (
+                (edge_descriptor.from_vertex, edge_descriptor.from_column),
+                (edge_descriptor.to_vertex, edge_descriptor.to_column),
+            )
+        elif isinstance(edge_descriptor, CompositeEdgeDescriptor):
+            vertex_column_pairs = (
+                (edge_descriptor.from_vertex, from_column)
+                for from_column, _ in edge_descriptor.matching_columns
+            ) + (
+                (edge_descriptor.to_vertex, to_column)
+                for _, to_column in edge_descriptor.matching_columns
+            )
+        else:
+            raise AssertionError("TODO")
+
+        for vertex_name, column_name in vertex_column_pairs:
             if vertex_name not in vertex_name_to_table:
                 raise InvalidSQLEdgeError(
                     "SQL edge {} with edge descriptor {} references a "

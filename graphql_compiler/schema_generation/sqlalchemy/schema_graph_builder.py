@@ -31,9 +31,9 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
                               will have the same name as the underlying columns and columns with
                               unsupported types, (SQL types with no matching GraphQL type), will be
                               ignored.
-        direct_edges: dict, str -> DirectEdgeDescriptor. This dictionary will be used to generate
+        direct_edges: dict, str -> EdgeDescriptor. This dictionary will be used to generate
                       EdgeType objects. The name of the EdgeType objects will be dictionary keys and
-                      the connections will be deduced from the DirectEdgeDescriptor objects.
+                      the connections will be deduced from the EdgeDescriptor objects.
 
     Returns:
         SchemaGraph reflecting the specified metadata.
