@@ -19,7 +19,7 @@ from .utils import (
 )
 
 
-def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
+def get_sqlalchemy_schema_graph(vertex_name_to_table, edges):
     """Return a SchemaGraph from the metadata.
 
     Args:
@@ -31,15 +31,15 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
                               will have the same name as the underlying columns and columns with
                               unsupported types, (SQL types with no matching GraphQL type), will be
                               ignored.
-        direct_edges: dict, str -> DirectEdgeDescriptor. This dictionary will be used to generate
+        edges: dict, str -> EdgeDescriptor. This dictionary will be used to generate
                       EdgeType objects. The name of the EdgeType objects will be dictionary keys and
-                      the connections will be deduced from the DirectEdgeDescriptor objects.
+                      the connections will be deduced from the EdgeDescriptor objects.
 
     Returns:
         SchemaGraph reflecting the specified metadata.
     """
     validate_that_tables_belong_to_the_same_metadata_object(vertex_name_to_table.values())
-    validate_edge_descriptors(vertex_name_to_table, direct_edges)
+    validate_edge_descriptors(vertex_name_to_table, edges)
     validate_that_tables_have_primary_keys(vertex_name_to_table.values())
 
     vertex_types = {
@@ -47,8 +47,8 @@ def get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges):
         for vertex_name, table in vertex_name_to_table.items()
     }
     edge_types = {
-        edge_name: _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor)
-        for edge_name, direct_edge_descriptor in direct_edges.items()
+        edge_name: _get_edge_type_from_edge(edge_name, edge_descriptor)
+        for edge_name, edge_descriptor in edges.items()
     }
     elements = merge_non_overlapping_dicts(vertex_types, edge_types)
     elements.update(vertex_types)
@@ -72,15 +72,15 @@ def _get_vertex_type_from_sqlalchemy_table(vertex_name, table):
     return VertexType(vertex_name, False, properties, {})
 
 
-def _get_edge_type_from_direct_edge(edge_name, direct_edge_descriptor):
-    """Return the EdgeType corresponding to a direct SQL edge."""
+def _get_edge_type_from_edge(edge_name, edge_descriptor):
+    """Return the EdgeType corresponding to a SQL edge."""
     return EdgeType(
         edge_name,
         False,
         {},
         {},
-        base_in_connection=direct_edge_descriptor.from_vertex,
-        base_out_connection=direct_edge_descriptor.to_vertex,
+        base_in_connection=edge_descriptor.from_vertex,
+        base_out_connection=edge_descriptor.to_vertex,
     )
 
 
