@@ -6,7 +6,7 @@ from .schema_graph_builder import get_sqlalchemy_schema_graph
 
 
 def get_sqlalchemy_schema_info(
-    vertex_name_to_table, direct_edges, dialect, class_to_field_type_overrides=None
+    vertex_name_to_table, edges, dialect, class_to_field_type_overrides=None
 ):
     """Return a SQLAlchemySchemaInfo from the metadata.
 
@@ -31,14 +31,14 @@ def get_sqlalchemy_schema_info(
                               The fields will have the same name as the underlying columns and
                               columns with unsupported types, (SQL types with no matching GraphQL
                               type), will be ignored.
-        direct_edges: dict, str-> DirectEdgeDescriptor. The traversal of a direct
+        edges: dict, str-> EdgeDescriptor. The traversal of an edge
                       edge gets compiled to a SQL join in graphql_to_sql(). Therefore, each
-                      DirectEdgeDescriptor not only specifies the source and destination GraphQL
+                      EdgeDescriptor not only specifies the source and destination GraphQL
                       objects, but also which columns to use to use when generating a SQL join
                       between the underlying source and destination tables. The names of the edges
                       are the keys in the dictionary and the edges will be rendered as vertex fields
                       named out_<edgeName> and in_<edgeName> in the source and destination GraphQL
-                      objects respectively. The direct edge names must not conflict with the GraphQL
+                      objects respectively. The edge names must not conflict with the GraphQL
                       object names.
         dialect: sqlalchemy.engine.interfaces.Dialect, specifying the dialect we are compiling to
                  (e.g. sqlalchemy.dialects.mssql.dialect()).
@@ -50,7 +50,7 @@ def get_sqlalchemy_schema_info(
     Returns:
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
     """
-    schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, direct_edges)
+    schema_graph = get_sqlalchemy_schema_graph(vertex_name_to_table, edges)
 
     graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(
         schema_graph,
@@ -58,7 +58,7 @@ def get_sqlalchemy_schema_info(
         hidden_classes=set(),
     )
 
-    join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
+    join_descriptors = get_join_descriptors_from_edge_descriptors(edges)
 
     return SQLAlchemySchemaInfo(
         graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
