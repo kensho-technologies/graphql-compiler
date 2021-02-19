@@ -1,64 +1,120 @@
 # Copyright 2019-present Kensho Technologies, LLC.
-from typing import Dict, NamedTuple, Set
+from dataclasses import dataclass
+from typing import AbstractSet, Dict, Set, Tuple, Union
 import warnings
 
 import six
 from sqlalchemy import Table
 
 from ...schema import INBOUND_EDGE_FIELD_PREFIX, OUTBOUND_EDGE_FIELD_PREFIX
-from ...schema.schema_info import DirectJoinDescriptor
+from ...schema.schema_info import CompositeJoinDescriptor, DirectJoinDescriptor, JoinDescriptor
 from ..exceptions import InvalidSQLEdgeError
 
 
-class DirectEdgeDescriptor(NamedTuple):
+@dataclass(frozen=True)
+class DirectEdgeDescriptor:
+    """Represents a bidirectional edge between two vertices backed by DirectJoinDescriptors."""
+
     from_vertex: str  # Name of the source vertex.
     from_column: str  # Name of the column of the underlying source table to use for SQL join.
     to_vertex: str  # Name of the destination vertex.
     to_column: str  # Name of the column of the underlying destination table to use for SQL join.
 
 
+@dataclass(frozen=True)
+class CompositeEdgeDescriptor:
+    """Represents a bidirectional edge between two vertices backed by CompositeJoinDescriptors."""
+
+    from_vertex: str  # Name of the source vertex
+    to_vertex: str  # Name of the destination vertex
+
+    # (from_column, to_column) pairs, where from_column is on the origin table
+    # and to_column is on the destination table of the join.
+    column_pairs: AbstractSet[Tuple[str, str]]
+
+    def __post_init__(self) -> None:
+        """Validate fields."""
+        if not self.column_pairs:
+            raise AssertionError("The column_pairs field is expected to be non-empty.")
+
+
+EdgeDescriptor = Union[DirectEdgeDescriptor, CompositeEdgeDescriptor]
+
+
 def get_join_descriptors_from_edge_descriptors(
-    direct_edges: Dict[str, DirectEdgeDescriptor]
-) -> Dict[str, Dict[str, DirectJoinDescriptor]]:
+    direct_edges: Dict[str, EdgeDescriptor]
+) -> Dict[str, Dict[str, JoinDescriptor]]:
     """Return the SQL edges in a format more suited to resolving vertex fields."""
-    join_descriptors: Dict[str, Dict[str, DirectJoinDescriptor]] = {}
-    for edge_name, direct_edge_descriptor in direct_edges.items():
-        from_column = direct_edge_descriptor.from_column
-        to_column = direct_edge_descriptor.to_column
-        join_descriptors.setdefault(direct_edge_descriptor.from_vertex, {})
-        join_descriptors.setdefault(direct_edge_descriptor.to_vertex, {})
+    join_descriptors: Dict[str, Dict[str, JoinDescriptor]] = {}
+    for edge_name, edge_descriptor in direct_edges.items():
+        join_descriptors.setdefault(edge_descriptor.from_vertex, {})
+        join_descriptors.setdefault(edge_descriptor.to_vertex, {})
         out_edge_name = OUTBOUND_EDGE_FIELD_PREFIX + edge_name
         in_edge_name = INBOUND_EDGE_FIELD_PREFIX + edge_name
-        join_descriptors[direct_edge_descriptor.from_vertex][out_edge_name] = DirectJoinDescriptor(
-            from_column, to_column
-        )
-        join_descriptors[direct_edge_descriptor.to_vertex][in_edge_name] = DirectJoinDescriptor(
-            to_column, from_column
-        )
+        if isinstance(edge_descriptor, DirectEdgeDescriptor):
+            from_column = edge_descriptor.from_column
+            to_column = edge_descriptor.to_column
+            join_descriptors[edge_descriptor.from_vertex][out_edge_name] = DirectJoinDescriptor(
+                from_column, to_column
+            )
+            join_descriptors[edge_descriptor.to_vertex][in_edge_name] = DirectJoinDescriptor(
+                to_column, from_column
+            )
+        elif isinstance(edge_descriptor, CompositeEdgeDescriptor):
+            join_descriptors[edge_descriptor.from_vertex][out_edge_name] = CompositeJoinDescriptor(
+                edge_descriptor.column_pairs
+            )
+            join_descriptors[edge_descriptor.to_vertex][in_edge_name] = CompositeJoinDescriptor(
+                {
+                    (to_column, from_column)
+                    for from_column, to_column in edge_descriptor.column_pairs
+                }
+            )
+        else:
+            raise AssertionError(
+                f"Unknown edge descriptor type {edge_descriptor}: "
+                f"{type(edge_descriptor)} for edge {edge_name}."
+            )
     return join_descriptors
 
 
 def validate_edge_descriptors(
-    vertex_name_to_table: Dict[str, Table], direct_edges: Dict[str, DirectEdgeDescriptor]
+    vertex_name_to_table: Dict[str, Table], edges: Dict[str, EdgeDescriptor]
 ) -> None:
     """Validate that the edge descriptors do not reference non-existent vertices or columns."""
     # TODO(pmantica1): Validate that columns in a direct SQL edge have comparable types.
     # TODO(pmantica1): Validate that columns don't have types that probably shouldn't be used for
     #                  joins, (e.g. array types).
-    for edge_name, direct_edge_descriptor in six.iteritems(direct_edges):
-        for vertex_name, column_name in (
-            (direct_edge_descriptor.from_vertex, direct_edge_descriptor.from_column),
-            (direct_edge_descriptor.to_vertex, direct_edge_descriptor.to_column),
-        ):
+    for edge_name, edge_descriptor in six.iteritems(edges):
+        if isinstance(edge_descriptor, DirectEdgeDescriptor):
+            vertex_column_pairs = [
+                (edge_descriptor.from_vertex, edge_descriptor.from_column),
+                (edge_descriptor.to_vertex, edge_descriptor.to_column),
+            ]
+        elif isinstance(edge_descriptor, CompositeEdgeDescriptor):
+            vertex_column_pairs = [
+                (edge_descriptor.from_vertex, from_column)
+                for from_column, _ in edge_descriptor.column_pairs
+            ] + [
+                (edge_descriptor.to_vertex, to_column)
+                for _, to_column in edge_descriptor.column_pairs
+            ]
+        else:
+            raise AssertionError(
+                f"Unknown edge descriptor type {edge_descriptor}: "
+                f"{type(edge_descriptor)} for edge {edge_name}."
+            )
+
+        for vertex_name, column_name in vertex_column_pairs:
             if vertex_name not in vertex_name_to_table:
                 raise InvalidSQLEdgeError(
                     "SQL edge {} with edge descriptor {} references a "
-                    "non-existent vertex {}".format(edge_name, direct_edge_descriptor, vertex_name)
+                    "non-existent vertex {}".format(edge_name, edge_descriptor, vertex_name)
                 )
             if column_name not in vertex_name_to_table[vertex_name].columns:
                 raise InvalidSQLEdgeError(
                     "SQL edge {} with edge descriptor {} references a "
-                    "non-existent column {}".format(edge_name, direct_edge_descriptor, column_name)
+                    "non-existent column {}".format(edge_name, edge_descriptor, column_name)
                 )
 
 

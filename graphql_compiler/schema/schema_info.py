@@ -20,7 +20,7 @@ from ..cost_estimation.statistics import Statistics
 from ..schema_generation.schema_graph import SchemaGraph
 
 
-@dataclass
+@dataclass(frozen=True)
 class DirectJoinDescriptor:
     """Describes the ability to join two tables using the specified columns.
 
@@ -35,7 +35,7 @@ class DirectJoinDescriptor:
     to_column: str  # The column in the destination table we intend to join on.
 
 
-@dataclass
+@dataclass(frozen=True)
 class CompositeJoinDescriptor:
     """Describes the ability to join two tables with a composite relationship.
 

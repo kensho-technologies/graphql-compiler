@@ -25,6 +25,7 @@ from ...schema_generation.sqlalchemy import (
     get_join_descriptors_from_edge_descriptors,
 )
 from ...schema_generation.sqlalchemy.edge_descriptors import (
+    CompositeEdgeDescriptor,
     DirectEdgeDescriptor,
     DirectJoinDescriptor,
     generate_direct_edge_descriptors_from_foreign_keys,
@@ -208,6 +209,24 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
                 ignore_nulls=True,
             ),
             indexes,
+        )
+
+    def test_composite_edge(self) -> None:
+        edges = {
+            "composite_edge": CompositeEdgeDescriptor(
+                "Table1",
+                "TableWithMultiplePrimaryKeyColumns",
+                {
+                    ("source_column", "primary_key_column1"),
+                    ("unique_column", "primary_key_column2"),
+                },
+            )
+        }
+        schema_info = get_sqlalchemy_schema_info(_get_test_vertex_name_to_table(), edges, dialect())
+        self.assertTrue("out_composite_edge" in schema_info.join_descriptors["Table1"])
+        self.assertTrue(
+            "in_composite_edge"
+            in schema_info.join_descriptors["TableWithMultiplePrimaryKeyColumns"]
         )
 
 
