@@ -194,6 +194,24 @@ class IntegrationTests(TestCase):
     # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
     @use_all_backends(except_backends=(test_backend.NEO4J, test_backend.REDISGRAPH))
     @integration_fixtures
+    def test_float_filter_precision(self, backend_name: str) -> None:
+        graphql_query = """{
+            Animal {
+                net_worth @filter(op_name: ">=", value: ["$min_net_worth"])
+                name @output(out_name: "animal_name")
+            }
+        }"""
+        params = {
+            "min_net_worth": Decimal("4003453.43004303404334034030303003030303030303440404404")
+        }
+        self.assertResultsEqual(graphql_query, params, backend_name, [])
+
+    # Cypher doesn't support Decimals (both Neo4j [1] and RedisGraph [2])
+    # [0] https://oss.redislabs.com/redisgraph/cypher_support/#types
+    # [1] https://neo4j.com/docs/cypher-manual/current/syntax/values/
+    # [2] https://s3.amazonaws.com/artifacts.opencypher.org/openCypher9.pdf
+    @use_all_backends(except_backends=(test_backend.NEO4J, test_backend.REDISGRAPH))
+    @integration_fixtures
     def test_simple_filter(self, backend_name: str) -> None:
         graphql_query = """
         {
