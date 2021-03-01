@@ -1,6 +1,7 @@
 # Copyright 2020-present Kensho Technologies, LLC.
 """Convert values to their underlying GraphQLType."""
 from datetime import date, datetime
+from decimal import Decimal
 from types import MappingProxyType
 from typing import Any, Callable, Mapping, Tuple, Type
 
@@ -25,7 +26,7 @@ _ALLOWED_SCALAR_TYPES: Mapping[str, Tuple[Type, ...]] = MappingProxyType(
         GraphQLDate.name: (str, date),
         GraphQLDateTime.name: (str, date, datetime),
         GraphQLFloat.name: (str, float, int),
-        GraphQLDecimal.name: (str, float, int),
+        GraphQLDecimal.name: (str, float, int, Decimal),
         GraphQLInt.name: (int, str),
         GraphQLString.name: (str,),
         GraphQLBoolean.name: (bool, int, str),
