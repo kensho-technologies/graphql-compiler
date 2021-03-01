@@ -8,7 +8,6 @@ import six
 from sqlalchemy.engine.base import Engine
 
 from ... import graphql_to_match, graphql_to_redisgraph_cypher, graphql_to_sql
-from ...query_formatting.common import deserialize_multiple_arguments
 from ...compiler import compile_graphql_to_cypher, compile_graphql_to_sql
 from ...compiler.compiler_frontend import OutputMetadata
 from ...compiler.sqlalchemy_extensions import (
@@ -16,6 +15,7 @@ from ...compiler.sqlalchemy_extensions import (
     materialize_result_proxy,
     print_sqlalchemy_query_string,
 )
+from ...query_formatting.common import deserialize_multiple_arguments
 from ...schema.schema_info import CommonSchemaInfo, SQLAlchemySchemaInfo
 from ..test_data_tools.neo4j_graph import Neo4jClient
 
@@ -95,7 +95,8 @@ def _compile_print_and_run_sql_query(
     compilation_result = compile_graphql_to_sql(sql_schema_info, graphql_query)
     printed_query = print_sqlalchemy_query_string(compilation_result.query, sql_schema_info.dialect)
     deserialized_parameters = deserialize_multiple_arguments(
-        parameters, compilation_result.input_metadata)
+        parameters, compilation_result.input_metadata
+    )
     query_with_parameters = bind_parameters_to_query_string(
         printed_query, compilation_result.input_metadata, deserialized_parameters
     )

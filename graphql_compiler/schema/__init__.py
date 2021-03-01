@@ -415,6 +415,17 @@ def _parse_datetime_value(value: Any) -> datetime:
         )
 
 
+def _parse_decimal_value(value: Any) -> Decimal:
+    """Parse decimal value."""
+    if isinstance(value, float):
+        # Decimal(float(1.1)) is Decimal('1.100000000000000088817841970012523233890533447265625'),
+        # which is probably not what the user intended. Inflating the intended level of precision
+        # like this can cause errors with database types that are not configured with precision
+        # that high. Just use Decimal or str values if you're serious about precision.
+        return Decimal(str(value))
+    return Decimal(value)
+
+
 GraphQLDate = GraphQLScalarType(
     name="Date",
     description=(
@@ -465,7 +476,7 @@ GraphQLDecimal = GraphQLScalarType(
         'decimal separator: for example, "12345678.012345".'
     ),
     serialize=str,
-    parse_value=Decimal,
+    parse_value=_parse_decimal_value,
     parse_literal=_unused_function,  # We don't yet support parsing Decimal objects in literals.
 )
 
