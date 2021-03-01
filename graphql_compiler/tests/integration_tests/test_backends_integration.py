@@ -202,7 +202,10 @@ class IntegrationTests(TestCase):
             }
         }"""
         params = {
-            "min_net_worth": Decimal("4003453.43004303404334034030303003030303030303440404404")
+            # This value converted to decimal.Decimal is
+            # Decimal("40000.0999999999985448084771633148193359375"),
+            # which MSSQL will reject.
+            "min_net_worth": 40000.1,
         }
         self.assertResultsEqual(graphql_query, params, backend_name, [])
 
