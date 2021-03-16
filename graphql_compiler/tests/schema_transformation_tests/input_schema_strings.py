@@ -133,33 +133,6 @@ class InputSchemaStrings(object):
     """
     )
 
-    multiple_interfaces_schema = dedent(
-        """\
-        schema {
-          query: SchemaQuery
-        }
-
-        interface Character {
-          id: String
-        }
-
-        interface Creature {
-          age: Int
-        }
-
-        type Human implements Character & Creature {
-          id: String
-          age: Int
-        }
-
-        type SchemaQuery {
-          Character: Character
-          Creature: Creature
-          Human: Human
-        }
-    """
-    )
-
     scalar_schema = dedent(
         """\
         schema {
@@ -322,13 +295,23 @@ class InputSchemaStrings(object):
           SHORT
         }
 
+        interface AbstractCreature {
+          name: String
+        }
+
+        interface Creature implements AbstractCreature {
+          name: String
+          age: Int
+        }
+
         interface Character {
           id: String
         }
 
-        type Human implements Character {
+        type Human implements Character & Creature {
           id: String
           name: String
+          age: Int
           birthday: Date
         }
 
@@ -344,6 +327,9 @@ class InputSchemaStrings(object):
         directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
 
         type SchemaQuery {
+          AbstractCreature: AbstractCreature
+          Creature: Creature
+          Character: Character
           Human: Human
           Giraffe: Giraffe
           Dog: Dog

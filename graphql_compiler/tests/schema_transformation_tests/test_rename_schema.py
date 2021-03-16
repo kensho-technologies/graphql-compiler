@@ -466,24 +466,24 @@ class TestRenameSchema(unittest.TestCase):
     def test_field_renaming_in_interfaces(self) -> None:
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": {"new_id"}}}
+                parse(ISS.various_types_schema), {}, {"Character": {"id": {"new_id"}}}
             )
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": {"id", "new_id"}}}
+                parse(ISS.various_types_schema), {}, {"Character": {"id": {"id", "new_id"}}}
             )
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": set()}})
+            rename_schema(parse(ISS.various_types_schema), {}, {"Character": {"id": set()}})
         with self.assertRaises(NotImplementedError):
             # Cannot rename Human's fields because Human implements an interface and field_renamings
             # for object types that implement interfaces isn't supported yet.
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"new_id"}}})
+            rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": {"new_id"}}})
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"id", "new_id"}}}
+                parse(ISS.various_types_schema), {}, {"Human": {"id": {"id", "new_id"}}}
             )
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": set()}})
+            rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": set()}})
 
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -575,7 +575,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_multiple_interfaces_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.multiple_interfaces_schema),
+            parse(ISS.various_types_schema),
             {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "NewCreature"},
             {},
         )
@@ -585,23 +585,51 @@ class TestRenameSchema(unittest.TestCase):
               query: SchemaQuery
             }
 
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            interface AbstractCreature {
+              name: String
+            }
+
+            interface NewCreature implements AbstractCreature {
+              name: String
+              age: Int
+            }
+
             interface NewCharacter {
               id: String
             }
 
-            interface NewCreature {
-              age: Int
-            }
-
             type NewHuman implements NewCharacter & NewCreature {
               id: String
+              name: String
               age: Int
+              birthday: Date
             }
 
+            type Giraffe implements NewCharacter {
+              id: String
+              height: Height
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type SchemaQuery {
-              NewCharacter: NewCharacter
+              AbstractCreature: AbstractCreature
               NewCreature: NewCreature
+              NewCharacter: NewCharacter
               NewHuman: NewHuman
+              Giraffe: Giraffe
+              Dog: Dog
             }
         """
         )
