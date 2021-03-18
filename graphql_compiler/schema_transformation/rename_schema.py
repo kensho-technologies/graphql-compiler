@@ -75,14 +75,13 @@ result because "Baz" is not a type in the original schema.
 
 Operations that are already supported:
 - 1-1 renaming of object types, unions, enums, and interfaces.
-- Suppressing types that don't implement an interface.
-- Suppressing unions.
+- Suppressing object types and unions.
 - 1-1 and 1-many renamings for fields belonging to object types.
 - Suppressions for fields belonging to object types.
 - Renamings and suppressions for scalar types.
 
 Operations that are not yet supported but will be implemented:
-- Suppressions for enums, interfaces, and object types that implement interfaces.
+- Suppressions for enums and interfaces.
 - Renamings and suppressions for fields that belong to either interface types or object types that
   implement interfaces.
 - Renamings and suppressions for enum values.
@@ -92,6 +91,13 @@ Renaming constraints:
 - If you suppress a type Foo, no other type Bar may keep fields of type Foo (those fields must be
   suppressed). However, if type Foo has a field of that type Foo, it is legal to suppress type Foo
   without explicitly suppressing that particular field.
+- If you suppress a type Foo implementing an interface Bar, then Bar will remain in the schema but
+  be removed from the root query type, making it unqueryable. This is to prevent situations where a
+  scope in a query is of type Bar without also being of some more specific type, which may result in
+  accessing vertices of type Foo even though it was suppressed. For this reason, all interfaces that
+  Bar implements will also be made unqueryable in the same way, and this removal from the root query
+  type will happen recursively until all interfaces that Foo implements (either directly or
+  indirectly) are unqueryable.
 - If you suppress all the fields of a type Foo, then the type Foo must also be suppressed in
   type_renamings.
 - You may not suppress all types in the schema's root type.
@@ -215,8 +221,7 @@ def rename_schema(
           also catch all of its subclasses. This will change after the error classes are modified so
           that errors can be fixed programmatically, at which point it will make sense for the user
           to attempt to treat different errors differently
-        - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
-          type implementing an interface
+        - NotImplementedError if type_renamings attempts to suppress an enum or an interface
         - InvalidNameError if the schema contains an invalid type name, or if the user attempts
           to rename a type to an invalid name. A name is considered invalid if it does not consist
           of alphanumeric characters and underscores, if it starts with a numeric character, or
@@ -279,8 +284,7 @@ def _validate_renamings(
 
     Raises:
         - CascadingSuppressionError if a type/field suppression would require further suppressions
-        - NotImplementedError if type_renamings attempts to suppress an enum, an interface, or a
-          type implementing an interface
+        - NotImplementedError if type_renamings attempts to suppress an enum or an interface
     """
     _ensure_no_cascading_type_suppressions(schema_ast, type_renamings, field_renamings, query_type)
     _ensure_no_unsupported_suppressions(schema_ast, type_renamings)
