@@ -61,7 +61,6 @@ GENERIC_SQL_CLASS_TO_GRAPHQL_TYPE = {
 UNSUPPORTED_GENERIC_SQL_TYPES = frozenset(
     {
         sqltypes.ARRAY,
-        sqltypes.Binary,
         sqltypes.BINARY,
         sqltypes.BLOB,
         sqltypes.Interval,
