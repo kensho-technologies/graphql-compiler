@@ -465,9 +465,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_field_renaming_in_interfaces(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.various_types_schema), {}, {"Character": {"id": {"new_id"}}}
-            )
+            rename_schema(parse(ISS.various_types_schema), {}, {"Character": {"id": {"new_id"}}})
         with self.assertRaises(NotImplementedError):
             rename_schema(
                 parse(ISS.various_types_schema), {}, {"Character": {"id": {"id", "new_id"}}}
@@ -479,9 +477,7 @@ class TestRenameSchema(unittest.TestCase):
             # for object types that implement interfaces isn't supported yet.
             rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": {"new_id"}}})
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.various_types_schema), {}, {"Human": {"id": {"id", "new_id"}}}
-            )
+            rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": {"id", "new_id"}}})
         with self.assertRaises(NotImplementedError):
             rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": set()}})
 
@@ -609,7 +605,9 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_all_implementations_but_not_interface(self) -> None:
-        renamed_schema = rename_schema(parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}, {})
+        renamed_schema = rename_schema(
+            parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}, {}
+        )
         renamed_schema_string = dedent(
             """\
             schema {

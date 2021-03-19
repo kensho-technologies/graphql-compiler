@@ -124,7 +124,7 @@ Renaming constraints:
 """
 from collections import namedtuple
 from copy import copy
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast, Generator
+from typing import Any, Dict, Generator, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
@@ -134,7 +134,7 @@ from graphql import (
     Node,
     ObjectTypeDefinitionNode,
     UnionTypeDefinitionNode,
-    build_ast_schema, GraphQLSchema,
+    build_ast_schema,
 )
 from graphql.language.visitor import IDLE, REMOVE, Visitor, VisitorAction, visit
 from graphql.pyutils import FrozenList
@@ -243,11 +243,18 @@ def rename_schema(
     _validate_renamings(schema_ast, type_renamings, field_renamings, query_type)
 
     # Rename types, interfaces, enums, unions and suppress types, unions
-    schema_ast, reverse_name_map, reverse_field_name_map, interfaces_to_make_unqueryable = _rename_and_suppress_types_and_fields(
+    (
+        schema_ast,
+        reverse_name_map,
+        reverse_field_name_map,
+        interfaces_to_make_unqueryable,
+    ) = _rename_and_suppress_types_and_fields(
         schema_ast, type_renamings, field_renamings, query_type
     )
 
-    schema_ast = _rename_and_suppress_query_type_fields(schema_ast, type_renamings, query_type, interfaces_to_make_unqueryable)
+    schema_ast = _rename_and_suppress_query_type_fields(
+        schema_ast, type_renamings, query_type, interfaces_to_make_unqueryable
+    )
     return RenamedSchemaDescriptor(
         schema_ast=schema_ast,
         schema=build_ast_schema(schema_ast),
@@ -349,10 +356,7 @@ def _ensure_no_unsupported_suppressions(
     """Confirm type_renamings has no enum or interface suppressions."""
     visitor = SuppressionNotImplementedVisitor(type_renamings)
     visit(schema_ast, visitor)
-    if (
-        not visitor.unsupported_enum_suppressions
-        and not visitor.unsupported_interface_suppressions
-    ):
+    if not visitor.unsupported_enum_suppressions and not visitor.unsupported_interface_suppressions:
         return
     # Otherwise, attempted to suppress something we shouldn't suppress.
     error_message_components = [
@@ -522,18 +526,27 @@ def _rename_and_suppress_types_and_fields(
         if isinstance(node, InterfaceTypeDefinitionNode)
     }
     for node in visitor.suppressed_types_implementing_interfaces:
-        interfaces_to_make_unqueryable.update(set(_recursively_get_ancestor_interface_names(schema_ast, node, interface_name_to_definition_node_map)))
+        interfaces_to_make_unqueryable.update(
+            set(
+                _recursively_get_ancestor_interface_names(
+                    schema_ast, node, interface_name_to_definition_node_map
+                )
+            )
+        )
 
     return (
         renamed_schema_ast,
         reverse_name_map_changed_names_only,
         reverse_field_name_map_changed_names_only,
-        interfaces_to_make_unqueryable
+        interfaces_to_make_unqueryable,
     )
 
 
 def _rename_and_suppress_query_type_fields(
-    schema_ast: DocumentNode, type_renamings: Mapping[str, Optional[str]], query_type: str, interfaces_to_make_unqueryable: Set[str]
+    schema_ast: DocumentNode,
+    type_renamings: Mapping[str, Optional[str]],
+    query_type: str,
+    interfaces_to_make_unqueryable: Set[str],
 ) -> DocumentNode:
     """Rename or suppress all fields of the query type.
 
@@ -555,17 +568,27 @@ def _rename_and_suppress_query_type_fields(
     Raises:
         - SchemaTransformError if type_renamings suppressed every type
     """
-    visitor = RenameQueryTypeFieldsVisitor(type_renamings, query_type, interfaces_to_make_unqueryable)
+    visitor = RenameQueryTypeFieldsVisitor(
+        type_renamings, query_type, interfaces_to_make_unqueryable
+    )
     renamed_schema_ast = visit(schema_ast, visitor)
     return renamed_schema_ast
 
 
-def _recursively_get_ancestor_interface_names(schema: DocumentNode, node: Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode], interface_name_to_definition_node_map: Dict[str, InterfaceTypeDefinitionNode]) -> Generator[str, None, None]:
+def _recursively_get_ancestor_interface_names(
+    schema: DocumentNode,
+    node: Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode],
+    interface_name_to_definition_node_map: Dict[str, InterfaceTypeDefinitionNode],
+) -> Generator[str, None, None]:
     """Get all ancestor interface type names for the given node."""
     for interface_name_node in node.interfaces:
         yield interface_name_node.name.value
-        interface_definition_node = interface_name_to_definition_node_map[interface_name_node.name.value]
-        yield from _recursively_get_ancestor_interface_names(schema, interface_definition_node, interface_name_to_definition_node_map)
+        interface_definition_node = interface_name_to_definition_node_map[
+            interface_name_node.name.value
+        ]
+        yield from _recursively_get_ancestor_interface_names(
+            schema, interface_definition_node, interface_name_to_definition_node_map
+        )
 
 
 class RenameSchemaTypesVisitor(Visitor):
@@ -706,7 +729,9 @@ class RenameSchemaTypesVisitor(Visitor):
     # their descendants in the inheritance hierarchy being suppressed. If a type named "Foo"
     # implements at least one interface, then suppressed_types_implementing_interfaces will contain
     # "Foo".
-    suppressed_types_implementing_interfaces = Set[Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode]]
+    suppressed_types_implementing_interfaces: Set[
+        Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode]
+    ]
 
     def __init__(
         self,
@@ -775,7 +800,10 @@ class RenameSchemaTypesVisitor(Visitor):
 
         if desired_type_name is None:
             # Suppress the type
-            if isinstance(node, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode)) and node.interfaces:
+            if (
+                isinstance(node, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode))
+                and node.interfaces
+            ):
                 self.suppressed_types_implementing_interfaces.add(node)
             self.suppressed_type_names.add(type_name)
             return REMOVE
@@ -900,8 +928,12 @@ class RenameSchemaTypesVisitor(Visitor):
 
 
 class RenameQueryTypeFieldsVisitor(Visitor):
-    def __init__(self, type_renamings: Mapping[str, Optional[str]], query_type: str, interfaces_to_make_unqueryable: Set[str]
-) -> None:
+    def __init__(
+        self,
+        type_renamings: Mapping[str, Optional[str]],
+        query_type: str,
+        interfaces_to_make_unqueryable: Set[str],
+    ) -> None:
         """Create a visitor for renaming or suppressing fields of the query type in a schema AST.
 
         Args:
