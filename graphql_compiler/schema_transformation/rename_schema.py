@@ -92,12 +92,12 @@ Renaming constraints:
   suppressed). However, if type Foo has a field of that type Foo, it is legal to suppress type Foo
   without explicitly suppressing that particular field.
 - If you suppress a type Foo implementing an interface Bar, then Bar will remain in the schema but
-  be removed from the root query type, making it unqueryable. This is to prevent situations where a
-  scope in a query is of type Bar without also being of some more specific type, which may result in
-  accessing vertices of type Foo even though it was suppressed. For this reason, all interfaces that
-  Bar implements will also be made unqueryable in the same way, and this removal from the root query
-  type will happen recursively until all interfaces that Foo implements (either directly or
-  indirectly) are unqueryable.
+  not in the root query type, making it unqueryable. This is to prevent situations where a scope in
+  a query is of type Bar without also being of some more specific type, which may yield vertices of
+  type Foo even though it was suppressed. For this reason, all interfaces that Bar implements will
+  also be made unqueryable in the same way, and this removal from the root query type will happen
+  recursively until all interfaces that Foo implements (either directly or indirectly) are
+  unqueryable.
 - If you suppress all the fields of a type Foo, then the type Foo must also be suppressed in
   type_renamings.
 - You may not suppress all types in the schema's root type.
