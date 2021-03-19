@@ -516,8 +516,13 @@ def _rename_and_suppress_types_and_fields(
             ] = current_type_reverse_field_name_map_changed_names_only
 
     interfaces_to_make_unqueryable = set()
+    interface_name_to_definition_node_map = {
+        node.name.value: node
+        for node in schema_ast.definitions
+        if isinstance(node, InterfaceTypeDefinitionNode)
+    }
     for node in visitor.suppressed_types_implementing_interfaces:
-        interfaces_to_make_unqueryable.update(set(_recursively_get_ancestor_interface_names(build_ast_schema(schema_ast), node)))
+        interfaces_to_make_unqueryable.update(set(_recursively_get_ancestor_interface_names(schema_ast, node, interface_name_to_definition_node_map)))
 
     return (
         renamed_schema_ast,
@@ -555,17 +560,12 @@ def _rename_and_suppress_query_type_fields(
     return renamed_schema_ast
 
 
-def _recursively_get_ancestor_interface_names(schema: GraphQLSchema, node: Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode]) -> Generator[str, None, None]:
+def _recursively_get_ancestor_interface_names(schema: DocumentNode, node: Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode], interface_name_to_definition_node_map: Dict[str, InterfaceTypeDefinitionNode]) -> Generator[str, None, None]:
     """Get all ancestor interface type names for the given node."""
-    for node_implemented_interface in node.interfaces:
-        yield node_implemented_interface.name.value
-        # HACK(Leon): The reason for the code below and the reason why we can't simply recursively yield using just interface itself as the new node is that GraphQL-core currently stores interfaces as a list of NamedNodes rather than a list of InterfaceTypeDefinitionNodes, and this is actually the only way currently to find the actual InterfaceTypeDefinitionNode corresponding to interface.
-        for _, interface_implementation in schema._implementations_map.items():
-            for interface in interface_implementation.interfaces:
-                if interface.name == node_implemented_interface.name.value:
-                    # If the name matches, then interface.ast_node is the node in the schema corresponding to the one described by the NameNode node_implemented_interface.
-                    yield from _recursively_get_ancestor_interface_names(schema, interface.ast_node)
-            # Note that interface_implementation also has a field called objects corresponding to the object types in the schema that implement the interface whose name is the key in schema._implementations_map. However, the NameNode node_implemented_interface necessarily describes an interface type, so we don't need to check the objects that implement interface_implementation is implemented to see if node_implemented_interface corresponds to an object type node.
+    for interface_name_node in node.interfaces:
+        yield interface_name_node.name.value
+        interface_definition_node = interface_name_to_definition_node_map[interface_name_node.name.value]
+        yield from _recursively_get_ancestor_interface_names(schema, interface_definition_node, interface_name_to_definition_node_map)
 
 
 class RenameSchemaTypesVisitor(Visitor):
