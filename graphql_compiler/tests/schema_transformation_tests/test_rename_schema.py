@@ -463,6 +463,71 @@ class TestRenameSchema(unittest.TestCase):
             str(e.exception),
         )
 
+    def test_field_rename_in_interface_implementation(self) -> None:
+        # Field renaming is permitted for object types that implement interfaces as long as the
+        # fields being renamed don't also appear as fields in any interface the object type
+        # implements.
+        renamed_schema = rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"name": {"name", "new_name"}}})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            interface Character {
+              id: String
+            }
+
+            type Human implements Character {
+              id: String
+              name: String
+              new_name: String
+              birthday: Date
+            }
+
+            type Giraffe implements Character {
+              id: String
+              height: Height
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type SchemaQuery {
+              Human: Human
+              Giraffe: Giraffe
+              Dog: Dog
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({"Human": {"new_name": "name"}}, renamed_schema.reverse_field_name_map)
+
+        with self.assertRaises(NotImplementedError):
+            # Cannot rename Human's fields because Human implements an interface and field_renamings
+            # for object types that implement interfaces isn't supported yet.
+            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"new_id"}}})
+        with self.assertRaises(NotImplementedError):
+            rename_schema(
+                parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"id", "new_id"}}}
+            )
+        with self.assertRaises(NotImplementedError):
+            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": set()}})
+
+
     def test_field_renaming_in_interfaces(self) -> None:
         with self.assertRaises(NotImplementedError):
             rename_schema(
@@ -474,16 +539,6 @@ class TestRenameSchema(unittest.TestCase):
             )
         with self.assertRaises(NotImplementedError):
             rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": set()}})
-        with self.assertRaises(NotImplementedError):
-            # Cannot rename Human's fields because Human implements an interface and field_renamings
-            # for object types that implement interfaces isn't supported yet.
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"new_id"}}})
-        with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"id", "new_id"}}}
-            )
-        with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": set()}})
 
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
