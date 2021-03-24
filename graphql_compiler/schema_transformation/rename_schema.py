@@ -582,7 +582,7 @@ def _recursively_get_ancestor_interface_names(
     schema: DocumentNode,
     node: Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode],
     interface_name_to_definition_node_map: Dict[str, InterfaceTypeDefinitionNode],
-) -> Iterable[str, None, None]:
+) -> Iterable[str]:
     """Get all ancestor interface type names for the given node."""
     for interface_name_node in node.interfaces:
         yield interface_name_node.name.value
