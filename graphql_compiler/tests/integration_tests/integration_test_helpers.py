@@ -96,7 +96,9 @@ def _compile_print_and_run_sql_query(
     query_with_parameters = bind_parameters_to_query_string(
         printed_query, compilation_result.input_metadata, parameters
     )
-    return materialize_result_proxy(engine.execute(query_with_parameters))
+    with engine.connect() as connection:
+        result = materialize_result_proxy(connection.execute(query_with_parameters))
+    return result
 
 
 def compile_and_run_sql_query(
@@ -108,7 +110,8 @@ def compile_and_run_sql_query(
     """Compile and run a SQL query against the SQL engine, return result and output metadata."""
     compilation_result = graphql_to_sql(sql_schema_info, graphql_query, parameters)
     query = compilation_result.query
-    results = materialize_result_proxy(engine.execute(query))
+    with engine.connect() as connection:
+        results = materialize_result_proxy(connection.execute(query))
 
     # Check that when printed the query produces the same result
     printed_query_results = _compile_print_and_run_sql_query(
