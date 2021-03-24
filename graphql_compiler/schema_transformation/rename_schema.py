@@ -124,7 +124,7 @@ Renaming constraints:
 """
 from collections import namedtuple
 from copy import copy
-from typing import Any, Dict, Generator, List, Mapping, Optional, Set, Tuple, Union, cast
+from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast, Iterable
 
 from graphql import (
     DocumentNode,
@@ -272,8 +272,8 @@ def _validate_renamings(
     """Validate the type_renamings argument before attempting to rename the schema.
 
     Check for fields with suppressed types or unions whose members were all suppressed. Also,
-    confirm type_renamings contains no enum or interface suppressions because that hasn't been
-    implemented yet.
+    confirm type_renamings contains no suppressions for enums or interfaces because they haven't
+    been implemented yet.
 
     The input AST will not be modified.
 
@@ -404,10 +404,13 @@ def _rename_and_suppress_types_and_fields(
         query_type: name of the query type, e.g. 'RootSchemaQuery'
 
     Returns:
-        Tuple containing the modified version of the schema AST, the renamed type name to original
-        type name map, the renamed field name to original field name map, and the set of interfaces
-        to make unqueryable because one of their descendants in the inheritance hierarchy was
-        suppressed. The maps contain entries for all non-suppressed types/ fields that were changed.
+        Tuple containing
+            - modified version of the schema AST
+            - renamed type name to original type name map
+            - renamed field name to original field name map
+            - set of interfaces to make unqueryable because one or more of their descendants in the
+              inheritance hierarchy was suppressed
+        The maps contain entries for all non-suppressed types/ fields that were changed.
 
     Raises:
         - InvalidNameError if the user attempts to rename a type or field to an invalid name
@@ -558,8 +561,8 @@ def _rename_and_suppress_query_type_fields(
                         type named "Foo" will be unchanged iff type_renamings does not map "Foo" to
                         anything, i.e. "Foo" not in type_renamings
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        interfaces_to_make_unqueryable: interfaces to remove from the query type because one of
-                                        their descendants in the inheritance hierarchy was
+        interfaces_to_make_unqueryable: interfaces to remove from the query type because one or more
+                                        of their descendants in the inheritance hierarchy was
                                         suppressed.
 
     Returns:
@@ -579,7 +582,7 @@ def _recursively_get_ancestor_interface_names(
     schema: DocumentNode,
     node: Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode],
     interface_name_to_definition_node_map: Dict[str, InterfaceTypeDefinitionNode],
-) -> Generator[str, None, None]:
+) -> Iterable[str, None, None]:
     """Get all ancestor interface type names for the given node."""
     for interface_name_node in node.interfaces:
         yield interface_name_node.name.value
@@ -725,10 +728,10 @@ class RenameSchemaTypesVisitor(Visitor):
     # type named "Foo", types_involving_interfaces_with_field_renamings will contain "Foo".
     types_involving_interfaces_with_field_renamings: Set[str]
 
-    # Collects names of interfaces to keep in the schema but make unqueryable as a result of one of
-    # their descendants in the inheritance hierarchy being suppressed. If a type named "Foo"
-    # implements at least one interface, then suppressed_types_implementing_interfaces will contain
-    # "Foo".
+    # Collects types that get suppressed and implement interfaces, so that all ancestor interfaces
+    # can be kept in the schema but made unqueryable. If a type named "Foo" implements at least one
+    # interface and type_renamings would suppress "Foo", then
+    # suppressed_types_implementing_interfaces will contain "Foo".
     suppressed_types_implementing_interfaces: Set[
         Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode]
     ]
@@ -941,9 +944,9 @@ class RenameQueryTypeFieldsVisitor(Visitor):
                             A type named "Foo" will be unchanged iff type_renamings does not map
                             "Foo" to anything, i.e. "Foo" not in type_renamings
             query_type: name of the query type (e.g. RootSchemaQuery)
-            interfaces_to_make_unqueryable: interfaces to remove from the query type because one of
-                                            their descendants in the inheritance hierarchy was
-                                            suppressed.
+            interfaces_to_make_unqueryable: interfaces to remove from the query type because one or
+                                            more of their descendants in the inheritance hierarchy
+                                            was suppressed.
 
         Raises:
             - SchemaTransformError if every field in the query type was suppressed
