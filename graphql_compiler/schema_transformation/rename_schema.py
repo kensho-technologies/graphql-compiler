@@ -124,7 +124,7 @@ Renaming constraints:
 """
 from collections import namedtuple
 from copy import copy
-from typing import Any, Dict, List, Mapping, Optional, Set, Tuple, Union, cast, Iterable
+from typing import Any, Dict, Iterable, List, Mapping, Optional, Set, Tuple, Union, cast
 
 from graphql import (
     DocumentNode,
