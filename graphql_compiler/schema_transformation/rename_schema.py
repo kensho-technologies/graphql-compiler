@@ -787,9 +787,14 @@ class RenameSchemaTypesVisitor(Visitor):
         for field_node in node.fields:
             field_name = field_node.name.value
             field_type_name = get_ast_with_non_null_and_list_stripped(field_node.type).name.value
-            field_type_suppressed = self.type_renamings.get(field_type_name, field_type_name) is None
-            field_node_suppressed = type_name in self.field_renamings and self.field_renamings[type_name].get(field_name, {field_name}) == set()
-            if field_type_suppressed and not(field_node_suppressed):
+            field_type_suppressed = (
+                self.type_renamings.get(field_type_name, field_type_name) is None
+            )
+            field_node_suppressed = (
+                type_name in self.field_renamings
+                and self.field_renamings[type_name].get(field_name, {field_name}) == set()
+            )
+            if field_type_suppressed and not (field_node_suppressed):
                 # If the type of the field is suppressed but the field itself is not, it's invalid.
                 current_type_fields_to_suppress[field_name] = field_type_name
         if current_type_fields_to_suppress != {}:
