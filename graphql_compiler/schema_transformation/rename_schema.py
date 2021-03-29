@@ -772,15 +772,24 @@ class RenameSchemaTypesVisitor(Visitor):
         Returns:
             node with fields renamed if there are no cascading suppression issues.
         """
+        # Field renaming takes place in three steps:
+        # 1. For each field foo of type Bar: if Bar is going to be suppressed but foo isn't going to
+        #    be suppressed, the renamings are invalid. In that case, we should do the bare minimum
+        #    necessary to continue the schema renaming and collect any other errors that occur
+        #    independently while recording the problem. Once done, we return from the current type
+        #    because there is no more to be done for this particular type's fields.
+        # 2. If the current type has no field renamings at all, we return immediately after doing
+        #    nothing.
+        # 3. If the current type does have field renamings, apply those field renamings.
         type_name = node.name.value
         current_type_fields_to_suppress = {}
+        # Step 1: detect fields that depend on types that were suppressed.
         for field_node in node.fields:
             field_name = field_node.name.value
             field_type_name = get_ast_with_non_null_and_list_stripped(field_node.type).name.value
-            if self.type_renamings.get(field_type_name, field_type_name) is None and not (
-                type_name in self.field_renamings
-                and self.field_renamings[type_name].get(field_name, {field_name}) == set()
-            ):
+            field_type_suppressed = self.type_renamings.get(field_type_name, field_type_name) is None
+            field_node_suppressed = type_name in self.field_renamings and self.field_renamings[type_name].get(field_name, {field_name}) == set()
+            if field_type_suppressed and not(field_node_suppressed):
                 # If the type of the field is suppressed but the field itself is not, it's invalid.
                 current_type_fields_to_suppress[field_name] = field_type_name
         if current_type_fields_to_suppress != {}:
@@ -794,10 +803,12 @@ class RenameSchemaTypesVisitor(Visitor):
                 ]
             )
             return new_type_node
+        # Step 2: return immediately if we're not going to be renaming any fields.
         if type_name not in self.field_renamings:
             return node
         if node.interfaces:
             self.types_involving_interfaces_with_field_renamings.add(type_name)
+        # Step 3: apply the field renamings to each field.
         current_type_field_renamings = self.field_renamings[type_name]
         self.types_with_field_renamings_processed.add(type_name)
         # Need to create a set of field nodes that the type will have after the field renamings,
