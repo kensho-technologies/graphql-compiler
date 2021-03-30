@@ -337,6 +337,45 @@ class InputSchemaStrings(object):
     """
     )
 
+    interface_typed_field = dedent(
+        """\
+        schema {
+          query: SchemaQuery
+        }
+
+        interface AbstractCharacter {
+          id: String
+        }
+
+        interface Character {
+          id: String
+        }
+
+        type Human implements Character {
+          id: String
+          friend: Character
+        }
+
+        type Giraffe implements Character {
+          id: String
+          friend: Character
+        }
+
+        type Companion {
+          description: String
+          abstract_companion: AbstractCharacter
+        }
+
+        type SchemaQuery {
+          AbstractCharacter: AbstractCharacter
+          Character: Character
+          Human: Human
+          Giraffe: Giraffe
+          Companion: Companion
+        }
+    """
+    )
+
     same_field_schema = dedent(
         """\
         schema {
