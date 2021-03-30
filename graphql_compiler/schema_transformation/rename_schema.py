@@ -259,14 +259,12 @@ def rename_schema(
                 )
             )
 
-    _validate_renamings(schema_ast, type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable)
+    _validate_renamings(
+        schema_ast, type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable
+    )
 
     # Rename types, interfaces, enums, unions and suppress types, unions
-    (
-        schema_ast,
-        reverse_name_map,
-        reverse_field_name_map,
-    ) = _rename_and_suppress_types_and_fields(
+    (schema_ast, reverse_name_map, reverse_field_name_map,) = _rename_and_suppress_types_and_fields(
         schema_ast, type_renamings, field_renamings, query_type
     )
 
@@ -307,13 +305,16 @@ def _validate_renamings(
                          field names belonging to the type to a set of field names for the
                          renamed schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        interfaces_to_make_unqueryable: interfaces that no query should be able to access because a type implementing the interface was suppressed
+        interfaces_to_make_unqueryable: interfaces that no query should be able to access because a
+                                        type implementing the interface was suppressed
 
     Raises:
         - CascadingSuppressionError if a type/field suppression would require further suppressions
         - NotImplementedError if type_renamings attempts to suppress an enum or an interface
     """
-    _ensure_no_cascading_type_suppressions(schema_ast, type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable)
+    _ensure_no_cascading_type_suppressions(
+        schema_ast, type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable
+    )
     _ensure_no_unsupported_suppressions(schema_ast, type_renamings)
 
 
@@ -325,7 +326,9 @@ def _ensure_no_cascading_type_suppressions(
     interfaces_to_make_unqueryable: Set[str],
 ) -> None:
     """Check for situations that would require further suppressions to produce a valid schema."""
-    visitor = CascadingSuppressionCheckVisitor(type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable)
+    visitor = CascadingSuppressionCheckVisitor(
+        type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable
+    )
     visit(schema_ast, visitor)
     if visitor.fields_to_suppress or visitor.union_types_to_suppress or visitor.types_to_suppress:
         error_message_components = [
@@ -584,7 +587,9 @@ def _rename_and_suppress_query_type_fields(
 def _recursively_get_ancestor_interface_names(
     schema: DocumentNode,
     node: Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode],
-    interface_and_object_type_name_to_definition_node_map: Dict[str, Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode]],
+    interface_and_object_type_name_to_definition_node_map: Dict[
+        str, Union[ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode]
+    ],
 ) -> Iterable[str]:
     """Get all ancestor interface type names for the given node."""
     for interface_name_node in node.interfaces:
@@ -1053,7 +1058,8 @@ class CascadingSuppressionCheckVisitor(Visitor):
                              field names belonging to the type to a set of field names for the
                              renamed schema
             query_type: name of the query type (e.g. RootSchemaQuery)
-            interfaces_to_make_unqueryable: interfaces that no query should be able to access because a type implementing the interface was suppressed
+            interfaces_to_make_unqueryable: interfaces that no query should be able to access
+                                            because a type implementing the interface was suppressed
         """
         self.type_renamings = type_renamings
         self.field_renamings = field_renamings
@@ -1118,13 +1124,21 @@ class CascadingSuppressionCheckVisitor(Visitor):
         if current_type_name == self.query_type:
             return IDLE
         # At a field of a type that is not the query type
-        # A field must be suppressed if its type depends on an unqueryable type. There are two ways for a type to become unqueryable: either the type itself was suppressed, or the type is an interface and another type implementing the interface was suppressed. The field can either be suppressed by suppressing the current type altogether or suppressing just that individual field.
+        # A field must be suppressed if its type depends on an unqueryable type. There are two ways
+        # for a type to become unqueryable: either the type itself was suppressed, or the type is an
+        # interface and another type implementing the interface was suppressed. The field can either
+        # be suppressed by suppressing the current type altogether or suppressing just that
+        # individual field.
         field_name = node.name.value
         field_type_name = get_ast_with_non_null_and_list_stripped(node.type).name.value
         field_type_suppressed = self.type_renamings.get(field_type_name, field_type_name) is None
         field_type_is_unqueryable_interface = field_type_name in self.interfaces_to_make_unqueryable
-        current_type_suppressed = self.type_renamings.get(current_type_name, current_type_name) is None
-        field_suppressed = self.field_renamings.get(current_type_name, {}).get(field_name, {field_name}) == set()
+        current_type_suppressed = (
+            self.type_renamings.get(current_type_name, current_type_name) is None
+        )
+        field_suppressed = (
+            self.field_renamings.get(current_type_name, {}).get(field_name, {field_name}) == set()
+        )
 
         # Check if the field's type is unqueryable so the field itself needs to be suppressed
         if field_type_suppressed or field_type_is_unqueryable_interface:

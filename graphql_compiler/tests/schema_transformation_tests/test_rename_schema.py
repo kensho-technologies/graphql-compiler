@@ -669,26 +669,20 @@ class TestRenameSchema(unittest.TestCase):
             # Character, must be made unqueryable-- but the renaming doesn't suppress all fields in
             # the schema that are of a type that is an ancestor of Human (namely, Character and
             # AbstractCharacter)
-            rename_schema(
-                parse(ISS.interface_typed_field),
-                {"Human": None},
-                {}
-            )
+            rename_schema(parse(ISS.interface_typed_field), {"Human": None}, {})
         with self.assertRaises(CascadingSuppressionError):
             # This renaming is also invalid because it doesn't suppress the Companion type's field
             # abstract_companion which is of type AbstractCharacter, but AbstractCharacter is made
             # unqueryable in the process of suppressing the Human type
             rename_schema(
-                parse(ISS.interface_typed_field),
-                {"Human": None},
-                {"Giraffe": {"friend": set()}}
+                parse(ISS.interface_typed_field), {"Human": None}, {"Giraffe": {"friend": set()}}
             )
         # A valid renaming requires suppressing the interface-typed fields as well, to make the
         # interfaces unqueryable
         renamed_schema = rename_schema(
             parse(ISS.interface_typed_field),
             {"Human": None},
-            {"Giraffe": {"friend": set()}, "Companion": {"abstract_companion": set()}}
+            {"Giraffe": {"friend": set()}, "Companion": {"abstract_companion": set()}},
         )
         renamed_schema_string = dedent(
             """
