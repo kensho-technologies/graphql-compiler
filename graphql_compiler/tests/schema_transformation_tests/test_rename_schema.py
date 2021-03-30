@@ -670,53 +670,6 @@ class TestRenameSchema(unittest.TestCase):
             # the schema that are of a type that is an ancestor of Human (namely, Character and
             # AbstractCharacter)
             rename_schema(parse(ISS.interface_typed_field), {"Human": None}, {})
-        with self.assertRaises(CascadingSuppressionError):
-            # This renaming is also invalid because it doesn't suppress the Companion type's field
-            # abstract_companion which is of type AbstractCharacter, but AbstractCharacter is made
-            # unqueryable in the process of suppressing the Human type
-            rename_schema(
-                parse(ISS.interface_typed_field), {"Human": None}, {"Giraffe": {"friend": set()}}
-            )
-        # A valid renaming requires suppressing the interface-typed fields as well, to make the
-        # interfaces unqueryable
-        renamed_schema = rename_schema(
-            parse(ISS.interface_typed_field),
-            {"Human": None},
-            {"Giraffe": {"friend": set()}, "Companion": {"abstract_companion": set()}},
-        )
-        renamed_schema_string = dedent(
-            """
-            schema {
-              query: SchemaQuery
-            }
-
-            interface AbstractCharacter {
-              id: String
-            }
-
-            interface Character {
-              id: String
-            }
-
-            type Giraffe implements Character {
-              id: String
-            }
-
-            type Companion {
-              description: String
-            }
-
-            type SchemaQuery {
-              Giraffe: Giraffe
-              Companion: Companion
-            }
-        """
-        )
-        compare_schema_texts_order_independently(
-            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
-        )
-        self.assertEqual({}, renamed_schema.reverse_name_map)
-        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_multiple_interfaces_rename(self) -> None:
         renamed_schema = rename_schema(
