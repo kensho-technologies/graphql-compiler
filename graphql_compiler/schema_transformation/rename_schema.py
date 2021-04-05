@@ -432,7 +432,7 @@ def _rename_and_suppress_types_and_fields(
             - modified version of the schema AST
             - renamed type name to original type name map
             - renamed field name to original field name map
-        The maps contain entries for all non-suppressed types/ fields that were changed.
+        The maps contain entries for all non-suppressed types/fields that were changed.
 
     Raises:
         - InvalidNameError if the user attempts to rename a type or field to an invalid name
