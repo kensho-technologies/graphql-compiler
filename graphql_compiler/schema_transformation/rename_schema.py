@@ -1123,7 +1123,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
         current_type_name = self.current_type.name.value
         if current_type_name == self.query_type:
             return IDLE
-        # At a field of a type that is not the query type
+        # At a field of a type that is not the query type.
         # A field must be suppressed if its type depends on an unqueryable type. There are two ways
         # for a type to become unqueryable: either the type itself was suppressed, or the type is an
         # interface and another type implementing the interface was suppressed. The field can either
