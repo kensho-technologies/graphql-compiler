@@ -240,6 +240,15 @@ def rename_schema(
     schema = build_ast_schema(schema_ast)
     query_type = get_query_type_name(schema)
 
+    # If we suppress a type, any interfaces it implements must be made unqueryable as described in
+    # the module-level comment.
+    # Unfortunately, this must be done outside a schema visitor object because the interfaces field
+    # of ObjectTypeDefinitionNodes and InterfaceTypeDefinitionNodes is a list of NameNodes, which
+    # just indicates the name of the interface rather than give the node itself. This makes it
+    # impossible to find all ancestors when only given such a type definition node. Instead, it's
+    # necessary to use the definitions field of schema_ast to traverse the inheritance hierarchy and
+    # find which interfaces need to be made unqueryable.
+    # See discussion here: https://github.com/graphql-python/graphql-core/issues/124
     interfaces_to_make_unqueryable = set()
     interface_and_object_type_name_to_definition_node_map = {
         node.name.value: node
@@ -247,7 +256,8 @@ def rename_schema(
         if isinstance(node, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode))
     }
     for type_name in type_renamings:
-        if type_renamings[type_name] is not None:
+        type_not_suppressed = type_renamings[type_name] is not None
+        if type_not_suppressed:
             continue
         if type_name in interface_and_object_type_name_to_definition_node_map:
             type_node = interface_and_object_type_name_to_definition_node_map[type_name]
@@ -305,8 +315,9 @@ def _validate_renamings(
                          field names belonging to the type to a set of field names for the
                          renamed schema
         query_type: name of the query type, e.g. 'RootSchemaQuery'
-        interfaces_to_make_unqueryable: interfaces that no query should be able to access because a
-                                        type implementing the interface was suppressed
+        interfaces_to_make_unqueryable: interfaces to remove from the query type because one or more
+                                        of their descendants in the inheritance hierarchy was
+                                        suppressed.
 
     Raises:
         - CascadingSuppressionError if a type/field suppression would require further suppressions
@@ -1058,8 +1069,9 @@ class CascadingSuppressionCheckVisitor(Visitor):
                              field names belonging to the type to a set of field names for the
                              renamed schema
             query_type: name of the query type (e.g. RootSchemaQuery)
-            interfaces_to_make_unqueryable: interfaces that no query should be able to access
-                                            because a type implementing the interface was suppressed
+            interfaces_to_make_unqueryable: interfaces to remove from the query type because one or
+                                            more of their descendants in the inheritance hierarchy
+                                            was suppressed.
         """
         self.type_renamings = type_renamings
         self.field_renamings = field_renamings
