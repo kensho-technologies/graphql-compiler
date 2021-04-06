@@ -1125,7 +1125,7 @@ class CascadingSuppressionCheckVisitor(Visitor):
             return IDLE
         # At a field of a type that is not the query type.
         # A field must be suppressed if its type depends on an unqueryable type. There are two ways
-        # for a type to become unqueryable: 
+        # for a type to become unqueryable:
         #    - the type itself was suppressed
         #    - the type is an interface and another type implementing the interface was suppressed
         # The field can either
