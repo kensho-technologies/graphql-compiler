@@ -62,6 +62,7 @@ To get from GraphQL AST to IR, we follow the following pattern:
 from dataclasses import dataclass
 from typing import Dict, List, Optional
 
+from dataclasses_json import DataClassJsonMixin
 from graphql import (
     DocumentNode,
     GraphQLInt,
@@ -133,7 +134,18 @@ from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo,
 from .validation import validate_schema_and_query_ast
 
 
-@dataclass(frozen=True)
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class ProviderMetadata(DataClassJsonMixin):
+    """Metadata about the provider."""
+
+    # Name of the type of provider (ex. PostgreSQL, Cypher, etc).
+    backend_type: str
+
+    # Whether this backend requires MSSQL fold postprocessing for folded outputs.
+    requires_fold_postprocessing: bool
+
+
+@dataclass(init=True, repr=True, eq=False, frozen=True)
 class OutputMetadata:
     """Metadata about a query's outputs."""
 
@@ -148,6 +160,9 @@ class OutputMetadata:
     # in which case the type must be GraphQLInt.
     folded: bool
 
+    # Provider metadata.
+    provider_metadata: Optional[ProviderMetadata] = None
+
     def __eq__(self, other):
         """Check another OutputMetadata object for equality against this one."""
         # Unfortunately, GraphQL types don't have an equality operator defined,
@@ -156,6 +171,7 @@ class OutputMetadata:
             is_same_type(self.type, other.type)
             and self.optional == other.optional
             and self.folded == other.folded
+            and self.provider_metadata == other.provider_metadata
         )
 
     def __ne__(self, other):

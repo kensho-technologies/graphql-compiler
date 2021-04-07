@@ -21,7 +21,7 @@ from graphql.pyutils import FrozenList
 from ..ast_manipulation import get_only_query_definition
 from ..exceptions import GraphQLValidationError
 from ..schema import FilterDirective, OutputDirective
-from .split_query import AstType, SubQueryNode
+from ..schema_transformation.split_query import AstType, SubQueryNode
 
 
 @dataclass
