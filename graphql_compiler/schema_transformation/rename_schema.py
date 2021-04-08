@@ -149,7 +149,7 @@ from .utils import (
     get_query_type_name,
     is_valid_nonreserved_name,
 )
-
+from ..compiler.helpers import get_only_element_from_collection
 
 RenamedSchemaDescriptor = namedtuple(
     "RenamedSchemaDescriptor",
@@ -451,20 +451,51 @@ def _rename_and_suppress_types_and_fields(
         ]
         raise InvalidNameError("\n".join([i for i in error_message_components if i is not None]))
     if (
-        visitor.type_name_conflicts
-        or visitor.type_renamed_to_builtin_scalar_conflicts
-        or visitor.field_name_conflicts
+            visitor.type_name_conflicts
+            or visitor.type_renamed_to_builtin_scalar_conflicts
+            or visitor.field_name_conflicts
     ):
         raise SchemaRenameNameConflictError(
             visitor.type_name_conflicts,
             visitor.type_renamed_to_builtin_scalar_conflicts,
             visitor.field_name_conflicts,
         )
-    if visitor.types_involving_interfaces_with_field_renamings:
+    if visitor.interfaces_with_field_renamings:
         raise NotImplementedError(
-            f"Field renaming for interfaces or types implementing interfaces is not supported, but "
-            f"they exist for the following types and should be removed: "
-            f"{visitor.types_involving_interfaces_with_field_renamings}"
+            f"Field renaming for interface types is not supported yet, but they exist for the "
+            f"following types and should be removed: "
+            f"{visitor.interfaces_with_field_renamings}"
+        )
+
+    # Check that, for all field renaming for types that implement interfaces, the field renamings don't affect any fields included in the interfaces implemented by those types.
+    # TODO: A variant of this mapping also exists in the code for interface implementation suppression-- will need to adjust this code once that PR gets merged.
+    interface_and_object_name_to_definition_node_map = {
+        node.name.value: node
+        for node in schema_ast.definitions
+        if isinstance(node, (InterfaceTypeDefinitionNode, ObjectTypeDefinitionNode))
+    }
+    # A more convenient way to find out whether any interface contains this particular field or not. The existing InterfaceTypeDefinitionNode contains a list of FieldDefinitionNodes which we'd have to perform a linear search through every single time we want to check for field membership
+    field_name_to_interface_name_map = {}
+    for node in schema_ast.definitions:
+        if not isinstance(node, InterfaceTypeDefinitionNode):
+            continue
+        for field_node in node.fields:
+            field_name = field_node.name.value
+            field_name_to_interface_name_map.setdefault(field_name, set()).add(node.name.value)
+    # If any fields belonging to a type named "Foo" that were renamed also appear in an interface, interface_fields_renamed will map the "Foo" to a dict which maps the interface name to the field name.
+    interface_fields_renamed: Dict[str, Dict[str, str]] = {}
+    for type_name, fields_renamed in visitor.interface_implementations_field_renamings.items():
+        type_node = interface_and_object_name_to_definition_node_map[type_name]
+        interfaces_implemented_by_type_node = {interface_node.name.value for interface_node in type_node.interfaces}
+        for field_name in fields_renamed:
+            interfaces_with_field_name = field_name_to_interface_name_map.get(field_name, set())
+            interface_intersection = interfaces_with_field_name.intersection(interfaces_implemented_by_type_node)
+            if interface_intersection:
+                conflicting_interface_name = get_only_element_from_collection(interface_intersection)
+                interface_fields_renamed.setdefault(type_name, {})[conflicting_interface_name] = field_name
+    if interface_fields_renamed:
+        raise NotImplementedError(
+            f"Fields can be renamed in object types only if those fields do not appear in any interfaces that the object type implements. However, field_renamings contained renamings that violate this rule. The following maps  object type names to a dictionary, which maps the interface name containing the field name to the field name, if the field appears in both the object type and the interface: {interface_fields_renamed}. To fix this, remove these renamings from field_renamings."
         )
     if visitor.illegal_builtin_scalar_renamings:
         raise NotImplementedError(
@@ -488,12 +519,12 @@ def _rename_and_suppress_types_and_fields(
     # nonexistent_types_with_field_renamings is the set of all object type names that aren't in the
     # original schema but appeared in field_renamings anyways.
     nonexistent_types_with_field_renamings = (
-        set(field_renamings) - visitor.types_with_field_renamings_processed
+            set(field_renamings) - visitor.types_with_field_renamings_processed
     )
     if (
-        no_op_type_renames
-        or visitor.no_op_field_renamings
-        or nonexistent_types_with_field_renamings
+            no_op_type_renames
+            or visitor.no_op_field_renamings
+            or nonexistent_types_with_field_renamings
     ):
         raise NoOpRenamingError(
             no_op_type_renames,
@@ -678,11 +709,16 @@ class RenameSchemaTypesVisitor(Visitor):
     # schema that would be renamed to "foo".
     field_name_conflicts: Dict[str, Dict[str, Set[str]]]
 
-    # Collects names of types who have entries in field_renamings if the type is an interface
-    # or if the type is an object type implementing an interface because field renamings involving
-    # interfaces haven't been implemented yet. If field renamings has field renamings for such a
-    # type named "Foo", types_involving_interfaces_with_field_renamings will contain "Foo".
-    types_involving_interfaces_with_field_renamings: Set[str]
+    # Collects names of interfaces who have entries in field_renamings. If field renamings has field
+    # renamings for an interface named "Foo", interfaces_with_field_renamings will contain "Foo".
+    interfaces_with_field_renamings: Set[str]
+
+    # Maps types that implement interfaces to their renamed fields. This will be used to ensure that
+    # the only fields that can be renamed for that type are fields that don't appear in the
+    # interfaces it implements, avoiding many tricky edge cases for now. If a type named "Foo" has a
+    # field named "bar" that gets renamed, interface_implementations_field_renamings will map "Foo"
+    # to a set containing "bar".
+    interface_implementations_field_renamings: Dict[str, Set[str]]
 
     def __init__(
         self,
@@ -719,7 +755,8 @@ class RenameSchemaTypesVisitor(Visitor):
         self.types_with_field_renamings_processed = set()
         self.invalid_field_names = {}
         self.field_name_conflicts = {}
-        self.types_involving_interfaces_with_field_renamings = set()
+        self.interfaces_with_field_renamings = set()
+        self.interface_implementations_field_renamings = {}
 
     def _rename_or_suppress_or_ignore_name_and_add_to_record(
         self, node: RenameTypesT
@@ -782,7 +819,7 @@ class RenameSchemaTypesVisitor(Visitor):
             isinstance(fields_renamed_node, InterfaceTypeDefinitionNode)
             and fields_renamed_node.name.value in self.field_renamings
         ):
-            self.types_involving_interfaces_with_field_renamings.add(fields_renamed_node.name.value)
+            self.interfaces_with_field_renamings.add(fields_renamed_node.name.value)
         self.reverse_name_map[desired_type_name] = type_name
         if desired_type_name == type_name:
             return fields_renamed_node
@@ -798,7 +835,7 @@ class RenameSchemaTypesVisitor(Visitor):
         if type_name not in self.field_renamings:
             return node
         if node.interfaces:
-            self.types_involving_interfaces_with_field_renamings.add(type_name)
+            self.interface_implementations_field_renamings[type_name] = set(self.field_renamings.get(type_name, {}))
         current_type_field_renamings = self.field_renamings[type_name]
         self.types_with_field_renamings_processed.add(type_name)
         # Need to create a set of field nodes that the type will have after the field renamings,
