@@ -773,14 +773,17 @@ class RenameSchemaTypesVisitor(Visitor):
             node with fields renamed if there are no cascading suppression issues.
         """
         # Field renaming takes place in three steps:
-        # 1. For each field foo of type Bar: if Bar is going to be suppressed but foo isn't going to
+        # Step 1: detect fields that depend on types that were suppressed.
+        #    For each field foo of type Bar: if Bar is going to be suppressed but foo isn't going to
         #    be suppressed, the renamings are invalid. In that case, we should do the bare minimum
         #    necessary to continue the schema renaming and collect any other errors that occur
         #    independently while recording the problem. Once done, we return from the current type
         #    because there is no more to be done for this particular type's fields.
-        # 2. If the current type has no field renamings at all, we return immediately after doing
+        # Step 2: return immediately if we're not going to be renaming any fields.
+        #    If the current type has no field renamings at all, we return immediately after doing
         #    nothing.
-        # 3. If the current type does have field renamings, apply those field renamings.
+        # Step 3: apply the field renamings to each field.
+        #    If the current type does have field renamings, apply those field renamings.
         type_name = node.name.value
         current_type_fields_to_suppress = {}
         # Step 1: detect fields that depend on types that were suppressed.
