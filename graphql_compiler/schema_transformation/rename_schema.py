@@ -794,7 +794,7 @@ class RenameSchemaTypesVisitor(Visitor):
                 type_name in self.field_renamings
                 and self.field_renamings[type_name].get(field_name, {field_name}) == set()
             )
-            if field_type_suppressed and not (field_node_suppressed):
+            if field_type_suppressed and not field_node_suppressed:
                 # If the type of the field is suppressed but the field itself is not, it's invalid.
                 current_type_fields_to_suppress[field_name] = field_type_name
         if current_type_fields_to_suppress != {}:
