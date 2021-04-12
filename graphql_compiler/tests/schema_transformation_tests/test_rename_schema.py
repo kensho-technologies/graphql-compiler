@@ -1391,7 +1391,7 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_field_in_list_still_depends_on_suppressed_type(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
-            rename_schema(parse(ISS.list_schema), {"Height": None}, {})
+            rename_schema(parse(ISS.list_schema), {"Date": None}, {})
 
     def test_suppress_every_field_in_type(self) -> None:
         with self.assertRaises(CascadingSuppressionError):
