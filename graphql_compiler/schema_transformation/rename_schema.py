@@ -286,6 +286,7 @@ def rename_schema(
         reverse_field_name_map=reverse_field_name_map,
     )
 
+
 def _ensure_no_unsupported_suppressions(
     schema_ast: DocumentNode, type_renamings: Mapping[str, Optional[str]]
 ) -> None:
@@ -322,7 +323,7 @@ def _rename_and_suppress_types_and_fields(
     type_renamings: Mapping[str, Optional[str]],
     field_renamings: Mapping[str, Mapping[str, Set[str]]],
     query_type: str,
-    interfaces_to_make_unqueryable: Set[str]
+    interfaces_to_make_unqueryable: Set[str],
 ) -> Tuple[DocumentNode, Dict[str, str], Dict[str, Dict[str, str]]]:
     """Rename and suppress types, enums, interfaces, fields using renamings.
 
@@ -355,7 +356,9 @@ def _rename_and_suppress_types_and_fields(
         - SchemaRenameNameConflictError if the rename causes name conflicts
         - NoOpRenamingError if renamings contains no-op renamings
     """
-    visitor = RenameSchemaTypesVisitor(type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable)
+    visitor = RenameSchemaTypesVisitor(
+        type_renamings, field_renamings, query_type, interfaces_to_make_unqueryable
+    )
     renamed_schema_ast = visit(schema_ast, visitor)
     if (
         visitor.object_types_to_suppress
@@ -713,7 +716,7 @@ class RenameSchemaTypesVisitor(Visitor):
         type_renamings: Mapping[str, Optional[str]],
         field_renamings: Mapping[str, Mapping[str, Set[str]]],
         query_type: str,
-        interfaces_to_make_unqueryable: Set[str]
+        interfaces_to_make_unqueryable: Set[str],
     ) -> None:
         """Create a visitor for renaming types in a schema AST.
 
@@ -725,9 +728,9 @@ class RenameSchemaTypesVisitor(Visitor):
                              field names belonging to the type to a set of field names for the
                              renamed schema
             query_type: name of the query type (e.g. RootSchemaQuery), which will not be renamed
-            interfaces_to_make_unqueryable: interfaces to remove from the query type because one or more
-                                            of their descendants in the inheritance hierarchy was
-                                            suppressed.
+            interfaces_to_make_unqueryable: interfaces to remove from the query type because one or
+                                            more of their descendants in the inheritance hierarchy
+                                            was suppressed.
         """
         self.type_renamings = type_renamings
         self.reverse_name_map = {}
@@ -872,12 +875,16 @@ class RenameSchemaTypesVisitor(Visitor):
             field_type_suppressed = (
                 self.type_renamings.get(field_type_name, field_type_name) is None
             )
-            field_type_is_unqueryable_interface = field_type_name in self.interfaces_to_make_unqueryable
+            field_type_is_unqueryable_interface = (
+                field_type_name in self.interfaces_to_make_unqueryable
+            )
             field_node_suppressed = (
                 type_name in self.field_renamings
                 and self.field_renamings[type_name].get(field_name, {field_name}) == set()
             )
-            if (field_type_suppressed or field_type_is_unqueryable_interface) and not field_node_suppressed:
+            if (
+                field_type_suppressed or field_type_is_unqueryable_interface
+            ) and not field_node_suppressed:
                 # If the type of the field is suppressed but the field itself is not, it's invalid.
                 current_type_fields_to_suppress[field_name] = field_type_name
         if current_type_fields_to_suppress != {}:
