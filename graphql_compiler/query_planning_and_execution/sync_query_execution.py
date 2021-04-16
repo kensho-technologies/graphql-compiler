@@ -15,17 +15,12 @@ def _execute_simple_execute_node(
     arguments = deserialize_multiple_arguments(
         query_plan_node.arguments, query_plan_node.input_metadata
     )
+    requires_postprocessing = query_plan_node.provider_metadata.requires_fold_postprocessing
 
     with provider_client_maker() as query_client:
         result = query_client(query_plan_node.query, query_plan_node.input_metadata, arguments)
+
         # Apply post processing for MSSQL folds if applicable.
-        requires_postprocessing = False
-        for _, output_metadata in query_plan_node.output_metadata.items():
-            if (
-                output_metadata.provider_metadata is not None
-                and output_metadata.provider_metadata.requires_fold_postprocessing
-            ):
-                requires_postprocessing = True
         if requires_postprocessing:
             list_dict_result = [dict(entry) for entry in result]
             post_process_mssql_folds(list_dict_result, query_plan_node.output_metadata)

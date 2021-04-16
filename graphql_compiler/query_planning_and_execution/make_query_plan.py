@@ -1,7 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 from dataclasses import dataclass
-from typing import FrozenSet, List, Optional, Tuple, cast
+from typing import FrozenSet, List, Optional, Tuple, Union, cast
+from uuid import uuid4
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -17,11 +18,25 @@ from graphql.language.ast import (
     StringValueNode,
 )
 from graphql.pyutils import FrozenList
+from sqlalchemy.dialects.mssql.base import MSDialect
 
 from ..ast_manipulation import get_only_query_definition
+from ..compiler.common import (
+    CYPHER_LANGUAGE,
+    GREMLIN_LANGUAGE,
+    MATCH_LANGUAGE,
+    compile_graphql_to_cypher,
+    compile_graphql_to_gremlin,
+    compile_graphql_to_match,
+    compile_graphql_to_sql,
+)
+from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..exceptions import GraphQLValidationError
+from ..global_utils import QueryStringWithParameters
 from ..schema import FilterDirective, OutputDirective
+from ..schema.schema_info import CommonSchemaInfo, SQLAlchemySchemaInfo
 from ..schema_transformation.split_query import AstType, SubQueryNode
+from .typedefs import ProviderMetadata, QueryPlan, SimpleExecute
 
 
 @dataclass
@@ -66,44 +81,65 @@ class QueryPlanDescriptor:
     output_join_descriptors: List[OutputJoinDescriptor]
 
 
-def make_query_plan(
-    root_sub_query_node: SubQueryNode, intermediate_output_names: FrozenSet[str]
-) -> QueryPlanDescriptor:
-    """Return a QueryPlanDescriptor, whose query ASTs have @filters added.
-
-    For each parent of parent and child SubQueryNodes, a new @filter directive will be added
-    in the child AST. It will be added on the field whose @output directive has the out_name
-    equal to the child's out name as specified in the QueryConnection. The newly added @filter
-    will be a 'in_collection' type filter, and the name of the local variable is guaranteed to
-    be the same as the out_name of the @output on the parent.
-
-    ASTs contained in the input node and its children nodes will not be modified.
+def _make_simple_execute_node(
+    query_and_parameters: QueryStringWithParameters,
+    schema_info: Union[CommonSchemaInfo, SQLAlchemySchemaInfo],
+    provider_id: str,
+    backend_type: Optional[str],
+) -> SimpleExecute:
+    """Generate a SimpleExecuteNode.
 
     Args:
-        root_sub_query_node: representing the base of a query split into pieces
-                             that we want to turn into a query plan.
-        intermediate_output_names: names of outputs to be removed at the end.
+        query_and_parameters: the query and parameters for which to create a SimpleExecute.
+        schema_info: schema information to use for query compilation.
+        provider_id: the identifier of the provider to be queried.
+        backend_type: the backend type. Note: this is inferred from the SQLAlchemySchemaInfo's
+                      dialect for SQL backends.
 
     Returns:
-        QueryPlanDescriptor containing a tree of SubQueryPlans that wrap around each individual
-        query AST, the set of intermediate output names that are to be removed at the end, and
-        information on which outputs are to be connect to which in what manner.
+        SimpleExecute with all necessary information to execute the given query_and_parameters.
+
     """
-    output_join_descriptors: List[OutputJoinDescriptor] = []
+    if isinstance(schema_info, SQLAlchemySchemaInfo):
+        # Compiled SQL query.
+        compilation_result = compile_graphql_to_sql(schema_info, query_and_parameters.query_string)
+        query = print_sqlalchemy_query_string(compilation_result.query, schema_info.dialect)
 
-    root_sub_query_plan = SubQueryPlan(
-        query_ast=root_sub_query_node.query_ast,
-        schema_id=root_sub_query_node.schema_id,
-        parent_query_plan=None,
-        child_query_plans=[],
-    )
+        provider_metadata = ProviderMetadata(
+            backend_type=schema_info.dialect.name,
+            requires_fold_postprocessing=isinstance(schema_info.dialect, MSDialect),
+        )
+    else:
+        if backend_type == CYPHER_LANGUAGE:
+            compilation_result = compile_graphql_to_cypher(
+                schema_info, query_and_parameters.query_string
+            )
+        elif backend_type == GREMLIN_LANGUAGE:
+            compilation_result = compile_graphql_to_gremlin(
+                schema_info, query_and_parameters.query_string
+            )
+        elif backend_type == MATCH_LANGUAGE:
+            compilation_result = compile_graphql_to_match(
+                schema_info, query_and_parameters.query_string
+            )
+        # TODO: add InterpreterAdapter based backends
+        else:
+            raise AssertionError(f"Unknown non-SQL backend_type {backend_type}.")
+        # Extract the query and create provider_metadata (process is the same across Cypher,
+        # Gremlin, and Match backends)
+        query = compilation_result.query
+        provider_metadata = ProviderMetadata(
+            backend_type=backend_type, requires_fold_postprocessing=False
+        )
 
-    _make_query_plan_recursive(root_sub_query_node, root_sub_query_plan, output_join_descriptors)
-
-    return QueryPlanDescriptor(
-        root_sub_query_plan=root_sub_query_plan,
-        intermediate_output_names=intermediate_output_names,
-        output_join_descriptors=output_join_descriptors,
+    return SimpleExecute(
+        str(uuid4()),
+        provider_id,
+        provider_metadata,
+        query,
+        query_and_parameters.parameters,
+        compilation_result.output_metadata,
+        compilation_result.input_metadata,
     )
 
 
@@ -291,6 +327,118 @@ def _get_in_collection_filter_directive(input_filter_name: str) -> DirectiveNode
     )
 
 
+def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[SubQueryPlan, int]]:
+    """Return a list of topologically sorted (query plan, depth) tuples."""
+
+    def _get_plan_and_depth_in_dfs_order_helper(
+        query_plan: SubQueryPlan, depth: int
+    ) -> List[Tuple[SubQueryPlan, int]]:
+        plan_and_depth_in_dfs_order = [(query_plan, depth)]
+        for child_query_plan in query_plan.child_query_plans:
+            plan_and_depth_in_dfs_order.extend(
+                _get_plan_and_depth_in_dfs_order_helper(child_query_plan, depth + 1)
+            )
+        return plan_and_depth_in_dfs_order
+
+    return _get_plan_and_depth_in_dfs_order_helper(query_plan, 0)
+
+
+######
+# Public API
+######
+
+
+def generate_query_plan(
+    query_and_parameters: QueryStringWithParameters,
+    provider_id: str,
+    *,
+    desired_page_size: Optional[int] = 5000,
+) -> QueryPlan:
+    """Generate a query plan for query_and_parameters targeting data source 'provider_id'.
+
+    Note: this functionality is intended to replace make_query_plan below. TODO(selene)
+
+    Args:
+        query_and_parameters: the query and parameters for which to create a QueryPlan.
+        provider_id: the identifier of the provider to be queried.
+        desired_page_size: target page size. None indicates that pagination should be disabled.
+                           The benefit of pagination with this sync executor is that:
+                           - You can receive results as they arrive (see execute_query_plan)
+                           - The load on the database is more controlled, and timeouts are
+                             less likely.
+                           The desired_page_size is fulfilled on a best-effort basis; setting
+                           a particular desired_page_size does not guarantee pages of precisely
+                           that size. Setting desired_page_size to a number less than 1000 is
+                           not recommended, since the server is unlikely to have sufficiently
+                           granular statistics to accomplish that, and the client is more likely
+                           to fetch many entirely empty pages. Note: this is not currently used,
+                           but will be in the near future! TODO(selene): implement ParallelPaginated
+
+    Returns:
+        QueryPlan for the given query_and_parameters against the data source specified
+        by the provider_id.
+
+    """
+    # TODO: look up schema_info and backend_type by provider_id
+    schema_info = None
+    backend_type = None
+    query_plan_node = _make_simple_execute_node(
+        query_and_parameters, schema_info, provider_id, backend_type
+    )
+
+    version = 1
+    return QueryPlan(
+        version,
+        provider_id,
+        query_and_parameters.query_string,
+        query_and_parameters.parameters,
+        desired_page_size,
+        query_plan_node.output_metadata,
+        query_plan_node,
+    )
+
+
+def make_query_plan(
+    root_sub_query_node: SubQueryNode, intermediate_output_names: FrozenSet[str]
+) -> QueryPlanDescriptor:
+    """Return a QueryPlanDescriptor, whose query ASTs have @filters added.
+
+    For each parent of parent and child SubQueryNodes, a new @filter directive will be added
+    in the child AST. It will be added on the field whose @output directive has the out_name
+    equal to the child's out name as specified in the QueryConnection. The newly added @filter
+    will be a 'in_collection' type filter, and the name of the local variable is guaranteed to
+    be the same as the out_name of the @output on the parent.
+
+    ASTs contained in the input node and its children nodes will not be modified.
+
+    Args:
+        root_sub_query_node: representing the base of a query split into pieces
+                             that we want to turn into a query plan.
+        intermediate_output_names: names of outputs to be removed at the end.
+
+    Returns:
+        QueryPlanDescriptor containing a tree of SubQueryPlans that wrap around each individual
+        query AST, the set of intermediate output names that are to be removed at the end, and
+        information on which outputs are to be connect to which in what manner.
+    """
+    output_join_descriptors: List[OutputJoinDescriptor] = []
+
+    root_sub_query_plan = SubQueryPlan(
+        query_ast=root_sub_query_node.query_ast,
+        schema_id=root_sub_query_node.schema_id,
+        parent_query_plan=None,
+        child_query_plans=[],
+    )
+
+    _make_query_plan_recursive(root_sub_query_node, root_sub_query_plan, output_join_descriptors)
+
+    return QueryPlanDescriptor(
+        root_sub_query_plan=root_sub_query_plan,
+        intermediate_output_names=intermediate_output_names,
+        output_join_descriptors=output_join_descriptors,
+    )
+
+
 def print_query_plan(query_plan_descriptor: QueryPlanDescriptor, indentation_depth: int = 4) -> str:
     """Return a string describing query plan."""
     query_plan_strings = [""]
@@ -311,17 +459,3 @@ def print_query_plan(query_plan_descriptor: QueryPlanDescriptor, indentation_dep
     query_plan_strings.append(str(query_plan_descriptor.intermediate_output_names) + "\n")
 
     return "".join(query_plan_strings)
-
-
-def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[SubQueryPlan, int]]:
-    """Return a list of topologically sorted (query plan, depth) tuples."""
-
-    def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
-        plan_and_depth_in_dfs_order = [(query_plan, depth)]
-        for child_query_plan in query_plan.child_query_plans:
-            plan_and_depth_in_dfs_order.extend(
-                _get_plan_and_depth_in_dfs_order_helper(child_query_plan, depth + 1)
-            )
-        return plan_and_depth_in_dfs_order
-
-    return _get_plan_and_depth_in_dfs_order_helper(query_plan, 0)

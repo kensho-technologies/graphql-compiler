@@ -112,12 +112,26 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_represent_supported_fields(self) -> None:
         table1_graphql_object = self.schema_info.schema.get_type("Table1")
+        # mypy complained even with self.assertIsInstance(table1_graphql_object, GraphQLObjectType)
+        # so performing a manual check.
+        if not isinstance(table1_graphql_object, GraphQLObjectType):
+            raise AssertionError(
+                f"table1_graphql_object expected to be GraphQLObjectType, but was of type "
+                f"{type(table1_graphql_object)}"
+            )
         self.assertEqual(
             table1_graphql_object.fields["column_with_supported_type"].type, GraphQLString
         )
 
     def test_ignored_fields_not_supported(self) -> None:
         table1_graphql_object = self.schema_info.schema.get_type("Table1")
+        # mypy complained even with self.assertIsInstance(table1_graphql_object, GraphQLObjectType)
+        # so performing a manual check.
+        if not isinstance(table1_graphql_object, GraphQLObjectType):
+            raise AssertionError(
+                f"table1_graphql_object expected to be GraphQLObjectType, but was of type "
+                f"{type(table1_graphql_object)}"
+            )
         self.assertTrue("column_with_non_supported_type" not in table1_graphql_object.fields)
 
     def test_warn_when_type_is_not_supported(self) -> None:
@@ -140,11 +154,30 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
 
     def test_mssql_scalar_type_representation(self) -> None:
         table1_graphql_object = self.schema_info.schema.get_type("Table1")
+        # mypy complained even with self.assertIsInstance(table1_graphql_object, GraphQLObjectType)
+        # so performing a manual check.
+        if not isinstance(table1_graphql_object, GraphQLObjectType):
+            raise AssertionError(
+                f"table1_graphql_object expected to be GraphQLObjectType, but was of type "
+                f"{type(table1_graphql_object)}"
+            )
         self.assertEqual(table1_graphql_object.fields["column_with_mssql_type"].type, GraphQLInt)
 
     def test_direct_sql_edge_representation(self) -> None:
         table1_graphql_object = self.schema_info.schema.get_type("Table1")
         arbitrarily_named_graphql_object = self.schema_info.schema.get_type("ArbitraryObjectName")
+        # mypy complained even with self.assertIsInstance(table1_graphql_object, GraphQLObjectType)
+        # so performing a manual check.
+        if not isinstance(table1_graphql_object, GraphQLObjectType):
+            raise AssertionError(
+                f"table1_graphql_object expected to be GraphQLObjectType, but was of type "
+                f"{type(table1_graphql_object)}"
+            )
+        if not isinstance(arbitrarily_named_graphql_object, GraphQLObjectType):
+            raise AssertionError(
+                f"arbitrarily_named_graphql_object expected to be GraphQLObjectType, but was of "
+                f"type {type(arbitrarily_named_graphql_object)}"
+            )
         self.assertEqual(
             table1_graphql_object.fields["out_test_edge"].type.of_type.name, "ArbitraryObjectName"
         )

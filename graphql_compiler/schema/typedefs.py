@@ -19,7 +19,7 @@ GraphQLSchemaFieldType = Union[GraphQLList, GraphQLNonNull, GraphQLScalarType]
 # Dict of GraphQL type name -> (Dict of field name on that type -> the desired type of the field)
 ClassToFieldTypeOverridesType = Dict[str, Dict[str, GraphQLSchemaFieldType]]
 
-# The type of the type equivalence hints object, which defines which GraphQL intefaces and object
+# The type of the type equivalence hints object, which defines which GraphQL interfaces and object
 # types should be considered equivalent to which union types. This is our workaround for the lack
 # of interface-interface and object-object inheritance.
 TypeEquivalenceHintsType = Dict[Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType]

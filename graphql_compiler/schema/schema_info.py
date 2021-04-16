@@ -162,12 +162,13 @@ class SQLSchemaInfo(BackendSpecificSchemaInfo):
     # Specifying the dialect for which we are compiling
     # e.g. sqlalchemy.dialects.mssql.dialect()
     dialect: Dialect
+
     # dict mapping every GraphQL object type or interface type name in the schema to
     # a sqlalchemy table.
     # Column types that do not exist for this dialect are not allowed.
     # All tables are expected to have primary keys.
-
     vertex_name_to_table: Dict[str, sqlalchemy.Table]
+
     # dict mapping every GraphQL object type or interface type name in the schema to
     # dict mapping every vertex field name at that type to a JoinDescriptor.
     # The tables the join is to be performed on are not specified.
@@ -226,56 +227,63 @@ CommonSchemaInfo = namedtuple(
 )
 
 
-# Complete schema information sufficient to compile GraphQL queries to SQLAlchemy
-#
-# It describes the tables that correspond to each type (object type or interface type),
-# and gives instructions on how to perform joins for each vertex field. The property fields on each
-# type are implicitly mapped to columns with the same name on the corresponding table.
-#
-# NOTES:
-# - RootSchemaQuery is a special type that does not need a corresponding table.
-# - Builtin types like __Schema, __Type, etc. don't need corresponding tables.
-# - Builtin fields like _x_count do not need corresponding columns.
-SQLAlchemySchemaInfo = namedtuple(
-    "SQLAlchemySchemaInfo",
-    (
-        # GraphQLSchema
-        "schema",
-        # optional dict of GraphQL interface or type -> GraphQL union.
-        # Used as a workaround for GraphQL's lack of support for
-        # inheritance across "types" (i.e. non-interfaces), as well as a
-        # workaround for Gremlin's total lack of inheritance-awareness.
-        # The key-value pairs in the dict specify that the "key" type
-        # is equivalent to the "value" type, i.e. that the GraphQL type or
-        # interface in the key is the most-derived common supertype
-        # of every GraphQL type in the "value" GraphQL union.
-        # Recursive expansion of type equivalence hints is not performed,
-        # and only type-level correctness of this argument is enforced.
-        # See README.md for more details on everything this parameter does.
-        # *****
-        # Be very careful with this option, as bad input here will
-        # lead to incorrect output queries being generated.
-        # *****
-        "type_equivalence_hints",
-        # sqlalchemy.engine.interfaces.Dialect, specifying the dialect we are compiling for
-        # (e.g. sqlalchemy.dialects.mssql.dialect()).
-        "dialect",
-        # dict mapping every graphql object type or interface type name in the schema to
-        # a sqlalchemy table. Column types that do not exist for this dialect are not allowed.
-        # All tables are expected to have primary keys.
-        "vertex_name_to_table",
-        # dict mapping every graphql object type or interface type name in the schema to:
-        #    dict mapping every vertex field name at that type to a JoinDescriptor. The
-        #    tables the join is to be performed on are not specified. They are inferred from
-        #    the schema and the tables dictionary.
-        "join_descriptors",
-    ),
-)
+@dataclass
+class SQLAlchemySchemaInfo:
+    """Complete schema information sufficient to compile GraphQL queries to SQLAlchemy.
+
+    It describes the tables that correspond to each type (object type or interface type),
+    and gives instructions on how to perform joins for each vertex field. The property fields on
+    each type are implicitly mapped to columns with the same name on the corresponding table.
+
+    Notes:
+    - RootSchemaQuery is a special type that does not need a corresponding table.
+    - Builtin types like __Schema, __Type, etc. don't need corresponding tables.
+    - Builtin fields like _x_count do not need corresponding columns.
+
+    TODO: This class is essentially the same as SQLSchemaInfo. SQLSchemaInfo is part of an
+          incomplete refactor started in
+          https://github.com/kensho-technologies/graphql-compiler/pull/714
+          SQLAlchemySchemaInfo is currently used to compile GraphQL to SQL while CommonSchemaInfo
+          is currently used to compile GraphQL to match, gremlin, and cypher.
+    """
+
+    schema: GraphQLSchema
+
+    # Optional dict of GraphQL interface or type -> GraphQL union.
+    # Used as a workaround for GraphQL's lack of support for
+    # inheritance across "types" (i.e. non-interfaces), as well as a
+    # workaround for Gremlin's total lack of inheritance-awareness.
+    # The key-value pairs in the dict specify that the "key" type
+    # is equivalent to the "value" type, i.e. that the GraphQL type or
+    # interface in the key is the most-derived common supertype
+    # of every GraphQL type in the "value" GraphQL union.
+    # Recursive expansion of type equivalence hints is not performed,
+    # and only type-level correctness of this argument is enforced.
+    # See README.md for more details on everything this parameter does.
+    # *****
+    # Be very careful with this option, as bad input here will
+    # lead to incorrect output queries being generated.
+    # *****
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType]
+
+    # Specifying the SQL Dialect.
+    dialect: Dialect
+
+    # Mapping every GraphQL object or interface type name in the schema to the corresponding
+    # SQLAlchemy table. Column types that do not exist for this dialect are not allowed.
+    # All tables are expected to have primary keys.
+    vertex_name_to_table: Dict[str, sqlalchemy.Table]
+
+    # Mapping every GraphQL object or interface type name in the schema to:
+    #    dict mapping every vertex field name at that type to a JoinDescriptor. The
+    #    tables the join is to be performed on are not specified. They are inferred from
+    #    the schema and the tables dictionary.
+    join_descriptors: Dict[str, Dict[str, JoinDescriptor]]
 
 
 def make_sqlalchemy_schema_info(
     schema: GraphQLSchema,
-    type_equivalence_hints: TypeEquivalenceHintsType,
+    type_equivalence_hints: Optional[TypeEquivalenceHintsType],
     dialect: Dialect,
     vertex_name_to_table: Dict[str, sqlalchemy.Table],
     join_descriptors: Dict[str, Dict[str, JoinDescriptor]],

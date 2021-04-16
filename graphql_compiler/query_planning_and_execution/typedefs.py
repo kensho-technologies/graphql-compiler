@@ -8,6 +8,7 @@ from dataclasses_json import DataClassJsonMixin, config
 from graphql import (
     GraphQLList,
     GraphQLNonNull,
+    GraphQLScalarType,
     GraphQLType,
     ListTypeNode,
     NamedTypeNode,
@@ -18,12 +19,13 @@ from graphql import (
 )
 
 from .. import GraphQLDate, GraphQLDateTime, GraphQLDecimal
-from ..compiler.compiler_frontend import OutputMetadata, ProviderMetadata
+from ..compiler.compiler_frontend import OutputMetadata
 from ..global_utils import is_same_type
+from ..typedefs import QueryArgumentGraphQLType
 
 
 QueryExecutionFunc = Callable[
-    [str, Dict[str, GraphQLType], Dict[str, Any]], Iterable[Mapping[str, Any]]
+    [str, Dict[str, QueryArgumentGraphQLType], Dict[str, Any]], Iterable[Mapping[str, Any]]
 ]
 
 # Custom scalar types.
@@ -48,7 +50,7 @@ ALL_SCALAR_TYPES.update(specified_scalar_types)
 
 
 def _type_from_scalar_type_dictionary(
-    scalar_types: Dict[str, GraphQLType], type_node: TypeNode
+    scalar_types: Dict[str, GraphQLScalarType], type_node: TypeNode
 ) -> GraphQLType:
     """Get the GraphQL type definition from an AST node.
 
@@ -63,7 +65,7 @@ def _type_from_scalar_type_dictionary(
     and allows for custom scalar types without constructing an entire schema.
 
     Args:
-        scalar_types: dictionary mapping type name to GraphQLType
+        scalar_types: dictionary mapping type name to GraphQLScalarType
         type_node: AST node describing a type
 
     Returns:
@@ -96,7 +98,7 @@ def _type_from_scalar_type_dictionary(
 
 
 def _serialize_output_metadata_field(
-    output_metadata_dictionary: Optional[Dict[str, "OutputMetadata"]]
+    output_metadata_dictionary: Optional[Dict[str, OutputMetadata]]
 ) -> Optional[Dict[str, Dict[str, Any]]]:
     """Serialize OutputMetadata into a dictionary."""
     if not output_metadata_dictionary:
@@ -104,17 +106,16 @@ def _serialize_output_metadata_field(
     dictionary_value = {}
     for output_name, output_metadata in output_metadata_dictionary.items():
         dictionary_value[output_name] = {
-            "graphql_type": str(output_metadata["graphql_type"]),
-            "optional": output_metadata["optional"],
-            "folded": output_metadata["folded"],
-            "provider_metadata": output_metadata["provider_metadata"],
+            "type": str(output_metadata.type),
+            "optional": output_metadata.optional,
+            "folded": output_metadata.folded,
         }
     return dictionary_value
 
 
 def _deserialize_output_metadata_field(
     dict_value: Optional[Dict[str, Dict[str, Any]]]
-) -> Optional[Dict[str, "OutputMetadata"]]:
+) -> Optional[Dict[str, OutputMetadata]]:
     """Deserialize the dictionary representation of OutputMetadata."""
     if not dict_value:
         return None
@@ -122,16 +123,10 @@ def _deserialize_output_metadata_field(
     for output_name, output_metadata in dict_value.items():
         output_metadata_dictionary[output_name] = OutputMetadata(
             type=_type_from_scalar_type_dictionary(
-                ALL_SCALAR_TYPES, parse_type(output_metadata["graphql_type"])
+                ALL_SCALAR_TYPES, parse_type(output_metadata["type"])
             ),
             optional=output_metadata["optional"],
             folded=output_metadata["folded"],
-            provider_metadata=ProviderMetadata(
-                backend_type=output_metadata["provider_metadata"]["backend_type"],
-                requires_fold_postprocessing=output_metadata["provider_metadata"][
-                    "requires_fold_postprocessing"
-                ],
-            ),
         )
     return output_metadata_dictionary
 
@@ -171,8 +166,8 @@ def _deserialize_input_metadata_field(
 
 
 def _compare_input_metadata_field(
-    left_input_metadata: Optional[Dict[str, GraphQLType]],
-    right_input_metadata: Optional[Dict[str, GraphQLType]],
+    left_input_metadata: Optional[Dict[str, QueryArgumentGraphQLType]],
+    right_input_metadata: Optional[Dict[str, QueryArgumentGraphQLType]],
 ) -> bool:
     """Check input_metadata SimpleExecute field equality, comparing GraphQLTypes appropriately."""
     if left_input_metadata is None:
@@ -200,9 +195,27 @@ def _compare_input_metadata_field(
     return True
 
 
+def _deserialize_independent_query_plan_field(dict_value: Dict[str, Any]) -> "IndependentQueryPlan":
+    """Deserialize the dict representation of IndependentQueryPlan."""
+    # Note: there will be more types of IndependentQueryPlans that will require different
+    # deserialization shortly.
+    return SimpleExecute.from_dict(dict_value)
+
+
 # ############
 # Public API #
 # ############
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class ProviderMetadata(DataClassJsonMixin):
+    """Metadata about the provider."""
+
+    # Name of the type of provider (ex. PostgreSQL, Cypher, etc).
+    backend_type: str
+
+    # Whether this backend requires MSSQL fold postprocessing for folded outputs.
+    requires_fold_postprocessing: bool
 
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
@@ -220,6 +233,7 @@ class SimpleExecute(QueryPlanNode):
     """Just give the specified query and args to the provider, it'll execute it for you as-is."""
 
     provider_id: str
+    provider_metadata: ProviderMetadata
     query: str  # in whatever query language the provider will accept (not necessarily GraphQL)
     arguments: Dict[str, Any]
 
@@ -229,7 +243,7 @@ class SimpleExecute(QueryPlanNode):
             encoder=_serialize_output_metadata_field, decoder=_deserialize_output_metadata_field
         )
     )
-    input_metadata: Dict[str, GraphQLType] = field(
+    input_metadata: Dict[str, QueryArgumentGraphQLType] = field(
         metadata=config(
             encoder=_serialize_input_metadata_field, decoder=_deserialize_input_metadata_field
         )
@@ -249,3 +263,33 @@ class SimpleExecute(QueryPlanNode):
             and self.output_metadata == other.output_metadata
             and _compare_input_metadata_field(self.input_metadata, other.input_metadata)
         )
+
+
+# More types of IndependentQueryPlans will be added in the future.
+IndependentQueryPlan = SimpleExecute
+
+
+@dataclass(init=True, repr=True, eq=True, frozen=True)
+class QueryPlan(DataClassJsonMixin):
+    """A description of the execution of a GraphQL query, including pagination and joins."""
+
+    # Version number, so we can make breaking changes without requiring lock-step upgrades.
+    # Clients should report supported version ranges when requesting a plan, and the server
+    # should pick the highest version that is supported by both client and server.
+    version: int
+
+    # Metadata on which provider produced the plan, and for what inputs.
+    provider_id: str
+    input_graphql_query: str
+    input_parameters: Dict[str, Any]
+    desired_page_size: Optional[int]
+    output_metadata: Dict[str, OutputMetadata] = field(
+        metadata=config(
+            encoder=_serialize_output_metadata_field, decoder=_deserialize_output_metadata_field
+        )
+    )
+
+    # The actual query plan.
+    plan_root_node: IndependentQueryPlan = field(
+        metadata=config(decoder=_deserialize_independent_query_plan_field)
+    )
