@@ -3,7 +3,7 @@ from typing import Any, Callable, ContextManager, Dict, Iterable, Mapping
 
 from ..post_processing.sql_post_processing import post_process_mssql_folds
 from ..query_formatting.common import deserialize_multiple_arguments
-from .typedefs import QueryExecutionFunc, SimpleExecute
+from .typedefs import QueryExecutionFunc, QueryPlan, SimpleExecute
 
 
 def _execute_simple_execute_node(
@@ -28,3 +28,23 @@ def _execute_simple_execute_node(
 
         # Otherwise, return result as is.
         return result
+
+
+######
+# Public API
+######
+
+
+def execute_query_plan(
+    provider_client_makers: Dict[str, Callable[[], ContextManager[QueryExecutionFunc]]],
+    query_plan: QueryPlan,
+) -> Iterable[Mapping[str, Any]]:
+    """Execute a QueryPlan."""
+    # TODO(selene): figure out if we want some sort of class to contain provider_client_makers
+    if isinstance(query_plan.plan_root_node, SimpleExecute):
+        return _execute_simple_execute_node(provider_client_makers, query_plan.plan_root_node)
+    else:
+        raise NotImplementedError(
+            f"Received plan_root_node with unsupported type "
+            f"{type(query_plan.plan_root_node)}: {query_plan.plan_root_node}"
+        )

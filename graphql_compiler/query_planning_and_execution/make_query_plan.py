@@ -122,7 +122,7 @@ def _make_simple_execute_node(
             compilation_result = compile_graphql_to_match(
                 schema_info, query_and_parameters.query_string
             )
-        # TODO: add InterpreterAdapter based backends
+        # TODO(selene): add InterpreterAdapter based backends
         else:
             raise AssertionError(f"Unknown non-SQL backend_type {backend_type}.")
         # Extract the query and create provider_metadata (process is the same across Cypher,
@@ -379,7 +379,7 @@ def generate_query_plan(
         by the provider_id.
 
     """
-    # TODO: look up schema_info and backend_type by provider_id
+    # TODO(selene): look up schema_info and backend_type by provider_id
     schema_info = None
     backend_type = None
     query_plan_node = _make_simple_execute_node(
