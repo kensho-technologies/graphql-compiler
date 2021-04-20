@@ -238,6 +238,7 @@ class SQLAlchemySchemaInfo:
     - RootSchemaQuery is a special type that does not need a corresponding table.
     - Builtin types like __Schema, __Type, etc. don't need corresponding tables.
     - Builtin fields like _x_count do not need corresponding columns.
+
     TODO: This class is essentially the same as SQLSchemaInfo. SQLSchemaInfo is part of an
           incomplete refactor started in
           https://github.com/kensho-technologies/graphql-compiler/pull/714
