@@ -632,7 +632,7 @@ class FoldSubqueryBuilder(object):
 
     def add_traversal(
         self,
-        join_descriptor: DirectJoinDescriptor,
+        join_descriptor: JoinDescriptor,
         from_table: Alias,
         to_table: Alias,
     ) -> None:
@@ -643,18 +643,28 @@ class FoldSubqueryBuilder(object):
                 f"Invalid state encountered during fold {self}."
             )
 
-        # Ensure that the previous traversals's from_table matches the next traversal's to_table.
-        if len(self._traversal_descriptors) > 0:
-            if self._traversal_descriptors[-1].to_table != from_table:
-                raise AssertionError(
-                    "Received invalid traversal. The previous traversal's to_table "
-                    "should match the next traversal's from_table. Previous to_table was "
-                    f"{self._traversal_descriptors[-1].to_table.description} while the current "
-                    f"from_table was {from_table.description}."
-                )
-        self._traversal_descriptors.append(
-            SQLFoldTraversalDescriptor(join_descriptor, from_table, to_table)
-        )
+        if isinstance(join_descriptor, CompositeJoinDescriptor):
+            raise NotImplementedError(
+                "Composite joins are not implemented inside of folds for SQL."
+            )
+        elif isinstance(join_descriptor, DirectJoinDescriptor):
+            # Ensure that the previous traversals's from_table matches the next traversal's
+            # to_table.
+            if len(self._traversal_descriptors) > 0:
+                if self._traversal_descriptors[-1].to_table != from_table:
+                    raise AssertionError(
+                        "Received invalid traversal. The previous traversal's to_table "
+                        "should match the next traversal's from_table. Previous to_table was "
+                        f"{self._traversal_descriptors[-1].to_table.description} while the current "
+                        f"from_table was {from_table.description}."
+                    )
+            self._traversal_descriptors.append(
+                SQLFoldTraversalDescriptor(join_descriptor, from_table, to_table)
+            )
+        else:
+            raise AssertionError(
+                f"Unreachable code reached! Unknown JoinDescriptor {type(join_descriptor)}."
+            )
 
     def mark_output_location_and_fields(
         self, output_table: Alias, output_table_location: FoldScopeLocation, output_fields: Set[str]
