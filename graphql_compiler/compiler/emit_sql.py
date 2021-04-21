@@ -643,6 +643,10 @@ class FoldSubqueryBuilder(object):
                 f"Invalid state encountered during fold {self}."
             )
 
+        # The edge name is not available within the function making the error message
+        # user-unfriendly. A similar check should be performed prior to calling this function to
+        # ensure that a user-friendly message is presented containing the composite join-backed
+        # edge name, but this check is also necessary in order to appease mypy.
         if isinstance(join_descriptor, CompositeJoinDescriptor):
             raise NotImplementedError(
                 "Composite joins are not implemented inside of folds for SQL."
@@ -982,6 +986,10 @@ class CompilationState(object):
                     "Attempting to traverse inside a fold while the _current_location was not a "
                     f"FoldScopeLocation. _current_location was set to {self._current_location}."
                 )
+            # add_traversal performs the same check internally, but checking here is necessary in
+            # order to give the user a better error message - the vertex_field is not available from
+            # within add_traversal and therefore cannot be put in a user-friendly error message
+            # within the function.
             if not isinstance(edge, DirectJoinDescriptor):
                 raise NotImplementedError(
                     f"Edge {vertex_field} is backed by a CompositeJoinDescriptor, "
@@ -1189,6 +1197,10 @@ class CompilationState(object):
         join_descriptor = self._sql_schema_info.join_descriptors[self._current_classname][
             full_edge_name
         ]
+        # add_traversal performs the same check internally, but checking here is necessary in
+        # order to give the user a better error message - the full_edge_name is not available from
+        # within add_traversal and therefore cannot be put in a user-friendly error message
+        # within the function.
         if not isinstance(join_descriptor, DirectJoinDescriptor):
             raise NotImplementedError(
                 f"Edge {full_edge_name} requires a JOIN across a composite key, which is currently "
