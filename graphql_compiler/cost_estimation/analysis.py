@@ -422,6 +422,10 @@ class QueryPlanningAnalysis:
         return classes_with_missing_counts
 
     @cached_property
+    def elements_missing_sample_statistics(self):
+        pass  # TODO
+
+    @cached_property
     def cardinality_estimate(self) -> float:
         """Return the cardinality estimate for this query."""
         # TODO use selectivity analysis pass instead of recomputing it
@@ -488,6 +492,75 @@ class QueryPlanningAnalysis:
             self.field_value_intervals,
             self.distinct_result_set_estimates,
         )
+
+    @cached_property
+    def eligible_roots(self):
+        """Find vertices that can be the root of an equivalent query."""
+        # - not inside fold scope
+        # - not inside optional
+        # - recurse is reversible lol
+        pass  # TODO
+
+    @cached_property
+    def incoming_optionals(self):
+        pass
+
+    @cached_property
+    def adjecency_representation(self):
+        """Represent query graph as adjacency list, ignoring fold scope locations."""
+        # Just traverse the tree and register each edge as neighbor of both ends
+        pass  # TODO implement
+
+    @cached_property
+    def branching_nodes(self):
+        # Nodes with more than one unbounded edge that are not inside fold scope
+        pass
+
+    @cached_property
+    def constraints(self):
+        # - join protocols
+        # - filters
+        # - coercions
+        pass  # TODO
+
+    @cached_property
+    def optimized_constraints(self):
+        # TODO maybe turn a tag-filter pair into a join protocol?
+        return self.constraints
+
+    @cached_property
+    def bounded_representation_attempt(self) -> BoundedRepresentationAttempt:
+        # If there are any problems making this query unbounded, report them
+        # all together in a user-friendly way
+        problems = []
+        problems.extend([
+            TODOSomeWrapperClass(element)
+            for element in self.elements_missing_sample_statistics
+        ])
+        problems.extend([
+            TODOSomeWrapperClass(node)
+            for node in self.branching_nodes
+        ])
+        problems.extend([
+            TODOSomeWrapperClass(node)
+            for node in self.incoming_optionals
+        ])
+        if problems:
+            return UnboundedQueryEvidence(problems)
+
+        roots_to_consider = self.eligible_bounded_query_roots
+        if not roots_to_consider:
+            # If we found no user-friendly problems to report then we should
+            # be sure that the task is actually doable. If not that's a bug.
+            raise AssertionError("...")
+
+        # TODO maybe choose the one that gives the lowest upper bound on results?
+        root = sorted(roots_to_consider)[0]  # Arbitrary choice
+
+        # TODO construct BoundedQuery at this root
+        # 1. Run a DFS over self.adjacency_representation starting at root
+
+        return TODOSomeResultClass(TODOSomeStuff)
 
 
 def analyze_query_string(

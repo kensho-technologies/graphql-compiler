@@ -493,3 +493,50 @@ class CostEstimationAnalysisTests(unittest.TestCase):
             ("Animal", "out_Animal_ParentOf", "out_Animal_ParentOf"): 1000.0,
         }
         self.assertEqual(expected_estimates, estimates)
+
+    @pytest.mark.usefixtures("snapshot_orientdb_client")
+    def test_bounded_expression_attempt(self) -> None:
+
+        # TODO This initialization is copied with no thinking.
+        #      How do I pass stats and constraints?
+        schema_graph = generate_schema_graph(self.orientdb_client)  # type: ignore  # from fixture
+        graphql_schema, type_equivalence_hints = get_graphql_schema_from_schema_graph(schema_graph)
+        pagination_keys = {
+            vertex_name: ("uuid",) for vertex_name in schema_graph.vertex_class_names
+        }
+        uuid4_field_info = {
+            vertex_name: {"uuid": UUIDOrdering.LeftToRight}
+            for vertex_name in schema_graph.vertex_class_names
+        }
+        class_counts = {"Animal": 1000}
+        statistics = LocalStatistics(class_counts)
+        schema_info = QueryPlanningSchemaInfo(
+            schema=graphql_schema,
+            type_equivalence_hints=type_equivalence_hints,
+            schema_graph=schema_graph,
+            statistics=statistics,
+            pagination_keys=pagination_keys,
+            uuid4_field_info=uuid4_field_info,
+        )
+
+        query = QueryStringWithParameters(
+            """{
+                Animal {
+                    name @output(out_name: "animal_name")
+                    out_Animal_ParentOf {
+                        birthday @filter(op_name: ">=", value: ["$birthday_min"])
+                    }
+                }
+            }""", {
+                "birthday_min": "01-01-2020",
+            },
+        )
+
+        analysis = analyze_query_string(schema_info, query)
+        eligible_fields = analysis.fields_eligible_for_pagination
+        expected_eligible_fields = {
+            (("Animal",), "uuid"),
+            (("Animal",), "birthday"),
+            (("Animal", "in_Animal_ParentOf"), "birthday"),
+        }
+        self.assertEqual(expected_eligible_fields, eligible_fields)
