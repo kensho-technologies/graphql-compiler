@@ -494,26 +494,23 @@ class QueryPlanningAnalysis:
         )
 
     @cached_property
-    def eligible_roots(self):
-        """Find vertices that can be the root of an equivalent query."""
-        # - not inside fold scope
-        # - not inside optional
-        # - recurse is reversible lol
-        pass  # TODO
-
-    @cached_property
     def incoming_optionals(self):
         pass
 
     @cached_property
     def adjecency_representation(self):
         """Represent query graph as adjacency list, ignoring fold scope locations."""
-        # Just traverse the tree and register each edge as neighbor of both ends
+        # 1. Collapse non-rotateable branches such as:
+        # - folds
+        # - incoming optionals
+        # - recurse is surprisingly reversible lol
+        #
+        # 2. Traverse the resulting tree and register each edge as a neighbor of both ends
         pass  # TODO implement
 
     @cached_property
     def optimized_adjacency_representation(self):
-        # TODO Consider promoting a tag-filter relationship into an edge,
+        # TODO Consider promoting a tag-filter relationship into an edge (if possible)
         # while demoting an edge into a tag-filter relationship.
         return self.adjacency_representation
 
@@ -542,19 +539,15 @@ class QueryPlanningAnalysis:
         if problems:
             return UnboundedQueryEvidence(problems)
 
-        roots_to_consider = self.eligible_bounded_query_roots
-        if not roots_to_consider:
-            # If we found no user-friendly problems to report then we should
-            # be sure that the task is actually doable. If not that's a bug.
-            raise AssertionError("...")
-
-        # TODO maybe choose the one that gives the lowest upper bound on results?
-        root = sorted(roots_to_consider)[0]  # Arbitrary choice
-
-        # TODO construct BoundedQuery at this root
-        # 1. Run a DFS over self.adjacency_representation starting at root
-
-        return TODOSomeResultClass(TODOSomeStuff)
+        # TODO
+        # 1. Create a Node for each non-fold location
+        # 2. Group optional scopes into BoundedQuerys
+        # 3. Build a directed adjacency graph of the remaining nodes,
+        #    where edges are outgoing JoinProtocol instances.
+        # 4. Find vertices from which all other vertices are reachable.
+        #    At least one should exist if there are no problems.
+        # 5. Select one of these as root and return the BoundedQuery rooted there.
+        return None
 
 
 def analyze_query_string(
