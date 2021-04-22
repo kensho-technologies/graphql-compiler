@@ -13,6 +13,7 @@ from graphql.language.ast import (
     FragmentSpreadNode,
     InlineFragmentNode,
     InterfaceTypeDefinitionNode,
+    ListValueNode,
     NamedTypeNode,
     NameNode,
     Node,
@@ -20,6 +21,7 @@ from graphql.language.ast import (
     ScalarTypeDefinitionNode,
     SelectionNode,
     SelectionSetNode,
+    StringValueNode,
     UnionTypeDefinitionNode,
 )
 from graphql.language.visitor import Visitor, visit
@@ -28,6 +30,11 @@ from graphql.validation import validate
 import six
 
 from ..ast_manipulation import get_ast_with_non_null_and_list_stripped
+from ..compiler.helpers import (
+    get_parameter_name,
+    get_uniquely_named_objects_by_name,
+    is_runtime_parameter,
+)
 from ..exceptions import GraphQLError, GraphQLValidationError
 from ..schema import FilterDirective, OptionalDirective, OutputDirective
 
@@ -672,10 +679,18 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
         )
     )
 
+    def __init__(self, strict: bool):
+        """Initialize the visitor with the appropriate strictness setting."""
+        super(CheckQueryIsValidToSplitVisitor, self).__init__()
+        self.strict = strict
+
     def enter_directive(
         self, node: DirectiveNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
     ) -> None:
         """Check that the directive is supported."""
+        if not self.strict:
+            return
+
         if node.name.value not in self.supported_directives:
             raise GraphQLValidationError(
                 'Directive "{}" is not yet supported, only "{}" are currently '
@@ -737,7 +752,9 @@ class CheckQueryIsValidToSplitVisitor(Visitor):
                     seen_vertex_field = True
 
 
-def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode) -> None:
+def check_query_is_valid_to_split(
+    schema: GraphQLSchema, query_ast: DocumentNode, strict: bool = True
+) -> None:
     """Check the query is valid for splitting.
 
     In particular, ensure that the query validates against the schema, does not contain
@@ -747,6 +764,9 @@ def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode
     Args:
         schema: schema the query is written against.
         query_ast: query to split.
+        strict: bool, if set to True then limits query splitting to queries that are guaranteed
+                to be safely splittable. If False, then some queries may be permitted to be split
+                even though they are illegal. Use with caution.
 
     Raises:
         GraphQLValidationError if the query doesn't validate against the schema, contains
@@ -758,5 +778,48 @@ def check_query_is_valid_to_split(schema: GraphQLSchema, query_ast: DocumentNode
     if len(built_in_validation_errors) > 0:
         raise GraphQLValidationError("AST does not validate: {}".format(built_in_validation_errors))
     # Check no bad directives and fields are in order
-    visitor = CheckQueryIsValidToSplitVisitor()
+    visitor = CheckQueryIsValidToSplitVisitor(strict)
     visit(query_ast, visitor)
+
+
+class QueryRuntimeArgumentsVisitor(Visitor):
+    """Visitor that collects runtime argument names from @filter directives."""
+
+    def __init__(self) -> None:
+        """Initialize the visitor."""
+        super(QueryRuntimeArgumentsVisitor, self).__init__()
+        self.runtime_arguments: Set[str] = set()
+
+    def enter_directive(
+        self, node: DirectiveNode, key: Any, parent: Any, path: List[Any], ancestors: List[Any]
+    ) -> None:
+        """Check that the directive is supported."""
+        if node.name.value != FilterDirective.name:
+            return
+
+        directive_arguments = get_uniquely_named_objects_by_name(node.arguments)
+        directive_argument_list = directive_arguments["value"].value
+        if not isinstance(directive_argument_list, ListValueNode):
+            raise AssertionError(
+                "Unreachable code reached. Expected directive_argument_list to be of type "
+                f"ListValueNode, but was of type {type(directive_argument_list)}."
+            )
+        entry_names: List[str] = []
+        for list_element in directive_argument_list.values:
+            if not isinstance(list_element, StringValueNode):
+                raise AssertionError(
+                    f"Expected directive arguments to be StringValueNode, but received "
+                    f"{list_element} with type {type(list_element)}."
+                )
+            entry_names.append(list_element.value)
+
+        self.runtime_arguments.update(
+            get_parameter_name(name) for name in entry_names if is_runtime_parameter(name)
+        )
+
+
+def get_query_runtime_arguments(query_ast: DocumentNode) -> Set[str]:
+    """Return a set containing the names of the runtime arguments required by the query."""
+    visitor = QueryRuntimeArgumentsVisitor()
+    visit(query_ast, visitor)
+    return visitor.runtime_arguments
