@@ -21,7 +21,7 @@ from graphql.pyutils import FrozenList
 from ..ast_manipulation import get_only_query_definition
 from ..exceptions import GraphQLValidationError
 from ..schema import FilterDirective, OutputDirective
-from .split_query import AstType, SubQueryNode
+from ..schema_transformation.split_query import AstType, SubQueryNode
 
 
 @dataclass
@@ -64,47 +64,6 @@ class QueryPlanDescriptor:
 
     # Describing which outputs should be joined and how.
     output_join_descriptors: List[OutputJoinDescriptor]
-
-
-def make_query_plan(
-    root_sub_query_node: SubQueryNode, intermediate_output_names: FrozenSet[str]
-) -> QueryPlanDescriptor:
-    """Return a QueryPlanDescriptor, whose query ASTs have @filters added.
-
-    For each parent of parent and child SubQueryNodes, a new @filter directive will be added
-    in the child AST. It will be added on the field whose @output directive has the out_name
-    equal to the child's out name as specified in the QueryConnection. The newly added @filter
-    will be a 'in_collection' type filter, and the name of the local variable is guaranteed to
-    be the same as the out_name of the @output on the parent.
-
-    ASTs contained in the input node and its children nodes will not be modified.
-
-    Args:
-        root_sub_query_node: representing the base of a query split into pieces
-                             that we want to turn into a query plan.
-        intermediate_output_names: names of outputs to be removed at the end.
-
-    Returns:
-        QueryPlanDescriptor containing a tree of SubQueryPlans that wrap around each individual
-        query AST, the set of intermediate output names that are to be removed at the end, and
-        information on which outputs are to be connect to which in what manner.
-    """
-    output_join_descriptors: List[OutputJoinDescriptor] = []
-
-    root_sub_query_plan = SubQueryPlan(
-        query_ast=root_sub_query_node.query_ast,
-        schema_id=root_sub_query_node.schema_id,
-        parent_query_plan=None,
-        child_query_plans=[],
-    )
-
-    _make_query_plan_recursive(root_sub_query_node, root_sub_query_plan, output_join_descriptors)
-
-    return QueryPlanDescriptor(
-        root_sub_query_plan=root_sub_query_plan,
-        intermediate_output_names=intermediate_output_names,
-        output_join_descriptors=output_join_descriptors,
-    )
 
 
 def _make_query_plan_recursive(
@@ -291,6 +250,66 @@ def _get_in_collection_filter_directive(input_filter_name: str) -> DirectiveNode
     )
 
 
+def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[SubQueryPlan, int]]:
+    """Return a list of topologically sorted (query plan, depth) tuples."""
+
+    def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
+        plan_and_depth_in_dfs_order = [(query_plan, depth)]
+        for child_query_plan in query_plan.child_query_plans:
+            plan_and_depth_in_dfs_order.extend(
+                _get_plan_and_depth_in_dfs_order_helper(child_query_plan, depth + 1)
+            )
+        return plan_and_depth_in_dfs_order
+
+    return _get_plan_and_depth_in_dfs_order_helper(query_plan, 0)
+
+
+######
+# Public API
+######
+
+
+def make_query_plan(
+    root_sub_query_node: SubQueryNode, intermediate_output_names: FrozenSet[str]
+) -> QueryPlanDescriptor:
+    """Return a QueryPlanDescriptor, whose query ASTs have @filters added.
+
+    For each parent of parent and child SubQueryNodes, a new @filter directive will be added
+    in the child AST. It will be added on the field whose @output directive has the out_name
+    equal to the child's out name as specified in the QueryConnection. The newly added @filter
+    will be a 'in_collection' type filter, and the name of the local variable is guaranteed to
+    be the same as the out_name of the @output on the parent.
+
+    ASTs contained in the input node and its children nodes will not be modified.
+
+    Args:
+        root_sub_query_node: representing the base of a query split into pieces
+                             that we want to turn into a query plan.
+        intermediate_output_names: names of outputs to be removed at the end.
+
+    Returns:
+        QueryPlanDescriptor containing a tree of SubQueryPlans that wrap around each individual
+        query AST, the set of intermediate output names that are to be removed at the end, and
+        information on which outputs are to be connect to which in what manner.
+    """
+    output_join_descriptors: List[OutputJoinDescriptor] = []
+
+    root_sub_query_plan = SubQueryPlan(
+        query_ast=root_sub_query_node.query_ast,
+        schema_id=root_sub_query_node.schema_id,
+        parent_query_plan=None,
+        child_query_plans=[],
+    )
+
+    _make_query_plan_recursive(root_sub_query_node, root_sub_query_plan, output_join_descriptors)
+
+    return QueryPlanDescriptor(
+        root_sub_query_plan=root_sub_query_plan,
+        intermediate_output_names=intermediate_output_names,
+        output_join_descriptors=output_join_descriptors,
+    )
+
+
 def print_query_plan(query_plan_descriptor: QueryPlanDescriptor, indentation_depth: int = 4) -> str:
     """Return a string describing query plan."""
     query_plan_strings = [""]
@@ -311,17 +330,3 @@ def print_query_plan(query_plan_descriptor: QueryPlanDescriptor, indentation_dep
     query_plan_strings.append(str(query_plan_descriptor.intermediate_output_names) + "\n")
 
     return "".join(query_plan_strings)
-
-
-def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[SubQueryPlan, int]]:
-    """Return a list of topologically sorted (query plan, depth) tuples."""
-
-    def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
-        plan_and_depth_in_dfs_order = [(query_plan, depth)]
-        for child_query_plan in query_plan.child_query_plans:
-            plan_and_depth_in_dfs_order.extend(
-                _get_plan_and_depth_in_dfs_order_helper(child_query_plan, depth + 1)
-            )
-        return plan_and_depth_in_dfs_order
-
-    return _get_plan_and_depth_in_dfs_order_helper(query_plan, 0)
