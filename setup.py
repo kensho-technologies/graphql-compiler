@@ -59,7 +59,7 @@ setup(
         "funcy>=1.7.3,<2",
         "graphql-core>=3.1.2,<3.2",
         "six>=1.10.0",
-        "sqlalchemy>=1.3.0,<2",
+        "sqlalchemy>=1.3.0,<1.4",
     ],
     extras_require={
         ':python_version<"3.7"': ["dataclasses>=0.7,<1"],
