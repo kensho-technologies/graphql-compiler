@@ -512,21 +512,15 @@ class QueryPlanningAnalysis:
         pass  # TODO implement
 
     @cached_property
+    def optimized_adjacency_representation(self):
+        # TODO Consider promoting a tag-filter relationship into an edge,
+        # while demoting an edge into a tag-filter relationship.
+        return self.adjacency_representation
+
+    @cached_property
     def branching_nodes(self):
         # Nodes with more than one unbounded edge that are not inside fold scope
         pass
-
-    @cached_property
-    def constraints(self):
-        # - join protocols
-        # - filters
-        # - coercions
-        pass  # TODO
-
-    @cached_property
-    def optimized_constraints(self):
-        # TODO maybe turn a tag-filter pair into a join protocol?
-        return self.constraints
 
     @cached_property
     def bounded_representation_attempt(self) -> BoundedRepresentationAttempt:
