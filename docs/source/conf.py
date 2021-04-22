@@ -18,6 +18,7 @@
 # -- Project information -----------------------------------------------------
 from typing import List
 
+
 project = "GraphQL Compiler"
 # Read the Docs uses the variable named copyright for the copyright message.
 # pylint: disable=redefined-builtin
