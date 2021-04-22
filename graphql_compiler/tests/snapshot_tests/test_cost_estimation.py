@@ -1786,7 +1786,7 @@ class IntegerIntervalTests(unittest.TestCase):
             "80000000-0000-",
         ]
         for uuid_value in invalid_uuid_values:
-            with self.assertRaises(Exception):
+            with self.assertRaises((AssertionError, NotImplementedError, ValueError)):
                 int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
@@ -1823,7 +1823,7 @@ class IntegerIntervalTests(unittest.TestCase):
             "80000000-0000-",
         ]
         for uuid_value in invalid_uuid_values:
-            with self.assertRaises(Exception):
+            with self.assertRaises((AssertionError, NotImplementedError)):
                 int_value = convert_field_value_to_int(schema_info, "Event", "uuid", uuid_value)
 
     @pytest.mark.usefixtures("snapshot_orientdb_client")
