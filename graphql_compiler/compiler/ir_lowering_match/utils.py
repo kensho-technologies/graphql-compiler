@@ -171,7 +171,7 @@ def _filter_orientdb_simple_optional_edge(
     """Return an Expression that is False for rows that don't follow the @optional specification.
 
     OrientDB does not filter correctly within optionals. Namely, a result where the optional edge
-    DOES EXIST will be returned regardless of whether the inner filter is satisfed.
+    DOES EXIST will be returned regardless of whether the inner filter is satisfied.
     To mitigate this, we add a final filter to reject such results.
     A valid result must satisfy either of the following:
     - The location within the optional exists (the filter will have been applied in this case)
@@ -245,7 +245,7 @@ def construct_where_filter_predicate(
                               are folded or optional).
         simple_optional_root_info: dict mapping from simple_optional_root_location -> dict
                                    containing keys
-                                   - 'inner_location': Location object correspoding to the
+                                   - 'inner_location': Location object corresponding to the
                                                        unique MarkLocation present within a
                                                        simple @optional (one that does not
                                                        expand vertex fields) scope
@@ -287,7 +287,7 @@ class OptionalTraversalTree(object):
     def __init__(self, complex_optional_roots: List[Location]):
         """Initialize empty tree of optional root Locations (elements of complex_optional_roots).
 
-        This object construst a tree of complex optional roots. These are locations preceding an
+        This object constructs a tree of complex optional roots. These are locations preceding an
         @optional traverse that expand vertex fields within. Simple @optional traverses i.e.
         ones that do not expand vertex fields within them are excluded.
 
@@ -393,7 +393,7 @@ def construct_optional_traversal_tree(
     """Return a tree of complex optional root locations.
 
     Args:
-        complex_optional_roots: list of @optional locations (location immmediately preceding
+        complex_optional_roots: list of @optional locations (location immediately preceding
                                 an @optional Traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
                                     within some number of @optionals and optional_roots is a list

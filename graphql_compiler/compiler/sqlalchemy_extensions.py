@@ -121,5 +121,5 @@ def bind_parameters_to_query_string(
 
 
 def materialize_result_proxy(result: sqlalchemy.engine.result.ResultProxy) -> List[Dict[str, Any]]:
-    """Drain the results from a result proxy into a list of dicts represenation."""
+    """Drain the results from a result proxy into a list of dicts representation."""
     return [dict(row) for row in result]

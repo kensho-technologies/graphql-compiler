@@ -326,7 +326,7 @@ def _translate_equivalent_locations(
 def lower_folded_coerce_types_into_filter_blocks(
     folded_ir_blocks: List[BasicBlock],
 ) -> List[BasicBlock]:
-    """Lower CoerceType blocks into "INSTANCEOF" Filter blocks. Indended for folded IR blocks."""
+    """Lower CoerceType blocks into "INSTANCEOF" Filter blocks. Intended for folded IR blocks."""
     new_folded_ir_blocks: List[BasicBlock] = []
     for block in folded_ir_blocks:
         new_block: BasicBlock

@@ -40,7 +40,7 @@ def execute_graphql(
     client: OrientDB,
     sample_parameters: Dict[str, Any],
 ) -> FrozenSet[Tuple[FrozenSet[Tuple[str, Any]], int]]:
-    """Compile the GraphQL query to MATCH, execute it agains the test_db, and return the results."""
+    """Compile GraphQL query to MATCH, execute it against the test_db, and return the results."""
     schema_based_type_equivalence_hints: Dict[
         Union[GraphQLInterfaceType, GraphQLObjectType], GraphQLUnionType
     ] = {}
