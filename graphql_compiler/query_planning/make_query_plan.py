@@ -18,13 +18,9 @@ from graphql.language.ast import (
     StringValueNode,
 )
 from graphql.pyutils import FrozenList
-from sqlalchemy.dialects.mssql.base import MSDialect
 
 from ..ast_manipulation import get_only_query_definition
 from ..compiler.common import (
-    CYPHER_LANGUAGE,
-    GREMLIN_LANGUAGE,
-    MATCH_LANGUAGE,
     compile_graphql_to_cypher,
     compile_graphql_to_gremlin,
     compile_graphql_to_match,
@@ -36,7 +32,7 @@ from ..global_utils import QueryStringWithParameters
 from ..schema import FilterDirective, OutputDirective
 from ..schema.schema_info import CommonSchemaInfo, SQLAlchemySchemaInfo
 from ..schema_transformation.split_query import AstType, SubQueryNode
-from .typedefs import ProviderMetadata, QueryPlan, SimpleExecute
+from .typedefs import BackendType, ProviderMetadata, QueryPlan, SimpleExecute
 
 
 @dataclass
@@ -85,7 +81,7 @@ def _make_simple_execute_node(
     query_and_parameters: QueryStringWithParameters,
     schema_info: Union[CommonSchemaInfo, SQLAlchemySchemaInfo],
     provider_id: str,
-    backend_type: Optional[str],
+    backend_type: BackendType,
 ) -> SimpleExecute:
     """Generate a SimpleExecuteNode.
 
@@ -93,32 +89,44 @@ def _make_simple_execute_node(
         query_and_parameters: the query and parameters for which to create a SimpleExecute.
         schema_info: schema information to use for query compilation.
         provider_id: the identifier of the provider to be queried.
-        backend_type: the backend type. Note: this is inferred from the SQLAlchemySchemaInfo's
-                      dialect for SQL backends.
+        backend_type: the backend type. Note: if schema_info is of type SQLAlchemySchemaInfo, the
+                      backend_type must be a flavor of SQL.
 
     Returns:
         SimpleExecute with all necessary information to execute the given query_and_parameters.
 
     """
+    # Ensure that if a SQL schema info object is passed, that the backend type is a SQL dialect.
     if isinstance(schema_info, SQLAlchemySchemaInfo):
         # Compiled SQL query.
         compilation_result = compile_graphql_to_sql(schema_info, query_and_parameters.query_string)
         query = print_sqlalchemy_query_string(compilation_result.query, schema_info.dialect)
 
+        # Determine if the SQL dialect requires post-processing.
+        if backend_type == BackendType.mssql:
+            requires_fold_postprocessing = True
+        elif backend_type == BackendType.postgresql:
+            requires_fold_postprocessing = False
+        else:
+            raise AssertionError(
+                f"Received SQLAlchemySchemaInfo, but a non-SQL backend type {backend_type}."
+            )
+
         provider_metadata = ProviderMetadata(
-            backend_type=schema_info.dialect.name,
-            requires_fold_postprocessing=isinstance(schema_info.dialect, MSDialect),
+            backend_type=backend_type,
+            requires_fold_postprocessing=requires_fold_postprocessing,
         )
+    # All other backends use CommonSchemaInfo.
     else:
-        if backend_type == CYPHER_LANGUAGE:
+        if backend_type == BackendType.cypher:
             compilation_result = compile_graphql_to_cypher(
                 schema_info, query_and_parameters.query_string
             )
-        elif backend_type == GREMLIN_LANGUAGE:
+        elif backend_type == BackendType.gremlin:
             compilation_result = compile_graphql_to_gremlin(
                 schema_info, query_and_parameters.query_string
             )
-        elif backend_type == MATCH_LANGUAGE:
+        elif backend_type == BackendType.match:
             compilation_result = compile_graphql_to_match(
                 schema_info, query_and_parameters.query_string
             )
