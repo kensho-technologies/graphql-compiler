@@ -270,7 +270,7 @@ class SimpleExecute(QueryPlanNode):
             return False
 
         # Perform special check for input_metadata since GraphQLTypes don't have equality, and
-        # check all other fields in a straight forward manner.
+        # check all other fields in a straightforward manner.
         return (
             self.provider_id == other.provider_id
             and self.query == other.query
