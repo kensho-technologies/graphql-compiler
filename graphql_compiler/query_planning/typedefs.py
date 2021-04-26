@@ -1,13 +1,14 @@
 # Copyright 2021-present Kensho Technologies, LLC.
 from abc import ABCMeta
-import copy
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, Iterable, Mapping, Optional
+from enum import Enum, unique
+from typing import Any, Callable, Dict, Iterable, Mapping, Optional, cast
 
 from dataclasses_json import DataClassJsonMixin, config
 from graphql import (
     GraphQLList,
     GraphQLNonNull,
+    GraphQLNullableType,
     GraphQLScalarType,
     GraphQLType,
     ListTypeNode,
@@ -45,11 +46,11 @@ if set(CUSTOM_SCALAR_TYPES).intersection(specified_scalar_types):
     )
 
 # Custom scalar types combined with builtin scalar types represent all allowable scalar types.
-ALL_SCALAR_TYPES = copy.copy(CUSTOM_SCALAR_TYPES)
+ALL_SCALAR_TYPES = CUSTOM_SCALAR_TYPES.copy()
 ALL_SCALAR_TYPES.update(specified_scalar_types)
 
 
-def _type_from_scalar_type_dictionary(
+def _get_type_from_scalar_type_dictionary(
     scalar_types: Dict[str, GraphQLScalarType], type_node: TypeNode
 ) -> GraphQLType:
     """Get the GraphQL type definition from an AST node.
@@ -62,7 +63,8 @@ def _type_from_scalar_type_dictionary(
 
     Note: this is very similar to GraphQL's type_from_ast. However, instead of requiring a GraphQL
     schema this function requires a dictionary of the scalar types. This simplifies deserialization
-    and allows for custom scalar types without constructing an entire schema.
+    and allows for custom scalar types without constructing an entire schema. Unfortunately, this
+    means that user-defined custom scalars that are not known to the compiler cannot be used.
 
     Args:
         scalar_types: dictionary mapping type name to GraphQLScalarType
@@ -75,7 +77,7 @@ def _type_from_scalar_type_dictionary(
         AssertionError: if an invalid type node is given.
     """
     if isinstance(type_node, ListTypeNode):
-        inner_type = _type_from_scalar_type_dictionary(scalar_types, type_node.type)
+        inner_type = _get_type_from_scalar_type_dictionary(scalar_types, type_node.type)
         if inner_type:
             return GraphQLList(inner_type)
         else:
@@ -83,8 +85,9 @@ def _type_from_scalar_type_dictionary(
                 f"Invalid type node. ListTypeNode contained inner type {inner_type}."
             )
     elif isinstance(type_node, NonNullTypeNode):
-        inner_type = _type_from_scalar_type_dictionary(scalar_types, type_node.type)
+        inner_type = _get_type_from_scalar_type_dictionary(scalar_types, type_node.type)
         if inner_type:
+            inner_type = cast(GraphQLNullableType, inner_type)
             return GraphQLNonNull(inner_type)
         else:
             raise AssertionError(
@@ -122,7 +125,7 @@ def _deserialize_output_metadata_field(
     output_metadata_dictionary = {}
     for output_name, output_metadata in dict_value.items():
         output_metadata_dictionary[output_name] = OutputMetadata(
-            type=_type_from_scalar_type_dictionary(
+            type=_get_type_from_scalar_type_dictionary(
                 ALL_SCALAR_TYPES, parse_type(output_metadata["type"])
             ),
             optional=output_metadata["optional"],
@@ -139,7 +142,7 @@ def _serialize_input_metadata_field(
     # Note that this is different than "None", which means no metadata was provided.
     if input_metadata_dictionary == {}:
         return {}
-    if not input_metadata_dictionary:
+    if input_metadata_dictionary is None:
         return None
     dictionary_value = {}
     for input_name, input_type in input_metadata_dictionary.items():
@@ -155,11 +158,11 @@ def _deserialize_input_metadata_field(
     # Note that this is different than "None", which means no metadata was provided.
     if dict_value == {}:
         return {}
-    if not dict_value:
+    if dict_value is None:
         return None
     input_metadata_dictionary = {}
     for input_name, input_type in dict_value.items():
-        input_metadata_dictionary[input_name] = _type_from_scalar_type_dictionary(
+        input_metadata_dictionary[input_name] = _get_type_from_scalar_type_dictionary(
             ALL_SCALAR_TYPES, parse_type(input_type)
         )
     return input_metadata_dictionary
@@ -206,13 +209,25 @@ def _deserialize_independent_query_plan_field(dict_value: Dict[str, Any]) -> "In
 # Public API #
 # ############
 
+@unique
+class BackendType(Enum):
+    # N.B.: The values of the enums are the "human-friendly" display names. Since they are shown
+    #       to humans, they are subject to change if said humans find a friendlier name.
+    #       Don't assume they are immutable!
+    cypher = "Cypher"
+    gremlin = "Gremlin"
+    interpreter = "interpreter"
+    match = "OrientDB MATCH"
+    mssql = "MSSQL"
+    postgresql = "PostgreSQL"
+
 
 @dataclass(init=True, repr=True, eq=True, frozen=True)
 class ProviderMetadata(DataClassJsonMixin):
     """Metadata about the provider."""
 
-    # Name of the type of provider (ex. PostgreSQL, Cypher, etc).
-    backend_type: str
+    # Name of the type of provider.
+    backend_type: BackendType
 
     # Whether this backend requires MSSQL fold postprocessing for folded outputs.
     requires_fold_postprocessing: bool
@@ -255,7 +270,7 @@ class SimpleExecute(QueryPlanNode):
             return False
 
         # Perform special check for input_metadata since GraphQLTypes don't have equality, and
-        # check all other fields in a straight forward manner.
+        # check all other fields in a straightforward manner.
         return (
             self.provider_id == other.provider_id
             and self.query == other.query
