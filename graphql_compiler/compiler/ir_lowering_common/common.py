@@ -266,14 +266,14 @@ def extract_folds_from_ir_blocks(
 def extract_optional_location_root_info(
     ir_blocks: List[BasicBlock],
 ) -> Tuple[List[Location], Dict[Location, Tuple[Location, ...]]]:
-    """Construct a mapping from locations within @optional to their correspoding optional Traverse.
+    """Construct a mapping from locations within @optional to their corresponding optional Traverse.
 
     Args:
         ir_blocks: list of IR blocks to extract optional data from
 
     Returns:
         tuple (complex_optional_roots, location_to_optional_roots):
-        complex_optional_roots: list of @optional locations (location immmediately preceding
+        complex_optional_roots: list of @optional locations (location immediately preceding
                                 an @optional Traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
                                     within some number of @optionals and optional_roots is a tuple
@@ -362,7 +362,7 @@ def extract_simple_optional_location_info(
 
     Args:
         ir_blocks: list of IR blocks to extract optional data from
-        complex_optional_roots: list of @optional locations (location immmediately preceding
+        complex_optional_roots: list of @optional locations (location immediately preceding
                                 an @optional traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
                                     within some number of @optionals and optional_roots is a tuple
@@ -371,7 +371,7 @@ def extract_simple_optional_location_info(
 
     Returns:
         dict mapping from simple_optional_root_location -> dict containing keys
-         - 'inner_location': Location object correspoding to the unique MarkLocation present within
+         - 'inner_location': Location object corresponding to the unique MarkLocation present within
                              a simple optional (one that does not expand vertex fields) scope
          - 'edge_field': string representing the optional edge being traversed
         where simple_optional_root_to_inner_location is the location preceding the @optional scope

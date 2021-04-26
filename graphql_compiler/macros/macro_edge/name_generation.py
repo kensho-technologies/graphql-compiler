@@ -9,7 +9,7 @@ def generate_disambiguations(existing_names, new_names):
 
     Args:
         existing_names: set of strings, the names that are already taken
-        new_names: set of strings, the names that might coincide with exisitng names
+        new_names: set of strings, the names that might coincide with existing names
 
     Returns:
         dict mapping the new names to other unique names not present in existing_names
