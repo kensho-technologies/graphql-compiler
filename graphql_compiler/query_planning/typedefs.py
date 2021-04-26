@@ -209,6 +209,7 @@ def _deserialize_independent_query_plan_field(dict_value: Dict[str, Any]) -> "In
 # Public API #
 # ############
 
+
 @unique
 class BackendType(Enum):
     # N.B.: The values of the enums are the "human-friendly" display names. Since they are shown
