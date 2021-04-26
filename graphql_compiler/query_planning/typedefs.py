@@ -217,7 +217,7 @@ class BackendType(Enum):
     cypher = "Cypher"
     gremlin = "Gremlin"
     interpreter = "InterpreterAdapter"
-    match = "Match"
+    match = "OrientDB MATCH"
     mssql = "MSSQL"
     postgresql = "PostgreSQL"
 
