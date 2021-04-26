@@ -63,7 +63,8 @@ def _get_type_from_scalar_type_dictionary(
 
     Note: this is very similar to GraphQL's type_from_ast. However, instead of requiring a GraphQL
     schema this function requires a dictionary of the scalar types. This simplifies deserialization
-    and allows for custom scalar types without constructing an entire schema.
+    and allows for custom scalar types without constructing an entire schema. Unfortunately, this
+    means that user-defined custom scalars that are not known to the compiler cannot be used.
 
     Args:
         scalar_types: dictionary mapping type name to GraphQLScalarType
