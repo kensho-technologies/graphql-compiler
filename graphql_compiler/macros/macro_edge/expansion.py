@@ -141,7 +141,7 @@ def _expand_specific_macro_edge(subclass_sets, target_class_name, macro_ast, sel
           to be added somewhere in the same scope but before the replacement_selection_ast.
         - sibling_suffix_selections: list of GraphQL AST objects describing the selections
           to be added somewhere in the same scope but after the replacement_selection_ast.
-          Since the replacemet_selection_ast is a vertex field, and vertex fields always
+          Since the replacement_selection_ast is a vertex field, and vertex fields always
           go after property fields, these selections are all vertex fields.
     """
     replacement_selection_ast = None

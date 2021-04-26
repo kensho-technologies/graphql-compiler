@@ -315,7 +315,7 @@ class GremlinFoldedTraverse(Traverse):
 
 
 class GremlinFoldedLocalField(LocalField):
-    """A Gremlin-specific LocalField expressionto be used only within @fold scopes."""
+    """A Gremlin-specific LocalField expression to be used only within @fold scopes."""
 
     def get_local_object_gremlin_name(self):
         """Return the Gremlin name of the local object whose field is being produced."""

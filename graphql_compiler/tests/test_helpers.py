@@ -480,7 +480,7 @@ def transform(emitted_output: str) -> str:
 def _get_mismatch_message(
     expected_blocks: List[BasicBlock], received_blocks: List[BasicBlock]
 ) -> str:
-    """Create a well-formated error message indicating that two lists of blocks are mismatched."""
+    """Create a well-formatted error message indicating that two lists of blocks are mismatched."""
     pretty_expected = pformat(expected_blocks)
     pretty_received = pformat(received_blocks)
     return "{}\n\n!=\n\n{}".format(pretty_expected, pretty_received)

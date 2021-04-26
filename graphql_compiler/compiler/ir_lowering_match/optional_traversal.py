@@ -37,7 +37,7 @@ def _prune_traverse_using_omitted_locations(
     Args:
         match_traversal: list of MatchStep objects to be pruned
         omitted_locations: subset of complex_optional_roots to be omitted
-        complex_optional_roots: list of all @optional locations (location immmediately preceding
+        complex_optional_roots: list of all @optional locations (location immediately preceding
                                 an @optional traverse) that expand vertex fields
         location_to_optional_roots: dict mapping from location -> optional_roots where location is
                                     within some number of @optionals and optional_roots is a list
@@ -64,7 +64,7 @@ def _prune_traverse_using_omitted_locations(
                     )
                 )
             elif optional_root_location in omitted_locations:
-                # Add filter to indicate that the omitted edge(s) shoud not exist
+                # Add filter to indicate that the omitted edge(s) should not exist
                 field_name = step.root_block.get_field_name()
 
                 # HACK(predrag): Plumbing in the type here is tricky and generally not worth it,
@@ -208,7 +208,7 @@ def _get_present_locations(match_traversals):
     if not present_non_optional_locations.issubset(present_locations):
         raise AssertionError(
             "present_non_optional_locations {} was not a subset of "
-            "present_locations {}. THis hould never happen.".format(
+            "present_locations {}. This should never happen.".format(
                 present_non_optional_locations, present_locations
             )
         )
@@ -354,7 +354,7 @@ def _apply_filters_to_first_location_occurrence(
     new_match_traversal = []
     newly_filtered_locations = set()
     for match_step in match_traversal:
-        # Apply all filters for a location to the first occurence of that location
+        # Apply all filters for a location to the first occurrence of that location
         current_location = match_step.as_block.location
 
         if current_location in newly_filtered_locations:
@@ -394,8 +394,8 @@ def _apply_filters_to_first_location_occurrence(
 def collect_filters_to_first_location_occurrence(compound_match_query):
     """Collect all filters for a particular location to the first instance of the location.
 
-    Adding edge field non-exsistence filters in `_prune_traverse_using_omitted_locations` may
-    result in filters being applied to locations after their first occurence.
+    Adding edge field non-existence filters in `_prune_traverse_using_omitted_locations` may
+    result in filters being applied to locations after their first occurrence.
     OrientDB does not resolve this behavior correctly. Therefore, for each MatchQuery,
     we collect all the filters for each location in a list. For each location,
     we make a conjunction of the filter list (`_predicate_list_to_where_block`) and apply
@@ -566,7 +566,7 @@ def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
     The `visitor_fn` implements these behaviors (see `_update_context_field_expression`).
 
     Args:
-        match_traversals: list of match traversal enitities to be lowered
+        match_traversals: list of match traversal entities to be lowered
         visitor_fn: visit_and_update function for lowering expressions in given match traversal
 
     Returns:
@@ -592,7 +592,7 @@ def _lower_non_existent_context_field_filters(match_traversals, visitor_fn):
 
 
 def lower_context_field_expressions(compound_match_query):
-    """Lower Expressons involving non-existent ContextFields."""
+    """Lower Expressions involving non-existent ContextFields."""
     if len(compound_match_query.match_queries) == 0:
         raise AssertionError(
             "Received CompoundMatchQuery {} with no MatchQuery objects.".format(
@@ -601,7 +601,7 @@ def lower_context_field_expressions(compound_match_query):
         )
     elif len(compound_match_query.match_queries) == 1:
         # All ContextFields exist if there is only one MatchQuery
-        # becuase none of the traverses were omitted, and all locations exist (are defined).
+        # because none of the traverses were omitted, and all locations exist (are defined).
         return compound_match_query
     else:
         new_match_queries = []

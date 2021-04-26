@@ -60,7 +60,7 @@ def _get_inherited_field_types(class_to_field_type_overrides, schema_graph):
     return inherited_field_type_overrides
 
 
-def _validate_overriden_fields_are_not_defined_in_superclasses(
+def _validate_overridden_fields_are_not_defined_in_superclasses(
     class_to_field_type_overrides, schema_graph
 ):
     """Assert that the fields we want to override are not defined in superclasses."""
@@ -275,7 +275,7 @@ def get_graphql_schema_from_schema_graph(
     if hidden_classes is None:
         hidden_classes = set()
 
-    _validate_overriden_fields_are_not_defined_in_superclasses(
+    _validate_overridden_fields_are_not_defined_in_superclasses(
         class_to_field_type_overrides, schema_graph
     )
 

@@ -45,7 +45,7 @@ pyodbc_parameter_string = "DRIVER={driver};SERVER={server};UID={uid};PWD={pwd}".
     pwd="Root-secure1",
 )
 
-# delimeters must be URL escaped
+# delimiters must be URL escaped
 escaped_pyodbc_parameter_string = quote_plus(pyodbc_parameter_string)
 
 SQL_BACKEND_TO_CONNECTION_STRING = {

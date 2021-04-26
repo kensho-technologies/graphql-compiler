@@ -440,12 +440,12 @@ class GraphqlSchemaGenerationTests(unittest.TestCase):
             ARBITRARY_CONCRETE_NON_GRAPH_CLASS,
         ]
 
-        vertex_clases = [
+        vertex_classes = [
             ARBITRARY_CONCRETE_VERTEX_CLASS,
             BASE_VERTEX,
         ]
 
-        schema_data = non_graph_classes_to_include + non_graph_classes_to_ignore + vertex_clases
+        schema_data = non_graph_classes_to_include + non_graph_classes_to_ignore + vertex_classes
 
         names_of_non_graph_classes_to_ignore = {
             non_graph_class["name"] for non_graph_class in non_graph_classes_to_ignore

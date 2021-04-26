@@ -1281,7 +1281,7 @@ class IrGenerationErrorTests(unittest.TestCase):
                 graphql_to_ir(self.schema, invalid_graphql)
 
     def test_missing_directives_in_schema(self) -> None:
-        """Ensure that validators properly identifiy missing directives in the schema.
+        """Ensure that validators properly identify missing directives in the schema.
 
         The schema should contain all directives that are supported by the graphql compiler,
         even if they might not be used in the query. Hence we raise an error when the following
