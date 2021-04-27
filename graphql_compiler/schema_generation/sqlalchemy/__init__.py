@@ -35,14 +35,14 @@ def get_sqlalchemy_schema_info(
     the compiler relies on these to compile GraphQL to SQL.
 
     Args:
-        vertex_name_to_table: Dictionary used to generate the GraphQL objects in the schema
+        vertex_name_to_table: dictionary used to generate the GraphQL objects in the schema
                               in the SQLAlchemySchemaInfo. Each SQLAlchemyTable will be represented
                               as a GraphQL object. The GraphQL object names are the dictionary keys.
                               The fields of the GraphQL objects will be inferred from the columns
                               of the underlying tables. The fields will have the same name as the
                               underlying columns and columns with unsupported types (SQL types
                               with no matching GraphQL type) will be ignored.
-        edges: Dictionary mapping edge name to edge descriptor. The traversal of an edge
+        edges: dictionary mapping edge name to edge descriptor. The traversal of an edge
                gets compiled to a SQL join in graphql_to_sql(). Therefore, each EdgeDescriptor not
                only specifies the source and destination GraphQL objects, but also which columns to
                use to use when generating a SQL join between the underlying source and destination
@@ -51,7 +51,7 @@ def get_sqlalchemy_schema_info(
                destination GraphQL objects respectively. The edge names must not conflict with the
                GraphQL object names.
         dialect: dialect we are compiling to (e.g. sqlalchemy.dialects.mssql.dialect()).
-        class_to_field_type_overrides: Mapping class name to a dictionary of field name to field
+        class_to_field_type_overrides: mapping class name to a dictionary of field name to field
                                        type. Used to override the type of a field in the class where
                                        it's first defined and all the class's subclasses.
         requires_fold_postprocessing: whether or not queries compiled against this schema require
