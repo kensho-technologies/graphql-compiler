@@ -16,7 +16,7 @@ from sqlalchemy.sql.elements import Label
 from sqlalchemy.sql.expression import Alias, BinaryExpression
 from sqlalchemy.sql.functions import func
 from sqlalchemy.sql.schema import Column
-from sqlalchemy.sql.selectable import FromClause, Join, Select
+from sqlalchemy.sql.selectable import FromClause, Join, Select, CTE
 
 from . import blocks
 from ..global_utils import VertexPath
@@ -1102,8 +1102,10 @@ class CompilationState(object):
         # Find which columns should be selected
         used_columns = sorted(self._used_columns[self._current_location.query_path])
 
-        # The base of the recursive CTE selects all needed columns and sets the depth to 0
-        base_alias = self._current_alias.alias()
+        # The base of the recursive CTE selects all needed columns and sets the depth to
+        # table = self._sql_schema_info.vertex_name_to_table[self._current_classname]
+        # base_alias = table.alias()
+        base_alias = self._current_alias.original.alias()
         base = sqlalchemy.select(
             [base_alias.c[col].label(col) for col in used_columns]
             + [
@@ -1125,7 +1127,9 @@ class CompilationState(object):
         base = base.cte(recursive=True)
 
         # The recursive step selects all needed columns, increments the depth, and joins to the base
-        step = self._current_alias.alias()
+        # table = self._sql_schema_info.vertex_name_to_table[self._current_classname]
+        # step = table.alias()
+        step = self._current_alias.original.alias()
         self._current_alias = base.union_all(
             sqlalchemy.select(
                 [step.c[col] for col in used_columns]
@@ -1187,7 +1191,12 @@ class CompilationState(object):
 
         # 1. Get fold metadata.
         # Location of vertex that is folded on.
-        outer_alias = self._current_alias.alias()
+        if isinstance(self._current_alias, CTE):
+            # TODO: why does this work? Why do we want to use anon when it's a CTE (see fold_after_recurse compiler)
+            outer_alias = self._current_alias.alias()
+        else:
+            table = self._sql_schema_info.vertex_name_to_table[self._current_classname]
+            outer_alias = table.alias()
         outer_vertex_primary_key_name = self._get_current_primary_key_name("@fold")
 
         # 2. Collect edge information to join the fold subquery to the main selectable.
