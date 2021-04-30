@@ -809,7 +809,7 @@ class CompilationState(object):
         self._relocate(ir.query_metadata_table.root_location)
 
         # Mapping aliases to one of the column used to join into them. We use this column
-        # to check for LEFT JOIN misses, since it helps us distinguish actuall NULL values
+        # to check for LEFT JOIN misses, since it helps us distinguish actual NULL values
         # from values that are NULL because of a LEFT JOIN miss.
         self._came_from: Dict[Union[Alias, ColumnRouter], Column] = {}
 

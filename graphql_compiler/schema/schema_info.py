@@ -162,12 +162,13 @@ class SQLSchemaInfo(BackendSpecificSchemaInfo):
     # Specifying the dialect for which we are compiling
     # e.g. sqlalchemy.dialects.mssql.dialect()
     dialect: Dialect
+
     # dict mapping every GraphQL object type or interface type name in the schema to
     # a sqlalchemy table.
     # Column types that do not exist for this dialect are not allowed.
     # All tables are expected to have primary keys.
-
     vertex_name_to_table: Dict[str, sqlalchemy.Table]
+
     # dict mapping every GraphQL object type or interface type name in the schema to
     # dict mapping every vertex field name at that type to a JoinDescriptor.
     # The tables the join is to be performed on are not specified.

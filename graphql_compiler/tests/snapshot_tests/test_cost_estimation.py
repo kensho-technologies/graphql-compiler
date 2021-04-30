@@ -549,7 +549,7 @@ class CostEstimationTests(unittest.TestCase):
 
         # For each Animal, we expect 11.0 / 7.0 "child" Animals. Since recurse first explores
         # depth=0, we add 1 to account for the parent. At the moment, we don't account for depths
-        # greater than 1, so we exepct 11.0 / 7.0 + 1 total children, each of which has 13.0 / 7.0
+        # greater than 1, so we expect 11.0 / 7.0 + 1 total children, each of which has 13.0 / 7.0
         # Animal_BornAt edges.
         expected_cardinality_estimate = 7.0 * (11.0 / 7.0 + 1) * (13.0 / 7.0)
         self.assertAlmostEqual(expected_cardinality_estimate, cardinality_estimate)

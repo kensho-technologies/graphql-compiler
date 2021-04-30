@@ -117,7 +117,7 @@ def register_macro_edge(macro_registry, macro_edge_graphql, macro_edge_args):
                          requires in order to function.
     """
     # The below function will validate that the macro edge in question is valid in isolation,
-    # when considered only against the macro-less schema. After geting this result,
+    # when considered only against the macro-less schema. After getting this result,
     # we simply need to check the macro edge descriptor against other artifacts in the macro system
     # that might also cause conflicts.
     macro_descriptor = make_macro_edge_descriptor(
