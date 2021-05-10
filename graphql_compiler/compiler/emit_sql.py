@@ -1103,9 +1103,7 @@ class CompilationState(object):
         used_columns = sorted(self._used_columns[self._current_location.query_path])
 
         # The base of the recursive CTE selects all needed columns and sets the depth to
-        # table = self._sql_schema_info.vertex_name_to_table[self._current_classname]
-        # base_alias = table.alias()
-        base_alias = self._current_alias.original.alias()
+        base_alias = self._sql_schema_info.vertex_name_to_table[self._current_classname].alias()
         base = sqlalchemy.select(
             [base_alias.c[col].label(col) for col in used_columns]
             + [
