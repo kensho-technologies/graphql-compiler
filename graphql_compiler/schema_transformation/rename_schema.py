@@ -91,6 +91,8 @@ Renaming constraints:
 - If you suppress a type Foo, no other type Bar may keep fields of type Foo (those fields must be
   suppressed). However, if type Foo has a field of that type Foo, it is legal to suppress type Foo
   without explicitly suppressing that particular field.
+  - The same goes for an interface type Foo made unqueryable in the process of suppressing a type
+    that implements Foo: no fields of type Foo may remain in the schema after applying renamings.
 - If you suppress a type Foo implementing an interface Bar, then Bar will remain in the schema but
   not in the root query type, making it unqueryable. This is to prevent situations where a scope in
   a query is of type Bar without also being of some more specific type, which may yield vertices of
@@ -256,10 +258,14 @@ def rename_schema(
         if isinstance(node, (ObjectTypeDefinitionNode, InterfaceTypeDefinitionNode))
     }
     for type_name in type_renamings:
-        type_not_suppressed = type_renamings[type_name] is not None
-        if type_not_suppressed:
-            continue
-        if type_name in interface_and_object_type_name_to_definition_node_map:
+        type_suppressed = type_renamings[type_name] is None
+        if type_suppressed and type_name in interface_and_object_type_name_to_definition_node_map:
+            # This second condition is required in case there is no interface or object type named
+            # type_name, in which case we would then have an illegal renaming. However, the error
+            # handling/ error message comes later in the execution of rename_schema(), as we want to
+            # traverse the schema using a RenameSchemaTypesVisitor and find unused renamings in the
+            # process of attempting to produce a valid renamed schema, rather than having a separate
+            # validation step here.
             type_node = interface_and_object_type_name_to_definition_node_map[type_name]
             interfaces_to_make_unqueryable.update(
                 set(
