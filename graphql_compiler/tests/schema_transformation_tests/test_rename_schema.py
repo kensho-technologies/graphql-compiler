@@ -465,25 +465,21 @@ class TestRenameSchema(unittest.TestCase):
 
     def test_field_renaming_in_interfaces(self) -> None:
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": {"new_id"}}}
-            )
+            rename_schema(parse(ISS.various_types_schema), {}, {"Character": {"id": {"new_id"}}})
         with self.assertRaises(NotImplementedError):
             rename_schema(
-                parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": {"id", "new_id"}}}
+                parse(ISS.various_types_schema), {}, {"Character": {"id": {"id", "new_id"}}}
             )
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Character": {"id": set()}})
+            rename_schema(parse(ISS.various_types_schema), {}, {"Character": {"id": set()}})
         with self.assertRaises(NotImplementedError):
             # Cannot rename Human's fields because Human implements an interface and field_renamings
             # for object types that implement interfaces isn't supported yet.
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"new_id"}}})
+            rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": {"new_id"}}})
         with self.assertRaises(NotImplementedError):
-            rename_schema(
-                parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": {"id", "new_id"}}}
-            )
+            rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": {"id", "new_id"}}})
         with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.multiple_interfaces_schema), {}, {"Human": {"id": set()}})
+            rename_schema(parse(ISS.various_types_schema), {}, {"Human": {"id": set()}})
 
     def test_enum_rename(self) -> None:
         renamed_schema = rename_schema(
@@ -554,18 +550,112 @@ class TestRenameSchema(unittest.TestCase):
         self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_interface_implementation(self) -> None:
-        with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None}, {})
+        renamed_schema = rename_schema(parse(ISS.various_types_schema), {"Giraffe": None}, {})
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            interface AbstractCreature {
+              name: String
+            }
+
+            interface Creature implements AbstractCreature {
+              name: String
+              age: Int
+            }
+
+            interface Character {
+              id: String
+            }
+
+            type Human implements Character & Creature {
+              id: String
+              name: String
+              age: Int
+              birthday: Date
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type SchemaQuery {
+              AbstractCreature: AbstractCreature
+              Creature: Creature
+              Human: Human
+              Dog: Dog
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_all_implementations_but_not_interface(self) -> None:
-        with self.assertRaises(NotImplementedError):
-            rename_schema(parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}, {})
+        renamed_schema = rename_schema(
+            parse(ISS.various_types_schema), {"Giraffe": None, "Human": None}, {}
+        )
+        renamed_schema_string = dedent(
+            """\
+            schema {
+              query: SchemaQuery
+            }
+
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            interface AbstractCreature {
+              name: String
+            }
+
+            interface Creature implements AbstractCreature {
+              name: String
+              age: Int
+            }
+
+            interface Character {
+              id: String
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
+            type SchemaQuery {
+              Dog: Dog
+            }
+        """
+        )
+        compare_schema_texts_order_independently(
+            self, renamed_schema_string, print_ast(renamed_schema.schema_ast)
+        )
+        self.assertEqual({}, renamed_schema.reverse_name_map)
+        self.assertEqual({}, renamed_schema.reverse_field_name_map)
 
     def test_suppress_interface_but_not_implementations(self) -> None:
         with self.assertRaises(NotImplementedError):
             rename_schema(parse(ISS.various_types_schema), {"Character": None}, {})
 
-    def test_suppress_interface_and_all_implementations(self) -> None:
+    def test_suppress_interface_and_implementations(self) -> None:
         with self.assertRaises(NotImplementedError):
             rename_schema(
                 parse(ISS.various_types_schema),
@@ -573,9 +663,17 @@ class TestRenameSchema(unittest.TestCase):
                 {},
             )
 
+    def test_suppress_interface_implementation_when_interface_typed_field_exists(self) -> None:
+        with self.assertRaises(CascadingSuppressionError):
+            # This rename is invalid because suppressing the Human type means that its interface,
+            # Character, must be made unqueryable-- but the renaming doesn't suppress all fields in
+            # the schema that are of a type that is an ancestor of Human (namely, Character and
+            # AbstractCharacter)
+            rename_schema(parse(ISS.interface_typed_field), {"Human": None}, {})
+
     def test_multiple_interfaces_rename(self) -> None:
         renamed_schema = rename_schema(
-            parse(ISS.multiple_interfaces_schema),
+            parse(ISS.various_types_schema),
             {"Human": "NewHuman", "Character": "NewCharacter", "Creature": "NewCreature"},
             {},
         )
@@ -585,23 +683,51 @@ class TestRenameSchema(unittest.TestCase):
               query: SchemaQuery
             }
 
+            scalar Date
+
+            enum Height {
+              TALL
+              SHORT
+            }
+
+            interface AbstractCreature {
+              name: String
+            }
+
+            interface NewCreature implements AbstractCreature {
+              name: String
+              age: Int
+            }
+
             interface NewCharacter {
               id: String
             }
 
-            interface NewCreature {
-              age: Int
-            }
-
             type NewHuman implements NewCharacter & NewCreature {
               id: String
+              name: String
               age: Int
+              birthday: Date
             }
 
+            type Giraffe implements NewCharacter {
+              id: String
+              height: Height
+            }
+
+            type Dog {
+              nickname: String
+            }
+
+            directive @stitch(source_field: String!, sink_field: String!) on FIELD_DEFINITION
+
             type SchemaQuery {
-              NewCharacter: NewCharacter
+              AbstractCreature: AbstractCreature
               NewCreature: NewCreature
+              NewCharacter: NewCharacter
               NewHuman: NewHuman
+              Giraffe: Giraffe
+              Dog: Dog
             }
         """
         )
