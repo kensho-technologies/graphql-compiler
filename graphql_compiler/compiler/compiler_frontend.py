@@ -133,7 +133,7 @@ from .metadata import LocationInfo, OutputInfo, QueryMetadataTable, RecurseInfo,
 from .validation import validate_schema_and_query_ast
 
 
-@dataclass(frozen=True)
+@dataclass(init=True, repr=True, eq=False, frozen=True)
 class OutputMetadata:
     """Metadata about a query's outputs."""
 

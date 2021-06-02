@@ -1,7 +1,8 @@
 # Copyright 2019-present Kensho Technologies, LLC.
 from copy import copy
 from dataclasses import dataclass
-from typing import FrozenSet, List, Optional, Tuple, cast
+from typing import FrozenSet, List, Optional, Tuple, Union, cast
+from uuid import uuid4
 
 from graphql import print_ast
 from graphql.language.ast import (
@@ -19,9 +20,19 @@ from graphql.language.ast import (
 from graphql.pyutils import FrozenList
 
 from ..ast_manipulation import get_only_query_definition
+from ..compiler.common import (
+    compile_graphql_to_cypher,
+    compile_graphql_to_gremlin,
+    compile_graphql_to_match,
+    compile_graphql_to_sql,
+)
+from ..compiler.sqlalchemy_extensions import print_sqlalchemy_query_string
 from ..exceptions import GraphQLValidationError
+from ..global_utils import QueryStringWithParameters
 from ..schema import FilterDirective, OutputDirective
+from ..schema.schema_info import CommonSchemaInfo, SQLAlchemySchemaInfo
 from ..schema_transformation.split_query import AstType, SubQueryNode
+from .typedefs import BackendType, ProviderMetadata, QueryPlan, SimpleExecute
 
 
 @dataclass
@@ -64,6 +75,80 @@ class QueryPlanDescriptor:
 
     # Describing which outputs should be joined and how.
     output_join_descriptors: List[OutputJoinDescriptor]
+
+
+def _make_simple_execute_node(
+    query_and_parameters: QueryStringWithParameters,
+    schema_info: Union[CommonSchemaInfo, SQLAlchemySchemaInfo],
+    provider_id: str,
+    backend_type: BackendType,
+) -> SimpleExecute:
+    """Generate a SimpleExecuteNode.
+
+    Args:
+        query_and_parameters: the query and parameters for which to create a SimpleExecute.
+        schema_info: schema information to use for query compilation.
+        provider_id: the identifier of the provider to be queried.
+        backend_type: the backend type. Note: if schema_info is of type SQLAlchemySchemaInfo, the
+                      backend_type must be a flavor of SQL.
+
+    Returns:
+        SimpleExecute with all necessary information to execute the given query_and_parameters.
+
+    """
+    # Ensure that if a SQL schema info object is passed, that the backend type is a SQL dialect.
+    if isinstance(schema_info, SQLAlchemySchemaInfo):
+        # Compiled SQL query.
+        compilation_result = compile_graphql_to_sql(schema_info, query_and_parameters.query_string)
+        query = print_sqlalchemy_query_string(compilation_result.query, schema_info.dialect)
+
+        # Determine if the SQL dialect requires post-processing.
+        if backend_type == BackendType.mssql:
+            requires_fold_postprocessing = True
+        elif backend_type == BackendType.postgresql:
+            requires_fold_postprocessing = False
+        else:
+            raise AssertionError(
+                f"Received SQLAlchemySchemaInfo, but a non-SQL backend type {backend_type}."
+            )
+
+        provider_metadata = ProviderMetadata(
+            backend_type=backend_type,
+            requires_fold_postprocessing=requires_fold_postprocessing,
+        )
+    # All other backends use CommonSchemaInfo.
+    else:
+        if backend_type == BackendType.cypher:
+            compilation_result = compile_graphql_to_cypher(
+                schema_info, query_and_parameters.query_string
+            )
+        elif backend_type == BackendType.gremlin:
+            compilation_result = compile_graphql_to_gremlin(
+                schema_info, query_and_parameters.query_string
+            )
+        elif backend_type == BackendType.match:
+            compilation_result = compile_graphql_to_match(
+                schema_info, query_and_parameters.query_string
+            )
+        # TODO(selene): add InterpreterAdapter based backends
+        else:
+            raise AssertionError(f"Unknown non-SQL backend_type {backend_type}.")
+        # Extract the query and create provider_metadata (process is the same across Cypher,
+        # Gremlin, and Match backends)
+        query = compilation_result.query
+        provider_metadata = ProviderMetadata(
+            backend_type=backend_type, requires_fold_postprocessing=False
+        )
+
+    return SimpleExecute(
+        str(uuid4()),
+        provider_id,
+        provider_metadata,
+        query,
+        query_and_parameters.parameters,
+        compilation_result.output_metadata,
+        compilation_result.input_metadata,
+    )
 
 
 def _make_query_plan_recursive(
@@ -253,7 +338,9 @@ def _get_in_collection_filter_directive(input_filter_name: str) -> DirectiveNode
 def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[SubQueryPlan, int]]:
     """Return a list of topologically sorted (query plan, depth) tuples."""
 
-    def _get_plan_and_depth_in_dfs_order_helper(query_plan, depth):
+    def _get_plan_and_depth_in_dfs_order_helper(
+        query_plan: SubQueryPlan, depth: int
+    ) -> List[Tuple[SubQueryPlan, int]]:
         plan_and_depth_in_dfs_order = [(query_plan, depth)]
         for child_query_plan in query_plan.child_query_plans:
             plan_and_depth_in_dfs_order.extend(
@@ -267,6 +354,56 @@ def _get_plan_and_depth_in_dfs_order(query_plan: SubQueryPlan) -> List[Tuple[Sub
 ######
 # Public API
 ######
+
+
+def generate_query_plan(
+    query_and_parameters: QueryStringWithParameters,
+    provider_id: str,
+    *,
+    desired_page_size: Optional[int] = 5000,
+) -> QueryPlan:
+    """Generate a query plan for query_and_parameters targeting data source 'provider_id'.
+
+    Note: this functionality is intended to replace make_query_plan below. TODO(selene)
+
+    Args:
+        query_and_parameters: the query and parameters for which to create a QueryPlan.
+        provider_id: the identifier of the provider to be queried.
+        desired_page_size: target page size. None indicates that pagination should be disabled.
+                           The benefit of pagination with this sync executor is that:
+                           - You can receive results as they arrive (see execute_query_plan)
+                           - The load on the database is more controlled, and timeouts are
+                             less likely.
+                           The desired_page_size is fulfilled on a best-effort basis; setting
+                           a particular desired_page_size does not guarantee pages of precisely
+                           that size. Setting desired_page_size to a number less than 1000 is
+                           not recommended, since the server is unlikely to have sufficiently
+                           granular statistics to accomplish that, and the client is more likely
+                           to fetch many entirely empty pages. Note: this is not currently used,
+                           but will be in the near future! TODO(selene): implement ParallelPaginated
+
+    Returns:
+        QueryPlan for the given query_and_parameters against the data source specified
+        by the provider_id.
+
+    """
+    # TODO(selene): look up schema_info and backend_type by provider_id
+    schema_info = None
+    backend_type = None
+    query_plan_node = _make_simple_execute_node(
+        query_and_parameters, schema_info, provider_id, backend_type
+    )
+
+    version = 1
+    return QueryPlan(
+        version,
+        provider_id,
+        query_and_parameters.query_string,
+        query_and_parameters.parameters,
+        desired_page_size,
+        query_plan_node.output_metadata,
+        query_plan_node,
+    )
 
 
 def make_query_plan(
