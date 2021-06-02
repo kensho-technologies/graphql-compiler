@@ -28,6 +28,7 @@ from ...schema_generation.sqlalchemy.edge_descriptors import (
     CompositeEdgeDescriptor,
     DirectEdgeDescriptor,
     DirectJoinDescriptor,
+    EdgeDescriptor,
     generate_direct_edge_descriptors_from_foreign_keys,
 )
 from ...schema_generation.sqlalchemy.scalar_type_mapper import try_get_graphql_scalar_type
@@ -99,7 +100,12 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         join_descriptors = get_join_descriptors_from_edge_descriptors(direct_edges)
 
         self.schema_info = SQLAlchemySchemaInfo(
-            graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
+            graphql_schema,
+            type_equivalence_hints,
+            dialect,
+            vertex_name_to_table,
+            join_descriptors,
+            True,
         )
 
     def test_table_vertex_representation(self) -> None:
@@ -245,7 +251,7 @@ class SQLAlchemySchemaInfoGenerationTests(unittest.TestCase):
         )
 
     def test_composite_edge(self) -> None:
-        edges = {
+        edges: Dict[str, EdgeDescriptor] = {
             "composite_edge": CompositeEdgeDescriptor(
                 "Table1",
                 "TableWithMultiplePrimaryKeyColumns",
@@ -338,7 +344,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
         self.vertex_name_to_table = _get_test_vertex_name_to_table()
 
     def test_reference_to_non_existent_source_vertex(self) -> None:
-        direct_edges = {
+        direct_edges: Dict[str, EdgeDescriptor] = {
             "invalid_source_vertex": DirectEdgeDescriptor(
                 "InvalidVertexName", "source_column", "ArbitraryObjectName", "destination_column"
             )
@@ -347,7 +353,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_vertex(self) -> None:
-        direct_edges = {
+        direct_edges: Dict[str, EdgeDescriptor] = {
             "invalid_source_vertex": DirectEdgeDescriptor(
                 "Table1", "source_column", "InvalidVertexName", "destination_column"
             )
@@ -356,7 +362,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_source_column(self) -> None:
-        direct_edges = {
+        direct_edges: Dict[str, EdgeDescriptor] = {
             "invalid_source_vertex": DirectEdgeDescriptor(
                 "Table1", "invalid_column_name", "ArbitraryObjectName", "destination_column"
             )
@@ -365,7 +371,7 @@ class SQLAlchemySchemaInfoGenerationErrorTests(unittest.TestCase):
             get_sqlalchemy_schema_info(self.vertex_name_to_table, direct_edges, dialect())
 
     def test_reference_to_non_existent_destination_column(self) -> None:
-        direct_edges = {
+        direct_edges: Dict[str, EdgeDescriptor] = {
             "invalid_destination_column": DirectEdgeDescriptor(
                 "Table1", "source_column", "ArbitraryObjectName", "invalid_column_name"
             )

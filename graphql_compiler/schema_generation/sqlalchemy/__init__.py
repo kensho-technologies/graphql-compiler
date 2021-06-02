@@ -1,13 +1,25 @@
 # Copyright 2019-present Kensho Technologies, LLC.
+from typing import Dict, Optional
+
+from graphql.type.definition import GraphQLType
+from sqlalchemy import Table
+from sqlalchemy.dialects.mssql.base import MSDialect
+from sqlalchemy.engine.interfaces import Dialect
+
 from ...schema.schema_info import SQLAlchemySchemaInfo
 from ..graphql_schema import get_graphql_schema_from_schema_graph
-from .edge_descriptors import get_join_descriptors_from_edge_descriptors
+from .edge_descriptors import EdgeDescriptor, get_join_descriptors_from_edge_descriptors
 from .schema_graph_builder import get_sqlalchemy_schema_graph
 
 
 def get_sqlalchemy_schema_info(
-    vertex_name_to_table, edges, dialect, class_to_field_type_overrides=None
-):
+    vertex_name_to_table: Dict[str, Table],
+    edges: Dict[str, EdgeDescriptor],
+    dialect: Dialect,
+    class_to_field_type_overrides: Optional[Dict[str, Dict[str, GraphQLType]]] = None,
+    *,
+    requires_fold_postprocessing: Optional[bool] = None
+) -> SQLAlchemySchemaInfo:
     """Return a SQLAlchemySchemaInfo from the metadata.
 
     Relational databases are supported by compiling to SQLAlchemy core as an intermediate
@@ -23,29 +35,28 @@ def get_sqlalchemy_schema_info(
     the compiler relies on these to compile GraphQL to SQL.
 
     Args:
-        vertex_name_to_table: dict, str -> SQLAlchemy Table. This dictionary is used to generate the
-                              GraphQL objects in the schema in the SQLAlchemySchemaInfo. Each
-                              SQLAlchemyTable will be represented as a GraphQL object. The GraphQL
-                              object names are the dictionary keys. The fields of the GraphQL
-                              objects will be inferred from the columns of the underlying tables.
-                              The fields will have the same name as the underlying columns and
-                              columns with unsupported types, (SQL types with no matching GraphQL
-                              type), will be ignored.
-        edges: dict, str-> EdgeDescriptor. The traversal of an edge
-                      edge gets compiled to a SQL join in graphql_to_sql(). Therefore, each
-                      EdgeDescriptor not only specifies the source and destination GraphQL
-                      objects, but also which columns to use to use when generating a SQL join
-                      between the underlying source and destination tables. The names of the edges
-                      are the keys in the dictionary and the edges will be rendered as vertex fields
-                      named out_<edgeName> and in_<edgeName> in the source and destination GraphQL
-                      objects respectively. The edge names must not conflict with the GraphQL
-                      object names.
-        dialect: sqlalchemy.engine.interfaces.Dialect, specifying the dialect we are compiling to
-                 (e.g. sqlalchemy.dialects.mssql.dialect()).
-        class_to_field_type_overrides: optional dict, class name -> {field name -> field type},
-                                       (string -> {string -> GraphQLType}). Used to override the
-                                       type of a field in the class where it's first defined and all
-                                       the class's subclasses.
+        vertex_name_to_table: dictionary used to generate the GraphQL objects in the schema
+                              in the SQLAlchemySchemaInfo. Each SQLAlchemyTable will be represented
+                              as a GraphQL object. The GraphQL object names are the dictionary keys.
+                              The fields of the GraphQL objects will be inferred from the columns
+                              of the underlying tables. The fields will have the same name as the
+                              underlying columns and columns with unsupported types (SQL types
+                              with no matching GraphQL type) will be ignored.
+        edges: dictionary mapping edge name to edge descriptor. The traversal of an edge
+               gets compiled to a SQL join in graphql_to_sql(). Therefore, each EdgeDescriptor not
+               only specifies the source and destination GraphQL objects, but also which columns to
+               use to use when generating a SQL join between the underlying source and destination
+               tables. The names of the edges are the keys in the dictionary and the edges will be
+               rendered as vertex fields named out_<edgeName> and in_<edgeName> in the source and
+               destination GraphQL objects respectively. The edge names must not conflict with the
+               GraphQL object names.
+        dialect: dialect we are compiling to (e.g. sqlalchemy.dialects.mssql.dialect()).
+        class_to_field_type_overrides: mapping class name to a dictionary of field name to field
+                                       type. Used to override the type of a field in the class where
+                                       it's first defined and all the class's subclasses.
+        requires_fold_postprocessing: whether or not queries compiled against this schema require
+                                      fold post-processing. If None, this will be inferred from the
+                                      dialect.
 
     Returns:
         SQLAlchemySchemaInfo containing the full information needed to compile SQL queries.
@@ -60,6 +71,18 @@ def get_sqlalchemy_schema_info(
 
     join_descriptors = get_join_descriptors_from_edge_descriptors(edges)
 
+    # Infer whether fold post-processing is required if not explicitly given.
+    if requires_fold_postprocessing is None:
+        if isinstance(dialect, MSDialect):
+            requires_fold_postprocessing = True
+        else:
+            requires_fold_postprocessing = False
+
     return SQLAlchemySchemaInfo(
-        graphql_schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
+        graphql_schema,
+        type_equivalence_hints,
+        dialect,
+        vertex_name_to_table,
+        join_descriptors,
+        requires_fold_postprocessing,
     )

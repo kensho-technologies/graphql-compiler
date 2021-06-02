@@ -11,6 +11,7 @@ from graphql.type.definition import GraphQLInterfaceType, GraphQLObjectType
 import six
 import sqlalchemy
 from sqlalchemy.dialects.mssql import dialect as mssql_dialect
+from sqlalchemy.dialects.mssql.base import MSDialect
 from sqlalchemy.dialects.mysql import dialect as mysql_dialect
 from sqlalchemy.dialects.postgresql import dialect as postgresql_dialect
 from sqlalchemy.engine.interfaces import Dialect
@@ -280,6 +281,10 @@ class SQLAlchemySchemaInfo:
     #    the schema and the tables dictionary.
     join_descriptors: Dict[str, Dict[str, JoinDescriptor]]
 
+    # Whether or not fold postprocessing should be applied to the results from queries
+    # compiled with this schema.
+    requires_fold_postprocessing: bool
+
 
 def make_sqlalchemy_schema_info(
     schema: GraphQLSchema,
@@ -288,6 +293,8 @@ def make_sqlalchemy_schema_info(
     vertex_name_to_table: Dict[str, sqlalchemy.Table],
     join_descriptors: Dict[str, Dict[str, JoinDescriptor]],
     validate: bool = True,
+    *,
+    requires_fold_postprocessing: Optional[bool] = None
 ) -> SQLAlchemySchemaInfo:
     """Make a SQLAlchemySchemaInfo if the input provided is valid.
 
@@ -322,6 +329,9 @@ def make_sqlalchemy_schema_info(
         validate: whether to validate that the given inputs are valid for creation of
                   a SQLAlchemySchemaInfo object. Disabling validation may improve performance for
                   particularly large schemas, at the risk of constructing an invalid schema info.
+        requires_fold_postprocessing: whether or not queries compiled against this schema require
+                                      fold post-processing. If None, this will be inferred from the
+                                      dialect.
 
     Returns:
         SQLAlchemySchemaInfo containing the input arguments provided
@@ -363,8 +373,20 @@ def make_sqlalchemy_schema_info(
                                     "for property field {}".format(type_name, field_name)
                                 )
 
+    # Infer whether fold post-processing is required if not explicitly given.
+    if requires_fold_postprocessing is None:
+        if isinstance(dialect, MSDialect):
+            requires_fold_postprocessing = True
+        else:
+            requires_fold_postprocessing = False
+
     return SQLAlchemySchemaInfo(
-        schema, type_equivalence_hints, dialect, vertex_name_to_table, join_descriptors
+        schema,
+        type_equivalence_hints,
+        dialect,
+        vertex_name_to_table,
+        join_descriptors,
+        requires_fold_postprocessing,
     )
 
 
