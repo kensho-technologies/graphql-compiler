@@ -13,6 +13,7 @@ _operator_definitions_for_non_null_values = {
     "contains": lambda left, right: right in left,
     "not_contains": lambda left, right: right not in left,
     "has_substring": lambda left, right: right in left,
+    "not_has_substring": lambda left, right: right not in left,
     "starts_with": lambda left, right: left.startswith(right),
     "ends_with": lambda left, right: left.endswith(right),
     "in_collection": lambda left, right: left in right,

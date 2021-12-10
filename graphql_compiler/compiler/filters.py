@@ -588,7 +588,7 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
         location: Location where this filter is used.
         context: dict, various per-compilation data (e.g. declared tags, whether the current block
                  is optional, etc.). May be mutated in-place in this function!
-       parameters: list of 1 element, specifying the value to which a
+        parameters: list of 1 element, specifying the value to which a
                     matching value must be bound; if the value is optional and missing,
                     the check will return True.
 
@@ -610,6 +610,52 @@ def _process_has_substring_filter_directive(filter_operation_info, location, con
 
     filter_predicate = expressions.BinaryComposition(
         "has_substring",
+        expressions.LocalField(filtered_field_name, filtered_field_type),
+        argument_expression,
+    )
+    if non_existence_expression is not None:
+        # The argument comes from an optional block and might not exist,
+        # in which case the filter expression should evaluate to True.
+        filter_predicate = expressions.BinaryComposition(
+            "||", non_existence_expression, filter_predicate
+        )
+
+    return blocks.Filter(filter_predicate)
+
+
+@scalar_leaf_only("not_has_substring")
+@takes_parameters(1)
+def _process_not_has_substring_filter_directive(filter_operation_info, location, context, parameters):
+    """Return a Filter basic block that checks if the directive arg isn't a substring of the field.
+
+    Args:
+        filter_operation_info: FilterOperationInfo object, containing the directive and field info
+                               of the field where the filter is to be applied.
+        location: Location where this filter is used.
+        context: dict, various per-compilation data (e.g. declared tags, whether the current block
+                 is optional, etc.). May be mutated in-place in this function!
+        parameters: list of 1 element, specifying the value to which a
+                    matching value must be bound; if the value is optional and missing,
+                    the check will return True.
+
+    Returns:
+        a Filter basic block that performs the substring check
+    """
+    filtered_field_type = filter_operation_info.field_type
+    filtered_field_name = filter_operation_info.field_name
+
+    if not is_same_type(strip_non_null_from_type(filtered_field_type), GraphQLString):
+        raise GraphQLCompilationError(
+            'Cannot apply "has_substring" to non-string ' "type {}".format(filtered_field_type)
+        )
+    argument_inferred_type = GraphQLString
+
+    argument_expression, non_existence_expression = _represent_argument(
+        location, context, parameters[0], argument_inferred_type
+    )
+
+    filter_predicate = expressions.BinaryComposition(
+        "not_has_substring",
         expressions.LocalField(filtered_field_name, filtered_field_type),
         argument_expression,
     )
@@ -1031,6 +1077,7 @@ def process_filter_directive(filter_operation_info, location, context):
         "in_collection": _process_in_collection_filter_directive,
         "not_in_collection": _process_not_in_collection_filter_directive,
         "has_substring": _process_has_substring_filter_directive,
+        "not_has_substring": _process_not_has_substring_filter_directive,
         "starts_with": _process_starts_with_filter_directive,
         "ends_with": _process_ends_with_filter_directive,
         "contains": _process_contains_filter_directive,

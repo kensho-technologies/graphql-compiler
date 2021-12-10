@@ -1220,6 +1220,7 @@ class BinaryComposition(Expression):
             "not_contains",
             "intersects",
             "has_substring",
+            "not_has_substring",
             "starts_with",
             "ends_with",
             "LIKE",
