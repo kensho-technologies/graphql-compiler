@@ -57,9 +57,9 @@ setup(
     install_requires=[  # Make sure to keep in sync with Pipfile requirements.
         "ciso8601>=2.1.3,<3",
         "funcy>=1.7.3,<2",
-        "graphql-core>=3.1.2,<3.2",
+        "graphql-core>=3.1.2,<=3.1.4",
         "six>=1.10.0",
-        "sqlalchemy>=1.3.0,<2",
+        "sqlalchemy>=1.3,<1.4",
     ],
     extras_require={
         ':python_version<"3.7"': ["dataclasses>=0.7,<1"],

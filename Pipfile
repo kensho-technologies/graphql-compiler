@@ -41,9 +41,9 @@ sphinx = ">=1.8,<2"
 [packages]  # Make sure to keep in sync with setup.py requirements.
 ciso8601 = ">=2.1.3,<3"
 funcy = ">=1.7.3,<2"
-graphql-core = ">=3.1.2,<3.2"  # minor versions sometimes contain breaking changes
+graphql-core = ">=3.1.2,<=3.1.4"  # minor versions sometimes contain breaking changes
 six = ">=1.10.0"
-sqlalchemy = ">=1.3.0,<2"
+sqlalchemy = ">=1.3,<1.4"
 
 # The below is necessary to make a few pylint passes work properly, since pylint expects to be able
 # to run "import graphql_compiler" in the environment in which it runs.
