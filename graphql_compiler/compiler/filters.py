@@ -1018,6 +1018,7 @@ PROPERTY_FIELD_OPERATORS = COMPARISON_OPERATORS | frozenset(
         "not_contains",
         "intersects",
         "has_substring",
+        "not_has_substring",
         "starts_with",
         "ends_with",
         "has_edge_degree",
