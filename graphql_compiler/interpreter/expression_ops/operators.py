@@ -46,8 +46,9 @@ def apply_operator(operator: str, left_value: Any, right_value: Any) -> Any:
             # All other comparisons vs None produce False.
             return False
     elif left_none or right_none:
-        # Only one of the values is None. We define this to always be False, for all operators.
-        return False
+        # Only one of the values is None.
+        # This is True for the != operator, and False for all other operators.
+        return operator == "!="
     elif not left_none and not right_none:
         # Neither side of the operator is None, apply operator normally.
         operator_handler: Optional[
